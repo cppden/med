@@ -34,7 +34,7 @@ struct FIELD4 : med::value<32>
 	{
 		char sz[16];
 		uint32_t ip = get();
-		snprintf(sz, sizeof(sz)-1, "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
+		snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
 		return sz;
 	}
 };
