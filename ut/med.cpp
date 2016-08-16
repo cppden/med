@@ -78,7 +78,7 @@ struct FLD_U32 : med::value<32>
 	{
 		char sz[16];
 		uint32_t ip = get();
-		snprintf(sz, sizeof(sz)-1, "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
+		snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
 		return sz;
 	}
 };
@@ -184,7 +184,7 @@ struct FLD_TN : med::value<8>, med::tag_t<HT<0xE0>>
 
 	static constexpr char const* name()   { return "Tagged-Bits"; }
 	template <std::size_t N>
-	void print(char (&sz)[N]) const       { snprintf(sz, N-1, "%02X", get_value()); }
+	void print(char (&sz)[N]) const       { snprintf(sz, N, "%02X", get_value()); }
 };
 
 template <uint8_t tag>

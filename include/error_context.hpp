@@ -69,28 +69,28 @@ inline char const* toString(error_context const& ec)
 	case error::OVERFLOW:
 		if (ec.m_param[1])
 		{
-			snprintf(sz, sizeof(sz)-1, "%zu bits left, '%s' needs %zu", ec.m_param[0], ec.m_name, ec.m_param[1]);
+			snprintf(sz, sizeof(sz), "%zu bits left, '%s' needs %zu", ec.m_param[0], ec.m_name, ec.m_param[1]);
 		}
 		else
 		{
-			snprintf(sz, sizeof(sz)-1, "%zu bits left after '%s'", ec.m_param[0], ec.m_name);
+			snprintf(sz, sizeof(sz), "%zu bits left after '%s'", ec.m_param[0], ec.m_name);
 		}
 		break;
 
 	case error::INCORRECT_VALUE:
-		snprintf(sz, sizeof(sz)-1, "Invalid value of '%s' at %zu: 0x%zX", ec.m_name, ec.m_param[1], ec.m_param[0]);
+		snprintf(sz, sizeof(sz), "Invalid value of '%s' at %zu: 0x%zX", ec.m_name, ec.m_param[1], ec.m_param[0]);
 		break;
 
 	case error::INCORRECT_TAG:
-		snprintf(sz, sizeof(sz)-1, "Wrong tag of '%s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
+		snprintf(sz, sizeof(sz), "Wrong tag of '%s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
 		break;
 
 	case error::MISSING_IE:
-		snprintf(sz, sizeof(sz)-1, "Missing IE '%s': at least %zu expected", ec.m_name, ec.m_param[0]);
+		snprintf(sz, sizeof(sz), "Missing IE '%s': at least %zu expected", ec.m_name, ec.m_param[0]);
 		break;
 
 	case error::EXTRA_IE:
-		snprintf(sz, sizeof(sz)-1, "Excessive IE '%s': no more than %zu expected", ec.m_name, ec.m_param[0]);
+		snprintf(sz, sizeof(sz), "Excessive IE '%s': no more than %zu expected", ec.m_name, ec.m_param[0]);
 		break;
 	}
 
