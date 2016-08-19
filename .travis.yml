@@ -1,19 +1,10 @@
 
 language: cpp
-#sudo: false
+sudo: true
 
 # branch push _and_ the pull request.
 branches:
   except: /pr\/.*/
-
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-6
-      - gcc-6
-      - clang
 
 compiler:
   - gcc
@@ -27,6 +18,17 @@ script:
 before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libgtest-dev
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-6
+      - clang-3.6
+
+#      - gcc-6
+#      - clang
 
 install:
   - if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6"; fi
