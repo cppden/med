@@ -1,4 +1,7 @@
 # Meta-Encoder/Decoder
+=====
+.. image:: https://travis-ci.org/cppden/med.svg?branch=master
+   :target: https://travis-ci.org/cppden/med
 
 ## Overview
 ```cpp

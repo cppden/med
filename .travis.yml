@@ -9,13 +9,18 @@ script:
   - mkdir build && cd build && ../configure && make -j && make check
   
 
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libgtest-dev
+#before_install:
+#  - sudo apt-get -qq update
+#  - sudo apt-get install -y libgtest-dev
+
+addons:
+  apt:
+    packages:
+    - libgtest-dev
 
 install:
-    - if [ "$CXX" = "g++" ]; then export CXX="$COMPILER"; fi
-    - if [ "$CXX" = "clang++" ]; then export CXX="$COMPILER"; fi
+  - export CXX="$COMPILER"
+  - export CC=`echo $COMPILER | sed 's/++//'`
 
 matrix:
   include:
