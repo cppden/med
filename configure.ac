@@ -12,10 +12,9 @@ AM_PROG_AR
 
 SRC_DIR=m4_esyscmd([pwd | tr -d '\n'])
 
-CFLAGS="-O3 -Wall -Werror -funroll-loops -ffast-math -fno-strict-aliasing -pipe"
+CFLAGS="-O3 -Wall -Werror -funroll-loops -ffast-math -fno-strict-aliasing -pipe -pthread"
 CXXFLAGS="-std=c++14 ${CFLAGS} -I${SRC_DIR}/med -I${SRC_DIR}/ut"
 CPPFLAGS=""
-#LDFLAGS="-static -static-libstdc++"
 
 
 #---------- substitute corresponding @var@s in Makefiles

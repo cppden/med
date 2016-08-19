@@ -6,7 +6,7 @@ branches:
 
 script:
   - ./reconf
-  - mkdir build && cd build && ../configure && make -j && make check
+  - mkdir build && cd build && ../configure && make -j check
   
 
 before_install:
@@ -14,7 +14,7 @@ before_install:
   - sudo apt-get install -y libgtest-dev
   # what a nice bug wasted 3 hours of my life...
   - (mkdir -p /tmp/gtest && cd /tmp/gtest && cmake -DCMAKE_BUILD_TYPE=RELEASE /usr/src/gtest && make && sudo mv libg* /usr/lib/)
-  - sudo find /usr/lib/ -name "*gtest*"
+  - find /usr/ -type f -name "*gtest*"
 
 install:
   - export CXX="$COMPILER"
