@@ -1,6 +1,6 @@
 
 language: cpp
-sudo: false
+#sudo: false
 
 # branch push _and_ the pull request.
 branches:
