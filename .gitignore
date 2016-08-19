@@ -43,8 +43,9 @@ build/
 #project files
 .codelite/
 Debug/
+Release/
+build/
 *.workspace
 *.mk
 *.project
-*.txt
 Makefile
