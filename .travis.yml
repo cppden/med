@@ -1,5 +1,19 @@
 
 language: cpp
+sudo: false
+
+# branch push _and_ the pull request.
+branches:
+  except: /pr\/.*/
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-6
+      - gcc-6
+      - clang
 
 compiler:
   - gcc
