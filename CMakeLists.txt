@@ -29,3 +29,7 @@ target_link_libraries(med_ut
     gtest
 )
 
+enable_testing()
+add_test(UT med_ut)
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
+                  DEPENDS med_ut)
