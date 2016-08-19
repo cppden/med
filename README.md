@@ -35,7 +35,7 @@ struct FIELD4 : med::value<32>
 	{
 		char sz[16];
 		uint32_t ip = get();
-		snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
+		std::snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
 		return sz;
 	}
 };
@@ -51,15 +51,6 @@ struct VFLD1 : med::octet_string<med::min<5>, med::max<10>>, med::with_snapshot
 };
 
 struct MSG1 : med::sequence<
-	M< FIELD1 >,
-	M< tag<0x21>, FIELD2 >,
-	O< tag<0x49>, FIELD3 >
->
-{
-	static constexpr char const* name() { return "Msg-One"; }
-};
-
-struct MSG2 : med::sequence<
 	M< FIELD1 >, //V
 	M< tag<0x21>, FIELD2 >, //TV
 	M< L, FIELD5 >, //LV(fixed)
@@ -68,20 +59,10 @@ struct MSG2 : med::sequence<
 	O< tag<  3>, MSG1 >
 >
 {
-	static constexpr char const* name() { return "Msg-Two"; }
+	static constexpr char const* name() { return "Msg-One"; }
 };
 
-struct MSG3 : med::sequence<
-	M< L, FIELD1 >, //LV(fixed)
-	M< tag<0x21>, L, FIELD2 >, //TLV(fixed)
-	O< tag<0x49>, L, FIELD3 >, //TLV(fixed)
-	O< tag<0x22>, L, VFLD1 > //TLV(var)
->
-{
-	static constexpr char const* name() { return "Msg-Three"; }
-};
-
-struct MSG4 : med::set< med::value<16>,
+struct MSG2 : med::set< med::value<16>,
 	M< tag<0x0b>,    FIELD1 >, //<TV>
 	M< tag<0x21>, L, FIELD2 >, //<TLV>
 	O< tag<0x49>, L, FIELD3 >, //[TLV]
@@ -96,8 +77,6 @@ struct MSG4 : med::set< med::value<16>,
 struct PROTO : med::choice< med::value<8>
 	, med::tag<1, MSG1>
 	, med::tag<2, MSG2>
-	, med::tag<3, MSG3>
-	, med::tag<4, MSG4>
 >
 {
 };

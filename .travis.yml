@@ -5,6 +5,7 @@ branches:
   except: /pr\/.*/
 
 script:
+  - find / -name "*gtest*"
   - ./reconf
   - mkdir build && cd build && ../configure && make -j && make check
   
@@ -15,7 +16,7 @@ script:
 
 install:
   - export CXX="$COMPILER"
-  - export CC=`echo $COMPILER | sed 's/++//'`
+  - export CC=`echo $COMPILER | sed -e 's/^g++/gcc/' -e 's/^clang++/clang/'`
 
 matrix:
   include:
