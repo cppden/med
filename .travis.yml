@@ -13,11 +13,6 @@ script:
 #  - sudo apt-get -qq update
 #  - sudo apt-get install -y libgtest-dev
 
-addons:
-  apt:
-    packages:
-    - libgtest-dev
-
 install:
   - export CXX="$COMPILER"
   - export CC=`echo $COMPILER | sed 's/++//'`
@@ -31,6 +26,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
+            - libgtest-dev
       env:
         - COMPILER=g++-6
     - compiler: clang
@@ -41,6 +37,7 @@ matrix:
             - llvm-toolchain-precise-3.7
           packages:
             - clang++-3.7
+            - libgtest-dev
       env:
         - COMPILER=clang++-3.7
 
