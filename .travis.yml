@@ -12,6 +12,8 @@ script:
 before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libgtest-dev
+  # what a nice bug wasted 3 hours of my life...
+  - sudo mkdir -p /tmp/gtest && cd /tmp/gtest && sudo cmake -DCMAKE_BUILD_TYPE=RELEASE /usr/src/gtest && sudo make && sudo mv libg* /usr/lib/
   - sudo find /usr/lib/ -name "*gtest*"
 
 install:
