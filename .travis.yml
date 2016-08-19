@@ -5,6 +5,11 @@ compiler:
   - gcc
   - clang
 
+script:
+  - autoreconf
+  - mkdir build && cd build && ../configure && make -j && make check
+  
+
 before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libgtest-dev
