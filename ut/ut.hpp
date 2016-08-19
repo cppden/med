@@ -72,7 +72,7 @@ struct dummy_sink
 		++num_on_value;
 		if (m_factor)
 		{
-			printf("%zu%*c%s : %zu (%zXh)\n", depth, m_factor*depth, ' ', name, value, value);
+			printf("%zu%*c%s : %zu (%zXh)\n", depth, int(m_factor*depth), ' ', name, value, value);
 		}
 	}
 
