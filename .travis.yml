@@ -6,10 +6,6 @@ sudo: true
 branches:
   except: /pr\/.*/
 
-compiler:
-  - gcc
-  - clang
-
 script:
   - ./reconf
   - mkdir build && cd build && ../configure && make -j && make check
@@ -19,19 +15,26 @@ before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libgtest-dev
 
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-6
-      - clang-3.6
+matrix:
+  include:
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+      env: COMPILER=g++-6
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.7
+          packages:
+            - clang-3.7
+      env: COMPILER=clang++-3.7
 
-#      - gcc-6
-#      - clang
-
-install:
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6"; fi
 
 notifications:
   email: false

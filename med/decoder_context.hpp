@@ -9,8 +9,6 @@ Distributed under the MIT License
 
 #pragma once
 
-#include <boost/noncopyable.hpp>
-
 #include "buffer.hpp"
 #include "error_context.hpp"
 
