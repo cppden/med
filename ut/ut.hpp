@@ -82,7 +82,7 @@ struct dummy_sink
 		++num_on_value;
 		if (m_factor)
 		{
-			printf("%zu%*c%s : %*.*s (%zu)\n", depth, m_factor*depth, ' ', name, value.size(), value.size(), (char const*)value.data(), value.size());
+			printf("%zu%*c%s : %*.*s (%zu)\n", depth, int(m_factor*depth), ' ', name, int(value.size()), int(value.size()), (char const*)value.data(), value.size());
 		}
 	}
 
@@ -91,7 +91,7 @@ struct dummy_sink
 		++num_on_container;
 		if (m_factor)
 		{
-			printf("%zu%*c%s\n", depth, m_factor*depth, ' ', name);
+			printf("%zu%*c%s\n", depth, int(m_factor*depth), ' ', name);
 		}
 	}
 
@@ -100,7 +100,7 @@ struct dummy_sink
 		++num_on_custom;
 		if (m_factor)
 		{
-			printf("%zu%*c%s : %s\n", depth, m_factor*depth, ' ', name, s.c_str());
+			printf("%zu%*c%s : %s\n", depth, int(m_factor*depth), ' ', name, s.c_str());
 		}
 	}
 };
