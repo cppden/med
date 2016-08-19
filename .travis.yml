@@ -5,7 +5,6 @@ branches:
   except: /pr\/.*/
 
 script:
-  - find / -name "*gtest*"
   - ./reconf
   - mkdir build && cd build && ../configure && make -j && make check
   
@@ -13,6 +12,7 @@ script:
 before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libgtest-dev
+  - sudo find /usr/lib/ -name "*gtest*"
 
 install:
   - export CXX="$COMPILER"
