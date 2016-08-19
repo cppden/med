@@ -6,7 +6,7 @@ compiler:
   - clang
 
 script:
-  - autoreconf
+  - ./reconf
   - mkdir build && cd build && ../configure && make -j && make check
   
 
