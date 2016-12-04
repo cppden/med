@@ -16,6 +16,27 @@ Distributed under the MIT License
 
 namespace med {
 
+
+template <class COUNTER>
+struct counter_t
+{
+	using counter_type = COUNTER;
+};
+
+template <class, class Enable = void>
+struct has_counter_type : std::false_type { };
+
+template <class T>
+struct has_counter_type<T, void_t<typename T::counter_type>> : std::true_type { };
+
+template <class T>
+using is_counter = has_counter_type<T>;
+
+template <class T>
+constexpr bool is_counter_v = is_counter<T>::value;
+
+
+
 template <class IE>
 std::enable_if_t<is_optional_v<IE>, bool>
 constexpr check_arity(std::size_t count)    { return 0 == count || count >= IE::min; }
@@ -68,7 +89,7 @@ template <class FIELD>
 std::enable_if_t<!has_multi_field<FIELD>::value, std::size_t>
 inline field_count(FIELD const& field) { return field.is_set() ? 1 : 0; }
 
-
+// user-provided functor to etract field count
 template <class T>
 constexpr bool is_count_getter_v = is_count_getter<T>::value;
 

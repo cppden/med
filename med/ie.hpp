@@ -37,7 +37,7 @@ struct tag_value_t : field_t<VAL>, tag_t<TAG>
 };
 
 template <class LEN, class VAL>
-struct length_value_t : field_t<VAL>, length_t<LEN>
+struct length_value_t : field_t<VAL>, LEN
 {
 	using ie_type = IE_LV;
 };
@@ -91,13 +91,13 @@ private:
 template <class TAG, class VAL, std::size_t MIN, std::size_t MAX>
 struct multi_tag_value_t : multi_field_t<VAL, MIN, MAX>, tag_t<TAG>
 {
-	using ie_type     = IE_TV;
+	using ie_type = IE_TV;
 };
 
 template <class LEN, class VAL, std::size_t MIN, std::size_t MAX>
-struct multi_length_value_t : multi_field_t<VAL, MIN, MAX>, length_t<LEN>
+struct multi_length_value_t : multi_field_t<VAL, MIN, MAX>, LEN
 {
-	using ie_type     = IE_LV;
+	using ie_type = IE_LV;
 };
 
 template <std::size_t MAX>

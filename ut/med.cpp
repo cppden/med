@@ -19,33 +19,43 @@ template <typename ...T>
 using O = med::optional<T...>;
 
 #ifdef CODEC_TRACE_ENABLE
-struct L : med::value<8>
+// Length
+struct L : med::length_t<med::value<8>>
 {
 	static constexpr char const* name() { return "Length"; }
 };
+// Counter
+struct CNT : med::counter_t<med::value<16>>
+{
+	static constexpr char const* name() { return "Counter"; }
+};
+// Tag
 template <std::size_t TAG>
 struct T : med::cvalue<TAG, 8>
 {
 	static constexpr char const* name() { return "Tag"; }
 };
+// Tag/Case in choice
 template <std::size_t TAG>
 struct C : med::cvalue<TAG>
 {
 	static constexpr char const* name() { return "Case"; }
 };
+// Header
 template <uint8_t BITS>
-struct H : med::value<BITS>
+struct HDR : med::value<BITS>
 {
 	static constexpr char const* name() { return "Header"; }
 };
 #else
-using L = med::value<8>;
+using L = med::length_t<med::value<8>>;
+using CNT = med::counter_t<med::value<16>>;
 template <std::size_t TAG>
 using T = med::cvalue<TAG, 8>;
 template <std::size_t TAG>
 using C = med::cvalue<TAG>;
 template <uint8_t BITS>
-using H = med::value<BITS>;
+using HDR = med::value<BITS>;
 #endif
 
 struct FLD_UC : med::value<8>
@@ -74,12 +84,11 @@ struct FLD_U24 : med::value<24>
 struct FLD_U32 : med::value<32>
 {
 	static constexpr char const* name() { return "IP-Address"; }
-	std::string print() const
+	template <std::size_t N>
+	void print(char (&sz)[N]) const
 	{
-		char sz[16];
 		uint32_t ip = get();
-		snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
-		return sz;
+		std::snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
 	}
 };
 
@@ -88,14 +97,14 @@ struct FLD_DW : med::value<32>
 	static constexpr char const* name() { return "Double-Word"; }
 };
 
-struct VFLD1 : med::octet_string<med::min<5>, med::max<10>>, med::with_snapshot
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, std::vector<uint8_t>>
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, boost::container::static_vector<uint8_t, 10>>
+struct VFLD1 : med::octet_string<med::min<5>, med::max<10>>, med::with_snapshot
 {
 	static constexpr char const* name() { return "url"; }
 };
 
-struct CLEN : med::value<8>
+struct custom_length : med::value<8>
 {
 	static bool value_to_length(std::size_t& v)
 	{
@@ -119,20 +128,21 @@ struct CLEN : med::value<8>
 
 	static constexpr char const* name() { return "Custom-Length"; }
 };
+using CLEN = med::length_t<custom_length>;
 
 struct MSG_SEQ : med::sequence<
-	M< FLD_UC >,                //<V>
+	M< FLD_UC >,              //<V>
 	M< T<0x21>, FLD_U16 >,    //<TV>
-	M< L, FLD_U24 >,            //<LV>(fixed)
+	M< L, FLD_U24 >,          //<LV>(fixed)
 	M< T<0x42>, L, FLD_U32 >, //<TLV>(fixed)
 	O< T<0x51>, FLD_DW >,     //[TV]
-	O< T<0x12>, CLEN, VFLD1 >    //TLV(var)
+	O< T<0x12>, CLEN, VFLD1 > //TLV(var)
 >
 {
 	static constexpr char const* name() { return "Msg-Seq"; }
 };
 
-struct FLD_CHO : med::choice< H<8>
+struct FLD_CHO : med::choice< HDR<8>
 	, med::tag<C<0x01>, FLD_U8>
 	, med::tag<C<0x02>, FLD_U16>
 	, med::tag<C<0x04>, FLD_U32>
@@ -153,6 +163,22 @@ struct SEQOF_2 : med::sequence<
 >
 {
 	static constexpr char const* name() { return "Seq-Of-2"; }
+};
+
+template <int INSTANCE>
+struct SEQOF_3 : med::sequence<
+	M< FLD_U8 >,
+	M< T<0x21>, FLD_U16 >  //<TV>
+>
+{
+	static constexpr char const* name() { return "Seq-Of-3"; }
+	template <std::size_t N>
+	void print(char (&sz)[N]) const
+	{
+		std::snprintf(sz, N, "%u:%04X (%d)"
+			, this->template get<FLD_U8>().get(), this->template get<FLD_U16>().get()
+			, INSTANCE);
+	}
 };
 
 template <std::size_t TAG>
@@ -184,7 +210,7 @@ struct FLD_TN : med::value<8>, med::tag_t<HT<0xE0>>
 
 	static constexpr char const* name()   { return "Tagged-Bits"; }
 	template <std::size_t N>
-	void print(char (&sz)[N]) const       { snprintf(sz, N, "%02X", get_value()); }
+	void print(char (&sz)[N]) const       { std::snprintf(sz, N, "%02X", get_value()); }
 };
 
 template <uint8_t tag>
@@ -256,24 +282,26 @@ struct FLD_NSCHO : med::choice<LT
 };
 
 struct MSG_MSEQ : med::sequence<
-	M< FLD_UC, med::arity<2> >,                         //<V>*2
-	M< T<0x21>, FLD_U16, med::arity<2> >,               //<TV>*2
-	M< L, FLD_U24, med::arity<2> >,                     //<LV>*2
-	M< T<0x42>, L, FLD_U32, med::max<2> >, //<TLV>(fixed)*[1,2]
-	M< T<0x51>, FLD_DW, med::max<2> >,     //<TV>*[1,2]
+	M< FLD_UC, med::arity<2>>,            //<V>*2
+	M< T<0x21>, FLD_U16, med::arity<2>>,  //<TV>*2
+	M< L, FLD_U24, med::arity<2>>,        //<LV>*2
+	M< T<0x42>, L, FLD_U32, med::max<2>>, //<TLV>(fixed)*[1,2]
+	M< T<0x51>, FLD_DW, med::max<2>>,     //<TV>*[1,2]
+	M< CNT, SEQOF_3<0>, med::max<2>>,
 	O< FLD_TN >,
-	O< T<0x60>, L, FLD_CHO >,
-	O< T<0x61>, L, SEQOF_1 >,
-	O< T<0x62>, L, SEQOF_2, med::max<2> >,
+	O< T<0x60>, L, FLD_CHO>,
+	O< T<0x61>, L, SEQOF_1>,
+	O< T<0x62>, L, SEQOF_2, med::max<2>>,
 	O< T<0x70>, L, FLD_NSCHO >,
-	O< L, VFLD1, med::max<3> >                          //<LV(var)>*[0,3] till EoF
+	O< T<0x80>, CNT, SEQOF_3<1>, med::max<3>>, //T[CV]*[0,3]
+	O< L, VFLD1, med::max<3> >           //[LV(var)]*[0,3] till EoF
 >
 {
 	static constexpr char const* name() { return "Msg-Multi-Seq"; }
 };
 
 
-struct MSG_SET : med::set< H<16>,
+struct MSG_SET : med::set< HDR<16>,
 	M< T<0x0b>,    FLD_UC >, //<TV>
 	M< T<0x21>, L, FLD_U16 >, //<TLV>
 	O< T<0x49>, L, FLD_U24 >, //[TLV]
@@ -284,7 +312,7 @@ struct MSG_SET : med::set< H<16>,
 	static constexpr char const* name() { return "Msg-Set"; }
 };
 
-struct MSG_MSET : med::set< H<16>,
+struct MSG_MSET : med::set< HDR<16>,
 	M< T<0x0b>,    FLD_UC, med::arity<2> >, //<TV>*2
 	M< T<0x0c>,    FLD_U8, med::max<2> >, //<TV>*[1,2]
 	M< T<0x21>, L, FLD_U16, med::max<3> >, //<TLV>*[1,3]
@@ -385,7 +413,7 @@ struct MSG_FUNC : med::sequence<
 };
 
 
-struct PROTO : med::choice< H<8>
+struct PROTO : med::choice< HDR<8>
 	, med::tag<C<0x01>, MSG_SEQ>
 	, med::tag<C<0x11>, MSG_MSEQ>
 	, med::tag<C<0x04>, MSG_SET>
@@ -479,6 +507,11 @@ TEST(encode, mseq_ok)
 	msg.ref<FLD_U24, 1>().set(0x22BEEF);
 	msg.ref<FLD_U32, 0>().set(0xFee1ABBA);
 	msg.ref<FLD_DW, 0>().set(0x01020304);
+	{
+		auto& s = msg.ref<SEQOF_3<0>, 0>();
+		s.ref<FLD_U8>().set(1);
+		s.ref<FLD_U16>().set(2);
+	}
 
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
@@ -493,6 +526,7 @@ TEST(encode, mseq_ok)
 		, 3, 0x22, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_U32, med::max<2> >
 		, 0x51, 0x01, 0x02, 0x03, 0x04    //M< T<0x51>, FLD_DW, med::max<2> >
+		, 0,1, 1, 0x21, 0,2 //M<C16, Seq>  <=2
 	};
 	EXPECT_EQ(sizeof(encoded1), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded1, buffer));
@@ -534,6 +568,7 @@ TEST(encode, mseq_ok)
 		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
 		, 0x51, 0x01, 0x02, 0x03, 0x04 //M< T<0x51>, FLD_DW, med::max<2> >
 		, 0x51, 0x12, 0x34, 0x56, 0x78
+		, 0,1, 1, 0x21, 0,2 //M<C16, Seq>  <=2
 		, 0xE2 //O< FLD_TN >,
 		, 0x60, 2, 1, 33 //O< T<0x60>, L, FLD_CHO >
 		, 0x61, 4 //O< T<0x61>, L, SEQOF_1 >
@@ -1054,6 +1089,7 @@ TEST(decode, mseq_ok)
 		, 3, 0x22, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 		, 0x51, 0x01, 0x02, 0x03, 0x04
+		, 0,1, 2, 0x21, 0,3
 	};
 	ctx.reset(encoded1);
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -1073,6 +1109,9 @@ TEST(decode, mseq_ok)
 	EXPECT_EQ(0xfee1ABBA, (msg->get<FLD_U32, 0>().get()));
 	ASSERT_EQ(1, msg->count<FLD_DW>());
 	EXPECT_EQ(0x01020304, (msg->get<FLD_DW, 0>().get()));
+	ASSERT_EQ(1, msg->count<SEQOF_3<0>>());
+	EXPECT_EQ(2, (msg->get<SEQOF_3<0>, 0>().get<FLD_U8>().get()));
+	EXPECT_EQ(3, (msg->get<SEQOF_3<0>, 0>().get<FLD_U16>().get()));
 
 	EXPECT_EQ(0, msg->count<VFLD1>());
 	VFLD1 const* vfld1 = msg->field<0>();
@@ -1090,6 +1129,7 @@ TEST(decode, mseq_ok)
 		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 		, 0x51, 0x12, 0x34, 0x56, 0x78
+		, 0,2, 3, 0x21, 0,4,  5, 0x21, 0,6
 		, 0x60, 2, 1, 33 //O< T<0x60>, L, FLD_CHO >
 		, 0x61, 4 //O< T<0x61>, L, SEQOF_1 >
 			, 0x12,0x23, 0x34,0x45 //M< FLD_W, med::max<3> >
@@ -1124,6 +1164,11 @@ TEST(decode, mseq_ok)
 	ASSERT_EQ(2, msg->count<FLD_DW>());
 	EXPECT_EQ(0x01020304, (msg->get<FLD_DW, 0>().get()));
 	EXPECT_EQ(0x12345678, (msg->get<FLD_DW, 1>().get()));
+	ASSERT_EQ(2, msg->count<SEQOF_3<0>>());
+	EXPECT_EQ(3, (msg->get<SEQOF_3<0>, 0>().get<FLD_U8>().get()));
+	EXPECT_EQ(4, (msg->get<SEQOF_3<0>, 0>().get<FLD_U16>().get()));
+	EXPECT_EQ(5, (msg->get<SEQOF_3<0>, 1>().get<FLD_U8>().get()));
+	EXPECT_EQ(6, (msg->get<SEQOF_3<0>, 1>().get<FLD_U16>().get()));
 
 	FLD_CHO const* pcho = msg->field();
 	ASSERT_NE(nullptr, pcho);
@@ -1178,6 +1223,7 @@ TEST(decode, mseq_fail)
 		, 3, 0x22, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 		, 0x51, 0x01, 0x02, 0x03, 0x04
+		, 0,1, 2, 0x21, 0,3
 	};
 	ctx.reset(wrong_tag);
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -1192,6 +1238,7 @@ TEST(decode, mseq_fail)
 		, 3, 0xDA, 0xBE, 0xEF
 		, 3, 0x22, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
+		, 0,1, 2, 0x21, 0,3
 	};
 
 	ctx.reset(missing);
@@ -1213,6 +1260,7 @@ TEST(decode, mseq_fail)
 		, 2, 0xDA, 0xBE, 0xEF
 		, 3, 0x22, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
+		, 0,1, 2, 0x21, 0,3
 	};
 	ctx.reset(bad_length);
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -1230,6 +1278,7 @@ TEST(decode, mseq_fail)
 		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 		, 0x51, 0x12, 0x34, 0x56, 0x78
+		, 0,1, 2, 0x21, 0,3
 		, 3, 't', 'e', 's'
 	};
 	ctx.reset(bad_var_len_lo);
@@ -1248,6 +1297,7 @@ TEST(decode, mseq_fail)
 		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 		, 0x51, 0x12, 0x34, 0x56, 0x78
+		, 0,1, 2, 0x21, 0,3
 		, 11, 't', 'e', 's', 't', 'e', 's', 't', 'e', 's', 't', 'e'
 	};
 	ctx.reset(bad_var_len_hi);
@@ -1615,14 +1665,25 @@ TEST_P(PrintUt, levels)
 
 	dummy_sink d{0};
 	med::print(d, m_proto, 1);
-	EXPECT_EQ(1, d.num_on_container);
-	EXPECT_EQ(0, d.num_on_custom);
-	EXPECT_EQ(0, d.num_on_value);
+
+	std::size_t const num_prints[2][3] = {
+#ifdef CODEC_TRACE_ENABLE
+		{1, 0, 1},
+		{2, 1, 2},
+#else
+		{1, 0, 0},
+		{2, 1, 1},
+#endif
+	};
+
+	EXPECT_EQ(num_prints[0][0], d.num_on_container);
+	EXPECT_EQ(num_prints[0][1], d.num_on_custom);
+	EXPECT_EQ(num_prints[0][2], d.num_on_value);
 
 	med::print(d, m_proto, 2);
-	EXPECT_EQ(2, d.num_on_container);
-	EXPECT_LE(1, d.num_on_custom);
-	EXPECT_LE(1, d.num_on_value);
+	EXPECT_EQ(num_prints[1][0], d.num_on_container);
+	EXPECT_LE(num_prints[1][1], d.num_on_custom);
+	EXPECT_LE(num_prints[1][2], d.num_on_value);
 }
 
 TEST_P(PrintUt, incomplete)
@@ -1634,9 +1695,18 @@ TEST_P(PrintUt, incomplete)
 
 	dummy_sink d{0};
 	med::print(d, m_proto);
-	EXPECT_EQ(1, d.num_on_container);
-	EXPECT_EQ(0, d.num_on_custom);
-	EXPECT_GE(1, d.num_on_value);
+
+	std::size_t const num_prints[3] = {
+#ifdef CODEC_TRACE_ENABLE
+		1, 0, 2,
+#else
+		1, 0, 1,
+#endif
+	};
+
+	EXPECT_EQ(num_prints[0], d.num_on_container);
+	EXPECT_EQ(num_prints[1], d.num_on_custom);
+	EXPECT_GE(num_prints[2], d.num_on_value);
 }
 
 EncData const test_prints[] = {
@@ -1647,6 +1717,7 @@ EncData const test_prints[] = {
 			, 3, 0xDA, 0xBE, 0xEF
 			, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 			, 0x51, 0x01, 0x02, 0x03, 0x04
+			, 0,1, 2, 0x21, 0,3
 			, 0x12, 4, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's', '!'
 		}
 	},

@@ -51,7 +51,7 @@ struct optional<
 	IS_SET,
 	min<0>,
 	max<1>,
-	std::enable_if_t<is_field<FIELD>::value && !is_tag<LEN>::value && is_set_function_v<IS_SET>>
+	std::enable_if_t<is_field<FIELD>::value && is_length<LEN>::value && is_set_function_v<IS_SET>>
 > : length_value_t<LEN, FIELD>, optional_t
 {
 	using optional_type = IS_SET;
@@ -110,6 +110,19 @@ struct optional<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+template <class COUNTER, class FIELD, std::size_t MAX>
+struct optional<
+	COUNTER,
+	FIELD,
+	max<MAX>,
+	min<0>,
+	max<1>,
+	std::enable_if_t<is_field<FIELD>::value && is_counter<COUNTER>::value>
+> : multi_field_t<FIELD, 0, MAX>, COUNTER, optional_t
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
 template <class FIELD, std::size_t MAX, class IS_SET>
 struct optional<
 	FIELD,
@@ -123,7 +136,6 @@ struct optional<
 	using optional_type = IS_SET;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
-
 
 template <class FIELD, std::size_t MIN, std::size_t MAX>
 struct optional<
@@ -151,6 +163,20 @@ struct optional<
 > : multi_field_t<FIELD, MIN, MAX>, optional_t
 {
 	using count_getter = COUNTER;
+	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+};
+
+template <class COUNTER, class FIELD, std::size_t MIN, std::size_t MAX>
+struct optional<
+	COUNTER,
+	FIELD,
+	min<MIN>,
+	max<MAX>,
+	max<1>,
+	std::enable_if_t<is_field<FIELD>::value && is_counter<COUNTER>::value>
+> : multi_field_t<FIELD, MIN, MAX>, COUNTER, optional_t
+{
 	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
@@ -200,7 +226,7 @@ struct optional<
 	FIELD,
 	min<0>,
 	max<1>,
-	std::enable_if_t<is_tag<TAG>::value && !is_tag<LEN>::value && is_field<FIELD>::value>
+	std::enable_if_t<is_tag<TAG>::value && is_length<LEN>::value && is_field<FIELD>::value>
 > : tag_value_t<TAG, length_value_t<LEN, FIELD>>, optional_t
 {
 };
@@ -212,7 +238,7 @@ struct optional<
 	FIELD,
 	arity<NUM>,
 	max<1>,
-	std::enable_if_t<is_tag<TAG>::value && !is_tag<LEN>::value && is_field<FIELD>::value>
+	std::enable_if_t<is_tag<TAG>::value && is_length<LEN>::value && is_field<FIELD>::value>
 > : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, NUM, NUM>, optional_t
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -225,8 +251,21 @@ struct optional<
 	FIELD,
 	max<MAX>,
 	max<1>,
-	std::enable_if_t<is_tag<TAG>::value && !is_tag<LEN>::value && is_field<FIELD>::value>
+	std::enable_if_t<is_tag<TAG>::value && is_length<LEN>::value && is_field<FIELD>::value>
 > : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, 0, MAX>, optional_t
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class TAG, class COUNTER, class FIELD, std::size_t MAX>
+struct optional<
+	TAG,
+	COUNTER,
+	FIELD,
+	max<MAX>,
+	max<1>,
+	std::enable_if_t<is_tag<TAG>::value && is_counter<COUNTER>::value && is_field<FIELD>::value>
+> : multi_tag_value_t<TAG, FIELD, 0, MAX>, COUNTER, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -238,7 +277,7 @@ struct optional<
 	max<MAX>,
 	min<0>,
 	max<1>,
-	std::enable_if_t<!is_tag<LEN>::value && is_field<FIELD>::value>
+	std::enable_if_t<is_length<LEN>::value && is_field<FIELD>::value>
 > : multi_length_value_t<LEN, FIELD, 0, MAX>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -251,7 +290,7 @@ struct optional<
 	min<MIN>,
 	max<MAX>,
 	max<1>,
-	std::enable_if_t<!is_tag<LEN>::value && is_field<FIELD>::value>
+	std::enable_if_t<is_length<LEN>::value && is_field<FIELD>::value>
 > : multi_length_value_t<LEN, FIELD, MIN, MAX>, optional_t
 {
 	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
@@ -265,8 +304,22 @@ struct optional<
 	FIELD,
 	min<MIN>,
 	max<MAX>,
-	std::enable_if_t<is_tag<TAG>::value && !is_tag<LEN>::value && is_field<FIELD>::value>
+	std::enable_if_t<is_tag<TAG>::value && is_length<LEN>::value && is_field<FIELD>::value>
 > : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, MIN, MAX>, optional_t
+{
+	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+};
+
+template <class TAG, class COUNTER, class FIELD, std::size_t MIN, std::size_t MAX>
+struct optional<
+	TAG,
+	COUNTER,
+	FIELD,
+	min<MIN>,
+	max<MAX>,
+	std::enable_if_t<is_tag<TAG>::value && is_counter<COUNTER>::value && is_field<FIELD>::value>
+> : multi_tag_value_t<TAG, FIELD, MIN, MAX>, COUNTER, optional_t
 {
 	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");

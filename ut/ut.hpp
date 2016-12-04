@@ -74,6 +74,10 @@ struct dummy_sink
 		{
 			printf("%zu%*c%s : %zu (%zXh)\n", depth, int(m_factor*depth), ' ', name, value, value);
 		}
+		else
+		{
+			CODEC_TRACE("value[%s]=%zu", name, value);
+		}
 	}
 
 	template <class STR>
@@ -84,6 +88,10 @@ struct dummy_sink
 		{
 			printf("%zu%*c%s : %*.*s (%zu)\n", depth, int(m_factor*depth), ' ', name, int(value.size()), int(value.size()), (char const*)value.data(), value.size());
 		}
+		else
+		{
+			CODEC_TRACE("value[%s]=%*.*s", name, int(value.size()), int(value.size()), (char const*)value.data());
+		}
 	}
 
 	void on_container(std::size_t depth, char const* name)
@@ -93,6 +101,10 @@ struct dummy_sink
 		{
 			printf("%zu%*c%s\n", depth, int(m_factor*depth), ' ', name);
 		}
+		else
+		{
+			CODEC_TRACE("container[%s]", name);
+		}
 	}
 
 	void on_custom(std::size_t depth, char const* name, std::string const& s)
@@ -101,6 +113,10 @@ struct dummy_sink
 		if (m_factor)
 		{
 			printf("%zu%*c%s : %s\n", depth, int(m_factor*depth), ' ', name, s.c_str());
+		}
+		else
+		{
+			CODEC_TRACE("custom[%s]=%s", name, s.c_str());
 		}
 	}
 };

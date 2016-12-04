@@ -176,7 +176,6 @@ inline bool encode(FUNC& func, IE& ie, IE_LV const&)
 	std::size_t len_value = get_length(ref_field(ie));
 	if (length_to_value(len_ie, len_value))
 	{
-		//len_ie.set(  );
 		CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<IE>());
 		return encode(func, len_ie)
 			&& encode(func, ref_field(ie));
