@@ -197,7 +197,7 @@ private:
 	template <class... IEs>
 	friend struct sl::choice_for;
 
-	using storage_type = std::aligned_union_t<0, typename CASES::case_type...>;
+	using storage_type = typename std::aligned_union<0, typename CASES::case_type...>::type;
 
 	header_type  m_header;
 	storage_type m_storage;
