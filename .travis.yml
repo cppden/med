@@ -6,7 +6,7 @@ branches:
 
 script:
   - ./reconf
-  - mkdir build && cd build && ../configure && make -j check
+  - mkdir build && cd build && ../configure && make V=1 -j check
   
 
 before_install:
