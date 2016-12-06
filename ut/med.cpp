@@ -1727,17 +1727,16 @@ TEST(print, container)
 	ctx.reset(encoded);
 	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
 
-//	std::size_t const cust_num[6] = { 4, 0, 1, 2, 3, 4 };
-//	std::size_t const cont_num[6] = { 11, 1, 7, 7, 7, 11 };
+	std::size_t const cont_num[6] = { 21,  1,  9, 15, 19, 21 };
+	std::size_t const cust_num[6] = { 10,  0,  2,  4,  6,  8 };
 
-	for (std::size_t level = 0; level < 5; ++level)
+	for (std::size_t level = 0; level < std::extent<decltype(cont_num)>::value; ++level)
 	{
-		dummy_sink d{2};
+		dummy_sink d{0};
 
-		std::printf("\nLEVEL < %zu\n", level);
 		med::print(d, msg, level);
-//		EXPECT_EQ(cont_num[level], d.num_on_container);
-//		EXPECT_EQ(cust_num[level], d.num_on_custom);
+		EXPECT_EQ(cont_num[level], d.num_on_container);
+		EXPECT_EQ(cust_num[level], d.num_on_custom);
 		EXPECT_EQ(0, d.num_on_value);
 	}
 }

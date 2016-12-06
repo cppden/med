@@ -36,27 +36,25 @@ namespace med {
 template <class SINK, std::size_t MAX_LINE>
 class printer
 {
+	template <int N>
+	using int_t = std::integral_constant<int, N>;
+
 	template <typename T>
 	struct has_print
 	{
+		//check for: void IE::print(char (&sz)[N])
 		template <class C, class P>
-		static constexpr auto test(P* p) -> decltype(std::declval<C>().print(*p), int{})
-		{
-			return 2;
-		}
+		static auto test(P* p) -> decltype(std::declval<C>().print(*p), int_t<2>{});
+
+		//check for: some_type IE::print()
+		template <class C, class P>
+		static std::enable_if_t<!std::is_same<void, decltype(std::declval<C>().print())>::value, int_t<1>>
+		test(P* p);
 
 		template <class C, class P>
-		std::enable_if_t<!std::is_same<void, decltype(std::declval<C>().print())>::value, int>
-		static constexpr test(P* p)
-		{
-			return 1;
-		}
-		template <class C, class P>
-		static constexpr int test(...)
-		{
-			return 0;
-		}
-		static const int value = test<T, char[16]>(nullptr);
+		static int_t<0> test(...);
+		
+		using type = decltype(test<T, char[MAX_LINE]>(nullptr));
 	};
 
 public:
@@ -65,8 +63,8 @@ public:
 	{
 	public:
 		template <class IE>
-		std::enable_if_t<!has_name<IE>::value, bool>
-		constexpr operator()(printer&, IE const&)
+		constexpr std::enable_if_t<!has_name<IE>::value, bool>
+		operator()(printer&, IE const&)
 		{
 			return true;
 		}
@@ -75,7 +73,8 @@ public:
 		std::enable_if_t<has_name<IE>::value, bool>
 		operator()(printer& me, IE const& ie)
 		{
-			return me.print(ie);
+			me.print_named(ie);
+			return true;
 		}
 	};
 
@@ -94,39 +93,30 @@ public:
 		std::enable_if_t<has_name<IE>::value, bool>
 		operator()(printer& me, IE const& ie)
 		{
-			CODEC_TRACE("cenc: named [%s]", class_name<IE>());
-			return print_named(me, ie);
+			return print_named(me, ie, typename has_print<IE>::type{});
 		}
 
 	private:
-		//customized print 2
+		//customized prints
 		template <class IE>
-		std::enable_if_t<has_print<IE>::value == 2, bool>
-		print_named(printer& me, IE const& ie)
+		bool print_named(printer& me, IE const& ie, int_t<2> pt)
 		{
-			char sz[MAX_LINE];
-			ie.print(sz);
-			me.m_sink.on_custom(me.m_depth, name<IE>(), sz);
+			me.print_named(ie, pt);
+			return true;
+		}
+		template <class IE>
+		bool print_named(printer& me, IE const& ie, int_t<1> pt)
+		{
+			me.print_named(ie, pt);
 			return true;
 		}
 
-		//customized print 1
+		//no customized print, change depth level
 		template <class IE>
-		std::enable_if_t<has_print<IE>::value == 1, bool>
-		print_named(printer& me, IE const& ie)
-		{
-			me.m_sink.on_custom(me.m_depth, name<IE>(), ie.print());
-			return true;
-		}
-
-		//no customized print
-		template <class IE>
-		std::enable_if_t<has_print<IE>::value == 0, bool>
-		print_named(printer& me, IE const& ie)
+		bool print_named(printer& me, IE const& ie, int_t<0> pt)
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
-			next_depth level{ &me };
-			return level && ie.encode(me);
+			return next_depth{ &me }(ie);
 		}
 
 		class next_depth
@@ -139,40 +129,25 @@ public:
 				CODEC_TRACE("next_depth -> %zu", p->m_depth);
 			}
 
-			next_depth(next_depth&& rhs) noexcept
-				: m_depth{ rhs.m_depth }
-				, m_that{ rhs.m_that }
-			{
-				rhs.m_that = nullptr;
-			}
-
-			next_depth& operator= (next_depth&& rhs) noexcept
-			{
-				m_that = rhs.m_that;
-				m_depth = rhs.m_depth;
-				rhs.m_that = nullptr;
-				return *this;
-				CODEC_TRACE("next_depth >> %zu", m_depth);
-			}
-
 			~next_depth()
 			{
-				if (m_that)
-				{
-					m_that->m_depth = m_depth;
-					CODEC_TRACE("next_depth <- %zu", m_depth);
-				}
+				m_that->m_depth = m_depth;
+				CODEC_TRACE("next_depth <- %zu", m_depth);
 			}
 
-			explicit operator bool() const
+			template <class IE>
+			bool operator() (IE const& ie) const
 			{
-				CODEC_TRACE("next_depth ? %p max=%zu > %zu", m_that, m_that->m_max_depth, m_that->m_depth);
-				return 0 == m_that->m_max_depth || m_that->m_max_depth > m_that->m_depth;
+				CODEC_TRACE("next_depth ? max=%zu > %zu", m_that->m_max_depth, m_that->m_depth);
+				return (0 == m_that->m_max_depth || m_that->m_max_depth > m_that->m_depth)
+					? ie.encode(*m_that) : true;
 			}
 
 		private:
 			next_depth(next_depth const&) = delete;
 			next_depth& operator= (next_depth const&) = delete;
+			next_depth(next_depth&& rhs) = delete;
+			next_depth& operator= (next_depth&& rhs) = delete;
 
 			std::size_t  m_depth;
 			printer*     m_that;
@@ -192,57 +167,45 @@ public:
 	//length encoder
 	template <int DELTA> constexpr bool operator() (placeholder::_length<DELTA> const&) { return true; }
 
-	//customized print 2
+	//unnamed primitive
 	template <class IE, class IE_TYPE>
-	std::enable_if_t<has_print<IE>::value == 2, bool>
+	constexpr std::enable_if_t<!has_name<IE>::value, bool>
+	operator() (IE const& ie, IE_TYPE const&) { return true; }
+
+	//named primitive
+	template <class IE, class IE_TYPE>
+	constexpr std::enable_if_t<has_name<IE>::value, bool>
 	operator() (IE const& ie, IE_TYPE const&)
 	{
-		char sz[MAX_LINE];
-		ie.print(sz);
-		m_sink.on_custom(m_depth, name<IE>(), sz);
+		print_named(ie, typename has_print<IE>::type{});
 		return true;
-	}
-
-	//customized print 1
-	template <class IE, class IE_TYPE>
-	std::enable_if_t<has_print<IE>::value == 1, bool>
-	operator() (IE const& ie, IE_TYPE const&)
-	{
-		m_sink.on_custom(m_depth, name<IE>(), ie.print());
-		return true;
-	}
-
-	//regular print
-	template <class IE, class IE_TYPE>
-	std::enable_if_t<!has_print<IE>::value && std::is_base_of<PRIMITIVE, IE_TYPE>::value, bool>
-	operator() (IE const& ie, IE_TYPE const& ie_type)
-	{
-		return print(ie);
 	}
 
 private:
 	friend class container_encoder;
 	friend class null_encoder;
 
-	//named PRIMITIVE
+	//customized print 2
 	template <class IE>
-	std::enable_if_t<has_name<IE>::value, bool>
-	print(IE const& ie)
+	void print_named(IE const& ie, int_t<2>)
 	{
-		if (ie.is_set())
-		{
-			m_sink.on_value(m_depth, IE::name(), ie.get());
-			return true;
-		}
-		return false;
+		char sz[MAX_LINE];
+		ie.print(sz);
+		m_sink.on_custom(m_depth, name<IE>(), sz);
 	}
 
-	//un-named PRIMITIVE
+	//customized print 1
 	template <class IE>
-	std::enable_if_t<!has_name<IE>::value, bool>
-	constexpr print(IE const& ie)
+	void print_named(IE const& ie, int_t<1>)
 	{
-		return ie.is_set();
+		m_sink.on_custom(m_depth, name<IE>(), ie.print());
+	}
+
+	//regular print
+	template <class IE>
+	void print_named(IE const& ie, int_t<0>)
+	{
+		m_sink.on_value(m_depth, IE::name(), ie.get());
 	}
 
 	SINK        m_sink;

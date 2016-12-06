@@ -32,25 +32,25 @@ struct IE
 	using ie_type = IE_TYPE;
 };
 
-//always set empty IE as a message w/o body
+//always-set empty IE as a message w/o body
 struct empty : IE<IE_NULL>
 {
-	constexpr void set()            { }
-	constexpr bool get() const      { return true; }
-	constexpr bool is_set() const   { return true; }
+	static constexpr void set()             { }
+	static constexpr bool get()             { return true; }
+	static constexpr bool is_set()          { return true; }
 };
 
 //selectable IE as empty case in choice
 struct selectable : IE<IE_NULL>
 {
-	void set()                      { m_set = true; }
-	bool get() const                { return is_set(); }
-	void reset()                    { m_set = false; }
-	bool is_set() const             { return m_set; }
-	explicit operator bool() const  { return is_set(); }
+	void set()                              { m_set = true; }
+	bool get() const                        { return is_set(); }
+	void reset()                            { m_set = false; }
+	bool is_set() const                     { return m_set; }
+	explicit operator bool() const          { return is_set(); }
 
 private:
-	bool       m_set{false};
+	bool    m_set{false};
 };
 
 template <class T>
