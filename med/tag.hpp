@@ -80,7 +80,7 @@ template <class T>
 std::enable_if_t<!has_get_tag<T>::value, std::size_t>
 inline get_tag(T const& header)
 {
-	return header.get();
+	return header.get_encoded();
 }
 
 template <class T>
@@ -96,8 +96,8 @@ template <class T>
 std::enable_if_t<!has_get_tag<T>::value, bool>
 inline set_tag(T& header, std::size_t tag)
 {
-	if (header.get() == tag) { return false; }
-	header.set(tag);
+	if (header.get_encoded() == tag) { return false; }
+	header.set_encoded(tag);
 	return true;
 }
 

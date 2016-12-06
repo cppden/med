@@ -79,8 +79,8 @@ struct seq_dec_imp<std::enable_if_t<
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
-					vtag.set(tag.get());
-					CODEC_TRACE("pop tag=%zx", tag.get());
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", tag.get_encoded());
 				}
 				else
 				{
@@ -94,9 +94,9 @@ struct seq_dec_imp<std::enable_if_t<
 			}
 		}
 
-		if (IE::tag_type::match(vtag.get())) //check tag decoded
+		if (IE::tag_type::match(vtag.get_encoded())) //check tag decoded
 		{
-			CODEC_TRACE("T=%zx[%s]", vtag.get(), name<IE>());
+			CODEC_TRACE("T=%zx[%s]", vtag.get_encoded(), name<IE>());
 			reset_tag<IE>(func, vtag); //reset current tag as decoded
 			IE& ie = to;
 			if (!med::decode(func, ie.ref_field(), unexp)) return false;
@@ -121,7 +121,7 @@ struct seq_dec_imp<std::enable_if_t<
 		CODEC_TRACE("[%s]...", name<IE>());
 		if (vtag)
 		{
-			CODEC_TRACE("discard tag=%zx", vtag.get());
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
 			vtag.reset();
 		}
@@ -157,7 +157,7 @@ struct seq_dec_imp<std::enable_if_t<
 
 			if (vtag)
 			{
-				CODEC_TRACE("discard tag=%zx", vtag.get());
+				CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 				func(POP_STATE{}); //restore state
 				vtag.reset();
 			}
@@ -187,8 +187,8 @@ struct seq_dec_imp<std::enable_if_t<
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
-					vtag.set(tag.get());
-					CODEC_TRACE("pop tag=%zx", vtag.get());
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 				}
 				else
 				{
@@ -197,9 +197,9 @@ struct seq_dec_imp<std::enable_if_t<
 			}
 		}
 
-		while (IE::tag_type::match(vtag.get()))
+		while (IE::tag_type::match(vtag.get_encoded()))
 		{
-			CODEC_TRACE("T=%zx[%s]*", vtag.get(), name<IE>());
+			CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<IE>());
 
 			if (auto* field = ie.next_field())
 			{
@@ -215,8 +215,8 @@ struct seq_dec_imp<std::enable_if_t<
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
-					vtag.set(tag.get());
-					CODEC_TRACE("pop tag=%zx", vtag.get());
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 				}
 				else
 				{
@@ -265,7 +265,7 @@ struct seq_dec_imp<std::enable_if_t<
 
 		if (vtag)
 		{
-			CODEC_TRACE("discard tag=%zx", vtag.get());
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
 			vtag.reset();
 		}
@@ -315,7 +315,7 @@ struct seq_dec_imp<std::enable_if_t<
 
 		if (vtag)
 		{
-			CODEC_TRACE("discard tag=%zx", vtag.get());
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
 			vtag.reset();
 		}
@@ -325,32 +325,6 @@ struct seq_dec_imp<std::enable_if_t<
 			&& seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
 };
-
-
-//template <class COUNT_GETTER, class Enable = void>
-//struct get_count;
-//
-//template <class COUNT_GETTER>
-//struct get_count<COUNT_GETTER, std::enable_if_t<is_count_getter<COUNT_GETTER>::value>>
-//{
-//	template <class FUNC, class IE>
-//	std::size_t operator()(FUNC&&, IE const& ie)
-//	{
-//		return COUNT_GETTER{}(ie);
-//	}
-//};
-//
-//template <class COUNTER>
-//struct get_count<COUNTER, std::enable_if_t<is_counter<COUNTER>::value>>
-//{
-//	template <class FUNC, class IE>
-//	std::size_t operator()(FUNC&& func, IE const&)
-//	{
-//		typename COUNTER::counter_type counter_ie;
-//		//TODO: need better error diagnostic!
-//		return decode(func, counter_ie) ? counter_ie.get() : 0;
-//	}
-//};
 
 
 //multi-instance field without tag with count-getter
@@ -372,7 +346,7 @@ struct seq_dec_imp<
 
 		if (vtag)
 		{
-			CODEC_TRACE("discard tag=%zx", vtag.get());
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
 			vtag.reset();
 		}
@@ -424,7 +398,7 @@ struct seq_dec_imp<
 
 		if (vtag)
 		{
-			CODEC_TRACE("discard tag=%zx", vtag.get());
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
 			vtag.reset();
 		}
@@ -432,11 +406,12 @@ struct seq_dec_imp<
 		typename IE::counter_type counter_ie;
 		if (!med::decode(func, counter_ie)) return false;
 
-		auto count = counter_ie.get();
+		auto count = counter_ie.get_encoded();
 
-		CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 		while (count--)
 		{
+			CODEC_TRACE("[%s]*%zu", name<IE>(), count);
+
 			if (auto* field = ie.next_field())
 			{
 				if (!med::decode(func, *field, unexp)) return false;
@@ -594,7 +569,7 @@ struct seq_enc_imp<std::enable_if_t<
 		if (check_arity<IE>(count))
 		{
 			typename IE::counter_type counter_ie;
-			counter_ie.set(count);
+			counter_ie.set_encoded(count);
 
 			return med::encode(func, counter_ie)
 				&& med::encode<IE::max>(func, ie) == (int)count
@@ -628,7 +603,7 @@ struct seq_enc_imp<std::enable_if_t<
 			if (count > 0)
 			{
 				typename IE::counter_type counter_ie;
-				counter_ie.set(count);
+				counter_ie.set_encoded(count);
 
 				return med::encode(func, counter_ie)
 					&& med::encode<IE::max>(func, ie) == (int)count

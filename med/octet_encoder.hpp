@@ -131,7 +131,7 @@ private:
 	static void put_bytes(IE const& ie, uint8_t* output)
 	{
 		enum { NUM_BYTES = IE::traits::bits / granularity };
-		put_bytes_impl<NUM_BYTES>(output, ie.get(), std::make_index_sequence<NUM_BYTES>{});
+		put_bytes_impl<NUM_BYTES>(output, ie.get_encoded(), std::make_index_sequence<NUM_BYTES>{});
 	}
 };
 

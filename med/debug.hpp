@@ -9,7 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
-//#define CODEC_TRACE_ENABLE
+#define CODEC_TRACE_ENABLE
 
 
 #ifdef CODEC_TRACE_ENABLE

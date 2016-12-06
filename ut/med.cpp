@@ -99,7 +99,7 @@ struct FLD_DW : med::value<32>
 
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, std::vector<uint8_t>>
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, boost::container::static_vector<uint8_t, 10>>
-struct VFLD1 : med::octet_string<med::min<5>, med::max<10>>, med::with_snapshot
+struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>, med::with_snapshot
 {
 	static constexpr char const* name() { return "url"; }
 };
@@ -191,9 +191,8 @@ struct HT : med::read_only<med::cvalue<TAG, 8>>
 //low nibble selector
 struct LT : med::read_only<med::value<8>>
 {
-	value_type get() const                    { return base_t::get() & 0xF; }
-	void set(value_type v)                    { base_t::set(v & 0xF); }
-	//static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF0); }
+	//value_type get() const                    { return base_t::get() & 0xF; }
+	void set_encoded(value_type v)            { base_t::set_encoded(v & 0xF); }
 };
 
 //tagged nibble
@@ -205,14 +204,16 @@ struct FLD_TN : med::value<8>, med::tag_t<HT<0xE0>>
 		mask     = 0x0F,
 	};
 
-	value_type get_value() const          { return get() & mask; }
-	void set_value(value_type v)          { set( tag_type::get() | (get() & ~(tag_mask|mask)) | (v & mask) ); }
+	value_type get() const                { return base_t::get() & mask; }
+	void set(value_type v)                { set_encoded( tag_type::get() | (v & mask) ); }
 
 	static constexpr char const* name()   { return "Tagged-Bits"; }
 	template <std::size_t N>
-	void print(char (&sz)[N]) const       { std::snprintf(sz, N, "%02X", get_value()); }
+	void print(char (&sz)[N]) const       { std::snprintf(sz, N, "%02X", get()); }
 };
 
+
+//binary coded decimal: 0x21,0x43 is 1,2,3,4
 template <uint8_t tag>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 {
@@ -222,42 +223,45 @@ struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 	template <std::size_t N>
 	void print(char (&sz)[N]) const
 	{
-		auto to_char = [](uint8_t nibble)
+		char* psz = sz;
+
+		auto to_char = [&psz](uint8_t nibble)
 		{
-			return static_cast<char>(nibble > 9 ? (nibble+0x57) : (nibble+0x30));
+			if (nibble != 0xF)
+			{
+				*psz++ = static_cast<char>(nibble > 9 ? (nibble+0x57) : (nibble+0x30));
+			}
 		};
 
-		char* psz = sz;
+		bool b1st = true;
 		for (uint8_t digit : *this)
 		{
-			if (psz != sz) //not 1st octet - print both nibbles
-			{
-				*psz++ = to_char(digit & 0xF);
-			}
-			digit >>= 4;
-			if (digit != 0xF) { *psz++ = to_char(digit); }
+			to_char(digit >> 4);
+			//not 1st octet - print both nibbles
+			if (!b1st) to_char(digit & 0xF);
+			b1st = false;
 		}
 		*psz = 0;
 	}
 
 	bool set(std::size_t len, void const* data)
 	{
-		++len; //need additional nibble for the tag
-		if (len >= min_octets && len <= max_octets)
+		//need additional nibble for the tag
+		std::size_t num_octets = (len + 1);// / 2;
+		if (num_octets >= min_octets && num_octets <= max_octets)
 		{
-			m_value.resize(len);
+			m_value.resize(num_octets);
 			uint8_t* p = m_value.data();
 			uint8_t const* in = static_cast<uint8_t const*>(data);
 
-			*p++ = (*in & 0xF0) | tag_type::get();
-
+			*p++ = (*in & 0xF0) | tag_type::get_encoded();
 			uint8_t o = (*in++ << 4);
-			for (--len; len > 1; --len)
+			for (; len > 1; --len)
 			{
 				*p++ = o | (*in >> 4);
 				o = *in++ << 4;
 			}
-			*p++ = o;
+			*p++ = o | 0xF;
 			return true;
 		}
 		return false;
@@ -537,7 +541,7 @@ TEST(encode, mseq_ok)
 	msg.ref<FLD_U32, 1>().set(0xABBAc001);
 	msg.ref<FLD_DW, 1>().set(0x12345678);
 
-	msg.ref<FLD_TN>().set_value(2);
+	msg.ref<FLD_TN>().set(2);
 
 	msg.ref<FLD_CHO>().ref<FLD_U8>().set(33);
 	SEQOF_1& s1 = msg.ref<SEQOF_1>();
@@ -579,7 +583,7 @@ TEST(encode, mseq_ok)
 		, 0x62, 2 //O< T<0x62>, L, SEQOF_2, med::max<2> >
 			, 0x33,0x44 //M< FLD_W >,
 			//O< T<0x06>, L, FLD_CHO >
-		, 0x70, 3, 0x31, 0x45, 0x60 //O< T<0x70>, L, FLD_NSCHO >,
+		, 0x70, 3, 0x31, 0x45, 0x6F //O< T<0x70>, L, FLD_NSCHO >,
 
 		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
 		, 7, 't', 'e', 's', 't', '.', 'i', 't'
@@ -1630,6 +1634,112 @@ TEST(decode, msg_func)
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	//else { printf("expected error: %s\n", toString(ctx.error_ctx())); }
 	ASSERT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+}
+
+
+//TODO: add more isolated UTs on fields
+TEST(field, tagged_nibble)
+{
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
+	FLD_TN field;
+	field.set(5);
+	if (!encode(med::make_octet_encoder(ctx), field)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_STRCASEEQ("E5 ", as_string(ctx.buffer()));
+
+	decltype(field) dfield;
+	med::decoder_context<> dctx;
+	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+	if (!decode(med::make_octet_decoder(dctx), dfield)) { FAIL() << toString(dctx.error_ctx()); }
+	ASSERT_EQ(field.get(), dfield.get());
+}
+
+//customized print of container
+template <int I>
+struct DEEP_SEQ : med::sequence< M<FLD_U8>, M<FLD_U16> >
+{
+	static constexpr char const* name() { return "DeepSeq"; }
+	template <std::size_t N> void print(char (&sz)[N]) const
+	{
+		std::snprintf(sz, N, "%u#%04X", this->template get<FLD_U8>().get(), this->template get<FLD_U16>().get());
+	}
+};
+
+template <int I>
+struct DEEP_SEQ1 : med::sequence< M<DEEP_SEQ<I>> >
+{
+	static constexpr char const* name() { return "DeepSeq1"; }
+};
+
+template <int I>
+struct DEEP_SEQ2 : med::sequence< M<DEEP_SEQ1<I>> >
+{
+	static constexpr char const* name() { return "DeepSeq2"; }
+};
+
+template <int I>
+struct DEEP_SEQ3 : med::sequence< M<DEEP_SEQ2<I>> >
+{
+	static constexpr char const* name() { return "DeepSeq3"; }
+};
+template <int I>
+struct DEEP_SEQ4 : med::sequence< M<DEEP_SEQ3<I>> >
+{
+	static constexpr char const* name() { return "DeepSeq4"; }
+};
+
+struct DEEP_MSG : med::sequence<
+	M< DEEP_SEQ<0>  >,
+	M< DEEP_SEQ1<0> >,
+	M< DEEP_SEQ2<0> >,
+	M< DEEP_SEQ3<0> >,
+	M< DEEP_SEQ4<0> >,
+	M< DEEP_SEQ<1>  >,
+	M< DEEP_SEQ1<1> >,
+	M< DEEP_SEQ2<1> >,
+	M< DEEP_SEQ3<1> >,
+	M< DEEP_SEQ4<1> >
+>
+{
+	static constexpr char const* name() { return "DeepMsg"; }
+};
+
+TEST(print, container)
+{
+	uint8_t const encoded[] = {
+		1,0,2,
+		2,0,3,
+		3,0,4,
+		5,0,6,
+		7,0,8,
+
+		11,0,12,
+		12,0,13,
+		13,0,14,
+		15,0,16,
+		17,0,18,
+	};
+
+	DEEP_MSG msg;
+	med::decoder_context<> ctx;
+
+	ctx.reset(encoded);
+	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+
+//	std::size_t const cust_num[6] = { 4, 0, 1, 2, 3, 4 };
+//	std::size_t const cont_num[6] = { 11, 1, 7, 7, 7, 11 };
+
+	for (std::size_t level = 0; level < 5; ++level)
+	{
+		dummy_sink d{2};
+
+		std::printf("\nLEVEL < %zu\n", level);
+		med::print(d, msg, level);
+//		EXPECT_EQ(cont_num[level], d.num_on_container);
+//		EXPECT_EQ(cust_num[level], d.num_on_custom);
+		EXPECT_EQ(0, d.num_on_value);
+	}
 }
 
 struct EncData

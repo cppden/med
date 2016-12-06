@@ -94,7 +94,7 @@ struct length_encoder
 			state_type const end = m_encoder(GET_STATE{});
 
 			length_type true_len;
-			true_len.set(end - m_start - m_delta);
+			true_len.set_encoded(end - m_start - m_delta);
 			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", true_len.get(), m_delta);
 
 			m_encoder(SET_STATE{}, m_snapshot);

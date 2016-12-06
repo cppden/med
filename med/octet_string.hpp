@@ -179,7 +179,8 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	iterator begin()                        { return data(); }
 	iterator end()                          { return begin() + size(); }
 
-	bool set(std::size_t len, void const* data)
+	//NOTE: do not override!
+	bool set_encoded(std::size_t len, void const* data)
 	{
 		if (len >= MIN_LEN)
 		{
@@ -196,10 +197,8 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	{
 		static_assert(sizeof(T) == 1, "INVALID TYPE TO SET OCTET_STRING");
 		static_assert(SIZE >= MIN_LEN && SIZE <= MAX_LEN, "INVALID SIZE TO SET OCTET_STRING");
-		return set(SIZE, data);
+		return set_encoded(SIZE, data);
 	}
-
-	bool set(char const* psz)               { return set(std::strlen(psz), psz); }
 
 	value_type const& get() const           { return m_value; }
 	bool is_set() const                     { return !m_value.empty(); }
@@ -243,5 +242,20 @@ struct octet_string<octets_fix_intern<FIXED>, void, void> : octet_string_impl<FI
 
 template <std::size_t MAX, std::size_t MIN>
 struct octet_string<octets_var_intern<MAX>, min<MIN>,void> : octet_string_impl<MIN, MAX, octets_var_intern<MAX>> {};
+
+//ASCII-printable string not zero-terminated
+template <class ...T>
+struct ascii_string : octet_string<T...>
+{
+	using octet_string<T...>::set;
+
+	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
+	template <std::size_t N>
+	void print(char (&sz)[N]) const
+	{
+		int const n = int(this->size());
+		std::snprintf(sz, sizeof(sz), "%*.*s", n, n, (char const*)(this->data()));
+	}
+};
 
 }	//end: namespace med

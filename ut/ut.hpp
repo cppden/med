@@ -28,6 +28,23 @@ inline testing::AssertionResult Matches(T const(&expected)[size], T const* actua
 	return Matches(expected, actual, size);
 }
 
+template <class T>
+char const* as_string(T const& buffer)
+{
+	static char sz[1024];
+	auto* it = buffer.get_start();
+	auto* ite = it + buffer.get_offset();
+
+	char* psz = sz;
+	char* end = psz + sizeof(sz);
+	*psz = '\0';
+	for (; it != ite; ++it)
+	{
+		psz += std::snprintf(psz, end - psz, "%02X ", *it);
+	}
+
+	return sz;
+}
 
 #define EQ_STRING_O(fld_type, expected) \
 {                                                             \
@@ -86,7 +103,15 @@ struct dummy_sink
 		++num_on_value;
 		if (m_factor)
 		{
-			printf("%zu%*c%s : %*.*s (%zu)\n", depth, int(m_factor*depth), ' ', name, int(value.size()), int(value.size()), (char const*)value.data(), value.size());
+			printf("%zu%*c%s :", depth, int(m_factor*depth), ' ', name);
+
+			using iter_t = uint8_t const*;
+			for (iter_t it = value.data(), ite = it + value.size(); it != ite; ++it)
+			{
+				printf(" %02X", *it);
+			}
+
+			printf(" (%zu)\n", value.size());
 		}
 		else
 		{

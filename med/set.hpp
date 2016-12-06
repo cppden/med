@@ -139,7 +139,7 @@ std::enable_if_t<std::is_base_of<PRIMITIVE, typename HEADER::ie_type>::value, bo
 inline encode_header(FUNC& func)
 {
 	HEADER header;
-	header.set(tag_type_t<IE>::get());
+	header.set_encoded(tag_type_t<IE>::get_encoded());
 	return encode(func, header);
 }
 

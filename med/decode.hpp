@@ -97,13 +97,13 @@ inline decode(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 {
 	if (auto const tag = decode_tag<typename WRAPPER::tag_type>(func))
 	{
-		if (WRAPPER::tag_type::match(tag.get()))
+		if (WRAPPER::tag_type::match(tag.get_encoded()))
 		{
 			CODEC_TRACE("TV[%zu : %s]", tag.get(), name<typename WRAPPER::field_type>());
 			return decode(func, ref_field(ie), unexp);
 		}
 		//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-		func(error::INCORRECT_TAG, name<typename WRAPPER::field_type>(), tag.get());
+		func(error::INCORRECT_TAG, name<typename WRAPPER::field_type>(), tag.get_encoded());
 	}
 	return false;
 }
@@ -116,7 +116,7 @@ inline bool decode(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 	CODEC_TRACE("LV[%s]", name<IE>());
 	if (decode(func, len_ie))
 	{
-		std::size_t len_value = len_ie.get();
+		std::size_t len_value = len_ie.get_encoded();
 		if (value_to_length(len_ie, len_value))
 		{
 			//CODEC_TRACE("LV[%zu] : %s", len, name<IE>());
@@ -168,7 +168,7 @@ struct length_decoder
 		if (decode(m_decoder, len))
 		{
 			//reduced size of the input buffer for current length and elements from the start of IE
-			decltype(len.get()) const size = (len.get() + DELTA) - (m_decoder(GET_STATE{}) - m_start);
+			decltype(len.get_encoded()) const size = (len.get_encoded() + DELTA) - (m_decoder(GET_STATE{}) - m_start);
 			CODEC_TRACE("size(%zu)=length(%zu) + %d - %d", size, len.get(), DELTA, (m_decoder(GET_STATE{}) - m_start));
 			m_size_state = m_decoder(PUSH_SIZE{size});
 			if (m_size_state) { return true; }

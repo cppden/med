@@ -169,7 +169,9 @@ public:
 		using IE = typename cases<CASES...>::template at<CASE>;
 		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
 		void* store_p = &m_storage;
-		return *(set_tag(header(), IE::tag_type::get()) ? new (store_p) CASE{} : static_cast<CASE*>(store_p));
+		return *(set_tag(header(), IE::tag_type::get_encoded())
+			? new (store_p) CASE{}
+			: static_cast<CASE*>(store_p));
 	}
 
 	template <class CASE>

@@ -112,9 +112,9 @@ public:
 		if (data && size)
 		{
 			m_start = data;
-			m_end   = m_start + size;
+			m_end   = get_start() + size;
 		}
-		m_state.reset(m_start);
+		m_state.reset(get_start());
 	}
 
 	state_type get_state() const            { return m_state; }
@@ -145,7 +145,9 @@ public:
 		}
 	}
 
-	std::size_t get_offset() const          { return begin() - m_start; }
+
+	pointer get_start() const               { return m_start; }
+	std::size_t get_offset() const          { return begin() - get_start(); }
 	std::size_t size() const                { return end() - begin(); }
 
 	pointer advance(int delta)
@@ -156,7 +158,7 @@ public:
 			p = begin();
 			m_state.cursor += delta;
 		}
-		else if (delta < 0 && (begin() + delta) >= m_start)
+		else if (delta < 0 && (begin() + delta) >= get_start())
 		{
 			m_state.cursor += delta;
 			p = begin();

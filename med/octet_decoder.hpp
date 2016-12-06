@@ -87,8 +87,8 @@ struct octet_decoder
 	template <class IE>
 	bool operator() (IE& ie, IE_OCTET_STRING const&)
 	{
-		CODEC_TRACE("STR[%s] -> set(%u bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
-		if (ie.set(ctx.buffer().size(), ctx.buffer().begin()))
+		CODEC_TRACE("STR[%s] <-(%u bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
+		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))
 		{
 			CODEC_TRACE("STR[%s] -> len = %u bytes", name<IE>(), ie.get_length());
 			if (ctx.buffer().advance(ie.get_length())) return true;
