@@ -132,7 +132,7 @@ private:
 
 		template <class U> operator U&()
 		{
-			static_assert(!std::is_const<T>(), "CONST CHOICE RETURNS A POINTER!");
+			static_assert(!std::is_const<T>(), "CONST CHOICE RETURNS A POINTER, NOT REFERENCE!");
 			return m_this->template ref<U>();
 		}
 

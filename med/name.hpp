@@ -54,15 +54,19 @@ struct has_name : std::false_type { };
 template <class T>
 struct has_name<T, void_t<decltype(T::name())>> : std::true_type { };
 
+template <class T>
+constexpr bool has_name_v = has_name<T>::value;
+
+
 template <class IE>
-constexpr std::enable_if_t<has_name<IE>::value, char const*>
+constexpr std::enable_if_t<has_name_v<IE>, char const*>
 name()
 {
 	return IE::name();
 }
 
 template <class IE>
-constexpr std::enable_if_t<!has_name<IE>::value, char const*>
+constexpr std::enable_if_t<!has_name_v<IE>, char const*>
 name()
 {
 	return class_name<IE>();

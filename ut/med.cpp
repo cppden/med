@@ -481,6 +481,16 @@ TEST(encode, seq_ok)
 	};
 	EXPECT_EQ(sizeof(encoded3), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded3, buffer));
+
+	//check RO access (compile test)
+	{
+		MSG_SEQ const& cmsg = msg;
+		FLD_DW const* cpf = cmsg.field();
+		ASSERT_NE(nullptr, cpf);
+		FLD_DW& rf = msg.field();
+		ASSERT_EQ(0x01020304, rf.get());
+		//FLD_DW* pf = msg.field();
+	}
 }
 
 TEST(encode, seq_fail)
@@ -945,6 +955,13 @@ TEST(decode, seq_ok)
 	};
 	med::decoder_context<> ctx{ encoded1 };
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+
+	//check RO access (compile test)
+	{
+		PROTO const& cproto = proto;
+		MSG_SEQ const* cmsg = cproto.select();
+		ASSERT_NE(nullptr, cmsg);
+	}
 
 	MSG_SEQ const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1739,6 +1756,35 @@ TEST(print, container)
 		EXPECT_EQ(cust_num[level], d.num_on_custom);
 		EXPECT_EQ(0, d.num_on_value);
 	}
+}
+
+TEST(print_all, container)
+{
+	uint8_t const encoded[] = {
+		1,0,2,
+		2,0,3,
+		3,0,4,
+		5,0,6,
+		7,0,8,
+
+		11,0,12,
+		12,0,13,
+		13,0,14,
+		15,0,16,
+		17,0,18,
+	};
+
+	DEEP_MSG msg;
+	med::decoder_context<> ctx;
+
+	ctx.reset(encoded);
+	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+
+	dummy_sink d{0};
+	med::print_all(d, msg);
+	EXPECT_EQ(31, d.num_on_container);
+	EXPECT_EQ(20, d.num_on_value);
+	ASSERT_EQ(0, d.num_on_custom);
 }
 
 struct EncData
