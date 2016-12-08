@@ -193,9 +193,9 @@ constexpr int set_invoke_encode(FUNC&, IE&, int count) { return count; }
 template <class HEADER, class FUNC, class IE, std::size_t INDEX, std::size_t... Is>
 inline int set_invoke_encode(FUNC& func, IE& ie, int count)
 {
-	if (ie.template ref_field<INDEX>().is_set())
+	if (ie.ref_field(INDEX).is_set())
 	{
-		if (!encode_header<HEADER, IE>(func) || !encode(func, ie.template ref_field<INDEX>())) return -1;
+		if (!encode_header<HEADER, IE>(func) || !encode(func, ie.ref_field(INDEX))) return -1;
 		return set_invoke_encode<HEADER, FUNC, IE, Is...>(func, ie, INDEX+1);
 	}
 	return INDEX;

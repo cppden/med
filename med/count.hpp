@@ -63,7 +63,7 @@ constexpr std::size_t invoke_count(IE&, std::size_t count) { return count; }
 template <class IE, std::size_t INDEX, std::size_t... Is>
 inline std::size_t invoke_count(IE& ie, std::size_t count)
 {
-	if (ie.template ref_field<INDEX>().is_set())
+	if (ie.ref_field(INDEX).is_set())
 	{
 		return invoke_count<IE, Is...>(ie, INDEX+1);
 	}

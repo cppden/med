@@ -78,26 +78,12 @@ inline get_field(IE const& ie)
 	return field_proxy<FIELD const>{ ie.is_set() ? &ie.ref_field() : nullptr };
 };
 
-template <class FIELD, std::size_t INDEX, class IE>
-std::enable_if_t<is_optional_v<IE>, field_proxy<FIELD const>>
-inline get_field(IE const& ie)
-{
-	return field_proxy<FIELD const>{ ie.template get_field<INDEX>() };
-};
-
 //read-only access mandatory field returning a reference
 template <class FIELD, class IE>
 std::enable_if_t<!is_optional_v<IE>, FIELD const&>
 inline get_field(IE const& ie)
 {
 	return ie.ref_field();
-};
-
-template <class FIELD, std::size_t INDEX, class IE>
-std::enable_if_t<!is_optional_v<IE>, FIELD const&>
-inline get_field(IE const& ie)
-{
-	return *ie.template get_field<INDEX>();
 };
 
 //read-only access mandatory or optional multi-field

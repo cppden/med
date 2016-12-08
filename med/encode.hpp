@@ -202,10 +202,10 @@ constexpr int invoke_encode(FUNC&, IE&, int count) { return count; }
 template <class FUNC, class IE, std::size_t INDEX, std::size_t... Is>
 inline int invoke_encode(FUNC& func, IE& ie, int count)
 {
-	if (ie.template ref_field<INDEX>().is_set())
+	if (ie.ref_field(INDEX).is_set())
 	{
 		CODEC_TRACE("[%s]@%zu", name<IE>(), INDEX);
-		if (!sl::encode<IE>(func, ie.template ref_field<INDEX>(), typename IE::ie_type{})) return -1;
+		if (!sl::encode<IE>(func, ie.ref_field(INDEX), typename IE::ie_type{})) return -1;
 		return invoke_encode<FUNC, IE, Is...>(func, ie, INDEX+1);
 	}
 	return INDEX;

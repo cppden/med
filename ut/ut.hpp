@@ -55,10 +55,10 @@ char const* as_string(T const& buffer)
 	ASSERT_TRUE(Matches(exp, got->data(), sizeof(exp)-1));    \
 }
 
-#define EQ_STRING_O_(INDEX, fld_type, expected) \
+#define EQ_STRING_O_(index, fld_type, expected) \
 {                                                             \
 	char const exp[] = expected;                              \
-	auto const got = msg->get<fld_type, INDEX>();             \
+	auto const got = msg->get<fld_type>(index);             \
 	ASSERT_NE(nullptr, static_cast<fld_type const*>(got));    \
 	ASSERT_EQ(sizeof(exp)-1, got->size());                    \
 	ASSERT_TRUE(Matches(exp, got->data(), sizeof(exp)-1));    \

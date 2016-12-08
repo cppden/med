@@ -55,36 +55,22 @@ public:
 		max = MAX,
 	};
 
-	template <std::size_t INDEX>
-	auto const& ref_field() const                   { return m_fields[INDEX]; }
-	template <std::size_t INDEX>
-	auto& ref_field()                               { return m_fields[INDEX]; }
+	field_type const& ref_field(std::size_t index) const    { return m_fields[index]; }
+	field_type& ref_field(std::size_t index)                { return m_fields[index]; }
 
-
-	template <std::size_t INDEX>
-	auto const* get_field() const
-	{
-		static_assert(INDEX < max, "INDEX OUT OF BOUNDS");
-		return m_fields[INDEX].is_set() ? &m_fields[INDEX] : nullptr;
-	}
-
-	auto const* get_field(std::size_t index) const
+	field_type const* get_field(std::size_t index) const
 	{
 		return (index < max && m_fields[index].is_set()) ? &m_fields[index] : nullptr;
 	}
-	auto* get_field(std::size_t index)
+	field_type* get_field(std::size_t index)
 	{
 		return (index < max) ? &m_fields[index] : nullptr;
 	}
 
-	auto* next_field()
-	{
-		std::size_t const count = field_count(*this);
-		return (count < max) ? &m_fields[count] : nullptr;
-	}
+	field_type* next_field()                                { return get_field(field_count(*this)); }
 
 private:
-	FIELD   m_fields[max];
+	field_type  m_fields[max];
 };
 
 

@@ -213,7 +213,7 @@ constexpr bool invoke_decode(FUNC& func, IE& ie, UNEXP&) { return true; }
 template <class FUNC, class IE, class UNEXP, std::size_t INDEX, std::size_t... Is>
 inline bool invoke_decode(FUNC& func, IE& ie, UNEXP& unexp)
 {
-	return sl::decode<IE>(func, ie.template ref_field<INDEX>(), typename IE::ie_type{}, unexp)
+	return sl::decode<IE>(func, ie.ref_field(INDEX), typename IE::ie_type{}, unexp)
 		&& invoke_decode<FUNC, IE, UNEXP, Is...>(func, ie, unexp);
 }
 

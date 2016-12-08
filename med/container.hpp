@@ -43,7 +43,7 @@ inline is_field_set(IE const& ie)           { return ie.ref_field().is_set(); }
 
 template <class IE>
 std::enable_if_t<has_multi_field_v<IE>, bool>
-inline is_field_set(IE const& ie)           { return ie.template ref_field<0>().is_set(); }
+inline is_field_set(IE const& ie)           { return ie.ref_field(0).is_set(); }
 
 //NOTE! check stops at 1st mandatory since it's optimal and more flexible
 template <class Enable, class... IES>
@@ -101,10 +101,10 @@ constexpr std::size_t calc_length_nth(IE const&)
 template <class IE, std::size_t INDEX, std::size_t... Is>
 inline std::size_t calc_length_nth(IE const& ie)
 {
-	if (ie.template ref_field<INDEX>().is_set())
+	if (ie.ref_field(INDEX).is_set())
 	{
 		CODEC_TRACE("[%s]@%zu", name<IE>(), INDEX);
-		return med::get_length<IE>(ie.template ref_field<INDEX>()) + calc_length_nth<IE, Is...>(ie);
+		return med::get_length<IE>(ie.ref_field(INDEX)) + calc_length_nth<IE, Is...>(ie);
 	}
 	return 0;
 }
@@ -151,19 +151,8 @@ public:
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS SHOULD BE ACCESSED BY INDEX");
+		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
 		return ie.ref_field();
-	}
-
-	template <class FIELD, std::size_t INDEX>
-	FIELD& ref()
-	{
-		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(has_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
-		static_assert(INDEX < IE::max, "INDEX OUT OF BOUNDS");
-		return ie.template ref_field<INDEX>();
 	}
 
 	template <class FIELD>
@@ -180,17 +169,8 @@ public:
 	{
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS SHOULD BE ACCESSED BY INDEX");
+		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
 		return get_field<FIELD>(ie);
-	}
-
-	template <class FIELD, std::size_t INDEX>
-	decltype(auto) get() const
-	{
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(has_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
-		return get_field<FIELD, INDEX>(ie);
 	}
 
 	template <class FIELD>
@@ -212,13 +192,6 @@ public:
 	auto field()                            { return make_accessor(*this); }
 	auto field() const                      { return make_accessor(*this); }
 	auto cfield() const                     { return make_accessor(*this); }
-
-	template <std::size_t INDEX>
-	auto field()                            { return make_accessor<INDEX>(*this); }
-	template <std::size_t INDEX>
-	auto field() const                      { return make_accessor<INDEX>(*this); }
-	template <std::size_t INDEX>
-	auto cfield() const                     { return make_accessor<INDEX>(*this); }
 
 	auto field(std::size_t index)           { return make_accessor(*this, index); }
 	auto field(std::size_t index) const     { return make_accessor(*this, index); }

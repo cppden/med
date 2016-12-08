@@ -114,10 +114,10 @@ private:
 	template <std::size_t NUM_BYTES, typename VALUE>
 	static constexpr void put_byte(uint8_t*, VALUE const) { }
 
-	template <std::size_t NUM_BYTES, typename VALUE, std::size_t INDEX, std::size_t... Is>
+	template <std::size_t NUM_BYTES, typename VALUE, std::size_t OFS, std::size_t... Is>
 	static void put_byte(uint8_t* output, VALUE const value)
 	{
-		output[INDEX] = static_cast<uint8_t>(value >> ((NUM_BYTES - INDEX - 1) << 3));
+		output[OFS] = static_cast<uint8_t>(value >> ((NUM_BYTES - OFS - 1) << 3));
 		put_byte<NUM_BYTES, VALUE, Is...>(output, value);
 	}
 

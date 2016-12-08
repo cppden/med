@@ -105,7 +105,7 @@ private:
 	template <typename VALUE>
 	static constexpr void get_byte(uint8_t const*, VALUE&) { }
 
-	template <typename VALUE, std::size_t INDEX, std::size_t... Is>
+	template <typename VALUE, std::size_t OFS, std::size_t... Is>
 	static void get_byte(uint8_t const* input, VALUE& value)
 	{
 		value = (value << granularity) | *input;

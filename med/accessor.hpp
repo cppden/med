@@ -47,46 +47,22 @@ struct access
 	}
 };
 
-template <std::size_t INDEX, class CONTAINER>
+template <class CONTAINER>
 struct accessor
 {
 	explicit accessor(CONTAINER& c) noexcept : m_that(c)  { }
-	template <class T> operator T& ()               { return m_that.template ref<T, INDEX>(); }
+	template <class T> operator T& ()
+	{
+		static_assert(!std::is_pointer<T>(), "INVALID ACCESS BY NON-CONST POINTER");
+		return m_that.template ref<T>();
+	}
 
 private:
 	CONTAINER& m_that;
 };
 
 template <class CONTAINER>
-struct accessor<std::numeric_limits<std::size_t>::max(), CONTAINER>
-{
-	explicit accessor(CONTAINER& c) noexcept : m_that(c)  { }
-	template <class T> operator T& ()               { return m_that.template ref<T>(); }
-
-private:
-	CONTAINER& m_that;
-};
-
-template <std::size_t INDEX, class CONTAINER>
 struct caccessor
-{
-	explicit caccessor(CONTAINER const& c) noexcept : m_that(c) { }
-	template <class T> operator T const* () const
-	{
-		return access<T>::as_optional(m_that.template get<T, INDEX>());
-	}
-
-	template <class T> operator T const& () const
-	{
-		return access<T>::as_mandatory(m_that.template get<T, INDEX>());
-	}
-
-private:
-	CONTAINER const& m_that;
-};
-
-template <class CONTAINER>
-struct caccessor<std::numeric_limits<std::size_t>::max(), CONTAINER>
 {
 	explicit caccessor(CONTAINER const& c) noexcept : m_that(c) { }
 	template <class T> operator T const* () const
@@ -107,7 +83,16 @@ template <class CONTAINER>
 struct index_accessor
 {
 	index_accessor(CONTAINER& c, std::size_t i) noexcept : m_that{c}, m_index{i}  { }
-	template <class T> operator T& ()               { return m_that.template ref<T>(m_index); }
+	template <class T> operator T* ()
+	{
+		return m_that.template ref<T>(m_index);
+	}
+
+	template <class T> operator T& ()
+	{
+		static_assert(std::is_same<void,T>(), "INVALID ACCESS OF MULTI-INSTANCE FIELD BY REFERENCE");
+		return m_that.template ref<T>(m_index);
+	}
 
 private:
 	CONTAINER&        m_that;
@@ -131,25 +116,13 @@ private:
 template <class CONTAINER>
 inline auto make_accessor(CONTAINER& c)
 {
-	return detail::accessor<std::numeric_limits<std::size_t>::max(), CONTAINER>{ c };
+	return detail::accessor<CONTAINER>{ c };
 }
 
 template <class CONTAINER>
 inline auto make_accessor(CONTAINER const& c)
 {
-	return detail::caccessor<std::numeric_limits<std::size_t>::max(), CONTAINER>{ c };
-}
-
-template <std::size_t INDEX, class CONTAINER>
-inline auto make_accessor(CONTAINER& c)
-{
-	return detail::accessor<INDEX, CONTAINER>{ c };
-}
-
-template <std::size_t INDEX, class CONTAINER>
-inline auto make_accessor(CONTAINER const& c)
-{
-	return detail::caccessor<INDEX, CONTAINER>{ c };
+	return detail::caccessor<CONTAINER>{ c };
 }
 
 template <class CONTAINER>

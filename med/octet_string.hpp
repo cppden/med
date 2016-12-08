@@ -38,10 +38,10 @@ private:
 	template <typename T>
 	static constexpr void copy_octet(T* out, T const* in) { }
 
-	template <typename T, std::size_t INDEX, std::size_t... Is>
+	template <typename T, std::size_t OFS, std::size_t... Is>
 	static void copy_octet(T* out, T const* in)
 	{
-		out[INDEX] = in[INDEX];
+		out[OFS] = in[OFS];
 		copy_octet<T, Is...>(out, in);
 	}
 
