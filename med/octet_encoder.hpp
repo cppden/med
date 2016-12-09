@@ -80,7 +80,7 @@ struct octet_encoder
 	bool operator() (IE const& ie, IE_VALUE const&)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
-		CODEC_TRACE("VAL[%s]=%#zx %u bits: %s", name<IE>(), std::size_t(ie.get()), IE::traits::bits, ctx.buffer().toString());
+		CODEC_TRACE("VAL[%s]=%#zx %u bits: %s", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits, ctx.buffer().toString());
 		if (uint8_t* out = ctx.buffer().advance(IE::traits::bits / granularity))
 		{
 			put_bytes(ie, out);

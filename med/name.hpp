@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <cstdlib>
 #include <cstring>
 #include <cxxabi.h>
 
@@ -41,7 +42,7 @@ const char* class_name()
 		enum {LEN = 256};
 		char* sz = detail::char_buffer<LEN>::allocate();
 		std::strncpy(sz, sane, LEN-1);
-		free(sane);
+		std::free(sane);
 		psz = sz;
 	}
 

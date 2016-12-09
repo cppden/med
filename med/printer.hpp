@@ -72,7 +72,7 @@ public:
 		std::enable_if_t<has_name_v<IE>, bool>
 		operator()(printer& me, IE const& ie)
 		{
-			me.print_named(ie);
+			me.print_named(ie, typename has_print<IE>::type{});
 			return true;
 		}
 	};

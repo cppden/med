@@ -1,6 +1,3 @@
-#include <cstdio>
-#include <gtest/gtest.h>
-
 #include "med.hpp"
 #include "encode.hpp"
 #include "decode.hpp"

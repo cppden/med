@@ -9,7 +9,9 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <cstdio>
 #include <cstring>
+#include <limits>
 
 #include "ie.hpp"
 

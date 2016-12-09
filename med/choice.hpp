@@ -13,6 +13,7 @@ Distributed under the MIT License
 #include "error.hpp"
 #include "debug.hpp"
 #include "length.hpp"
+#include "decode.hpp"
 
 namespace med {
 

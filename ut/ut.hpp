@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstdio>
+#include <gtest/gtest.h>
+
+
 /*
  * EXPECT_TRUE(Matches(buff, out_buff, size));
  */
