@@ -54,40 +54,25 @@ struct is_count_getter<T, std::enable_if_t<
 	>
 > : std::true_type { };
 
-
-namespace detail {
-
-template <class IE>
-constexpr std::size_t invoke_count(IE&, std::size_t count) { return count; }
-
-template <class IE, std::size_t INDEX, std::size_t... Is>
-inline std::size_t invoke_count(IE& ie, std::size_t count)
-{
-	if (ie.ref_field(INDEX).is_set())
-	{
-		return invoke_count<IE, Is...>(ie, INDEX+1);
-	}
-	return INDEX;
-}
-
-template <class IE, std::size_t... Is>
-inline std::size_t get_field_count(IE& ie, std::index_sequence<Is...>)
-{
-	return invoke_count<IE, Is...>(ie, 0);
-}
-
-}	//end: namespace detail
-
 template <class FIELD>
 std::enable_if_t<has_multi_field<FIELD>::value, std::size_t>
 inline field_count(FIELD const& ie)
 {
-	return detail::get_field_count(ie, std::make_index_sequence<FIELD::max>{});
+	//return detail::get_field_count(ie, std::make_index_sequence<FIELD::max>{});
+	std::size_t count = 0;
+	for (auto it = ie.begin(), ite = ie.end(); it != ite; ++it)
+	{
+		++count;
+	}
+	return count;
 }
 
 template <class FIELD>
 std::enable_if_t<!has_multi_field<FIELD>::value, std::size_t>
-inline field_count(FIELD const& field) { return field.is_set() ? 1 : 0; }
+inline field_count(FIELD const& field)
+{
+	return field.is_set() ? 1 : 0;
+}
 
 // user-provided functor to etract field count
 template <class T>

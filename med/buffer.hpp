@@ -38,7 +38,7 @@ public:
 	private:
 		friend class buffer;
 
-		PTR cursor; //TODO: use offset? compare performance vs ptr
+		PTR cursor {nullptr};
 	};
 
 	class size_state
@@ -198,7 +198,7 @@ private:
 
 	state_type     m_state;
 	pointer        m_end;
-	pointer        m_start;
+	pointer        m_start {nullptr};
 	state_type     m_store;
 };
 

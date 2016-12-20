@@ -45,6 +45,9 @@ public:
 	void valueError(char const* name, std::size_t got, std::size_t ofs)
 		{ set_error(error::INCORRECT_VALUE, name, got, ofs); }
 
+	void allocError(char const* name, std::size_t requested)
+		{ set_error(error::OUT_OF_MEMORY, name, requested); }
+
 private:
 	friend char const* toString(error_context const&);
 
@@ -69,28 +72,32 @@ inline char const* toString(error_context const& ec)
 	case error::OVERFLOW:
 		if (ec.m_param[1])
 		{
-			snprintf(sz, sizeof(sz), "%zu bits left, '%s' needs %zu", ec.m_param[0], ec.m_name, ec.m_param[1]);
+			std::snprintf(sz, sizeof(sz), "%zu bits left, '%s' needs %zu", ec.m_param[0], ec.m_name, ec.m_param[1]);
 		}
 		else
 		{
-			snprintf(sz, sizeof(sz), "%zu bits left after '%s'", ec.m_param[0], ec.m_name);
+			std::snprintf(sz, sizeof(sz), "%zu bits left after '%s'", ec.m_param[0], ec.m_name);
 		}
 		break;
 
 	case error::INCORRECT_VALUE:
-		snprintf(sz, sizeof(sz), "Invalid value of '%s' at %zu: 0x%zX", ec.m_name, ec.m_param[1], ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "Invalid value of '%s' at %zu: 0x%zX", ec.m_name, ec.m_param[1], ec.m_param[0]);
 		break;
 
 	case error::INCORRECT_TAG:
-		snprintf(sz, sizeof(sz), "Wrong tag of '%s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "Wrong tag of '%s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
 		break;
 
 	case error::MISSING_IE:
-		snprintf(sz, sizeof(sz), "Missing IE '%s': at least %zu expected", ec.m_name, ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "Missing IE '%s': at least %zu expected, only %zu found", ec.m_name, ec.m_param[0], ec.m_param[1]);
 		break;
 
 	case error::EXTRA_IE:
-		snprintf(sz, sizeof(sz), "Excessive IE '%s': no more than %zu expected", ec.m_name, ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "Excessive IE '%s': no more than %zu expected", ec.m_name, ec.m_param[0]);
+		break;
+
+	case error::OUT_OF_MEMORY:
+		std::snprintf(sz, sizeof(sz), "No space to allocate IE '%s': %zu bytes", ec.m_name, ec.m_param[0]);
 		break;
 	}
 

@@ -43,7 +43,7 @@ inline is_field_set(IE const& ie)           { return ie.ref_field().is_set(); }
 
 template <class IE>
 std::enable_if_t<has_multi_field_v<IE>, bool>
-inline is_field_set(IE const& ie)           { return ie.ref_field(0).is_set(); }
+inline is_field_set(IE const& ie)           { return ie.begin()->is_set(); }
 
 //NOTE! check stops at 1st mandatory since it's optimal and more flexible
 template <class Enable, class... IES>
@@ -92,29 +92,6 @@ struct container_for_imp<std::enable_if_t<!has_multi_field_v<IE>>, IE, IES...>
 	}
 };
 
-template <class IE>
-constexpr std::size_t calc_length_nth(IE const&)
-{
-	return 0;
-}
-
-template <class IE, std::size_t INDEX, std::size_t... Is>
-inline std::size_t calc_length_nth(IE const& ie)
-{
-	if (ie.ref_field(INDEX).is_set())
-	{
-		CODEC_TRACE("[%s]@%zu", name<IE>(), INDEX);
-		return med::get_length<IE>(ie.ref_field(INDEX)) + calc_length_nth<IE, Is...>(ie);
-	}
-	return 0;
-}
-
-template <class IE, std::size_t... Is>
-inline int repeat_calc_length(IE const& ie, std::index_sequence<Is...>)
-{
-	return calc_length_nth<IE, Is...>(ie);
-}
-
 template <class IE, class... IES>
 struct container_for_imp<std::enable_if_t<has_multi_field_v<IE>>, IE, IES...>
 {
@@ -122,8 +99,10 @@ struct container_for_imp<std::enable_if_t<has_multi_field_v<IE>>, IE, IES...>
 	static inline std::size_t calc_length(TO const& to)
 	{
 		IE const& ie = to;
-		return repeat_calc_length(ie, std::make_index_sequence<IE::max>{})
-			+ container_for<IES...>::calc_length(to);
+		CODEC_TRACE("calc_length[%s]*", name<IE>());
+		std::size_t len = 0;
+		for (auto& v : ie) { len += med::get_length<IE>(v); }
+		return len + container_for<IES...>::calc_length(to);
 	}
 };
 

@@ -196,27 +196,6 @@ inline bool encode(FUNC& func, IE& ie, IE_TV const&)
 		&& encode<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }
 
-template <class FUNC, class IE>
-constexpr int invoke_encode(FUNC&, IE&, int count) { return count; }
-
-template <class FUNC, class IE, std::size_t INDEX, std::size_t... Is>
-inline int invoke_encode(FUNC& func, IE& ie, int count)
-{
-	if (ie.ref_field(INDEX).is_set())
-	{
-		CODEC_TRACE("[%s]@%zu", name<IE>(), INDEX);
-		if (!sl::encode<IE>(func, ie.ref_field(INDEX), typename IE::ie_type{})) return -1;
-		return invoke_encode<FUNC, IE, Is...>(func, ie, INDEX+1);
-	}
-	return INDEX;
-}
-
-template<class FUNC, class IE, std::size_t... Is>
-inline int repeat_encode_impl(FUNC& func, IE& ie, std::index_sequence<Is...>)
-{
-	return invoke_encode<FUNC, IE, Is...>(func, ie, 0);
-}
-
 }	//end: namespace sl
 
 template <class FUNC, class IE>
@@ -233,11 +212,18 @@ inline encode(FUNC& func, IE& ie)
 	return func(ie);
 }
 
-template <std::size_t N, class FUNC, class IE>
-inline int encode(FUNC& func, IE& ie)
+template <class FUNC, class IE>
+inline int encode_multi(FUNC& func, IE const& ie)
 {
 	//CODEC_TRACE("%s *%zu", name<IE>(), N);
-	return sl::repeat_encode_impl(func, ie, std::make_index_sequence<N>{});
+	int count = 0;
+	for (auto& v : ie)
+	{
+		CODEC_TRACE("[%s]@%d", name<IE>(), count);
+		if (!sl::encode<IE>(func, v, typename IE::ie_type{})) return -1;
+		++count;
+	}
+	return count;
 }
 
 }	//end: namespace med

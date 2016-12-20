@@ -201,13 +201,12 @@ struct seq_dec_imp<std::enable_if_t<
 		{
 			CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<IE>());
 
-			if (auto* field = ie.next_field())
+			if (auto* field = func.allocate(ie))
 			{
 				if (!med::decode(func, *field, unexp)) return false;
 			}
 			else
 			{
-				func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max);
 				return false;
 			}
 
@@ -241,20 +240,19 @@ struct seq_dec_imp<std::enable_if_t<
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
 			return false;
 		}
 	}
 };
 
-//multi-instance field without tag or count-getter (min < max)
+//multi-instance field without tag, counter or count-getter
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
 		has_multi_field_v<IE> &&
 		!has_tag_type_v<IE> &&
 		!has_count_getter_v<IE> &&
-		!is_counter_v<IE> &&
-		IE::min != IE::max
+		!is_counter_v<IE>
 	>,
 	IE, IES...>
 {
@@ -272,57 +270,29 @@ struct seq_dec_imp<std::enable_if_t<
 
 		CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
 
-		//TODO: smth like? return med::decode<IE::max>(func, ie, unexp)
-		while (auto* field = ie.next_field())
+		std::size_t count = 0;
+		while (func(CHECK_STATE{}) && count < IE::max)
 		{
-			if (func(CHECK_STATE{}))
+			if (auto* field = func.allocate(ie))
 			{
 				if (!sl::decode<IE>(func, *field, typename IE::ie_type{}, unexp)) return false;
 			}
 			else
 			{
-				break;
+				return false;
 			}
+			++count;
 		}
 
-		if (check_arity<IE>(field_count(ie)))
+		if (check_arity<IE>(count))
 		{
 			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
 			return false;
 		}
-	}
-};
-
-//multi-instance field without tag or count-getter (min == max)
-template <class IE, class... IES>
-struct seq_dec_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
-		!has_tag_type_v<IE> &&
-		!has_count_getter_v<IE> &&
-		!is_counter_v<IE> &&
-		IE::min == IE::max
-	>,
-	IE, IES...>
-{
-	template <class TO, class FUNC, class UNEXP, class TAG>
-	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
-	{
-		IE& ie = to;
-
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func(POP_STATE{}); //restore state
-			vtag.reset();
-		}
-
-		CODEC_TRACE("[%s]*%zu", name<IE>(), IE::max);
-		return med::decode<IE::max>(func, ie, unexp)
-			&& seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
 };
 
@@ -356,13 +326,12 @@ struct seq_dec_imp<
 		CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 		while (count--)
 		{
-			if (auto* field = ie.next_field())
+			if (auto* field = func.allocate(ie))
 			{
 				if (!med::decode(func, *field, unexp)) return false;
 			}
 			else
 			{
-				func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max);
 				return false;
 			}
 		}
@@ -373,13 +342,13 @@ struct seq_dec_imp<
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
 			return false;
 		}
 	}
 };
 
-
+//multi-instance field without tag with counter
 template <class IE, class... IES>
 struct seq_dec_imp<
 	std::enable_if_t<
@@ -407,29 +376,27 @@ struct seq_dec_imp<
 		if (!med::decode(func, counter_ie)) return false;
 
 		auto count = counter_ie.get_encoded();
-
-		while (count--)
+		if (check_arity<IE>(count))
 		{
-			CODEC_TRACE("[%s]*%zu", name<IE>(), count);
-
-			if (auto* field = ie.next_field())
+			while (count--)
 			{
-				if (!med::decode(func, *field, unexp)) return false;
-			}
-			else
-			{
-				func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max);
-				return false;
-			}
-		}
+				CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 
-		if (check_arity<IE>(field_count(ie)))
-		{
+				if (auto* field = func.allocate(ie))
+				{
+					if (!med::decode(func, *field, unexp)) return false;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
 			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
 			return false;
 		}
 	}
@@ -468,7 +435,7 @@ struct seq_enc_imp<std::enable_if_t<
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), 1);
+			func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 			return false;
 		}
 	}
@@ -494,7 +461,7 @@ struct seq_enc_imp<std::enable_if_t<
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), 1);
+			func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 			return false;
 		}
 	}
@@ -536,7 +503,7 @@ struct seq_enc_imp<std::enable_if_t<
 	static inline bool encode(TO const& to, FUNC&& func)
 	{
 		IE const& ie = to;
-		int const count = med::encode<IE::max>(func, ie);
+		int const count = med::encode_multi(func, ie);
 		if (count < 0) return false;
 
 		if (check_arity<IE>(count))
@@ -545,7 +512,7 @@ struct seq_enc_imp<std::enable_if_t<
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
 			return false;
 		}
 	}
@@ -572,12 +539,12 @@ struct seq_enc_imp<std::enable_if_t<
 			counter_ie.set_encoded(count);
 
 			return med::encode(func, counter_ie)
-				&& med::encode<IE::max>(func, ie) == (int)count
+				&& med::encode_multi(func, ie) == (int)count
 				&& seq_encoder<IES...>::encode(to, func);
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
 		}
 		return false;
 	}
@@ -606,7 +573,7 @@ struct seq_enc_imp<std::enable_if_t<
 				counter_ie.set_encoded(count);
 
 				return med::encode(func, counter_ie)
-					&& med::encode<IE::max>(func, ie) == (int)count
+					&& med::encode_multi(func, ie) == (int)count
 					&& seq_encoder<IES...>::encode(to, func);
 			}
 			else
@@ -616,7 +583,7 @@ struct seq_enc_imp<std::enable_if_t<
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
 		}
 		return false;
 	}

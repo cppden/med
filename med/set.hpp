@@ -66,7 +66,7 @@ struct set_dec_imp<std::enable_if_t<!has_multi_field<IE>::value>, IE, IES...>
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), 1);
+			func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 			return false;
 		}
 	}
@@ -82,13 +82,9 @@ struct set_dec_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
 		{
 			IE& ie = static_cast<IE&>(to);
 			CODEC_TRACE("[%s]*", name<typename IE::field_type>());
-			if (auto* field = ie.next_field())
+			if (auto* field = func.allocate(ie))
 			{
 				return med::decode(func, *field, unexp);
-			}
-			else
-			{
-				func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max);
 			}
 			return false;
 		}
@@ -108,7 +104,7 @@ struct set_dec_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
 		}
 		return false;
 	}
@@ -162,7 +158,7 @@ template <class TO, class FUNC, class HEADER, class IE, class... IES>
 std::enable_if_t<!is_optional_v<IE>, bool>
 inline continue_encode(TO const&, FUNC& func)
 {
-	func(error::MISSING_IE, name<typename IE::field_type>(), 1);
+	func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 	return false;
 }
 
@@ -232,7 +228,7 @@ struct set_enc_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min);
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
 		}
 		return false;
 	}

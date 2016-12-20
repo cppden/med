@@ -14,11 +14,12 @@ namespace med {
 enum class error : uint8_t
 {
 	SUCCESS = 0,
-	OVERFLOW, //insufficient input or output buffer
+	OVERFLOW,   //insufficient input or output buffer
 	INCORRECT_VALUE,
 	INCORRECT_TAG,
 	MISSING_IE, //missing required (mandatory) IE
 	EXTRA_IE,   //excessive number of IE
+	OUT_OF_MEMORY,   //no space to allocate
 };
 
 enum class warning : uint8_t

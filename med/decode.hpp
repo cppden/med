@@ -206,23 +206,6 @@ inline decode(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 	return static_cast<bool>(pad);
 }
 
-//TODO: replace with fold expression in c++17
-template <class FUNC, class IE, class UNEXP>
-constexpr bool invoke_decode(FUNC& func, IE& ie, UNEXP&) { return true; }
-
-template <class FUNC, class IE, class UNEXP, std::size_t INDEX, std::size_t... Is>
-inline bool invoke_decode(FUNC& func, IE& ie, UNEXP& unexp)
-{
-	return sl::decode<IE>(func, ie.ref_field(INDEX), typename IE::ie_type{}, unexp)
-		&& invoke_decode<FUNC, IE, UNEXP, Is...>(func, ie, unexp);
-}
-
-template<class FUNC, class IE, class UNEXP, std::size_t... Is>
-inline bool repeat_decode_impl(FUNC& func, IE& ie, UNEXP& unexp, std::index_sequence<Is...>)
-{
-	return invoke_decode<FUNC, IE, UNEXP, Is...>(func, ie, unexp);
-}
-
 }	//end: namespace sl
 
 template <class FUNC, class IE, class UNEXP = sl::default_handler>
@@ -237,13 +220,6 @@ std::enable_if_t<!has_ie_type<IE>::value, bool>
 inline decode(FUNC& func, IE& ie, UNEXP&)
 {
 	return func(ie);
-}
-
-
-template <std::size_t N, class FUNC, class IE, class UNEXP = sl::default_handler>
-inline bool decode(FUNC& func, IE& ie, UNEXP&& unexp = sl::default_handler{})
-{
-	return sl::repeat_decode_impl(func, ie, unexp, std::make_index_sequence<N>{});
 }
 
 }	//end: namespace med

@@ -63,7 +63,7 @@ template <class, class Enable = void>
 struct has_multi_field : std::false_type { };
 
 template <class T>
-struct has_multi_field<T, void_t<decltype(std::declval<T>().ref_field(0))>> : std::true_type { };
+struct has_multi_field<T, void_t<typename T::field_value>> : std::true_type { };
 
 template <class T>
 constexpr bool has_multi_field_v = has_multi_field<T>::value;
