@@ -34,7 +34,7 @@ struct value : IE<IE_VALUE>
 	//NOTE: do not override!
 	value_type get_encoded() const              { return m_value; }
 	void set_encoded(value_type v)              { m_value = v; m_set = true; }
-	void reset()                                { m_set = false; }
+	void clear()                                { m_set = false; }
 	bool is_set() const                         { return m_set; }
 	explicit operator bool() const              { return is_set(); }
 
@@ -54,6 +54,7 @@ struct cvalue : IE<const IE_VALUE>
 	using value_type = typename traits::value_type;
 	using base_t = cvalue;
 
+	static constexpr void clear()                       { }
 	static constexpr value_type get()                   { return get_encoded(); }
 
 
@@ -75,6 +76,7 @@ struct ivalue : IE<IE_VALUE>
 	using value_type = typename traits::value_type;
 	using base_t = ivalue;
 
+	static constexpr void clear()                       { }
 	//NOTE: do not override!
 	static constexpr value_type get_encoded()           { return VALUE; }
 	static constexpr void set_encoded(value_type v)     { }

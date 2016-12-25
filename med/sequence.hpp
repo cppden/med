@@ -45,17 +45,17 @@ struct seq_dec_imp<std::enable_if_t<
 //TODO: more flexible is to compare current size read and how many bits to rewind for RO IE.
 template <class IE, class FUNC, class TAG>
 std::enable_if_t<is_read_only_v<typename IE::tag_type>>
-inline reset_tag(FUNC& func, TAG& vtag)
+inline clear_tag(FUNC& func, TAG& vtag)
 {
 	func(POP_STATE{});
-	vtag.reset();
+	vtag.clear();
 }
 
 template <class IE, class FUNC, class TAG>
 std::enable_if_t<!is_read_only_v<typename IE::tag_type>>
-inline reset_tag(FUNC&, TAG& vtag)
+inline clear_tag(FUNC&, TAG& vtag)
 {
-	vtag.reset();
+	vtag.clear();
 }
 
 //single-instance optional field with a tag
@@ -97,7 +97,7 @@ struct seq_dec_imp<std::enable_if_t<
 		if (IE::tag_type::match(vtag.get_encoded())) //check tag decoded
 		{
 			CODEC_TRACE("T=%zx[%s]", vtag.get_encoded(), name<IE>());
-			reset_tag<IE>(func, vtag); //reset current tag as decoded
+			clear_tag<IE>(func, vtag); //clear current tag as decoded
 			IE& ie = to;
 			if (!med::decode(func, ie.ref_field(), unexp)) return false;
 		}
@@ -123,7 +123,7 @@ struct seq_dec_imp<std::enable_if_t<
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
-			vtag.reset();
+			vtag.clear();
 		}
 
 		if (func(CHECK_STATE{}))
@@ -159,7 +159,7 @@ struct seq_dec_imp<std::enable_if_t<
 			{
 				CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 				func(POP_STATE{}); //restore state
-				vtag.reset();
+				vtag.clear();
 			}
 
 			if (!med::decode(func, ie.ref_field(), unexp)) return false;
@@ -219,12 +219,12 @@ struct seq_dec_imp<std::enable_if_t<
 				}
 				else
 				{
-					vtag.reset();
+					vtag.clear();
 				}
 			}
 			else
 			{
-				vtag.reset();
+				vtag.clear();
 				break;
 			}
 		}
@@ -265,7 +265,7 @@ struct seq_dec_imp<std::enable_if_t<
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
-			vtag.reset();
+			vtag.clear();
 		}
 
 		CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
@@ -318,7 +318,7 @@ struct seq_dec_imp<
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
-			vtag.reset();
+			vtag.clear();
 		}
 
 		std::size_t count = typename IE::count_getter{}(to);
@@ -369,7 +369,7 @@ struct seq_dec_imp<
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
 			func(POP_STATE{}); //restore state
-			vtag.reset();
+			vtag.clear();
 		}
 
 		typename IE::counter_type counter_ie;
@@ -478,9 +478,9 @@ struct seq_enc_imp<std::enable_if_t<
 	static inline bool encode(TO const& to, FUNC&& func)
 	{
 		IE const& ie = to;
+		CODEC_TRACE("%c[%s]", ie.ref_field().is_set()?'+':'-', name<IE>());
 		if (ie.ref_field().is_set())
 		{
-			CODEC_TRACE("[%s]", name<IE>());
 			return med::encode(func, ie) && seq_encoder<IES...>::encode(to, func);
 		}
 		else

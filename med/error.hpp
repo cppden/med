@@ -9,6 +9,8 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <cstdint>
+
 namespace med {
 
 enum class error : uint8_t

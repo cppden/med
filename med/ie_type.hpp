@@ -35,9 +35,10 @@ struct IE
 //always-set empty IE as a message w/o body
 struct empty : IE<IE_NULL>
 {
-	static constexpr void set()             { }
-	static constexpr bool get()             { return true; }
-	static constexpr bool is_set()          { return true; }
+	static constexpr void clear()          { }
+	static constexpr void set()            { }
+	static constexpr bool get()            { return true; }
+	static constexpr bool is_set()         { return true; }
 };
 
 //selectable IE as empty case in choice
@@ -45,7 +46,7 @@ struct selectable : IE<IE_NULL>
 {
 	void set()                              { m_set = true; }
 	bool get() const                        { return is_set(); }
-	void reset()                            { m_set = false; }
+	void clear()                            { m_set = false; }
 	bool is_set() const                     { return m_set; }
 	explicit operator bool() const          { return is_set(); }
 

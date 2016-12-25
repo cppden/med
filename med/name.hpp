@@ -13,7 +13,7 @@ Distributed under the MIT License
 #include <cstring>
 #include <cxxabi.h>
 
-#include "ie.hpp"
+#include "void.hpp"
 
 namespace med {
 
@@ -42,6 +42,7 @@ const char* class_name()
 		enum {LEN = 256};
 		char* sz = detail::char_buffer<LEN>::allocate();
 		std::strncpy(sz, sane, LEN-1);
+		sz[LEN-1] = '\0';
 		std::free(sane);
 		psz = sz;
 	}

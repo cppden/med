@@ -10,13 +10,9 @@ Distributed under the MIT License
 #pragma once
 
 #include <type_traits>
+#include "void.hpp"
 
 namespace med {
-
-//TODO: C++17
-template <class...>
-using void_t = void;
-
 
 template <typename T>
 struct remove_cref : std::remove_reference<std::remove_const_t<T>> {};

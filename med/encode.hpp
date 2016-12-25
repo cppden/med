@@ -107,7 +107,7 @@ struct length_encoder
 	auto operator() (T&&... args)  { return m_encoder(std::forward<T>(args)...); }
 
 	FUNC&            m_encoder;
-	int              m_delta;
+	int              m_delta {0};
 	state_type const m_start;
 	state_type       m_snapshot{ };
 };

@@ -21,7 +21,8 @@ struct _length
 
 	struct field_t
 	{
-		static bool constexpr is_set()      { return true; }
+		static constexpr void clear()       { }
+		static constexpr bool is_set()      { return true; }
 	};
 	static constexpr field_t ref_field()    { return field_t{}; }
 };

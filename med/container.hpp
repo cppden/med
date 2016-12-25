@@ -37,6 +37,16 @@ struct ies<>
 
 namespace sl {
 
+//-----------------------------------------------------------------------
+//TODO: remove arg use IE directly (type only - template, then make container.arity a constexpr)
+template <class IE>
+std::enable_if_t<!has_multi_field_v<IE>, std::size_t>
+constexpr field_arity(IE const&)            { return 1; }
+template <class IE>
+std::enable_if_t<has_multi_field_v<IE>, std::size_t>
+constexpr field_arity(IE const&)            { return IE::max; }
+
+//-----------------------------------------------------------------------
 template <class IE>
 std::enable_if_t<!has_multi_field_v<IE>, bool>
 inline is_field_set(IE const& ie)           { return ie.ref_field().is_set(); }
@@ -52,15 +62,15 @@ struct seq_is_set_imp;
 template <class... IES>
 using seq_is_set = seq_is_set_imp<void, IES...>;
 
-template <class IE, class... IES>
-struct seq_is_set_imp<std::enable_if_t<is_optional_v<IE>>, IE, IES...>
+template <class IE, class... IES> //optional or mandatory field w/ setter => can be set implicitly
+struct seq_is_set_imp<std::enable_if_t<is_optional_v<IE> || has_setter_type_v<IE>>, IE, IES...>
 {
 	template <class TO>
 	static inline bool is_set(TO const& to) { return is_field_set<IE>(to) || seq_is_set<IES...>::is_set(to); }
 };
 
-template <class IE, class... IES>
-struct seq_is_set_imp<std::enable_if_t<!is_optional_v<IE>>, IE, IES...>
+template <class IE, class... IES> //mandatory field w/o setter => s.b. set explicitly
+struct seq_is_set_imp<std::enable_if_t<!is_optional_v<IE> && !has_setter_type_v<IE>>, IE, IES...>
 {
 	template <class TO>
 	static inline bool is_set(TO const& to) { return is_field_set<IE>(to); }
@@ -73,7 +83,37 @@ struct seq_is_set_imp<void>
 	static inline bool is_set(TO const&)    { return false; }
 };
 
+//-----------------------------------------------------------------------
+template <class IE>
+std::enable_if_t<!has_multi_field_v<IE>>
+inline field_clear(IE& ie)           { ie.ref_field().clear(); }
 
+template <class IE>
+std::enable_if_t<has_multi_field_v<IE>>
+inline field_clear(IE& ie)
+{
+	//TODO: clear all, not the 1st only
+	ie.template ref_field<0>().clear();
+}
+
+template <class... IES>
+struct seq_clear;
+
+template <class IE, class... IES>
+struct seq_clear<IE, IES...>
+{
+	template <class TO>
+	static inline void clear(TO& to) { field_clear<IE>(to); seq_clear<IES...>::clear(to); }
+};
+
+template <>
+struct seq_clear<>
+{
+	template <class TO>
+	static constexpr void clear(TO&)    { }
+};
+
+//-----------------------------------------------------------------------
 template <class Enable, class... IES>
 struct container_for_imp;
 
@@ -165,6 +205,10 @@ public:
 	template <class FIELD>
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
 
+	template <class FIELD>
+	std::size_t arity() const               { return sl::field_arity(m_ies.template as<FIELD>()); }
+
+	void clear()                            { sl::seq_clear<IES...>::clear(this->m_ies); }
 	bool is_set() const                     { return sl::seq_is_set<IES...>::is_set(this->m_ies); }
 	std::size_t calc_length() const         { return sl::container_for<IES...>::calc_length(this->m_ies); }
 

@@ -8,14 +8,34 @@ Distributed under the MIT License
 */
 
 #pragma once
+#include <cstdio>
+#include <cstring>
 
 //#define CODEC_TRACE_ENABLE
 
 
 #ifdef CODEC_TRACE_ENABLE
 
-//#define CODEC_TRACE(FMT, ...) printf("%s[%u]:" FMT "\n", std::strrchr(__FILE__, PS) + 1, __LINE__, __VA_ARGS__)
-#define CODEC_TRACE(FMT, ...) printf("%s[%u]:" FMT "\n", __FILE__, __LINE__, __VA_ARGS__)
+namespace med{
+
+namespace {
+
+inline char const* filename(char const* fname)
+{
+	if (char const* p = std::strrchr(fname, '/'))
+	{
+		return p + 1;
+	}
+	else
+	{
+		return fname;
+	}
+}
+
+} //end: namespace
+} //end: namespace med
+
+#define CODEC_TRACE(FMT, ...) std::printf("%s[%u]:" FMT "\n", med::filename(__FILE__), __LINE__, __VA_ARGS__)
 
 #else
 #define CODEC_TRACE(...)

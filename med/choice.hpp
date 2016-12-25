@@ -9,10 +9,12 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <new>
 #include "tag.hpp"
 #include "error.hpp"
 #include "debug.hpp"
 #include "length.hpp"
+#include "encode.hpp"
 #include "decode.hpp"
 
 namespace med {
@@ -173,6 +175,15 @@ public:
 		return *(set_tag(header(), IE::tag_type::get_encoded())
 			? new (store_p) CASE{}
 			: static_cast<CASE*>(store_p));
+	}
+
+	template <class CASE>
+	CASE& clear()
+	{
+		using IE = typename cases<CASES...>::template at<CASE>;
+		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
+		set_tag(header(), IE::tag_type::get());
+		return *(new (&m_storage) CASE{});
 	}
 
 	template <class CASE>

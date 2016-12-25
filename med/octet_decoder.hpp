@@ -13,6 +13,7 @@ Distributed under the MIT License
 
 #include "state.hpp"
 #include "name.hpp"
+#include "ie_type.hpp"
 
 namespace med {
 

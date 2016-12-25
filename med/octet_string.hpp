@@ -9,7 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
-#include <cstdio>
+#include <utility>
 #include <cstring>
 #include <limits>
 
@@ -63,6 +63,7 @@ public:
 	std::size_t size() const                            { return m_size; }
 	uint8_t const* data() const                         { return m_data; }
 
+	void clear()                                        { m_data = nullptr; m_size = 0; }
 	void assign(uint8_t const* b_, uint8_t const* e_)   { m_data = b_; m_size = e_ - b_;}
 
 private:
@@ -81,6 +82,7 @@ public:
 	void resize(std::size_t v)                          { m_size = (v <= MAX_LEN) ? v : 0; }
 	uint8_t const* data() const                         { return m_data; }
 	uint8_t* data()                                     { return m_data; }
+	void clear()                                        { m_size = 0; }
 
 	//NOTE: no check for MAX_LEN since it's limited by caller in octet_string::set
 	void assign(uint8_t const* beg_, uint8_t const* end_)
@@ -104,6 +106,7 @@ public:
 	constexpr std::size_t size() const                  { return LEN; }
 	uint8_t const* data() const                         { return m_data; }
 
+	void clear()                                        { m_data = nullptr; }
 	void assign(uint8_t const* beg_, uint8_t const* end_)
 	{
 		std::size_t const nsize = static_cast<std::size_t>(end_ - beg_);
@@ -133,6 +136,7 @@ public:
 	uint8_t const* data() const                         { return m_data; }
 	uint8_t* data()                                     { return m_data; }
 
+	void clear()                                        { m_is_set = false; }
 	void assign(uint8_t const* beg_, uint8_t const* end_)
 	{
 		std::size_t const nsize = static_cast<std::size_t>(end_ - beg_);
@@ -181,6 +185,8 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	iterator begin()                        { return data(); }
 	iterator end()                          { return begin() + size(); }
 
+	void clear()                            { m_value.clear(); }
+
 	//NOTE: do not override!
 	bool set_encoded(std::size_t len, void const* data)
 	{
@@ -192,14 +198,6 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 		}
 		CODEC_TRACE("ERROR: len=%zu < min=%zu", len, MIN_LEN);
 		return false;
-	}
-
-	template <typename T, std::size_t SIZE>
-	bool set(T const(&data)[SIZE])
-	{
-		static_assert(sizeof(T) == 1, "INVALID TYPE TO SET OCTET_STRING");
-		static_assert(SIZE >= MIN_LEN && SIZE <= MAX_LEN, "INVALID SIZE TO SET OCTET_STRING");
-		return set_encoded(SIZE, data);
 	}
 
 	value_type const& get() const           { return m_value; }
@@ -238,10 +236,22 @@ template <std::size_t MIN, std::size_t MAX, class VALUE>
 struct octet_string<min<MIN>, max<MAX>, VALUE> : octet_string_impl<MIN, MAX, VALUE> {};
 
 template <std::size_t FIXED>
-struct octet_string<octets_fix_extern<FIXED>, void, void> : octet_string_impl<FIXED, FIXED, octets_fix_extern<FIXED>> {};
-template <std::size_t FIXED>
-struct octet_string<octets_fix_intern<FIXED>, void, void> : octet_string_impl<FIXED, FIXED, octets_fix_intern<FIXED>> {};
+struct octet_string<octets_fix_extern<FIXED>, void, void> : octet_string_impl<FIXED, FIXED, octets_fix_extern<FIXED>>
+{
+	using base_t = octet_string_impl<FIXED, FIXED, octets_fix_extern<FIXED>>;
+	using base_t::set;
 
+	void set(uint8_t const(&data)[FIXED])   { set_encoded(FIXED, &data[0]); }
+};
+
+template <std::size_t FIXED>
+struct octet_string<octets_fix_intern<FIXED>, void, void> : octet_string_impl<FIXED, FIXED, octets_fix_intern<FIXED>>
+{
+	using base_t = octet_string_impl<FIXED, FIXED, octets_fix_intern<FIXED>>;
+	using base_t::set;
+
+	void set(uint8_t const(&data)[FIXED])   { set_encoded(FIXED, &data[0]); }
+};
 template <std::size_t MAX, std::size_t MIN>
 struct octet_string<octets_var_intern<MAX>, min<MIN>,void> : octet_string_impl<MIN, MAX, octets_var_intern<MAX>> {};
 
@@ -249,7 +259,8 @@ struct octet_string<octets_var_intern<MAX>, min<MIN>,void> : octet_string_impl<M
 template <class ...T>
 struct ascii_string : octet_string<T...>
 {
-	using octet_string<T...>::set;
+	using base_t = octet_string<T...>;
+	//using base_t::set;
 
 	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
 	template <std::size_t N>

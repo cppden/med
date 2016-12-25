@@ -70,31 +70,29 @@ using tag_type_t = typename tag_type<T>::type;
 
 
 template <class T>
-std::enable_if_t<has_get_tag<T>::value, std::size_t>
-inline get_tag(T const& header)
+constexpr auto get_tag(T const& header) -> decltype(std::declval<T>().get_tag())
 {
 	return header.get_tag();
 }
 
 template <class T>
-std::enable_if_t<!has_get_tag<T>::value, std::size_t>
-inline get_tag(T const& header)
+constexpr auto get_tag(T const& header, std::enable_if_t<!has_get_tag<T>::value>* = nullptr)
 {
 	return header.get_encoded();
 }
 
-template <class T>
+template <class T, class TV>
 std::enable_if_t<has_get_tag<T>::value, bool>
-inline set_tag(T& header, std::size_t tag)
+inline set_tag(T& header, TV&& tag)
 {
 	if (header.get_tag() == tag) { return false; }
 	header.set_tag(tag);
 	return true;
 }
 
-template <class T>
+template <class T, class TV>
 std::enable_if_t<!has_get_tag<T>::value, bool>
-inline set_tag(T& header, std::size_t tag)
+inline set_tag(T& header, TV&& tag)
 {
 	if (header.get_encoded() == tag) { return false; }
 	header.set_encoded(tag);

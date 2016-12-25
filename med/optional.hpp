@@ -30,31 +30,31 @@ struct optional
 
 
 //optional field as a part of compound
-template <class FIELD, class IS_SET>
+template <class FIELD, class ISSETFUNC>
 struct optional<
 	FIELD,
-	IS_SET,
+	ISSETFUNC,
 	void,
 	min<0>,
 	max<1>,
-	std::enable_if_t<is_field<FIELD>::value && is_set_function_v<IS_SET>>
+	std::enable_if_t<is_field<FIELD>::value && is_set_function_v<ISSETFUNC>>
 > : field_t<FIELD>, optional_t
 {
-	using optional_type = IS_SET;
+	using optional_type = ISSETFUNC;
 };
 
 //optional field as a part of compound
-template <class LEN, class FIELD, class IS_SET>
+template <class LEN, class FIELD, class ISSETFUNC>
 struct optional<
 	LEN,
 	FIELD,
-	IS_SET,
+	ISSETFUNC,
 	min<0>,
 	max<1>,
-	std::enable_if_t<is_field<FIELD>::value && is_length<LEN>::value && is_set_function_v<IS_SET>>
+	std::enable_if_t<is_field<FIELD>::value && is_length<LEN>::value && is_set_function_v<ISSETFUNC>>
 > : length_value_t<LEN, FIELD>, optional_t
 {
-	using optional_type = IS_SET;
+	using optional_type = ISSETFUNC;
 };
 
 template <class FIELD>
@@ -123,17 +123,17 @@ struct optional<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <class FIELD, std::size_t MAX, class IS_SET>
+template <class FIELD, std::size_t MAX, class ISSETFUNC>
 struct optional<
 	FIELD,
 	max<MAX>,
-	IS_SET,
+	ISSETFUNC,
 	min<0>,
 	max<1>,
-	std::enable_if_t<is_field<FIELD>::value && is_set_function_v<IS_SET>>
+	std::enable_if_t<is_field<FIELD>::value && is_set_function_v<ISSETFUNC>>
 > : multi_field_t<FIELD, 0, MAX>, optional_t
 {
-	using optional_type = IS_SET;
+	using optional_type = ISSETFUNC;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
