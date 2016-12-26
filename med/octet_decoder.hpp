@@ -32,22 +32,15 @@ struct octet_decoder
 	}
 
 	//state
-	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
+	auto push_size(std::size_t size)                   { return ctx.buffer().push_size(size); }
 	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
 	bool operator() (POP_STATE const&)                 { ctx.buffer().pop_state(); return true; }
-	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
-	bool operator() (CHECK_STATE const&)               { return ctx.buffer().size() > 0; }
-	bool operator() (ADVANCE_STATE const& ss)
+	auto get_state() const                             { return ctx.buffer().get_state(); }
+	bool eof() const                                   { return ctx.buffer().empty(); }
+	bool advance(int bits)
 	{
-		if (ctx.buffer().advance(ss.bits/granularity)) return true;
-		ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, ss.bits);
-		return false;
-	}
-	bool operator() (ADD_PADDING const& pad)
-	{
-		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
-		if (ctx.buffer().advance(pad.bits/granularity)) return true;
-		ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, pad.bits);
+		if (ctx.buffer().advance(bits/granularity)) return true;
+		ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, bits);
 		return false;
 	}
 

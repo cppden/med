@@ -30,7 +30,7 @@ struct octet_encoder
 	}
 
 	//state
-	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
+	auto get_state() const                                   { return ctx.buffer().get_state(); }
 	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
 	template <class IE>
 	bool operator() (SET_STATE const&, IE const& ie)
@@ -55,16 +55,16 @@ struct octet_encoder
 	}
 	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
 	bool operator() (POP_STATE const&)                 { ctx.buffer().pop_state(); return true; }
-	bool operator() (ADVANCE_STATE const& ss)
+	bool advance(int bits)
 	{
-		if (ctx.buffer().advance(ss.bits/granularity)) return true;
-		ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, ss.bits);
+		if (ctx.buffer().advance(bits/granularity)) return true;
+		ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, bits);
 		return false;
 	}
-	bool operator() (ADD_PADDING const& pad)
+	bool padding(std::size_t bits, uint8_t filler = 0)
 	{
-		if (ctx.buffer().fill(pad.bits/granularity, pad.filler)) return true;
-		ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, pad.bits);
+		if (ctx.buffer().fill(bits/granularity, filler)) return true;
+		ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, bits);
 		return false;
 	}
 	void operator() (SNAPSHOT const& ss)               { ctx.snapshot(ss); }

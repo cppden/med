@@ -126,7 +126,7 @@ struct seq_dec_imp<std::enable_if_t<
 			vtag.clear();
 		}
 
-		if (func(CHECK_STATE{}))
+		if (!func.eof())
 		{
 			IE& ie = to;
 			return med::decode(func, ie.ref_field(), unexp)
@@ -271,7 +271,7 @@ struct seq_dec_imp<std::enable_if_t<
 		CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
 
 		std::size_t count = 0;
-		while (func(CHECK_STATE{}) && count < IE::max)
+		while (!func.eof() && count < IE::max)
 		{
 			if (auto* field = func.allocate(ie))
 			{

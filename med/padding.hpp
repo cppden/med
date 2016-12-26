@@ -31,7 +31,7 @@ struct padder
 {
 	explicit padder(FUNC& func) noexcept
 		: m_encoder{ func }
-		, m_start{ m_encoder(GET_STATE{}) }
+		, m_start{ m_encoder.get_state() }
 	{}
 
 	padder(padder&& rhs) noexcept
@@ -42,10 +42,10 @@ struct padder
 
 	explicit operator bool() const
 	{
-		auto const total_bits = (m_encoder(GET_STATE{}) - m_start) * FUNC::granularity;
+		auto const total_bits = (m_encoder.get_state() - m_start) * FUNC::granularity;
 		auto const pad_bits = (IE::padding::bits::value - (total_bits % IE::padding::bits::value)) % IE::padding::bits::value;
 		//CODEC_TRACE("PADDING %zu bits for %zd = %zu\n", pad_bits, total_bits, pad_bits + total_bits);
-		return pad_bits ? m_encoder(ADD_PADDING{pad_bits, IE::padding::filler::value}) : true;
+		return pad_bits ? m_encoder.padding(pad_bits, IE::padding::filler::value) : true;
 	}
 
 	padder& operator= (padder&&) = delete;

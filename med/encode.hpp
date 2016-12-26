@@ -74,7 +74,7 @@ struct length_encoder
 
 	explicit length_encoder(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
-		, m_start{ m_encoder(GET_STATE{}) }
+		, m_start{ m_encoder.get_state() }
 	{
 	}
 
@@ -82,8 +82,8 @@ struct length_encoder
 	bool operator() (placeholder::_length<DELTA> const&)
 	{
 		m_delta = DELTA;
-		m_snapshot = m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
-		return m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
+		m_snapshot = m_encoder.get_state(); //save position in encoded buffer to update with correct length
+		return m_encoder.advance(int(length_type::traits::bits));
 	}
 
 	~length_encoder()
@@ -91,7 +91,7 @@ struct length_encoder
 		//update the length with final value
 		if (m_snapshot)
 		{
-			state_type const end = m_encoder(GET_STATE{});
+			state_type const end = m_encoder.get_state();
 
 			length_type true_len;
 			true_len.set_encoded(end - m_start - m_delta);

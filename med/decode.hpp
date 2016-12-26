@@ -58,7 +58,7 @@ std::enable_if_t<is_skip_v<IE>, bool>
 inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 {
 	//TODO: need to support fixed octet_string here?
-	return func(ADVANCE_STATE{IE::traits::bits});
+	return func.advance(IE::traits::bits);
 };
 
 template <class FUNC, class IE, class IE_TYPE>
@@ -120,7 +120,7 @@ inline bool decode(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 		if (value_to_length(len_ie, len_value))
 		{
 			//CODEC_TRACE("LV[%zu] : %s", len, name<IE>());
-			auto end = func(PUSH_SIZE{ len_value });
+			auto end = func.push_size(len_value);
 			if (decode(func, ref_field(ie), unexp))
 			{
 				if (0 == end.size()) return true;
@@ -157,7 +157,7 @@ struct length_decoder
 	length_decoder(FUNC& decoder, IE& ie) noexcept
 		: m_decoder{ decoder }
 		, m_ie{ ie }
-		, m_start{ m_decoder(GET_STATE{}) }
+		, m_start{ m_decoder.get_state() }
 	{
 	}
 
@@ -168,9 +168,9 @@ struct length_decoder
 		if (decode(m_decoder, len))
 		{
 			//reduced size of the input buffer for current length and elements from the start of IE
-			decltype(len.get_encoded()) const size = (len.get_encoded() + DELTA) - (m_decoder(GET_STATE{}) - m_start);
-			CODEC_TRACE("size(%zu)=length(%zu) + %d - %d", size, len.get(), DELTA, (m_decoder(GET_STATE{}) - m_start));
-			m_size_state = m_decoder(PUSH_SIZE{size});
+			decltype(len.get_encoded()) const size = (len.get_encoded() + DELTA) - (m_decoder.get_state() - m_start);
+			CODEC_TRACE("size(%zu)=length(%zu) + %d - %d", size, len.get(), DELTA, (m_decoder.get_state() - m_start));
+			m_size_state = m_decoder.push_size(size);
 			if (m_size_state) { return true; }
 			m_decoder(error::OVERFLOW, name<get_field_type_t<IE>>(), m_size_state.size() * FUNC::granularity, size * FUNC::granularity);
 		}

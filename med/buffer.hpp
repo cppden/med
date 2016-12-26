@@ -149,6 +149,7 @@ public:
 	pointer get_start() const               { return m_start; }
 	std::size_t get_offset() const          { return begin() - get_start(); }
 	std::size_t size() const                { return end() - begin(); }
+	bool empty() const                      { return begin() >= end(); }
 
 	pointer advance(int delta)
 	{
