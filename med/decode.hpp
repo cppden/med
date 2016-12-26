@@ -42,11 +42,11 @@ template <class FUNC, class IE, class IE_TYPE>
 std::enable_if_t<is_read_only_v<IE>, bool>
 inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 {
-	if (func(PUSH_STATE{}))
+	if (func.push_state())
 	{
 		if (func(ie, ie_type))
 		{
-			func(POP_STATE{});
+			func.pop_state();
 			return true;
 		}
 	}

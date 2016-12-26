@@ -31,9 +31,9 @@ struct octet_encoder
 
 	//state
 	auto get_state() const                                   { return ctx.buffer().get_state(); }
-	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
+	void set_state(state_type const& st)                     { ctx.buffer().set_state(st); }
 	template <class IE>
-	bool operator() (SET_STATE const&, IE const& ie)
+	bool set_state(IE const& ie)
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
@@ -53,8 +53,10 @@ struct octet_encoder
 		}
 		return false;
 	}
-	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
-	bool operator() (POP_STATE const&)                 { ctx.buffer().pop_state(); return true; }
+
+	bool push_state()                                  { return ctx.buffer().push_state(); }
+	void pop_state()                                   { ctx.buffer().pop_state(); }
+
 	bool advance(int bits)
 	{
 		if (ctx.buffer().advance(bits/granularity)) return true;

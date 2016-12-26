@@ -14,13 +14,6 @@ Distributed under the MIT License
 
 namespace med {
 
-//Memorize the current state of buffer if not at the end (one entry in buffer itself).
-struct PUSH_STATE {};
-//Restore the last saved state of buffer if any.
-struct POP_STATE {};
-//Reset state of buffer to the given one passed as argument.
-struct SET_STATE {};
-
 //Save current buffer state referred by id.
 //It's similar to PUSH_STATE but saved in optional storage provided by user
 //and associated with identifier for later retrieval.

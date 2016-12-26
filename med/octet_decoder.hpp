@@ -33,8 +33,8 @@ struct octet_decoder
 
 	//state
 	auto push_size(std::size_t size)                   { return ctx.buffer().push_size(size); }
-	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
-	bool operator() (POP_STATE const&)                 { ctx.buffer().pop_state(); return true; }
+	bool push_state()                                  { return ctx.buffer().push_state(); }
+	void pop_state()                                   { ctx.buffer().pop_state(); }
 	auto get_state() const                             { return ctx.buffer().get_state(); }
 	bool eof() const                                   { return ctx.buffer().empty(); }
 	bool advance(int bits)

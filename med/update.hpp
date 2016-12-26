@@ -22,7 +22,7 @@ inline bool update(FUNC&& func, IE const& ie)
 {
 	static_assert(has_ie_type<IE>(), "IE IS EXPECTED");
 	CODEC_TRACE("update %s", name<typename IE::ie_type>());
-	return func(SET_STATE{}, ie) && sl::encode<IE>(func, ie, typename IE::ie_type{});
+	return func.set_state(ie) && sl::encode<IE>(func, ie, typename IE::ie_type{});
 }
 
 }	//end: namespace med

@@ -242,17 +242,17 @@ struct set_enc_imp<void>
 	static constexpr bool encode(TO&, FUNC&)       { return true; }
 };
 
-template <class T, class FUNC, class STATE>
+template <class T, class FUNC>
 std::enable_if_t<std::is_base_of<PRIMITIVE, typename T::ie_type>::value>
-constexpr pass_state(FUNC&, STATE const&)
+constexpr pop_state(FUNC&&)
 {
 }
 
-template <class T, class FUNC, class STATE>
+template <class T, class FUNC>
 std::enable_if_t<std::is_base_of<CONTAINER, typename T::ie_type>::value>
-inline pass_state(FUNC& func, STATE const& state)
+inline pop_state(FUNC&& func)
 {
-	func(state);
+	func.pop_state();
 }
 
 }	//end: namespace sl
@@ -272,12 +272,12 @@ struct set : container<IES...>
 	template <class DECODER, class UNEXP>
 	bool decode(DECODER& decoder, UNEXP& unexp)
 	{
-		while (decoder(PUSH_STATE{}))
+		while (decoder.push_state())
 		{
 			header_type header;
 			if (med::decode(decoder, header, unexp))
 			{
-				sl::pass_state<header_type>(decoder, POP_STATE{});
+				sl::pop_state<header_type>(decoder);
 				CODEC_TRACE("tag=%#zx", get_tag(header));
 				if (!sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header))
 				{
@@ -286,7 +286,7 @@ struct set : container<IES...>
 			}
 			else
 			{
-				decoder(POP_STATE{});
+				decoder.pop_state();
 				decoder(error::SUCCESS);
 				break;
 			}

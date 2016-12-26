@@ -47,7 +47,7 @@ template <class IE, class FUNC, class TAG>
 std::enable_if_t<is_read_only_v<typename IE::tag_type>>
 inline clear_tag(FUNC& func, TAG& vtag)
 {
-	func(POP_STATE{});
+	func.pop_state();
 	vtag.clear();
 }
 
@@ -75,7 +75,7 @@ struct seq_dec_imp<std::enable_if_t<
 		if (!vtag)
 		{
 			//save state before decoding a tag
-			if (func(PUSH_STATE{}))
+			if (func.push_state())
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
@@ -122,7 +122,7 @@ struct seq_dec_imp<std::enable_if_t<
 		if (vtag)
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func(POP_STATE{}); //restore state
+			func.pop_state(); //restore state
 			vtag.clear();
 		}
 
@@ -158,7 +158,7 @@ struct seq_dec_imp<std::enable_if_t<
 			if (vtag)
 			{
 				CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-				func(POP_STATE{}); //restore state
+				func.pop_state(); //restore state
 				vtag.clear();
 			}
 
@@ -183,7 +183,7 @@ struct seq_dec_imp<std::enable_if_t<
 
 		if (!vtag)
 		{
-			if (func(PUSH_STATE{}))
+			if (func.push_state())
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
@@ -210,7 +210,7 @@ struct seq_dec_imp<std::enable_if_t<
 				return false;
 			}
 
-			if (func(PUSH_STATE{}))
+			if (func.push_state())
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
@@ -233,7 +233,7 @@ struct seq_dec_imp<std::enable_if_t<
 		{
 			if (!vtag)
 			{
-				func(POP_STATE{}); //restore state
+				func.pop_state(); //restore state
 				func(error::SUCCESS); //clear error
 			}
 			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
@@ -264,7 +264,7 @@ struct seq_dec_imp<std::enable_if_t<
 		if (vtag)
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func(POP_STATE{}); //restore state
+			func.pop_state(); //restore state
 			vtag.clear();
 		}
 
@@ -317,7 +317,7 @@ struct seq_dec_imp<
 		if (vtag)
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func(POP_STATE{}); //restore state
+			func.pop_state(); //restore state
 			vtag.clear();
 		}
 
@@ -368,7 +368,7 @@ struct seq_dec_imp<
 		if (vtag)
 		{
 			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func(POP_STATE{}); //restore state
+			func.pop_state(); //restore state
 			vtag.clear();
 		}
 

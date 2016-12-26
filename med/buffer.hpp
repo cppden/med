@@ -125,7 +125,7 @@ public:
 		if (size() > 0)
 		{
 			m_store = m_state;
-			CODEC_TRACE("PUSH_STATE: %s", toString());
+			CODEC_TRACE("push_state: %s", toString());
 			return true;
 		}
 		else
@@ -141,7 +141,7 @@ public:
 		{
 			m_state = m_store;
 			m_store.reset();
-			CODEC_TRACE("POP_STATE: %s", toString());
+			CODEC_TRACE("pop_state: %s", toString());
 		}
 	}
 

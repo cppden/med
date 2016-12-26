@@ -97,9 +97,9 @@ struct length_encoder
 			true_len.set_encoded(end - m_start - m_delta);
 			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", true_len.get(), m_delta);
 
-			m_encoder(SET_STATE{}, m_snapshot);
+			m_encoder.set_state(m_snapshot);
 			encode(m_encoder, true_len);
-			m_encoder(SET_STATE{}, end);
+			m_encoder.set_state(end);
 		}
 	}
 
