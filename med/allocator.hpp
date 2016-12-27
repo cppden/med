@@ -66,4 +66,30 @@ private:
 };
 
 
+template <class, class Enable = void >
+struct is_allocator : std::false_type { };
+template <class T>
+struct is_allocator<T,
+	std::enable_if_t<
+		std::is_same<std::true_type*, decltype(std::declval<T>().template allocate<std::true_type>()) >::value
+	>
+> : std::true_type { };
+template <class T>
+constexpr bool is_allocator_v = is_allocator<T>::value;
+
+template <class T>
+inline auto get_allocator_ptr(T& t) -> std::enable_if_t<is_allocator_v<T>, T*>
+{
+	return &t;
+}
+template <class T>
+inline auto get_allocator_ptr(T& t) -> std::add_pointer_t<decltype(t.get_allocator())>
+{
+	auto& allocator = t.get_allocator();
+	//static_assert(std::is_same<T*, decltype(allocator.template allocate<T>())>::value, "");
+	static_assert(is_allocator<decltype(allocator)>::value, "IS NOT ALLOCATOR!");
+	return &allocator;
+}
+
+
 } //end: namespace med

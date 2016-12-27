@@ -38,22 +38,8 @@ struct ies<>
 namespace sl {
 
 //-----------------------------------------------------------------------
-//TODO: remove arg use IE directly (type only - template, then make container.arity a constexpr)
 template <class IE>
-std::enable_if_t<!has_multi_field_v<IE>, std::size_t>
-constexpr field_arity(IE const&)            { return 1; }
-template <class IE>
-std::enable_if_t<has_multi_field_v<IE>, std::size_t>
-constexpr field_arity(IE const&)            { return IE::max; }
-
-//-----------------------------------------------------------------------
-template <class IE>
-std::enable_if_t<!has_multi_field_v<IE>, bool>
-inline is_field_set(IE const& ie)           { return ie.ref_field().is_set(); }
-
-template <class IE>
-std::enable_if_t<has_multi_field_v<IE>, bool>
-inline is_field_set(IE const& ie)           { return ie.begin()->is_set(); }
+constexpr bool is_field_set(IE const& ie)   { return ie.ref_field().is_set(); }
 
 //NOTE! check stops at 1st mandatory since it's optimal and more flexible
 template <class Enable, class... IES>
@@ -85,16 +71,7 @@ struct seq_is_set_imp<void>
 
 //-----------------------------------------------------------------------
 template <class IE>
-std::enable_if_t<!has_multi_field_v<IE>>
-inline field_clear(IE& ie)           { ie.ref_field().clear(); }
-
-template <class IE>
-std::enable_if_t<has_multi_field_v<IE>>
-inline field_clear(IE& ie)
-{
-	//TODO: clear all, not the 1st only
-	ie.template ref_field<0>().clear();
-}
+constexpr void field_clear(IE& ie)          { ie.ref_field().clear(); }
 
 template <class... IES>
 struct seq_clear;
@@ -114,14 +91,11 @@ struct seq_clear<>
 };
 
 //-----------------------------------------------------------------------
-template <class Enable, class... IES>
-struct container_for_imp;
-
 template <class... IES>
-using container_for = container_for_imp<void, IES...>;
+struct container_for;
 
 template <class IE, class... IES>
-struct container_for_imp<std::enable_if_t<!has_multi_field_v<IE>>, IE, IES...>
+struct container_for<IE, IES...>
 {
 	template <class TO>
 	static inline std::size_t calc_length(TO const& to)
@@ -132,22 +106,8 @@ struct container_for_imp<std::enable_if_t<!has_multi_field_v<IE>>, IE, IES...>
 	}
 };
 
-template <class IE, class... IES>
-struct container_for_imp<std::enable_if_t<has_multi_field_v<IE>>, IE, IES...>
-{
-	template <class TO>
-	static inline std::size_t calc_length(TO const& to)
-	{
-		IE const& ie = to;
-		CODEC_TRACE("calc_length[%s]*", name<IE>());
-		std::size_t len = 0;
-		for (auto& v : ie) { len += med::get_length<IE>(v); }
-		return len + container_for<IES...>::calc_length(to);
-	}
-};
-
 template <>
-struct container_for_imp<void>
+struct container_for<>
 {
 	template <class TO>
 	static constexpr std::size_t calc_length(TO const&)
@@ -169,44 +129,20 @@ public:
 	{
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
+		//using IE = remove_cref_t<decltype(ie)>;
 		return ie.ref_field();
-	}
-
-	template <class FIELD>
-	FIELD* ref(std::size_t index)
-	{
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(has_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
-		return ie.get_field(index);
 	}
 
 	template <class FIELD>
 	decltype(auto) get() const
 	{
 		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
+		//using IE = remove_cref_t<decltype(ie)>;
 		return get_field<FIELD>(ie);
 	}
 
 	template <class FIELD>
-	decltype(auto) get(std::size_t index) const
-	{
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(has_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
-		return get_field<FIELD>(ie, index);
-	}
-
-
-	template <class FIELD>
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
-
-	template <class FIELD>
-	std::size_t arity() const               { return sl::field_arity(m_ies.template as<FIELD>()); }
 
 	void clear()                            { sl::seq_clear<IES...>::clear(this->m_ies); }
 	bool is_set() const                     { return sl::seq_is_set<IES...>::is_set(this->m_ies); }
@@ -215,10 +151,6 @@ public:
 	auto field()                            { return make_accessor(*this); }
 	auto field() const                      { return make_accessor(*this); }
 	auto cfield() const                     { return make_accessor(*this); }
-
-	auto field(std::size_t index)           { return make_accessor(*this, index); }
-	auto field(std::size_t index) const     { return make_accessor(*this, index); }
-	auto cfield(std::size_t index) const    { return make_accessor(*this, index); }
 
 protected:
 	struct ies_t : IES...

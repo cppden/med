@@ -25,11 +25,10 @@ struct seq_dec_imp;
 template <class... IES>
 using seq_decoder = seq_dec_imp<void, IES...>;
 
-//single-instance mandatory field
+//mandatory field
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& !is_optional_v<IE>
+		!is_optional_v<IE>
 	>,
 	IE, IES...>
 {
@@ -58,11 +57,10 @@ inline clear_tag(FUNC&, TAG& vtag)
 	vtag.clear();
 }
 
-//single-instance optional field with a tag
+//optional field with a tag
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& is_optional_v<IE>
+		is_optional_v<IE>
 		&& !has_optional_type<IE>::value
 		&& has_tag_type_v<IE>
 	>,
@@ -105,11 +103,10 @@ struct seq_dec_imp<std::enable_if_t<
 	}
 };
 
-//single-instance optional field without a tag (optional by end of data)
+//optional field without a tag (optional by end of data)
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& is_optional_v<IE>
+		is_optional_v<IE>
 		&& !has_tag_type_v<IE>
 		&& !has_optional_type<IE>::value
 	>,
@@ -137,11 +134,10 @@ struct seq_dec_imp<std::enable_if_t<
 	}
 };
 
-//single-instance optional field with a presence-functor
+//optional field with a presence-functor
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& is_optional_v<IE>
+		is_optional_v<IE>
 		&& has_optional_type<IE>::value
 	>,
 	IE, IES...>
@@ -168,241 +164,6 @@ struct seq_dec_imp<std::enable_if_t<
 	}
 };
 
-//multi-instance optional or mandatory field with a tag
-template <class IE, class... IES>
-struct seq_dec_imp<std::enable_if_t<
-		has_multi_field_v<IE>
-		&& has_tag_type_v<IE>
-	>,
-	IE, IES...>
-{
-	template <class TO, class FUNC, class UNEXP, class TAG>
-	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
-	{
-		IE& ie = to;
-
-		if (!vtag)
-		{
-			if (func.push_state())
-			{
-				if (auto const tag = decode_tag<typename IE::tag_type>(func))
-				{
-					vtag.set_encoded(tag.get_encoded());
-					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-				}
-				else
-				{
-					return false;
-				}
-			}
-		}
-
-		while (IE::tag_type::match(vtag.get_encoded()))
-		{
-			CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<IE>());
-
-			if (auto* field = func.allocate(ie))
-			{
-				if (!med::decode(func, *field, unexp)) return false;
-			}
-			else
-			{
-				return false;
-			}
-
-			if (func.push_state())
-			{
-				if (auto const tag = decode_tag<typename IE::tag_type>(func))
-				{
-					vtag.set_encoded(tag.get_encoded());
-					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-				}
-				else
-				{
-					vtag.clear();
-				}
-			}
-			else
-			{
-				vtag.clear();
-				break;
-			}
-		}
-
-		if (check_arity<IE>(field_count(ie)))
-		{
-			if (!vtag)
-			{
-				func.pop_state(); //restore state
-				func(error::SUCCESS); //clear error
-			}
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
-			return false;
-		}
-	}
-};
-
-//multi-instance field without tag, counter or count-getter
-template <class IE, class... IES>
-struct seq_dec_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
-		!has_tag_type_v<IE> &&
-		!has_count_getter_v<IE> &&
-		!is_counter_v<IE>
-	>,
-	IE, IES...>
-{
-	template <class TO, class FUNC, class UNEXP, class TAG>
-	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
-	{
-		IE& ie = to;
-
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func.pop_state(); //restore state
-			vtag.clear();
-		}
-
-		CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
-
-		std::size_t count = 0;
-		while (!func.eof() && count < IE::max)
-		{
-			if (auto* field = func.allocate(ie))
-			{
-				if (!sl::decode<IE>(func, *field, typename IE::ie_type{}, unexp)) return false;
-			}
-			else
-			{
-				return false;
-			}
-			++count;
-		}
-
-		if (check_arity<IE>(count))
-		{
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-			return false;
-		}
-	}
-};
-
-
-//multi-instance field without tag with count-getter
-template <class IE, class... IES>
-struct seq_dec_imp<
-	std::enable_if_t<
-		has_multi_field_v<IE> &&
-		!has_tag_type_v<IE> &&
-		has_count_getter_v<IE>
-	>,
-	IE, IES...
->
-{
-	template <class TO, class FUNC, class UNEXP, class TAG>
-	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
-	{
-		CODEC_TRACE("[%s]...", name<IE>());
-		IE& ie = to;
-
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func.pop_state(); //restore state
-			vtag.clear();
-		}
-
-		std::size_t count = typename IE::count_getter{}(to);
-
-		CODEC_TRACE("[%s]*%zu", name<IE>(), count);
-		while (count--)
-		{
-			if (auto* field = func.allocate(ie))
-			{
-				if (!med::decode(func, *field, unexp)) return false;
-			}
-			else
-			{
-				return false;
-			}
-		}
-
-		if (check_arity<IE>(field_count(ie)))
-		{
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
-			return false;
-		}
-	}
-};
-
-//multi-instance field without tag with counter
-template <class IE, class... IES>
-struct seq_dec_imp<
-	std::enable_if_t<
-		has_multi_field_v<IE> &&
-		!has_tag_type_v<IE> &&
-		is_counter_v<IE>
-	>,
-	IE, IES...
->
-{
-	template <class TO, class FUNC, class UNEXP, class TAG>
-	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
-	{
-		CODEC_TRACE("[%s]...", name<IE>());
-		IE& ie = to;
-
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func.pop_state(); //restore state
-			vtag.clear();
-		}
-
-		typename IE::counter_type counter_ie;
-		if (!med::decode(func, counter_ie)) return false;
-
-		auto count = counter_ie.get_encoded();
-		if (check_arity<IE>(count))
-		{
-			while (count--)
-			{
-				CODEC_TRACE("[%s]*%zu", name<IE>(), count);
-
-				if (auto* field = func.allocate(ie))
-				{
-					if (!med::decode(func, *field, unexp)) return false;
-				}
-				else
-				{
-					return false;
-				}
-			}
-
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-			return false;
-		}
-	}
-};
-
-
 template <>
 struct seq_dec_imp<void>
 {
@@ -416,9 +177,9 @@ struct seq_enc_imp;
 template <class... IES>
 using seq_encoder = seq_enc_imp<void, IES...>;
 
+//mandatory field w/o setter
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		!has_multi_field_v<IE> &&
 		!is_optional_v<IE> &&
 		!has_setter_type_v<IE>
 	>,
@@ -441,9 +202,9 @@ struct seq_enc_imp<std::enable_if_t<
 	}
 };
 
+//mandatory field w/ setter
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		!has_multi_field_v<IE> &&
 		!is_optional_v<IE> &&
 		has_setter_type_v<IE>
 	>,
@@ -467,9 +228,9 @@ struct seq_enc_imp<std::enable_if_t<
 	}
 };
 
+//optional field
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		!has_multi_field_v<IE> &&
 		is_optional_v<IE>
 	>,
 	IE, IES...>
@@ -491,104 +252,6 @@ struct seq_enc_imp<std::enable_if_t<
 };
 
 
-//multi-field w/o counter
-template <class IE, class... IES>
-struct seq_enc_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
-		!is_counter_v<IE>
-	>,
-	IE, IES...>
-{
-	template <class TO, class FUNC>
-	static inline bool encode(TO const& to, FUNC&& func)
-	{
-		IE const& ie = to;
-		int const count = med::encode_multi(func, ie);
-		if (count < 0) return false;
-
-		if (check_arity<IE>(count))
-		{
-			return seq_encoder<IES...>::encode(to, func);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-			return false;
-		}
-	}
-};
-
-//mandatory multi-field w/ counter
-template <class IE, class... IES>
-struct seq_enc_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
-		is_counter_v<IE> &&
-		!is_optional_v<IE>
-	>,
-	IE, IES...>
-{
-	template <class TO, class FUNC>
-	static inline bool encode(TO const& to, FUNC&& func)
-	{
-		IE const& ie = to;
-		std::size_t const count = field_count(ie);
-		CODEC_TRACE("CV[%s]=%zu", name<IE>(), count);
-		if (check_arity<IE>(count))
-		{
-			typename IE::counter_type counter_ie;
-			counter_ie.set_encoded(count);
-
-			return med::encode(func, counter_ie)
-				&& med::encode_multi(func, ie) == (int)count
-				&& seq_encoder<IES...>::encode(to, func);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-		}
-		return false;
-	}
-};
-
-//optional multi-field w/ counter
-template <class IE, class... IES>
-struct seq_enc_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
-		is_counter_v<IE> &&
-		is_optional_v<IE>
-	>,
-	IE, IES...>
-{
-	template <class TO, class FUNC>
-	static inline bool encode(TO const& to, FUNC&& func)
-	{
-		IE const& ie = to;
-		std::size_t const count = field_count(ie);
-		CODEC_TRACE("CV[%s]=%zu", name<IE>(), count);
-		if (check_arity<IE>(count))
-		{
-			if (count > 0)
-			{
-				typename IE::counter_type counter_ie;
-				counter_ie.set_encoded(count);
-
-				return med::encode(func, counter_ie)
-					&& med::encode_multi(func, ie) == (int)count
-					&& seq_encoder<IES...>::encode(to, func);
-			}
-			else
-			{
-				return seq_encoder<IES...>::encode(to, func);
-			}
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-		}
-		return false;
-	}
-};
-
 template <>
 struct seq_enc_imp<void>
 {
@@ -599,7 +262,7 @@ struct seq_enc_imp<void>
 	}
 };
 
-}	//end: namespace sl
+} //end: namespace sl
 
 template <class ...IES>
 struct sequence : container<IES...>
@@ -613,11 +276,9 @@ struct sequence : container<IES...>
 	template <class DECODER, class UNEXP>
 	bool decode(DECODER&& decoder, UNEXP& unexp)
 	{
-		value<32> vtag; //todo: any clue from sequence?
+		value<32> vtag; //TODO: any hint from sequence?
 		return sl::seq_decoder<IES...>::decode(this->m_ies, decoder, unexp, vtag);
 	}
 };
 
-
-}
-
+} //end: namespace med

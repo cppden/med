@@ -9,9 +9,9 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "allocator.hpp"
 #include "buffer.hpp"
 #include "error_context.hpp"
-#include "allocator.hpp"
 
 namespace med {
 
@@ -19,11 +19,11 @@ template < class BUFFER = buffer<uint8_t const*>, class ALLOCATOR = allocator >
 class decoder_context
 {
 public:
-	using buffer_type = BUFFER;
 	using allocator_type = ALLOCATOR;
+	using buffer_type = BUFFER;
 
 	explicit decoder_context(const void* data = nullptr, uint32_t size = 0)
-		: m_allocator{m_errCtx}
+		: m_allocator{ m_errCtx }
 	{
 		reset(data, size);
 	}

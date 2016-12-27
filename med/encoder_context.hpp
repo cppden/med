@@ -10,16 +10,18 @@ Distributed under the MIT License
 #pragma once
 
 
+#include "allocator.hpp"
 #include "buffer.hpp"
 #include "error_context.hpp"
 #include "debug.hpp"
 
 namespace med {
 
-template < class BUFFER = buffer<uint8_t*> >
+template < class BUFFER = buffer<uint8_t*>, class ALLOCATOR = allocator >
 class encoder_context
 {
 public:
+	using allocator_type = ALLOCATOR;
 	using buffer_type = BUFFER;
 	using state_t = typename buffer_type::state_type;
 
@@ -34,7 +36,8 @@ public:
 	enum { snapshot_size = sizeof(snapshot_s) };
 
 	encoder_context(uint8_t* data, std::size_t size, void* snap_data = nullptr, std::size_t snap_size = 0)
-		: m_snapshot{ static_cast<snapshot_s*>(snap_data) }
+		: m_allocator{ m_errCtx }
+		, m_snapshot{ static_cast<snapshot_s*>(snap_data) }
 		, m_max_snapshots{ static_cast<uint16_t>(snap_size/snapshot_size) }
 	{
 		reset(data, size);
@@ -58,6 +61,7 @@ public:
 	buffer_type& buffer()                   { return m_buffer; }
 	error_context& error_ctx()              { return m_errCtx; }
 	explicit operator bool() const          { return static_cast<bool>(m_errCtx); }
+	allocator_type& get_allocator()         { return m_allocator; }
 
 	void reset(void* data = nullptr, std::size_t size = 0)
 	{
@@ -111,6 +115,7 @@ private:
 
 	error_context  m_errCtx;
 	buffer_type    m_buffer;
+	allocator_type m_allocator;
 
 	snapshot_s*    m_snapshot;
 	uint16_t const m_max_snapshots;

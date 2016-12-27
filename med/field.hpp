@@ -86,11 +86,4 @@ inline get_field(IE const& ie)
 	return ie.ref_field();
 };
 
-//read-only access mandatory or optional multi-field
-template <class FIELD, class IE>
-inline field_proxy<FIELD const> get_field(IE const& ie, std::size_t index)
-{
-	return field_proxy<FIELD const>{ ie.get_field(index) };
-};
-
 }	//end: namespace med
