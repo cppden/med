@@ -26,12 +26,13 @@ struct length_t
 
 template <class, class Enable = void>
 struct has_length_type : std::false_type { };
-
 template <class T>
 struct has_length_type<T, void_t<typename T::length_type>> : std::true_type { };
 
 template <class T>
 using is_length = has_length_type<T>;
+template <class T>
+constexpr bool is_length_v = is_length<T>::value;
 
 namespace detail {
 
@@ -46,7 +47,6 @@ constexpr std::size_t get_length(FIELD const& field)
 {
 	return detail::length_getter<FIELD>::get(field);
 }
-
 template <class WRAPPER, class FIELD, typename Enable = std::enable_if_t<!std::is_same<WRAPPER, FIELD>::value>>
 constexpr std::size_t get_length(FIELD const& field)
 {

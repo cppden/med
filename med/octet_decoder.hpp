@@ -45,31 +45,11 @@ struct octet_decoder
 	}
 
 	//errors
-	void operator() (error e, char const* psz = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
+	template <typename... ARGS>
+	void operator() (error e, ARGS&&... args)
 	{
+		ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...);
 		//TODO: use ctx.buffer().get_offset()
-		ctx.error_ctx().set_error(e, psz, val0, val1, val2);
-	}
-
-	template <class MIE>
-	typename MIE::field_type* allocate(MIE& mie)
-	{
-		if (auto* pf = mie.push_back())
-		{
-			return pf;
-		}
-		if (mie.count() < MIE::max)
-		{
-			if (auto* pv = ctx.get_allocator().template allocate<typename MIE::field_value>())
-			{
-				return mie.push_back(*pv);
-			}
-		}
-		else
-		{
-			ctx.error_ctx().set_error(error::EXTRA_IE, name<typename MIE::field_type>(), MIE::max);
-		}
-		return nullptr;
 	}
 
 	//IE_VALUE

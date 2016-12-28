@@ -24,14 +24,11 @@ struct octet_encoder
 
 	ENC_CTX& ctx;
 
-	explicit octet_encoder(ENC_CTX& ctx_)
-		: ctx(ctx_)
-	{
-	}
+	explicit octet_encoder(ENC_CTX& ctx_) : ctx{ ctx_ } { }
 
 	//state
-	auto get_state() const                                   { return ctx.buffer().get_state(); }
-	void set_state(state_type const& st)                     { ctx.buffer().set_state(st); }
+	auto get_state() const                              { return ctx.buffer().get_state(); }
+	void set_state(state_type const& st)                { ctx.buffer().set_state(st); }
 	template <class IE>
 	bool set_state(IE const& ie)
 	{
@@ -54,8 +51,8 @@ struct octet_encoder
 		return false;
 	}
 
-	bool push_state()                                  { return ctx.buffer().push_state(); }
-	void pop_state()                                   { ctx.buffer().pop_state(); }
+	bool push_state()                                   { return ctx.buffer().push_state(); }
+	void pop_state()                                    { ctx.buffer().pop_state(); }
 
 	bool advance(int bits)
 	{
@@ -69,12 +66,13 @@ struct octet_encoder
 		ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, bits);
 		return false;
 	}
-	void operator() (SNAPSHOT const& ss)               { ctx.snapshot(ss); }
+	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
 	//errors
-	void operator() (error e, char const* psz = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
+	template <typename... ARGS>
+	void operator() (error e, ARGS&&... args)
 	{
-		ctx.error_ctx().set_error(e, psz, val0, val1, val2);
+		ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...);
 	}
 
 	//IE_VALUE

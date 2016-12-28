@@ -38,22 +38,20 @@ struct ies<>
 namespace sl {
 
 //-----------------------------------------------------------------------
-//TODO: remove arg use IE directly (type only - template, then make container.arity a constexpr)
 template <class IE>
-std::enable_if_t<!has_multi_field_v<IE>, std::size_t>
-constexpr field_arity(IE const&)            { return 1; }
+std::enable_if_t<!is_multi_field_v<IE>, std::size_t>
+constexpr field_arity()                     { return 1; }
 template <class IE>
-std::enable_if_t<has_multi_field_v<IE>, std::size_t>
-constexpr field_arity(IE const&)            { return IE::max; }
+std::enable_if_t<is_multi_field_v<IE>, std::size_t>
+constexpr field_arity()                     { return IE::max; }
 
 //-----------------------------------------------------------------------
 template <class IE>
-std::enable_if_t<!has_multi_field_v<IE>, bool>
+std::enable_if_t<!is_multi_field_v<IE>, bool>
 inline is_field_set(IE const& ie)           { return ie.ref_field().is_set(); }
-
 template <class IE>
-std::enable_if_t<has_multi_field_v<IE>, bool>
-inline is_field_set(IE const& ie)           { return ie.begin()->is_set(); }
+std::enable_if_t<is_multi_field_v<IE>, bool>
+inline is_field_set(IE const& ie)           { return ie.is_set(); }
 
 //NOTE! check stops at 1st mandatory since it's optimal and more flexible
 template <class Enable, class... IES>
@@ -85,11 +83,11 @@ struct seq_is_set_imp<void>
 
 //-----------------------------------------------------------------------
 template <class IE>
-std::enable_if_t<!has_multi_field_v<IE>>
+std::enable_if_t<!is_multi_field_v<IE>>
 inline field_clear(IE& ie)           { ie.ref_field().clear(); }
 
 template <class IE>
-std::enable_if_t<has_multi_field_v<IE>>
+std::enable_if_t<is_multi_field_v<IE>>
 inline field_clear(IE& ie)
 {
 	//TODO: clear all, not the 1st only
@@ -121,7 +119,7 @@ template <class... IES>
 using container_for = container_for_imp<void, IES...>;
 
 template <class IE, class... IES>
-struct container_for_imp<std::enable_if_t<!has_multi_field_v<IE>>, IE, IES...>
+struct container_for_imp<std::enable_if_t<!is_multi_field_v<IE>>, IE, IES...>
 {
 	template <class TO>
 	static inline std::size_t calc_length(TO const& to)
@@ -133,7 +131,7 @@ struct container_for_imp<std::enable_if_t<!has_multi_field_v<IE>>, IE, IES...>
 };
 
 template <class IE, class... IES>
-struct container_for_imp<std::enable_if_t<has_multi_field_v<IE>>, IE, IES...>
+struct container_for_imp<std::enable_if_t<is_multi_field_v<IE>>, IE, IES...>
 {
 	template <class TO>
 	static inline std::size_t calc_length(TO const& to)
@@ -170,7 +168,7 @@ public:
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
+		static_assert(!is_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
 		return ie.ref_field();
 	}
 
@@ -179,7 +177,7 @@ public:
 	{
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(has_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
+		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
 		return ie.get_field(index);
 	}
 
@@ -188,7 +186,7 @@ public:
 	{
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!has_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
+		static_assert(!is_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
 		return get_field<FIELD>(ie);
 	}
 
@@ -197,7 +195,7 @@ public:
 	{
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(has_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
+		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
 		return get_field<FIELD>(ie, index);
 	}
 

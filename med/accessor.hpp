@@ -12,7 +12,7 @@ Distributed under the MIT License
 #include <type_traits>
 #include <limits>
 
-#include "field.hpp"
+#include "field_proxy.hpp"
 
 namespace med {
 

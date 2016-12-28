@@ -28,8 +28,8 @@ using seq_decoder = seq_dec_imp<void, IES...>;
 //single-instance mandatory field
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& !is_optional_v<IE>
+		!is_multi_field_v<IE> &&
+		!is_optional_v<IE>
 	>,
 	IE, IES...>
 {
@@ -61,10 +61,10 @@ inline clear_tag(FUNC&, TAG& vtag)
 //single-instance optional field with a tag
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& is_optional_v<IE>
-		&& !has_optional_type<IE>::value
-		&& has_tag_type_v<IE>
+		!is_multi_field_v<IE> &&
+		is_optional_v<IE> &&
+		!has_optional_type<IE>::value &&
+		has_tag_type_v<IE>
 	>,
 	IE, IES...>
 {
@@ -108,10 +108,10 @@ struct seq_dec_imp<std::enable_if_t<
 //single-instance optional field without a tag (optional by end of data)
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& is_optional_v<IE>
-		&& !has_tag_type_v<IE>
-		&& !has_optional_type<IE>::value
+		!is_multi_field_v<IE> &&
+		is_optional_v<IE> &&
+		!has_tag_type_v<IE> &&
+		!has_optional_type<IE>::value
 	>,
 	IE, IES...>
 {
@@ -140,9 +140,9 @@ struct seq_dec_imp<std::enable_if_t<
 //single-instance optional field with a presence-functor
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		!has_multi_field_v<IE>
-		&& is_optional_v<IE>
-		&& has_optional_type<IE>::value
+		!is_multi_field_v<IE> &&
+		is_optional_v<IE> &&
+		has_optional_type<IE>::value
 	>,
 	IE, IES...>
 {
@@ -171,8 +171,8 @@ struct seq_dec_imp<std::enable_if_t<
 //multi-instance optional or mandatory field with a tag
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		has_multi_field_v<IE>
-		&& has_tag_type_v<IE>
+		is_multi_field_v<IE> &&
+		has_tag_type_v<IE>
 	>,
 	IE, IES...>
 {
@@ -201,7 +201,7 @@ struct seq_dec_imp<std::enable_if_t<
 		{
 			CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<IE>());
 
-			if (auto* field = func.allocate(ie))
+			if (auto* field = ie.push_back(func))
 			{
 				if (!med::decode(func, *field, unexp)) return false;
 			}
@@ -249,7 +249,7 @@ struct seq_dec_imp<std::enable_if_t<
 //multi-instance field without tag, counter or count-getter
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
+		is_multi_field_v<IE> &&
 		!has_tag_type_v<IE> &&
 		!has_count_getter_v<IE> &&
 		!is_counter_v<IE>
@@ -273,7 +273,7 @@ struct seq_dec_imp<std::enable_if_t<
 		std::size_t count = 0;
 		while (!func.eof() && count < IE::max)
 		{
-			if (auto* field = func.allocate(ie))
+			if (auto* field = ie.push_back(func))
 			{
 				if (!sl::decode<IE>(func, *field, typename IE::ie_type{}, unexp)) return false;
 			}
@@ -301,7 +301,7 @@ struct seq_dec_imp<std::enable_if_t<
 template <class IE, class... IES>
 struct seq_dec_imp<
 	std::enable_if_t<
-		has_multi_field_v<IE> &&
+		is_multi_field_v<IE> &&
 		!has_tag_type_v<IE> &&
 		has_count_getter_v<IE>
 	>,
@@ -326,7 +326,7 @@ struct seq_dec_imp<
 		CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 		while (count--)
 		{
-			if (auto* field = func.allocate(ie))
+			if (auto* field = ie.push_back(func))
 			{
 				if (!med::decode(func, *field, unexp)) return false;
 			}
@@ -352,7 +352,7 @@ struct seq_dec_imp<
 template <class IE, class... IES>
 struct seq_dec_imp<
 	std::enable_if_t<
-		has_multi_field_v<IE> &&
+		is_multi_field_v<IE> &&
 		!has_tag_type_v<IE> &&
 		is_counter_v<IE>
 	>,
@@ -382,7 +382,7 @@ struct seq_dec_imp<
 			{
 				CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 
-				if (auto* field = func.allocate(ie))
+				if (auto* field = ie.push_back(func))
 				{
 					if (!med::decode(func, *field, unexp)) return false;
 				}
@@ -418,7 +418,7 @@ using seq_encoder = seq_enc_imp<void, IES...>;
 
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		!has_multi_field_v<IE> &&
+		!is_multi_field_v<IE> &&
 		!is_optional_v<IE> &&
 		!has_setter_type_v<IE>
 	>,
@@ -443,7 +443,7 @@ struct seq_enc_imp<std::enable_if_t<
 
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		!has_multi_field_v<IE> &&
+		!is_multi_field_v<IE> &&
 		!is_optional_v<IE> &&
 		has_setter_type_v<IE>
 	>,
@@ -469,7 +469,7 @@ struct seq_enc_imp<std::enable_if_t<
 
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		!has_multi_field_v<IE> &&
+		!is_multi_field_v<IE> &&
 		is_optional_v<IE>
 	>,
 	IE, IES...>
@@ -494,7 +494,7 @@ struct seq_enc_imp<std::enable_if_t<
 //multi-field w/o counter
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
+		is_multi_field_v<IE> &&
 		!is_counter_v<IE>
 	>,
 	IE, IES...>
@@ -521,7 +521,7 @@ struct seq_enc_imp<std::enable_if_t<
 //mandatory multi-field w/ counter
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
+		is_multi_field_v<IE> &&
 		is_counter_v<IE> &&
 		!is_optional_v<IE>
 	>,
@@ -553,7 +553,7 @@ struct seq_enc_imp<std::enable_if_t<
 //optional multi-field w/ counter
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
-		has_multi_field_v<IE> &&
+		is_multi_field_v<IE> &&
 		is_counter_v<IE> &&
 		is_optional_v<IE>
 	>,

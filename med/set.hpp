@@ -31,7 +31,7 @@ template <class... IES>
 using set_decoder = set_dec_imp<void, IES...>;
 
 template <class IE, class... IES>
-struct set_dec_imp<std::enable_if_t<!has_multi_field<IE>::value>, IE, IES...>
+struct set_dec_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class TO, class FUNC, class UNEXP, class HEADER>
 	static inline bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
@@ -73,7 +73,7 @@ struct set_dec_imp<std::enable_if_t<!has_multi_field<IE>::value>, IE, IES...>
 };
 
 template <class IE, class... IES>
-struct set_dec_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
+struct set_dec_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class TO, class FUNC, class UNEXP, class HEADER>
 	static inline bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
@@ -82,7 +82,7 @@ struct set_dec_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
 		{
 			IE& ie = static_cast<IE&>(to);
 			CODEC_TRACE("[%s]*", name<typename IE::field_type>());
-			if (auto* field = func.allocate(ie))
+			if (auto* field = ie.push_back(func))
 			{
 				return med::decode(func, *field, unexp);
 			}
@@ -164,7 +164,7 @@ inline continue_encode(TO const&, FUNC& func)
 
 
 template <class IE, class... IES>
-struct set_enc_imp<std::enable_if_t<!has_multi_field<IE>::value>, IE, IES...>
+struct set_enc_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class HEADER, class TO, class FUNC>
 	static inline bool encode(TO const& to, FUNC& func)
@@ -212,7 +212,7 @@ inline int set_encode(FUNC& func, IE& ie)
 
 
 template <class IE, class... IES>
-struct set_enc_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
+struct set_enc_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class HEADER, class TO, class FUNC>
 	static inline bool encode(TO const& to, FUNC& func)

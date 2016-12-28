@@ -36,7 +36,7 @@ template <class T>
 constexpr bool is_counter_v = is_counter<T>::value;
 
 
-
+//TODO: arity should include check for max as well
 template <class IE>
 std::enable_if_t<is_optional_v<IE>, bool>
 constexpr check_arity(std::size_t count)    { return 0 == count || count >= IE::min; }
@@ -45,47 +45,42 @@ template <class IE>
 std::enable_if_t<!is_optional_v<IE>, bool>
 constexpr check_arity(std::size_t count)    { return count >= IE::min; }
 
+// user-provided functor to etract field count
 template<typename T, class Enable = void>
 struct is_count_getter : std::false_type { };
-
 template<typename T>
 struct is_count_getter<T, std::enable_if_t<
 		std::is_unsigned< decltype( std::declval<T>()(std::false_type{}) ) >::value
 	>
 > : std::true_type { };
-
-template <class FIELD>
-std::enable_if_t<has_multi_field<FIELD>::value, std::size_t>
-inline field_count(FIELD const& ie)
-{
-	//return detail::get_field_count(ie, std::make_index_sequence<FIELD::max>{});
-	std::size_t count = 0;
-	for (auto it = ie.begin(), ite = ie.end(); it != ite; ++it)
-	{
-		++count;
-	}
-	return count;
-}
-
-template <class FIELD>
-std::enable_if_t<!has_multi_field<FIELD>::value, std::size_t>
-inline field_count(FIELD const& field)
-{
-	return field.is_set() ? 1 : 0;
-}
-
-// user-provided functor to etract field count
 template <class T>
 constexpr bool is_count_getter_v = is_count_getter<T>::value;
 
 
 template <class, class Enable = void >
 struct has_count_getter : std::false_type { };
-
 template <class T>
 struct has_count_getter<T, void_t<typename T::count_getter>> : std::true_type { };
-
 template <class T>
 constexpr bool has_count_getter_v = has_count_getter<T>::value;
+
+//T::count checker
+template <class, class Enable = void >
+struct has_count : std::false_type { };
+template <class T>
+struct has_count<T, std::enable_if_t<std::is_same<std::size_t, decltype(std::declval<std::add_const_t<T>>().count())>::value>> : std::true_type { };
+template <class T>
+constexpr bool has_count_v = has_count<T>::value;
+
+template <class FIELD>
+constexpr auto field_count(FIELD const& field) -> std::enable_if_t<!has_count_v<FIELD>, std::size_t>
+{
+	return field.is_set() ? 1 : 0;
+}
+template <class FIELD>
+constexpr auto field_count(FIELD const& field) -> std::enable_if_t<has_count_v<FIELD>, std::size_t>
+{
+	return field.count();
+}
 
 } //namespace med
