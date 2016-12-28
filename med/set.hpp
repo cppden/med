@@ -24,11 +24,14 @@ namespace med {
 namespace sl {
 
 
+template <class Enable, class... IES>
+struct set_dec_imp;
+
 template <class... IES>
-struct set_decoder;
+using set_decoder = set_dec_imp<void, IES...>;
 
 template <class IE, class... IES>
-struct set_decoder<IE, IES...>
+struct set_dec_imp<std::enable_if_t<!has_multi_field<IE>::value>, IE, IES...>
 {
 	template <class TO, class FUNC, class UNEXP, class HEADER>
 	static inline bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
@@ -69,8 +72,46 @@ struct set_decoder<IE, IES...>
 	}
 };
 
+template <class IE, class... IES>
+struct set_dec_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
+{
+	template <class TO, class FUNC, class UNEXP, class HEADER>
+	static inline bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
+	{
+		if (tag_type_t<IE>::match( get_tag(header) ))
+		{
+			IE& ie = static_cast<IE&>(to);
+			CODEC_TRACE("[%s]*", name<typename IE::field_type>());
+			if (auto* field = func.allocate(ie))
+			{
+				return med::decode(func, *field, unexp);
+			}
+			return false;
+		}
+		else
+		{
+			return set_decoder<IES...>::decode(to, func, unexp, header);
+		}
+	}
+
+	template <class TO, class FUNC>
+	static bool check(TO const& to, FUNC& func)
+	{
+		IE const& ie = static_cast<IE const&>(to);
+		if (check_arity<IE>(field_count(ie)))
+		{
+			return set_decoder<IES...>::check(to, func);
+		}
+		else
+		{
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
+		}
+		return false;
+	}
+};
+
 template <>
-struct set_decoder<>
+struct set_dec_imp<void>
 {
 	template <class TO, class FUNC, class UNEXP, class HEADER>
 	static bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
@@ -83,8 +124,11 @@ struct set_decoder<>
 };
 
 
+template <class Enable, class... IES>
+struct set_enc_imp;
+
 template <class... IES>
-struct set_encoder;
+using set_encoder = set_enc_imp<void, IES...>;
 
 template <class HEADER, class IE, class FUNC>
 std::enable_if_t<std::is_base_of<PRIMITIVE, typename HEADER::ie_type>::value, bool>
@@ -120,7 +164,7 @@ inline continue_encode(TO const&, FUNC& func)
 
 
 template <class IE, class... IES>
-struct set_encoder<IE, IES...>
+struct set_enc_imp<std::enable_if_t<!has_multi_field<IE>::value>, IE, IES...>
 {
 	template <class HEADER, class TO, class FUNC>
 	static inline bool encode(TO const& to, FUNC& func)
@@ -139,8 +183,60 @@ struct set_encoder<IE, IES...>
 	}
 };
 
+template <class HEADER, class FUNC, class IE>
+constexpr int set_invoke_encode(FUNC&, IE&, int count) { return count; }
+
+template <class HEADER, class FUNC, class IE, std::size_t INDEX, std::size_t... Is>
+inline int set_invoke_encode(FUNC& func, IE& ie, int count)
+{
+	//TODO: use iterators
+	if (ie.ref_field(INDEX).is_set())
+	{
+		if (!encode_header<HEADER, IE>(func) || !encode(func, ie.ref_field(INDEX))) return -1;
+		return set_invoke_encode<HEADER, FUNC, IE, Is...>(func, ie, INDEX+1);
+	}
+	return INDEX;
+}
+
+template<class HEADER, class FUNC, class IE, std::size_t... Is>
+inline int set_repeat_encode_impl(FUNC& func, IE& ie, std::index_sequence<Is...>)
+{
+	return set_invoke_encode<HEADER, FUNC, IE, Is...>(func, ie, 0);
+}
+
+template <class HEADER, std::size_t N, class FUNC, class IE>
+inline int set_encode(FUNC& func, IE& ie)
+{
+	return set_repeat_encode_impl<HEADER>(func, ie, std::make_index_sequence<N>{});
+}
+
+
+template <class IE, class... IES>
+struct set_enc_imp<std::enable_if_t<has_multi_field<IE>::value>, IE, IES...>
+{
+	template <class HEADER, class TO, class FUNC>
+	static inline bool encode(TO const& to, FUNC& func)
+	{
+		CODEC_TRACE("[%s]*%zu", name<typename IE::field_type>(), IE::max);
+
+		IE const& ie = static_cast<IE const&>(to);
+		int const count = set_encode<HEADER, IE::max>(func, ie);
+		if (count < 0) return false;
+
+		if (check_arity<IE>(count))
+		{
+			return set_encoder<IES...>::template encode<HEADER>(to, func);
+		}
+		else
+		{
+			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
+		}
+		return false;
+	}
+};
+
 template <>
-struct set_encoder<>
+struct set_enc_imp<void>
 {
 	template <class HEADER, class TO, class FUNC>
 	static constexpr bool encode(TO&, FUNC&)       { return true; }

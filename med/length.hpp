@@ -32,8 +32,6 @@ struct has_length_type<T, void_t<typename T::length_type>> : std::true_type { };
 
 template <class T>
 using is_length = has_length_type<T>;
-template <class T>
-constexpr bool is_length_v = is_length<T>::value;
 
 namespace detail {
 

@@ -212,4 +212,18 @@ inline encode(FUNC& func, IE& ie)
 	return func(ie);
 }
 
+template <class FUNC, class IE>
+inline int encode_multi(FUNC& func, IE const& ie)
+{
+	//CODEC_TRACE("%s *%zu", name<IE>(), N);
+	int count = 0;
+	for (auto& v : ie)
+	{
+		CODEC_TRACE("[%s]@%d", name<IE>(), count);
+		if (!sl::encode<IE>(func, v, typename IE::ie_type{})) return -1;
+		++count;
+	}
+	return count;
+}
+
 }	//end: namespace med

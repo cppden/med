@@ -1,5 +1,3 @@
-#include <initializer_list>
-
 #include "med.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
@@ -80,7 +78,7 @@ struct FLD_U24 : med::value<24>
 	static constexpr char const* name() { return "U24"; }
 };
 
-struct FLD_IP4 : med::value<32>
+struct FLD_U32 : med::value<32>
 {
 	static constexpr char const* name() { return "IP-Address"; }
 	template <std::size_t N>
@@ -133,7 +131,7 @@ struct MSG_SEQ : med::sequence<
 	M< FLD_UC >,              //<V>
 	M< T<0x21>, FLD_U16 >,    //<TV>
 	M< L, FLD_U24 >,          //<LV>(fixed)
-	M< T<0x42>, L, FLD_IP4 >, //<TLV>(fixed)
+	M< T<0x42>, L, FLD_U32 >, //<TLV>(fixed)
 	O< T<0x51>, FLD_DW >,     //[TV]
 	O< T<0x12>, CLEN, VFLD1 > //TLV(var)
 >
@@ -144,31 +142,33 @@ struct MSG_SEQ : med::sequence<
 struct FLD_CHO : med::choice< HDR<8>
 	, med::tag<C<0x01>, FLD_U8>
 	, med::tag<C<0x02>, FLD_U16>
-	, med::tag<C<0x04>, FLD_IP4>
+	, med::tag<C<0x04>, FLD_U32>
 >
 {
 };
 
-struct SEQOF_W : med::sequence_of<FLD_W, med::max<3>>
+struct SEQOF_1 : med::sequence<
+	M< FLD_W, med::max<3> >
+>
 {
-	static constexpr char const* name() { return "Seq-Of-W"; }
+	static constexpr char const* name() { return "Seq-Of-1"; }
 };
 
-struct SEQ_W_CHO : med::sequence<
+struct SEQOF_2 : med::sequence<
 	M< FLD_W >,
 	O< T<0x06>, L, FLD_CHO >
 >
 {
-	static constexpr char const* name() { return "Seq-W-CHO"; }
+	static constexpr char const* name() { return "Seq-Of-2"; }
 };
 
 template <int INSTANCE>
-struct SEQ_U8_16 : med::sequence<
+struct SEQOF_3 : med::sequence<
 	M< FLD_U8 >,
 	M< T<0x21>, FLD_U16 >  //<TV>
 >
 {
-	static constexpr char const* name() { return "Seq-U8-16"; }
+	static constexpr char const* name() { return "Seq-Of-3"; }
 	template <std::size_t N>
 	void print(char (&sz)[N]) const
 	{
@@ -282,92 +282,44 @@ struct FLD_NSCHO : med::choice<LT
 {
 };
 
-template <int INSTANCE>
-struct SEQOF_SEQ_U8_16 : med::sequence_of<SEQ_U8_16<INSTANCE>, med::max<2>>
-{
-	static constexpr char const* name() { return "Seq-Of-U8-U16"; }
-};
-
-struct SEQOF_SEQ_W_CHO : med::sequence_of<SEQ_W_CHO, med::max<2>>
-{
-	static constexpr char const* name() { return "Seq-Of-W-CHO"; }
-};
-
-struct SEQOF_VFLD1 : med::sequence_of<VFLD1, med::max<3>>
-{
-	static constexpr char const* name() { return "Seq-Of-VFLD1"; }
-};
-
-struct SEQOF_UC : med::sequence_of<FLD_UC, med::arity<2>>
-{
-	static constexpr char const* name() { return "Seq-Of-UC"; }
-};
-struct SEQOF_UC4 : med::sequence_of<FLD_UC, med::min<2>, med::max<4>>
-{
-	static constexpr char const* name() { return "Seq-Of-UC"; }
-};
-struct SEQOF_U8 : med::sequence_of<FLD_U8, med::max<2>>
-{
-	static constexpr char const* name() { return "Seq-Of-U8"; }
-};
-struct SEQOF_U16 : med::sequence_of<FLD_U16, med::arity<2>>
-{
-	static constexpr char const* name() { return "Seq-Of-U16"; }
-};
-struct SEQOF_U24 : med::sequence_of<FLD_U24, med::arity<2>>
-{
-	static constexpr char const* name() { return "Seq-Of-U24"; }
-};
-struct SEQOF_DW : med::sequence_of<FLD_DW, med::max<2>>
-{
-	static constexpr char const* name() { return "Seq-Of-DW"; }
-};
-
-struct SEQOF_IP4 : med::sequence_of<FLD_IP4, med::max<8>>
-{
-	static constexpr char const* name() { return "Seq-Of-U32"; }
-};
-
-static_assert(med::is_field_v<SEQOF_UC>, "");
-
 struct MSG_MSEQ : med::sequence<
-	M< SEQOF_UC >,            //<V>*2
-	M< T<0x21>, SEQOF_U16 >,  //<TV>*2
-	M< L, SEQOF_U24 >,        //<LV>*2
-	M< T<0x42>, L, SEQOF_IP4 >, //<TLV>(fixed)*[1,8]
-	M< T<0x51>, SEQOF_DW >,     //<TV>*[1,2]
-	M< CNT, SEQOF_SEQ_U8_16<0> >,
+	M< FLD_UC, med::arity<2>>,            //<V>*2
+	M< T<0x21>, FLD_U16, med::arity<2>>,  //<TV>*2
+	M< L, FLD_U24, med::arity<2>>,        //<LV>*2
+	M< T<0x42>, L, FLD_U32, med::max<2>>, //<TLV>(fixed)*[1,2]
+	M< T<0x51>, FLD_DW, med::max<2>>,     //<TV>*[1,2]
+	M< CNT, SEQOF_3<0>, med::max<2>>,
 	O< FLD_TN >,
 	O< T<0x60>, L, FLD_CHO>,
-	O< T<0x61>, L, SEQOF_W>, //[TLV]*[1,3]
-	O< T<0x62>, L, SEQOF_SEQ_W_CHO>, //[TLV]*[1,2]
+	O< T<0x61>, L, SEQOF_1>,
+	O< T<0x62>, L, SEQOF_2, med::max<2>>,
 	O< T<0x70>, L, FLD_NSCHO >,
-	O< T<0x80>, CNT, SEQOF_SEQ_U8_16<1> >, //[TCV]*[1,2]
-	O< L, SEQOF_VFLD1 >           //[LV(var)]*[1,3] till EoF
+	O< T<0x80>, CNT, SEQOF_3<1>, med::max<3>>, //T[CV]*[0,3]
+	O< L, VFLD1, med::max<3> >           //[LV(var)]*[0,3] till EoF
 >
 {
 	static constexpr char const* name() { return "Msg-Multi-Seq"; }
 };
 
+
 struct MSG_SET : med::set< HDR<16>,
 	M< T<0x0b>,    FLD_UC >, //<TV>
 	M< T<0x21>, L, FLD_U16 >, //<TLV>
 	O< T<0x49>, L, FLD_U24 >, //[TLV]
-	O< T<0x89>,    FLD_IP4 >, //[TV]
+	O< T<0x89>,    FLD_U32 >, //[TV]
 	O< T<0x22>, L, VFLD1 >   //[TLV(var)]
 >
 {
 	static constexpr char const* name() { return "Msg-Set"; }
 };
 
-
 struct MSG_MSET : med::set< HDR<16>,
-	M< T<0x0b>,    SEQOF_UC >, //<TV>*2
-	M< T<0x0c>,    SEQOF_U8 >, //<TV>*[1,2]
-	M< T<0x21>, L, SEQOF_U16 >, //<TLV>*2
-	O< T<0x49>, L, SEQOF_U24 >, //[TLV]*2
-	O< T<0x89>,    SEQOF_IP4 >, //[TV]*2
-	O< T<0x22>, L, SEQOF_VFLD1 > //[TLV(var)]*[0,3]
+	M< T<0x0b>,    FLD_UC, med::arity<2> >, //<TV>*2
+	M< T<0x0c>,    FLD_U8, med::max<2> >, //<TV>*[1,2]
+	M< T<0x21>, L, FLD_U16, med::max<3> >, //<TLV>*[1,3]
+	O< T<0x49>, L, FLD_U24, med::arity<2> >, //[TLV]*2
+	O< T<0x89>,    FLD_U32, med::arity<2> >, //[TV]*2
+	O< T<0x22>, L, VFLD1,  med::min<1>, med::max<3> > //[TLV(var)]*[1,3]
 >
 {
 	static constexpr char const* name() { return "Msg-Multi-Set"; }
@@ -394,7 +346,7 @@ struct FLD_FLAGS : med::value<8>
 		U24 = 1 << 1,
 		QTY = 1 << 2,
 
-		//counters for seq-of
+		//counters for multi-instance fields
 		QTY_MASK = 0x03, // 2 bits to encode 0..3
 		UC_QTY = 4,
 		U8_QTY = 6,
@@ -425,12 +377,13 @@ struct FLD_FLAGS : med::value<8>
 				(static_cast<FLD_U16&>(ies).is_set() ? U16 : 0 ) |
 				(static_cast<FLD_U24&>(ies).is_set() ? U24 : 0 );
 
-			auto const uc_qty = ies.template as<SEQOF_UC4>().count();
-			auto const u8_qty = ies.template as<SEQOF_U8>().count();
+			auto const uc_qty = med::field_count(ies.template as<FLD_UC>());
+			auto const u8_qty = med::field_count(ies.template as<FLD_U8>());
+
 
 			CODEC_TRACE("*********** bits=%02X uc=%zu u8=%zu", bits, uc_qty, u8_qty);
 
-			if (std::size_t const u32_qty = ies.template as<SEQOF_IP4>().count())
+			if (std::size_t const u32_qty = med::field_count(ies.template as<FLD_U32>()))
 			{
 				CODEC_TRACE("*********** u32_qty = %zu", u32_qty);
 				bits |= QTY;
@@ -449,12 +402,12 @@ struct FLD_FLAGS : med::value<8>
 //optional fields with functors
 struct MSG_FUNC : med::sequence<
 	M< FLD_FLAGS, FLD_FLAGS::setter >,
-	M< SEQOF_UC4, FLD_FLAGS::counter<FLD_FLAGS::UC_QTY, 1> >,
+	M< FLD_UC, med::min<2>, med::max<4>, FLD_FLAGS::counter<FLD_FLAGS::UC_QTY, 1> >,
 	O< FLD_QTY, FLD_FLAGS::has_bits<FLD_FLAGS::QTY> >, //note: this field is also set in FLD_FLAGS::setter
-	O< SEQOF_U8, FLD_FLAGS::counter<FLD_FLAGS::U8_QTY> >,
+	O< FLD_U8, med::max<2>, FLD_FLAGS::counter<FLD_FLAGS::U8_QTY> >,
 	O< FLD_U16, FLD_FLAGS::has_bits<FLD_FLAGS::U16> >,
 	O< FLD_U24, FLD_FLAGS::has_bits<FLD_FLAGS::U24> >,
-	O< SEQOF_IP4, FLD_QTY::counter >
+	O< FLD_U32, med::max<8>, FLD_QTY::counter >
 >
 {
 	static constexpr char const* name() { return "Msg-With-Functors"; }
@@ -470,7 +423,6 @@ struct PROTO : med::choice< HDR<8>
 >
 {
 };
-
 #if 1
 TEST(encode, seq_ok)
 {
@@ -481,7 +433,7 @@ TEST(encode, seq_ok)
 	msg.ref<FLD_UC>().set(37);
 	msg.ref<FLD_U16>().set(0x35D9);
 	msg.ref<FLD_U24>().set(0xDABEEF);
-	msg.ref<FLD_IP4>().set(0xFee1ABBA);
+	msg.ref<FLD_U32>().set(0xFee1ABBA);
 
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
@@ -537,7 +489,6 @@ TEST(encode, seq_ok)
 		//FLD_DW* pf = msg.field(); //invalid access
 	}
 }
-#endif
 
 TEST(encode, seq_fail)
 {
@@ -553,33 +504,28 @@ TEST(encode, seq_fail)
 	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
 
-
 TEST(encode, mseq_ok)
 {
-	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
-
 	PROTO proto;
 
 	//mandatory only
 	MSG_MSEQ& msg = proto.select();
-	msg.ref<SEQOF_UC>().push_back(ctx)->set(37);
-	msg.ref<SEQOF_UC>().push_back(ctx)->set(38);
-	msg.ref<SEQOF_U16>().push_back(ctx)->set(0x35D9);
-	msg.ref<SEQOF_U16>().push_back(ctx)->set(0x35DA);
-	msg.ref<SEQOF_U24>().push_back(ctx)->set(0xDABEEF);
-	msg.ref<SEQOF_U24>().push_back(ctx)->set(0x22BEEF);
-	msg.ref<SEQOF_IP4>().push_back(ctx)->set(0xFee1ABBA);
-	msg.ref<SEQOF_DW>().push_back(ctx)->set(0x01020304);
-	if (auto* s = msg.ref<SEQOF_SEQ_U8_16<0>>().push_back(ctx))
+	msg.ref<FLD_UC>(0)->set(37);
+	msg.ref<FLD_UC>(1)->set(38);
+	msg.ref<FLD_U16>(0)->set(0x35D9);
+	msg.ref<FLD_U16>(1)->set(0x35DA);
+	msg.ref<FLD_U24>(0)->set(0xDABEEF);
+	msg.ref<FLD_U24>(1)->set(0x22BEEF);
+	msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
+	msg.ref<FLD_DW>(0)->set(0x01020304);
 	{
+		auto* s = msg.ref<SEQOF_3<0>>(0);
 		s->ref<FLD_U8>().set(1);
 		s->ref<FLD_U16>().set(2);
 	}
-	else
-	{
-		FAIL() << toString(ctx.error_ctx());
-	}
+
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded1[] = { 0x11
@@ -589,7 +535,7 @@ TEST(encode, mseq_ok)
 		, 0x21, 0x35, 0xDA
 		, 3, 0xDA, 0xBE, 0xEF             //M< L, FLD_U24, med::arity<2> >
 		, 3, 0x22, 0xBE, 0xEF
-		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_IP4, med::max<2> >
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_U32, med::max<2> >
 		, 0x51, 0x01, 0x02, 0x03, 0x04    //M< T<0x51>, FLD_DW, med::max<2> >
 		, 0,1, 1, 0x21, 0,2 //M<C16, Seq>  <=2
 	};
@@ -599,26 +545,27 @@ TEST(encode, mseq_ok)
 	//with more mandatory and optionals
 	ctx.reset();
 
-	msg.ref<SEQOF_IP4>().push_back()->set(0xABBAc001);
-	msg.ref<SEQOF_DW>().push_back()->set(0x12345678);
+	msg.ref<FLD_U32>(1)->set(0xABBAc001);
+	msg.ref<FLD_DW>(1)->set(0x12345678);
 
 	msg.ref<FLD_TN>().set(2);
 
 	msg.ref<FLD_CHO>().ref<FLD_U8>().set(33);
-	msg.ref<SEQOF_W>().push_back()->set(0x1223);
-	msg.ref<SEQOF_W>().push_back()->set(0x3445);
+	SEQOF_1& s1 = msg.ref<SEQOF_1>();
+	s1.ref<FLD_W>(0)->set(0x1223);
+	s1.ref<FLD_W>(1)->set(0x3445);
 
-	auto* s2 = msg.ref<SEQOF_SEQ_W_CHO>().push_back();
+	SEQOF_2* s2 = msg.ref<SEQOF_2>(0);
 	s2->ref<FLD_W>().set(0x1122);
 	s2->ref<FLD_CHO>().ref<FLD_U16>().set(0x3344);
 
-	msg.ref<SEQOF_SEQ_W_CHO>().push_back()->ref<FLD_W>().set(0x3344);
+	msg.ref<SEQOF_2>(1)->ref<FLD_W>().set(0x3344);
 
 	uint8_t const bcd[] = {0x34, 0x56};
 	msg.ref<FLD_NSCHO>().ref<BCD_1>().set(2, bcd);
 
-	msg.ref<SEQOF_VFLD1>().push_back()->set("test.this");
-	msg.ref<SEQOF_VFLD1>().push_back()->set("test.it");
+	msg.ref<VFLD1>(0)->set("test.this");
+	msg.ref<VFLD1>(1)->set("test.it");
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded2[] = { 0x11
@@ -628,19 +575,19 @@ TEST(encode, mseq_ok)
 		, 0x21, 0x35, 0xDA
 		, 3, 0xDA, 0xBE, 0xEF //M< L, FLD_U24, med::arity<2> >
 		, 3, 0x22, 0xBE, 0xEF
-		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_IP4, med::max<2> >
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_U32, med::max<2> >
 		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
 		, 0x51, 0x01, 0x02, 0x03, 0x04 //M< T<0x51>, FLD_DW, med::max<2> >
 		, 0x51, 0x12, 0x34, 0x56, 0x78
 		, 0,1, 1, 0x21, 0,2 //M<C16, Seq>  <=2
 		, 0xE2 //O< FLD_TN >,
 		, 0x60, 2, 1, 33 //O< T<0x60>, L, FLD_CHO >
-		, 0x61, 4 //O< T<0x61>, L, SEQOF_W >
+		, 0x61, 4 //O< T<0x61>, L, SEQOF_1 >
 			, 0x12,0x23, 0x34,0x45 //M< FLD_W, med::max<3> >
-		, 0x62, 7 //O< T<0x62>, L, SEQOF_SEQ_W_CHO, med::max<2> >
+		, 0x62, 7 //O< T<0x62>, L, SEQOF_2, med::max<2> >
 			, 0x11,0x22 //M< FLD_W >,
 			, 0x06, 3, 2, 0x33,0x44 //O< T<0x06>, L, FLD_CHO >
-		, 0x62, 2 //O< T<0x62>, L, SEQOF_SEQ_W_CHO, med::max<2> >
+		, 0x62, 2 //O< T<0x62>, L, SEQOF_2, med::max<2> >
 			, 0x33,0x44 //M< FLD_W >,
 			//O< T<0x06>, L, FLD_CHO >
 		, 0x70, 3, 0x31, 0x45, 0x6F //O< T<0x70>, L, FLD_NSCHO >,
@@ -655,33 +602,17 @@ TEST(encode, mseq_ok)
 	//check RO access (compile test)
 	{
 		MSG_MSEQ const& cmsg = msg;
-		SEQOF_DW const& cf = cmsg.field();
-		ASSERT_EQ(0x12345678, cf.begin()->get());
-		SEQOF_DW& rf = msg.field();
-		ASSERT_EQ(0x12345678, rf.begin()->get());
+		FLD_DW const* cpf = cmsg.field(1);
+		ASSERT_NE(nullptr, cpf);
+		ASSERT_EQ(0x12345678, cpf->get());
+		FLD_DW* rf = msg.field(1);
+		ASSERT_EQ(0x12345678, rf->get());
 		//FLD_DW& rpf = msg.field(); //invalid access
 		//FLD_DW* pf = msg.field(); //invalid access
 	}
 }
 
-
-
-#if 0
-/*
-M< SEQOF_UC >,            //<V>*2
-M< T<0x21>, SEQOF_U16 >,  //<TV>*2
-M< L, SEQOF_U24 >,        //<LV>*2
-M< T<0x42>, L, SEQOF_IP4 >, //<TLV>(fixed)*[1,2]
-M< T<0x51>, SEQOF_DW >,     //<TV>*[1,2]
-M< CNT, SEQOF_SEQ_U8_16<0> >,
-O< FLD_TN >,
-O< T<0x60>, L, FLD_CHO>,
-O< T<0x61>, L, SEQOF_W>,
-O< T<0x62>, L, SEQOF_SEQ_W_CHO>,
-O< T<0x70>, L, FLD_NSCHO >,
-O< T<0x80>, CNT, SEQOF_SEQ_U8_16<1> >, //T[CV]*[0,2]
-O< L, SEQOF_VFLD1 >           //[LV(var)]*[0,3] till EoF
-*/
+#endif
 
 TEST(encode, mseq_fail)
 {
@@ -697,8 +628,8 @@ TEST(encode, mseq_fail)
 		msg.ref<FLD_U16>(1)->set(0x35DA);
 		msg.ref<FLD_U24>(0)->set(0xDABEEF);
 		msg.ref<FLD_U24>(1)->set(0x22BEEF);
-		msg.ref<FLD_IP4>(0)->set(0xFee1ABBA);
-		msg.ref<FLD_IP4>(1)->set(0xABBAc001);
+		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
+		msg.ref<FLD_U32>(1)->set(0xABBAc001);
 		msg.ref<FLD_DW>(0)->set(0x01020304);
 		msg.ref<FLD_DW>(1)->set(0x12345678);
 		msg.ref<VFLD1>(0)->set("test.this");
@@ -717,8 +648,8 @@ TEST(encode, mseq_fail)
 		msg.ref<FLD_U16>(0)->set(0x35D9);
 		msg.ref<FLD_U24>(0)->set(0xDABEEF);
 		msg.ref<FLD_U24>(1)->set(0x22BEEF);
-		msg.ref<FLD_IP4>(0)->set(0xFee1ABBA);
-		msg.ref<FLD_IP4>(1)->set(0xABBAc001);
+		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
+		msg.ref<FLD_U32>(1)->set(0xABBAc001);
 		msg.ref<FLD_DW>(0)->set(0x01020304);
 		msg.ref<FLD_DW>(1)->set(0x12345678);
 		msg.ref<VFLD1>(0)->set("test.this");
@@ -737,8 +668,8 @@ TEST(encode, mseq_fail)
 		msg.ref<FLD_U16>(0)->set(0x35D9);
 		msg.ref<FLD_U16>(1)->set(0x35DA);
 		msg.ref<FLD_U24>(0)->set(0xDABEEF);
-		msg.ref<FLD_IP4>(0)->set(0xFee1ABBA);
-		msg.ref<FLD_IP4>(1)->set(0xABBAc001);
+		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
+		msg.ref<FLD_U32>(1)->set(0xABBAc001);
 		msg.ref<FLD_DW>(0)->set(0x01020304);
 		msg.ref<FLD_DW>(1)->set(0x12345678);
 		msg.ref<VFLD1>(0)->set("test.this");
@@ -777,7 +708,7 @@ TEST(encode, mseq_fail)
 		msg.ref<FLD_U16>(1)->set(0x35DA);
 		msg.ref<FLD_U24>(0)->set(0xDABEEF);
 		msg.ref<FLD_U24>(1)->set(0x22BEEF);
-		msg.ref<FLD_IP4>(0)->set(0xFee1ABBA);
+		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
 		msg.ref<FLD_DW>(0)->set(0x01020304);
 
 		uint8_t buffer[10];
@@ -789,9 +720,8 @@ TEST(encode, mseq_fail)
 	}
 
 }
-#endif
-
 #if 1
+
 TEST(encode, set_ok)
 {
 	PROTO proto;
@@ -830,7 +760,7 @@ TEST(encode, set_ok)
 
 	ctx.reset();
 	msg.ref<FLD_U24>().set(0xDABEEF);
-	msg.ref<FLD_IP4>().set(0xfee1ABBA);
+	msg.ref<FLD_U32>().set(0xfee1ABBA);
 
 	uint8_t const encoded3[] = { 4
 		, 0, 0x0b, 0x11
@@ -861,7 +791,6 @@ TEST(encode, set_fail)
 	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
 
-
 TEST(encode, mset_ok)
 {
 	PROTO proto;
@@ -869,11 +798,11 @@ TEST(encode, mset_ok)
 	MSG_MSET& msg = proto.select();
 
 	//mandatory fields
-	msg.ref<SEQOF_UC>().push_back()->set(0x11);
-	msg.ref<SEQOF_UC>().push_back()->set(0x12);
-	msg.ref<SEQOF_U8>().push_back()->set(0x13);
-	msg.ref<SEQOF_U16>().push_back()->set(0x35D9);
-	msg.ref<SEQOF_U16>().push_back()->set(0x35DA);
+	msg.ref<FLD_UC>(0)->set(0x11);
+	msg.ref<FLD_UC>(1)->set(0x12);
+	msg.ref<FLD_U8>(0)->set(0x13);
+	msg.ref<FLD_U16>(0)->set(0x35D9);
+	msg.ref<FLD_U16>(1)->set(0x35DA);
 
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
@@ -892,7 +821,7 @@ TEST(encode, mset_ok)
 
 	//optional fields
 	ctx.reset();
-	msg.ref<SEQOF_VFLD1>().push_back()->set("test.this");
+	msg.ref<VFLD1>(0)->set("test.this");
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
@@ -908,12 +837,12 @@ TEST(encode, mset_ok)
 	EXPECT_TRUE(Matches(encoded2, buffer));
 
 	ctx.reset();
-	msg.ref<SEQOF_U8>().push_back()->set(0x14);
-	msg.ref<SEQOF_U24>().push_back()->set(0xDABEEF);
-	msg.ref<SEQOF_U24>().push_back()->set(0x22BEEF);
-	msg.ref<SEQOF_IP4>().push_back()->set(0xfee1ABBA);
-	msg.ref<SEQOF_IP4>().push_back()->set(0xABBAc001);
-	msg.ref<SEQOF_VFLD1>().push_back()->set("test.it");
+	msg.ref<FLD_U8>(1)->set(0x14);
+	msg.ref<FLD_U24>(0)->set(0xDABEEF);
+	msg.ref<FLD_U24>(1)->set(0x22BEEF);
+	msg.ref<FLD_U32>(0)->set(0xfee1ABBA);
+	msg.ref<FLD_U32>(1)->set(0xABBAc001);
+	msg.ref<VFLD1>(1)->set("test.it");
 
 	uint8_t const encoded3[] = { 0x14
 		, 0, 0x0b, 0x11
@@ -944,13 +873,13 @@ TEST(encode, mset_fail)
 
 	//arity violation in optional
 	MSG_MSET& msg = proto.select();
-	msg.ref<SEQOF_UC>().push_back()->set(0);
-	msg.ref<SEQOF_UC>().push_back()->set(0);
-	msg.ref<SEQOF_U8>().push_back()->set(0);
-	msg.ref<SEQOF_U16>().push_back()->set(0);
+	msg.ref<FLD_UC>(0)->set(0);
+	msg.ref<FLD_UC>(1)->set(0);
+	msg.ref<FLD_U8>(0)->set(0);
+	msg.ref<FLD_U16>(0)->set(0);
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
-	msg.ref<SEQOF_U24>().push_back()->set(0);
+	msg.ref<FLD_U24>(0)->set(0);
 	ctx.reset();
 	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
@@ -960,16 +889,15 @@ constexpr std::size_t make_hash(std::size_t v) { return 137*(v + 39); }
 
 TEST(encode, msg_func)
 {
-	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
-
 	PROTO proto;
 
 	//mandatory only
 	MSG_FUNC& msg = proto.select();
-	msg.ref<SEQOF_UC4>().push_back(ctx)->set(37);
-	msg.ref<SEQOF_UC4>().push_back(ctx)->set(38);
+	msg.ref<FLD_UC>(0)->set(37);
+	msg.ref<FLD_UC>(1)->set(38);
 
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded1[] = { 0xFF
@@ -981,8 +909,8 @@ TEST(encode, msg_func)
 
 	//with 1 optional and 1 optional counted
 	ctx.reset();
-	msg.ref<SEQOF_UC4>().push_back(ctx)->set(39);
-	msg.ref<SEQOF_U8>().push_back(ctx)->set('a');
+	msg.ref<FLD_UC>(2)->set(39);
+	msg.ref<FLD_U8>(0)->set('a');
 	msg.ref<FLD_U16>().set(0x35D9);
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -997,12 +925,12 @@ TEST(encode, msg_func)
 
 	//with all optionals
 	ctx.reset();
-	msg.ref<SEQOF_UC4>().push_back(ctx)->set(40);
-	msg.ref<SEQOF_U8>().push_back(ctx)->set('b');
+	msg.ref<FLD_UC>(3)->set(40);
+	msg.ref<FLD_U8>(1)->set('b');
 	msg.ref<FLD_U24>().set(0xDABEEF);
 	for (uint8_t i = 0; i < 3; ++i)
 	{
-		FLD_IP4* p = msg.ref<SEQOF_IP4>().push_back(ctx);
+		FLD_U32* p = msg.ref<FLD_U32>(i);
 		ASSERT_NE(nullptr, p);
 		p->set(make_hash(i));
 	}
@@ -1022,7 +950,6 @@ TEST(encode, msg_func)
 	EXPECT_EQ(sizeof(encoded3), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded3, buffer));
 }
-
 
 TEST(decode, seq_ok)
 {
@@ -1051,7 +978,7 @@ TEST(decode, seq_ok)
 	EXPECT_EQ(1, msg->count<FLD_UC>());
 	EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
-	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP4>().get());
+	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_U32>().get());
 
 	EXPECT_EQ(0, msg->count<FLD_DW>());
 	FLD_DW const* fld5 = msg->field();
@@ -1077,7 +1004,7 @@ TEST(decode, seq_ok)
 	EXPECT_EQ(37, msg->get<FLD_UC>().get());
 	EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
-	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP4>().get());
+	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_U32>().get());
 
 	fld5 = msg->field();
 	EXPECT_EQ(1, msg->count<FLD_DW>());
@@ -1101,7 +1028,7 @@ TEST(decode, seq_ok)
 	EXPECT_EQ(37, msg->get<FLD_UC>().get());
 	EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
-	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP4>().get());
+	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_U32>().get());
 
 	fld5 = msg->field();
 	EXPECT_EQ(1, msg->count<FLD_DW>());
@@ -1177,57 +1104,6 @@ TEST(decode, seq_fail)
 	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
 
-template <class FIELD, class MSG, class T>
-void check_seqof_m(MSG const& msg, std::initializer_list<T>&& values)
-{
-	std::size_t const count = values.size();
-	ASSERT_EQ(count, msg.template count<FIELD>());
-
-	auto it = std::begin(values);
-	for (auto& v : msg.template get<FIELD>())
-	{
-		decltype(v.get()) expected = *it++;
-		EXPECT_EQ(expected, v.get());
-	}
-}
-
-template <class FIELD, class MSG, class T>
-void check_seqof_o(MSG const& msg, std::initializer_list<T>&& values)
-{
-	std::size_t const count = values.size();
-	ASSERT_EQ(count, msg.template count<FIELD>());
-
-	FIELD const* pf = msg.template get<FIELD>();
-	ASSERT_NE(pf, nullptr);
-
-	auto it = std::begin(values);
-	for (auto& v : *pf)
-	{
-		decltype(v.get()) expected = *it++;
-		EXPECT_EQ(expected, v.get());
-	}
-}
-
-template <class FIELD, class MSG>
-void check_seqof_o(MSG const& msg, std::initializer_list<char const*>&& values)
-{
-	std::size_t const count = values.size();
-	ASSERT_EQ(count, msg.template count<FIELD>());
-
-	FIELD const* pf = msg.template get<FIELD>();
-	ASSERT_NE(pf, nullptr);
-
-	auto it = std::begin(values);
-	for (auto& v : *pf)
-	{
-		char const* expected = *it++;
-		std::size_t const len = std::strlen(expected);
-		ASSERT_EQ(len, v.get().size());
-		ASSERT_TRUE(Matches(expected, v.get().data(), len));
-	}
-}
-
-
 TEST(decode, mseq_ok)
 {
 	PROTO proto;
@@ -1250,21 +1126,25 @@ TEST(decode, mseq_ok)
 
 	MSG_MSEQ const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
-	check_seqof_m<SEQOF_UC>(*msg, {37, 38});
-	check_seqof_m<SEQOF_U16>(*msg, {0x35D9, 0x35DA});
-	check_seqof_m<SEQOF_U24>(*msg, {0xDABEEF, 0x22BEEF});
-	check_seqof_m<SEQOF_IP4>(*msg, {0xfee1ABBA});
-	check_seqof_m<SEQOF_DW>(*msg, {0x01020304});
+	EXPECT_EQ(2, msg->count<FLD_UC>());
+	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
+	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
+	ASSERT_EQ(2, msg->count<FLD_U16>());
+	EXPECT_EQ(0x35D9, (msg->get<FLD_U16>(0)->get()));
+	EXPECT_EQ(0x35DA, (msg->get<FLD_U16>(1)->get()));
+	ASSERT_EQ(2, msg->count<FLD_U24>());
+	EXPECT_EQ(0xDABEEF, (msg->get<FLD_U24>(0)->get()));
+	EXPECT_EQ(0x22BEEF, (msg->get<FLD_U24>(1)->get()));
+	ASSERT_EQ(1, msg->count<FLD_U32>());
+	EXPECT_EQ(0xfee1ABBA, (msg->get<FLD_U32>(0)->get()));
+	ASSERT_EQ(1, msg->count<FLD_DW>());
+	EXPECT_EQ(0x01020304, (msg->get<FLD_DW>(0)->get()));
+	ASSERT_EQ(1, msg->count<SEQOF_3<0>>());
+	EXPECT_EQ(2, (msg->get<SEQOF_3<0>>(0)->get<FLD_U8>().get()));
+	EXPECT_EQ(3, (msg->get<SEQOF_3<0>>(0)->get<FLD_U16>().get()));
 
-	ASSERT_EQ(1, msg->count<SEQOF_SEQ_U8_16<0>>());
-	{
-		auto it = msg->get<SEQOF_SEQ_U8_16<0>>().begin();
-		EXPECT_EQ(2, it->get<FLD_U8>().get());
-		EXPECT_EQ(3, it->get<FLD_U16>().get());
-	}
-
-	EXPECT_EQ(0, msg->count<SEQOF_VFLD1>());
-	SEQOF_VFLD1 const* vfld1 = msg->field();
+	EXPECT_EQ(0, msg->count<VFLD1>());
+	VFLD1 const* vfld1 = msg->field(0);
 	EXPECT_EQ(nullptr, vfld1);
 
 	//with more mandatory and optionals
@@ -1281,12 +1161,12 @@ TEST(decode, mseq_ok)
 		, 0x51, 0x12, 0x34, 0x56, 0x78
 		, 0,2, 3, 0x21, 0,4,  5, 0x21, 0,6
 		, 0x60, 2, 1, 33 //O< T<0x60>, L, FLD_CHO >
-		, 0x61, 4 //O< T<0x61>, L, SEQOF_W >
+		, 0x61, 4 //O< T<0x61>, L, SEQOF_1 >
 			, 0x12,0x23, 0x34,0x45 //M< FLD_W, med::max<3> >
-		, 0x62, 7 //O< T<0x62>, L, SEQOF_SEQ_W_CHO, med::max<2> >
+		, 0x62, 7 //O< T<0x62>, L, SEQOF_2, med::max<2> >
 			, 0x11,0x22 //M< FLD_W >,
 			, 0x06, 3, 2, 0x33,0x44 //O< T<0x06>, L, FLD_CHO >
-		, 0x62, 2 //O< T<0x62>, L, SEQOF_SEQ_W_CHO, med::max<2> >
+		, 0x62, 2 //O< T<0x62>, L, SEQOF_2, med::max<2> >
 			, 0x33,0x44 //M< FLD_W >,
 			//O< T<0x06>, L, FLD_CHO >
 
@@ -1299,20 +1179,26 @@ TEST(decode, mseq_ok)
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	check_seqof_m<SEQOF_UC>(*msg, {37, 38});
-	check_seqof_m<SEQOF_U16>(*msg, {0x35D9, 0x35DA});
-	check_seqof_m<SEQOF_U24>(*msg, {0xDABEEF, 0x22BEEF});
-	check_seqof_m<SEQOF_IP4>(*msg, {0xfee1ABBA, 0xABBAC001});
-	check_seqof_m<SEQOF_DW>(*msg, {0x01020304, 0x12345678});
-	ASSERT_EQ(2, msg->count<SEQOF_SEQ_U8_16<0>>());
-	{
-		auto it = msg->get<SEQOF_SEQ_U8_16<0>>().begin();
-		EXPECT_EQ(3, it->get<FLD_U8>().get());
-		EXPECT_EQ(4, it->get<FLD_U16>().get());
-		++it;
-		EXPECT_EQ(5, it->get<FLD_U8>().get());
-		EXPECT_EQ(6, it->get<FLD_U16>().get());
-	}
+	ASSERT_EQ(2, msg->count<FLD_UC>());
+	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
+	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
+	ASSERT_EQ(2, msg->count<FLD_U16>());
+	EXPECT_EQ(0x35D9, (msg->get<FLD_U16>(0)->get()));
+	EXPECT_EQ(0x35DA, (msg->get<FLD_U16>(1)->get()));
+	ASSERT_EQ(2, msg->count<FLD_U24>());
+	EXPECT_EQ(0xDABEEF, (msg->get<FLD_U24>(0)->get()));
+	EXPECT_EQ(0x22BEEF, (msg->get<FLD_U24>(1)->get()));
+	ASSERT_EQ(2, msg->count<FLD_U32>());
+	EXPECT_EQ(0xfee1ABBA, (msg->get<FLD_U32>(0)->get()));
+	EXPECT_EQ(0xABBAC001, (msg->get<FLD_U32>(1)->get()));
+	ASSERT_EQ(2, msg->count<FLD_DW>());
+	EXPECT_EQ(0x01020304, (msg->get<FLD_DW>(0)->get()));
+	EXPECT_EQ(0x12345678, (msg->get<FLD_DW>(1)->get()));
+	ASSERT_EQ(2, msg->count<SEQOF_3<0>>());
+	EXPECT_EQ(3, (msg->get<SEQOF_3<0>>(0)->get<FLD_U8>().get()));
+	EXPECT_EQ(4, (msg->get<SEQOF_3<0>>(0)->get<FLD_U16>().get()));
+	EXPECT_EQ(5, (msg->get<SEQOF_3<0>>(1)->get<FLD_U8>().get()));
+	EXPECT_EQ(6, (msg->get<SEQOF_3<0>>(1)->get<FLD_U16>().get()));
 
 	FLD_CHO const* pcho = msg->field();
 	ASSERT_NE(nullptr, pcho);
@@ -1320,25 +1206,36 @@ TEST(decode, mseq_ok)
 	ASSERT_NE(nullptr, pu8);
 	EXPECT_EQ(33, pu8->get());
 
-	check_seqof_o<SEQOF_W>(*msg, {0x1223, 0x3445});
+	SEQOF_1 const* pso1 = msg->field();
+	ASSERT_NE(nullptr, pso1);
+	ASSERT_EQ(2, pso1->count<FLD_W>());
+	EXPECT_EQ(0x1223, (pso1->get<FLD_W>(0)->get()));
+	EXPECT_EQ(0x3445, (pso1->get<FLD_W>(1)->get()));
 
-	ASSERT_EQ(2, msg->count<SEQOF_SEQ_W_CHO>());
-	{
-		auto it = msg->get<SEQOF_SEQ_W_CHO>()->begin();
-		EXPECT_EQ(0x1122, it->get<FLD_W>().get());
-		FLD_CHO const* pcho = it->field();
-		ASSERT_NE(nullptr, pcho);
-		FLD_U16 const* pu16 = pcho->select();
-		ASSERT_NE(nullptr, pu16);
-		EXPECT_EQ(0x3344, pu16->get());
+	ASSERT_EQ(2, msg->count<SEQOF_2>());
+	SEQOF_2 const* pso2 = msg->field(0);
+	ASSERT_NE(nullptr, pso2);
+	EXPECT_EQ(0x1122, pso2->get<FLD_W>().get());
 
-		++it;
-		EXPECT_EQ(0x3344, it->get<FLD_W>().get());
-		pcho = it->field();
-		EXPECT_EQ(nullptr, pcho);
-	}
+	pcho = pso2->field();
+	ASSERT_NE(nullptr, pcho);
+	FLD_U16 const* pu16 = pcho->select();
+	ASSERT_NE(nullptr, pu16);
+	EXPECT_EQ(0x3344, pu16->get());
 
-	check_seqof_o<SEQOF_VFLD1>(*msg, {"test.this", "test.it"});
+	pso2 = msg->field(1);
+	ASSERT_NE(nullptr, pso2);
+	EXPECT_EQ(0x3344, pso2->get<FLD_W>().get());
+
+	pcho = pso2->field();
+	EXPECT_EQ(nullptr, pcho);
+
+	pso2 = msg->field(2);
+	EXPECT_EQ(nullptr, pso2);
+
+	ASSERT_EQ(2, msg->count<VFLD1>());
+	EQ_STRING_O_(0, VFLD1, "test.this");
+	EQ_STRING_O_(1, VFLD1, "test.it");
 }
 
 TEST(decode, mseq_fail)
@@ -1438,7 +1335,6 @@ TEST(decode, mseq_fail)
 	ASSERT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
 
-
 TEST(decode, set_ok)
 {
 	PROTO proto;
@@ -1456,7 +1352,7 @@ TEST(decode, set_ok)
 	ASSERT_EQ(0x11, msg->get<FLD_UC>().get());
 	ASSERT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	FLD_U24 const* fld3 = msg->field();
-	FLD_IP4 const* fld4 = msg->field();
+	FLD_U32 const* fld4 = msg->field();
 	VFLD1 const* vfld1 = msg->field();
 	ASSERT_EQ(nullptr, fld3);
 	ASSERT_EQ(nullptr, fld4);
@@ -1531,7 +1427,6 @@ TEST(decode, set_fail)
 	ASSERT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
 
-
 TEST(decode, mset_ok)
 {
 	PROTO proto;
@@ -1549,13 +1444,15 @@ TEST(decode, mset_ok)
 	MSG_MSET const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	check_seqof_m<SEQOF_UC>(*msg, {0x11, 0x12});
-	check_seqof_m<SEQOF_U8>(*msg, {0x13});
-	check_seqof_m<SEQOF_U16>(*msg, {0x35D9, 0x35DA});
-
-	SEQOF_U24 const* fld3 = msg->field();
-	SEQOF_IP4 const* fld4 = msg->field();
-	SEQOF_VFLD1 const* vfld1 = msg->field();
+	EXPECT_EQ(0x11, (msg->get<FLD_UC>(0)->get()));
+	EXPECT_EQ(0x12, (msg->get<FLD_UC>(1)->get()));
+	EXPECT_EQ(1, msg->count<FLD_U8>());
+	EXPECT_EQ(0x13, (msg->get<FLD_U8>(0)->get()));
+	EXPECT_EQ(0x35D9, (msg->get<FLD_U16>(0)->get()));
+	EXPECT_EQ(0x35DA, (msg->get<FLD_U16>(1)->get()));
+	FLD_U24 const* fld3 = msg->field(0);
+	FLD_U32 const* fld4 = msg->field(0);
+	VFLD1 const* vfld1 = msg->field(0);
 	EXPECT_EQ(nullptr, fld3);
 	EXPECT_EQ(nullptr, fld4);
 	EXPECT_EQ(nullptr, vfld1);
@@ -1574,12 +1471,13 @@ TEST(decode, mset_ok)
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	fld3 = msg->field();
-	fld4 = msg->field();
+	fld3 = msg->field(0);
+	fld4 = msg->field(0);
 	EXPECT_EQ(nullptr, fld3);
 	EXPECT_EQ(nullptr, fld4);
 
-	check_seqof_o<SEQOF_VFLD1>(*msg, {"test.this"});
+	EXPECT_EQ(1, msg->count<VFLD1>());
+	EQ_STRING_O_(0, VFLD1, "test.this");
 
 	//all fields out of order
 	uint8_t const encoded3[] = { 0x14
@@ -1600,13 +1498,22 @@ TEST(decode, mset_ok)
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	fld3 = msg->field();
+	fld3 = msg->field(0);
+	FLD_U24 const* fld3_2 = msg->field(1);
+	fld4 = msg->field(0);
+	FLD_U32 const* fld4_2 = msg->field(1);
 	ASSERT_NE(nullptr, fld3);
-	fld4 = msg->field();
+	ASSERT_NE(nullptr, fld3_2);
 	ASSERT_NE(nullptr, fld4);
-	check_seqof_o<SEQOF_U24>(*msg, {0xDABEEF, 0x22BEEF});
-	check_seqof_o<SEQOF_IP4>(*msg, {0xfee1ABBA, 0xABBAc001});
-	check_seqof_o<SEQOF_VFLD1>(*msg, {"test.this", "test.it"});
+	ASSERT_NE(nullptr, fld4_2);
+
+	EXPECT_EQ(0xDABEEF, fld3->get());
+	EXPECT_EQ(0x22BEEF, fld3_2->get());
+	EXPECT_EQ(0xfee1ABBA, fld4->get());
+	EXPECT_EQ(0xABBAc001, fld4_2->get());
+	EXPECT_EQ(2, msg->count<VFLD1>());
+	EQ_STRING_O_(0, VFLD1, "test.this");
+	EQ_STRING_O_(1, VFLD1, "test.it");
 }
 
 TEST(decode, mset_fail)
@@ -1654,13 +1561,15 @@ TEST(decode, msg_func)
 
 	MSG_FUNC const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
-	check_seqof_m<SEQOF_UC4>(*msg, {37, 38});
-	ASSERT_EQ(0, msg->count<SEQOF_U8>());
+	ASSERT_EQ(2, msg->count<FLD_UC>());
+	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
+	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
+	ASSERT_EQ(0, msg->count<FLD_U8>());
 	FLD_U16 const* pu16 = msg->field();
 	EXPECT_EQ(nullptr, pu16);
 	FLD_U24 const* pu24 = msg->field();
 	EXPECT_EQ(nullptr, pu24);
-	EXPECT_EQ(0, msg->count<SEQOF_IP4>());
+	EXPECT_EQ(0, msg->count<FLD_U32>());
 
 	//with 1 optional
 	uint8_t const encoded2[] = { 0xFF
@@ -1673,14 +1582,17 @@ TEST(decode, msg_func)
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
-	check_seqof_m<SEQOF_UC4>(*msg, {37, 38, 39});
-	ASSERT_EQ(0, msg->count<SEQOF_U8>());
+	ASSERT_EQ(3, msg->count<FLD_UC>());
+	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
+	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
+	EXPECT_EQ(39, (msg->get<FLD_UC>(2)->get()));
+	ASSERT_EQ(0, msg->count<FLD_U8>());
 	pu16 = msg->field();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x35D9, pu16->get());
 	pu24 = msg->field();
 	EXPECT_EQ(nullptr, pu24);
-	EXPECT_EQ(0, msg->count<SEQOF_IP4>());
+	EXPECT_EQ(0, msg->count<FLD_U32>());
 
 	//with all optionals
 	uint8_t const encoded3[] = { 0xFF
@@ -1699,8 +1611,14 @@ TEST(decode, msg_func)
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
-	check_seqof_m<SEQOF_UC4>(*msg, {37, 38, 39, 40});
-	check_seqof_o<SEQOF_U8>(*msg, {'a', 'b'});
+	ASSERT_EQ(4, msg->count<FLD_UC>());
+	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
+	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
+	EXPECT_EQ(39, (msg->get<FLD_UC>(2)->get()));
+	EXPECT_EQ(40, (msg->get<FLD_UC>(3)->get()));
+	ASSERT_EQ(2, msg->count<FLD_U8>());
+	EXPECT_EQ('a', (msg->get<FLD_U8>(0)->get()));
+	EXPECT_EQ('b', (msg->get<FLD_U8>(1)->get()));
 	pu16 = msg->field();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x35D9, pu16->get());
@@ -1709,15 +1627,13 @@ TEST(decode, msg_func)
 	EXPECT_EQ(0xDABEEF, pu24->get());
 	FLD_QTY const* pqty = msg->field();
 	ASSERT_NE(nullptr, pqty);
-	auto const u32_qty = msg->count<SEQOF_IP4>();
+	auto const u32_qty = msg->count<FLD_U32>();
 	ASSERT_EQ(pqty->get(), u32_qty);
+	for (uint8_t i = 0; i < u32_qty; ++i)
 	{
-		auto it = msg->get<SEQOF_IP4>()->begin();
-		for (uint8_t i = 0; i < u32_qty; ++i)
-		{
-			FLD_IP4 const& v = *it++;
-			EXPECT_EQ(make_hash(i), v.get());
-		}
+		FLD_U32 const* p = msg->get<FLD_U32>(i);
+		ASSERT_NE(nullptr, p);
+		EXPECT_EQ(make_hash(i), p->get());
 	}
 
 	//------------ fail cases
@@ -1745,6 +1661,7 @@ TEST(decode, msg_func)
 	//else { printf("expected error: %s\n", toString(ctx.error_ctx())); }
 	ASSERT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
+
 
 //TODO: add more isolated UTs on fields
 TEST(field, tagged_nibble)

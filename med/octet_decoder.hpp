@@ -51,6 +51,27 @@ struct octet_decoder
 		ctx.error_ctx().set_error(e, psz, val0, val1, val2);
 	}
 
+	template <class MIE>
+	typename MIE::field_type* allocate(MIE& mie)
+	{
+		if (auto* pf = mie.push_back())
+		{
+			return pf;
+		}
+		if (mie.count() < MIE::max)
+		{
+			if (auto* pv = ctx.get_allocator().template allocate<typename MIE::field_value>())
+			{
+				return mie.push_back(*pv);
+			}
+		}
+		else
+		{
+			ctx.error_ctx().set_error(error::EXTRA_IE, name<typename MIE::field_type>(), MIE::max);
+		}
+		return nullptr;
+	}
+
 	//IE_VALUE
 	template <class IE>
 	bool operator() (IE& ie, IE_VALUE const&)

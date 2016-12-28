@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include <type_traits>
+#include <limits>
 
 #include "field.hpp"
 

@@ -10,18 +10,16 @@ Distributed under the MIT License
 #pragma once
 
 
-#include "allocator.hpp"
 #include "buffer.hpp"
 #include "error_context.hpp"
 #include "debug.hpp"
 
 namespace med {
 
-template < class BUFFER = buffer<uint8_t*>, class ALLOCATOR = allocator >
+template < class BUFFER = buffer<uint8_t*> >
 class encoder_context
 {
 public:
-	using allocator_type = ALLOCATOR;
 	using buffer_type = BUFFER;
 	using state_t = typename buffer_type::state_type;
 
@@ -35,42 +33,22 @@ private:
 public:
 	enum { snapshot_size = sizeof(snapshot_s) };
 
-	encoder_context(uint8_t* data, std::size_t size, std::size_t alloc_size = inf, void* snap_data = nullptr, std::size_t snap_size = 0)
-		: m_allocator{ m_errCtx }
-		, m_max_snapshots{ static_cast<uint16_t>(snap_size/sizeof(snapshot_s)) }
+	encoder_context(uint8_t* data, std::size_t size, void* snap_data = nullptr, std::size_t snap_size = 0)
+		: m_snapshot{ static_cast<snapshot_s*>(snap_data) }
+		, m_max_snapshots{ static_cast<uint16_t>(snap_size/snapshot_size) }
 	{
-		//NOTE: max floored above is corrent since alignment less than sizeof
-		if (std::align(alignof(snapshot_s), sizeof(snapshot_s), snap_data, snap_size))
-		{
-			m_snapshot = static_cast<snapshot_s*>(snap_data);
-		}
-
-		if (alloc_size)
-		{
-			if (size > alloc_size)
-			{
-				size -= alloc_size;
-			}
-			else //a wild guess option
-			{
-				size /= 2;
-				alloc_size = size;
-			}
-			m_allocator.reset(data + size, alloc_size);
-		}
-
 		reset(data, size);
 	}
 
 	template <std::size_t SIZE>
-	explicit encoder_context(uint8_t (&buff)[SIZE], std::size_t alloc_size = inf, void* snap_data = nullptr, std::size_t snap_size = 0)
-		: encoder_context(buff, SIZE, alloc_size, snap_data, snap_size)
+	explicit encoder_context(uint8_t (&buff)[SIZE], void* snap_data = nullptr, std::size_t snap_size = 0)
+		: encoder_context(buff, SIZE, snap_data, snap_size)
 	{
 	}
 
 	template <std::size_t SIZE, typename T, std::size_t SNAPSIZE>
-	encoder_context(uint8_t (&buff)[SIZE], T (&snap_data)[SNAPSIZE], std::size_t alloc_size = inf)
-		: encoder_context(buff, SIZE, alloc_size, snap_data, sizeof(snap_data))
+	encoder_context(uint8_t (&buff)[SIZE], T (&snap_data)[SNAPSIZE])
+		: encoder_context(buff, SIZE, snap_data, sizeof(snap_data))
 	{
 	}
 
@@ -80,7 +58,6 @@ public:
 	buffer_type& buffer()                   { return m_buffer; }
 	error_context& error_ctx()              { return m_errCtx; }
 	explicit operator bool() const          { return static_cast<bool>(m_errCtx); }
-	allocator_type& get_allocator()         { return m_allocator; }
 
 	void reset(void* data = nullptr, std::size_t size = 0)
 	{
@@ -134,9 +111,8 @@ private:
 
 	error_context  m_errCtx;
 	buffer_type    m_buffer;
-	allocator_type m_allocator;
 
-	snapshot_s*    m_snapshot{ nullptr };
+	snapshot_s*    m_snapshot;
 	uint16_t const m_max_snapshots;
 	uint16_t       m_idx_snapshot{ 0 };
 };

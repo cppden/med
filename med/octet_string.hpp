@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include <utility>
 #include <cstring>
+#include <limits>
 
 #include "ie.hpp"
 
