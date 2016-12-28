@@ -36,15 +36,6 @@ template <class T>
 constexpr bool is_counter_v = is_counter<T>::value;
 
 
-
-template <class IE>
-std::enable_if_t<is_optional_v<IE>, bool>
-constexpr check_arity(std::size_t count)    { return 0 == count || count >= IE::min; }
-
-template <class IE>
-std::enable_if_t<!is_optional_v<IE>, bool>
-constexpr check_arity(std::size_t count)    { return count >= IE::min; }
-
 // user-provided functor to etract field count
 template<typename T, class Enable = void>
 struct is_count_getter : std::false_type { };

@@ -139,33 +139,6 @@ struct set_encoder<IE, IES...>
 	}
 };
 
-template <class HEADER, class FUNC, class IE>
-constexpr int set_invoke_encode(FUNC&, IE&, int count) { return count; }
-
-template <class HEADER, class FUNC, class IE, std::size_t INDEX, std::size_t... Is>
-inline int set_invoke_encode(FUNC& func, IE& ie, int count)
-{
-	//TODO: use iterators
-	if (ie.ref_field(INDEX).is_set())
-	{
-		if (!encode_header<HEADER, IE>(func) || !encode(func, ie.ref_field(INDEX))) return -1;
-		return set_invoke_encode<HEADER, FUNC, IE, Is...>(func, ie, INDEX+1);
-	}
-	return INDEX;
-}
-
-template<class HEADER, class FUNC, class IE, std::size_t... Is>
-inline int set_repeat_encode_impl(FUNC& func, IE& ie, std::index_sequence<Is...>)
-{
-	return set_invoke_encode<HEADER, FUNC, IE, Is...>(func, ie, 0);
-}
-
-template <class HEADER, std::size_t N, class FUNC, class IE>
-inline int set_encode(FUNC& func, IE& ie)
-{
-	return set_repeat_encode_impl<HEADER>(func, ie, std::make_index_sequence<N>{});
-}
-
 template <>
 struct set_encoder<>
 {

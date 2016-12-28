@@ -149,7 +149,7 @@ struct FLD_CHO : med::choice< HDR<8>
 {
 };
 
-struct SEQOF_W : med::sequence_of<FLD_W, med::min<1>, med::max<3>>
+struct SEQOF_W : med::sequence_of<FLD_W, med::max<3>>
 {
 	static constexpr char const* name() { return "Seq-Of-W"; }
 };
@@ -293,7 +293,7 @@ struct SEQOF_SEQ_W_CHO : med::sequence_of<SEQ_W_CHO, med::max<2>>
 	static constexpr char const* name() { return "Seq-Of-W-CHO"; }
 };
 
-struct SEQOF_VFLD1 : med::sequence_of<VFLD1, med::min<1>, med::max<3>>
+struct SEQOF_VFLD1 : med::sequence_of<VFLD1, med::max<3>>
 {
 	static constexpr char const* name() { return "Seq-Of-VFLD1"; }
 };
@@ -334,16 +334,16 @@ struct MSG_MSEQ : med::sequence<
 	M< SEQOF_UC >,            //<V>*2
 	M< T<0x21>, SEQOF_U16 >,  //<TV>*2
 	M< L, SEQOF_U24 >,        //<LV>*2
-	M< T<0x42>, L, SEQOF_IP4 >, //<TLV>(fixed)*[1,2]
+	M< T<0x42>, L, SEQOF_IP4 >, //<TLV>(fixed)*[1,8]
 	M< T<0x51>, SEQOF_DW >,     //<TV>*[1,2]
 	M< CNT, SEQOF_SEQ_U8_16<0> >,
 	O< FLD_TN >,
 	O< T<0x60>, L, FLD_CHO>,
-	O< T<0x61>, L, SEQOF_W>,
-	O< T<0x62>, L, SEQOF_SEQ_W_CHO>,
+	O< T<0x61>, L, SEQOF_W>, //[TLV]*[1,3]
+	O< T<0x62>, L, SEQOF_SEQ_W_CHO>, //[TLV]*[1,2]
 	O< T<0x70>, L, FLD_NSCHO >,
-	O< T<0x80>, CNT, SEQOF_SEQ_U8_16<1> >, //T[CV]*[0,2]
-	O< L, SEQOF_VFLD1 >           //[LV(var)]*[0,3] till EoF
+	O< T<0x80>, CNT, SEQOF_SEQ_U8_16<1> >, //[TCV]*[1,2]
+	O< L, SEQOF_VFLD1 >           //[LV(var)]*[1,3] till EoF
 >
 {
 	static constexpr char const* name() { return "Msg-Multi-Seq"; }
@@ -556,26 +556,30 @@ TEST(encode, seq_fail)
 
 TEST(encode, mseq_ok)
 {
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
 	PROTO proto;
 
 	//mandatory only
 	MSG_MSEQ& msg = proto.select();
-	msg.ref<SEQOF_UC>().push_back()->set(37);
-	msg.ref<SEQOF_UC>().push_back()->set(38);
-	msg.ref<SEQOF_U16>().push_back()->set(0x35D9);
-	msg.ref<SEQOF_U16>().push_back()->set(0x35DA);
-	msg.ref<SEQOF_U24>().push_back()->set(0xDABEEF);
-	msg.ref<SEQOF_U24>().push_back()->set(0x22BEEF);
-	msg.ref<SEQOF_IP4>().push_back()->set(0xFee1ABBA);
-	msg.ref<SEQOF_DW>().push_back()->set(0x01020304);
+	msg.ref<SEQOF_UC>().push_back(ctx)->set(37);
+	msg.ref<SEQOF_UC>().push_back(ctx)->set(38);
+	msg.ref<SEQOF_U16>().push_back(ctx)->set(0x35D9);
+	msg.ref<SEQOF_U16>().push_back(ctx)->set(0x35DA);
+	msg.ref<SEQOF_U24>().push_back(ctx)->set(0xDABEEF);
+	msg.ref<SEQOF_U24>().push_back(ctx)->set(0x22BEEF);
+	msg.ref<SEQOF_IP4>().push_back(ctx)->set(0xFee1ABBA);
+	msg.ref<SEQOF_DW>().push_back(ctx)->set(0x01020304);
+	if (auto* s = msg.ref<SEQOF_SEQ_U8_16<0>>().push_back(ctx))
 	{
-		auto* s = msg.ref<SEQOF_SEQ_U8_16<0>>().push_back();
 		s->ref<FLD_U8>().set(1);
 		s->ref<FLD_U16>().set(2);
 	}
-
-	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
+	else
+	{
+		FAIL() << toString(ctx.error_ctx());
+	}
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded1[] = { 0x11

@@ -18,7 +18,7 @@ class allocator
 {
 public:
 	explicit allocator(error_context& err)
-			: m_errCtx(err)
+		: m_errCtx(err)
 	{}
 
 	void reset(void* data, std::size_t size)
@@ -40,17 +40,15 @@ public:
 	T* allocate()
 	{
 		std::size_t sz = size();
-		if (void* p = std::align(alignof(T), sizeof(T), p, sz))
+		void* p = m_begin;
+		if (std::align(alignof(T), sizeof(T), p, sz))
 		{
 			T* result = new (p) T{};
 			m_begin = static_cast<uint8_t*>(p) + sizeof(T);
 			return result;
 		}
-		else
-		{
-			m_errCtx.allocError(name<T>(), sizeof(T));
-			return nullptr;
-		}
+		m_errCtx.allocError(name<T>(), sizeof(T));
+		return nullptr;
 	}
 
 private:
@@ -83,10 +81,21 @@ inline auto get_allocator_ptr(T& t) -> std::enable_if_t<is_allocator_v<T>, T*>
 	return &t;
 }
 template <class T>
+inline auto get_allocator_ptr(T* pt) -> std::enable_if_t<is_allocator_v<T>, T*>
+{
+	return pt;
+}
+template <class T>
 inline auto get_allocator_ptr(T& t) -> std::add_pointer_t<decltype(t.get_allocator())>
 {
 	auto& allocator = t.get_allocator();
-	//static_assert(std::is_same<T*, decltype(allocator.template allocate<T>())>::value, "");
+	static_assert(is_allocator<decltype(allocator)>::value, "IS NOT ALLOCATOR!");
+	return &allocator;
+}
+template <class T>
+inline auto get_allocator_ptr(T* pt) -> std::add_pointer_t<decltype(pt->get_allocator())>
+{
+	auto& allocator = pt->get_allocator();
 	static_assert(is_allocator<decltype(allocator)>::value, "IS NOT ALLOCATOR!");
 	return &allocator;
 }

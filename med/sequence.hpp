@@ -60,9 +60,9 @@ inline clear_tag(FUNC&, TAG& vtag)
 //optional field with a tag
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		is_optional_v<IE>
-		&& !has_optional_type<IE>::value
-		&& has_tag_type_v<IE>
+		is_optional_v<IE> &&
+		!has_optional_type<IE>::value &&
+		has_tag_type_v<IE>
 	>,
 	IE, IES...>
 {
@@ -106,9 +106,9 @@ struct seq_dec_imp<std::enable_if_t<
 //optional field without a tag (optional by end of data)
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
-		is_optional_v<IE>
-		&& !has_tag_type_v<IE>
-		&& !has_optional_type<IE>::value
+		is_optional_v<IE> &&
+		!has_tag_type_v<IE> &&
+		!has_optional_type<IE>::value
 	>,
 	IE, IES...>
 {
@@ -164,6 +164,242 @@ struct seq_dec_imp<std::enable_if_t<
 	}
 };
 
+#if 0
+//seq-of w/ tag
+template <class FIELD, class... IES>
+struct seq_dec_imp<std::enable_if_t<
+		is_sequence_of_v<FIELD> &&
+		has_tag_type_v<FIELD>
+	>,
+	FIELD, IES...>
+{
+	template <class TO, class FUNC, class UNEXP, class TAG>
+	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
+	{
+		FIELD& ie = to;
+
+		if (!vtag)
+		{
+			if (func.push_state())
+			{
+				if (auto const tag = decode_tag<typename FIELD::tag_type>(func))
+				{
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+				}
+				else
+				{
+					return false;
+				}
+			}
+		}
+
+		while (FIELD::tag_type::match(vtag.get_encoded()))
+		{
+			CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<FIELD>());
+
+			if (auto* field = ie.push_back(func))
+			{
+				if (!med::decode(func, *field, unexp)) return false;
+			}
+			else
+			{
+				return false;
+			}
+
+			if (func.push_state())
+			{
+				if (auto const tag = decode_tag<typename FIELD::tag_type>(func))
+				{
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+				}
+				else
+				{
+					vtag.clear();
+				}
+			}
+			else
+			{
+				vtag.clear();
+				break;
+			}
+		}
+
+		if (check_arity<FIELD>(field_count(ie)))
+		{
+			if (!vtag)
+			{
+				func.pop_state(); //restore state
+				func(error::SUCCESS); //clear error
+			}
+			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
+		}
+		else
+		{
+			func(error::MISSING_IE, name<typename FIELD::field_type>(), FIELD::min, field_count(ie));
+			return false;
+		}
+	}
+};
+
+//multi-instance field without tag, counter or count-getter
+template <class FIELD, class... IES>
+struct seq_dec_imp<std::enable_if_t<
+		has_multi_field_v<FIELD> &&
+		!has_tag_type_v<FIELD> &&
+		!has_count_getter_v<FIELD> &&
+		!is_counter_v<FIELD>
+	>,
+	FIELD, IES...>
+{
+	template <class TO, class FUNC, class UNEXP, class TAG>
+	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
+	{
+		FIELD& ie = to;
+
+		if (vtag)
+		{
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
+			func.pop_state(); //restore state
+			vtag.clear();
+		}
+
+		CODEC_TRACE("[%s]*[%zu..%zu]", name<FIELD>(), FIELD::min, FIELD::max);
+
+		std::size_t count = 0;
+		while (!func.eof() && count < FIELD::max)
+		{
+			if (auto* field = func.allocate(ie))
+			{
+				if (!sl::decode<FIELD>(func, *field, typename FIELD::ie_type{}, unexp)) return false;
+			}
+			else
+			{
+				return false;
+			}
+			++count;
+		}
+
+		if (check_arity<FIELD>(count))
+		{
+			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
+		}
+		else
+		{
+			func(error::MISSING_IE, name<typename FIELD::field_type>(), FIELD::min, count);
+			return false;
+		}
+	}
+};
+
+
+//multi-instance field without tag with count-getter
+template <class FIELD, class... IES>
+struct seq_dec_imp<
+	std::enable_if_t<
+		has_multi_field_v<FIELD> &&
+		!has_tag_type_v<FIELD> &&
+		has_count_getter_v<FIELD>
+	>,
+	FIELD, IES...
+>
+{
+	template <class TO, class FUNC, class UNEXP, class TAG>
+	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
+	{
+		CODEC_TRACE("[%s]...", name<FIELD>());
+		FIELD& ie = to;
+
+		if (vtag)
+		{
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
+			func.pop_state(); //restore state
+			vtag.clear();
+		}
+
+		std::size_t count = typename FIELD::count_getter{}(to);
+
+		CODEC_TRACE("[%s]*%zu", name<FIELD>(), count);
+		while (count--)
+		{
+			if (auto* field = func.allocate(ie))
+			{
+				if (!med::decode(func, *field, unexp)) return false;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		if (check_arity<FIELD>(field_count(ie)))
+		{
+			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
+		}
+		else
+		{
+			func(error::MISSING_IE, name<typename FIELD::field_type>(), FIELD::min, field_count(ie));
+			return false;
+		}
+	}
+};
+
+//multi-instance field without tag with counter
+template <class FIELD, class... IES>
+struct seq_dec_imp<
+	std::enable_if_t<
+		has_multi_field_v<FIELD> &&
+		!has_tag_type_v<FIELD> &&
+		is_counter_v<FIELD>
+	>,
+	FIELD, IES...
+>
+{
+	template <class TO, class FUNC, class UNEXP, class TAG>
+	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
+	{
+		CODEC_TRACE("[%s]...", name<FIELD>());
+		FIELD& ie = to;
+
+		if (vtag)
+		{
+			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
+			func.pop_state(); //restore state
+			vtag.clear();
+		}
+
+		typename FIELD::counter_type counter_ie;
+		if (!med::decode(func, counter_ie)) return false;
+
+		auto count = counter_ie.get_encoded();
+		if (check_arity<FIELD>(count))
+		{
+			while (count--)
+			{
+				CODEC_TRACE("[%s]*%zu", name<FIELD>(), count);
+
+				if (auto* field = func.allocate(ie))
+				{
+					if (!med::decode(func, *field, unexp)) return false;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
+		}
+		else
+		{
+			func(error::MISSING_IE, name<typename FIELD::field_type>(), FIELD::min, count);
+			return false;
+		}
+	}
+};
+#endif
+
 template <>
 struct seq_dec_imp<void>
 {
@@ -171,7 +407,7 @@ struct seq_dec_imp<void>
 	static bool decode(TO&, FUNC&&, UNEXP&, TAG&)               { return true; }
 };
 
-
+///////////////////////////////////////////////////////////////// ENCODER
 template <class Enable, class... IES>
 struct seq_enc_imp;
 template <class... IES>
@@ -180,6 +416,7 @@ using seq_encoder = seq_enc_imp<void, IES...>;
 //mandatory field w/o setter
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
+		!is_sequence_of_v<IE> &&
 		!is_optional_v<IE> &&
 		!has_setter_type_v<IE>
 	>,
@@ -205,6 +442,7 @@ struct seq_enc_imp<std::enable_if_t<
 //mandatory field w/ setter
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
+		!is_sequence_of_v<IE> &&
 		!is_optional_v<IE> &&
 		has_setter_type_v<IE>
 	>,
@@ -231,6 +469,7 @@ struct seq_enc_imp<std::enable_if_t<
 //optional field
 template <class IE, class... IES>
 struct seq_enc_imp<std::enable_if_t<
+		!is_sequence_of_v<IE> &&
 		is_optional_v<IE>
 	>,
 	IE, IES...>
@@ -251,6 +490,90 @@ struct seq_enc_imp<std::enable_if_t<
 	}
 };
 
+//mandatory seq-of w/ counter
+template <class FIELD, class... IES>
+struct seq_enc_imp<std::enable_if_t<
+		is_sequence_of_v<FIELD> &&
+		is_counter_v<FIELD> &&
+		!is_optional_v<FIELD>
+	>,
+	FIELD, IES...>
+{
+	template <class TO, class FUNC>
+	static inline bool encode(TO const& to, FUNC&& func)
+	{
+		FIELD const& ie = to;
+		std::size_t const count = ie.count();
+		CODEC_TRACE("CV[%s]=%zu", name<FIELD>(), count);
+		if (count <= FIELD::max)
+		{
+			if (count >= FIELD::min)
+			{
+				typename FIELD::counter_type counter_ie;
+				counter_ie.set_encoded(count);
+
+				return med::encode(func, counter_ie)
+					&& ie.encode(func)
+					&& seq_encoder<IES...>::encode(to, func);
+			}
+			else
+			{
+				encoder(error::EXTRA_IE, name<FIELD>(), FIELD::min, count);
+			}
+		}
+		else
+		{
+			encoder(error::EXTRA_IE, name<FIELD>(), FIELD::max, count);
+		}
+		return false;
+	}
+};
+
+//optional seq-of w/ counter
+template <class FIELD, class... IES>
+struct seq_enc_imp<std::enable_if_t<
+		is_sequence_of_v<FIELD> &&
+		is_counter_v<FIELD> &&
+		is_optional_v<FIELD>
+	>,
+	FIELD, IES...>
+{
+	template <class TO, class FUNC>
+	static inline bool encode(TO const& to, FUNC&& func)
+	{
+		FIELD const& ie = to;
+		std::size_t const count = ie.count();
+		CODEC_TRACE("CV[%s]=%zu", name<FIELD>(), count);
+		if (count > 0)
+		{
+			if (count <= FIELD::max)
+			{
+				if (count >= FIELD::min)
+				{
+					typename FIELD::counter_type counter_ie;
+					counter_ie.set_encoded(count);
+
+					return med::encode(func, counter_ie)
+						&& ie.encode(func)
+						&& seq_encoder<IES...>::encode(to, func);
+				}
+				else
+				{
+					encoder(error::EXTRA_IE, name<FIELD>(), FIELD::min, count);
+				}
+			}
+			else
+			{
+				encoder(error::EXTRA_IE, name<FIELD>(), FIELD::max, count);
+			}
+		}
+		else
+		{
+			return seq_encoder<IES...>::encode(to, func);
+		}
+		return false;
+	}
+};
 
 template <>
 struct seq_enc_imp<void>

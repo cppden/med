@@ -35,23 +35,42 @@ private:
 public:
 	enum { snapshot_size = sizeof(snapshot_s) };
 
-	encoder_context(uint8_t* data, std::size_t size, void* snap_data = nullptr, std::size_t snap_size = 0)
+	encoder_context(uint8_t* data, std::size_t size, std::size_t alloc_size = inf, void* snap_data = nullptr, std::size_t snap_size = 0)
 		: m_allocator{ m_errCtx }
-		, m_snapshot{ static_cast<snapshot_s*>(snap_data) }
-		, m_max_snapshots{ static_cast<uint16_t>(snap_size/snapshot_size) }
+		, m_max_snapshots{ static_cast<uint16_t>(snap_size/sizeof(snapshot_s)) }
 	{
+		//NOTE: max floored above is corrent since alignment less than sizeof
+		if (std::align(alignof(snapshot_s), sizeof(snapshot_s), snap_data, snap_size))
+		{
+			m_snapshot = static_cast<snapshot_s*>(snap_data);
+		}
+
+		if (alloc_size)
+		{
+			if (size > alloc_size)
+			{
+				size -= alloc_size;
+			}
+			else //a wild guess option
+			{
+				size /= 2;
+				alloc_size = size;
+			}
+			m_allocator.reset(data + size, alloc_size);
+		}
+
 		reset(data, size);
 	}
 
 	template <std::size_t SIZE>
-	explicit encoder_context(uint8_t (&buff)[SIZE], void* snap_data = nullptr, std::size_t snap_size = 0)
-		: encoder_context(buff, SIZE, snap_data, snap_size)
+	explicit encoder_context(uint8_t (&buff)[SIZE], std::size_t alloc_size = inf, void* snap_data = nullptr, std::size_t snap_size = 0)
+		: encoder_context(buff, SIZE, alloc_size, snap_data, snap_size)
 	{
 	}
 
 	template <std::size_t SIZE, typename T, std::size_t SNAPSIZE>
-	encoder_context(uint8_t (&buff)[SIZE], T (&snap_data)[SNAPSIZE])
-		: encoder_context(buff, SIZE, snap_data, sizeof(snap_data))
+	encoder_context(uint8_t (&buff)[SIZE], T (&snap_data)[SNAPSIZE], std::size_t alloc_size = inf)
+		: encoder_context(buff, SIZE, alloc_size, snap_data, sizeof(snap_data))
 	{
 	}
 
@@ -117,7 +136,7 @@ private:
 	buffer_type    m_buffer;
 	allocator_type m_allocator;
 
-	snapshot_s*    m_snapshot;
+	snapshot_s*    m_snapshot{ nullptr };
 	uint16_t const m_max_snapshots;
 	uint16_t       m_idx_snapshot{ 0 };
 };
