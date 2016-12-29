@@ -168,55 +168,54 @@ public:
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!is_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
+		static_assert(!is_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE WRITTEN VIA PUSH_BACK");
 		return ie.ref_field();
-	}
-
-	template <class FIELD>
-	FIELD* ref(std::size_t index)
-	{
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
-		return ie.get_field(index);
 	}
 
 	template <class FIELD>
 	decltype(auto) get() const
 	{
 		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!is_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE ACCESSED BY INDEX");
+		//using IE = remove_cref_t<decltype(ie)>;
 		return get_field<FIELD>(ie);
 	}
 
 	template <class FIELD>
-	decltype(auto) get(std::size_t index) const
+	FIELD const* get(std::size_t index) const
 	{
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS CAN'T BE ACCESSED BY INDEX");
-		return get_field<FIELD>(ie, index);
+		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE READ W/O INDEX");
+		return ie.at(index);
 	}
 
+	template <class FIELD, class... ARGS>
+	FIELD* push_back(ARGS&&... args)
+	{
+		auto& ie = m_ies.template as<FIELD>();
+		using IE = remove_cref_t<decltype(ie)>;
+		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE WRITTEN VIA REF");
+		return ie.push_back(std::forward<ARGS>(args)...);
+	}
+
+	auto field()                            { return make_accessor(*this); }
+	auto field() const                      { return make_accessor(*this); }
+	auto cfield() const                     { return make_accessor(*this); }
+	auto field(std::size_t index) const     { return make_accessor(*this, index); }
 
 	template <class FIELD>
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
 
 	template <class FIELD>
-	std::size_t arity() const               { return sl::field_arity(m_ies.template as<FIELD>()); }
+	constexpr std::size_t arity() const
+	{
+		using IE = typename ies<IES...>::template at<FIELD>;
+		return sl::field_arity<IE>();
+	}
 
 	void clear()                            { sl::seq_clear<IES...>::clear(this->m_ies); }
 	bool is_set() const                     { return sl::seq_is_set<IES...>::is_set(this->m_ies); }
 	std::size_t calc_length() const         { return sl::container_for<IES...>::calc_length(this->m_ies); }
-
-	auto field()                            { return make_accessor(*this); }
-	auto field() const                      { return make_accessor(*this); }
-	auto cfield() const                     { return make_accessor(*this); }
-
-	auto field(std::size_t index)           { return make_accessor(*this, index); }
-	auto field(std::size_t index) const     { return make_accessor(*this, index); }
-	auto cfield(std::size_t index) const    { return make_accessor(*this, index); }
 
 protected:
 	struct ies_t : IES...

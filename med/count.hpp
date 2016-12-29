@@ -35,15 +35,55 @@ using is_counter = has_counter_type<T>;
 template <class T>
 constexpr bool is_counter_v = is_counter<T>::value;
 
+namespace detail {
 
-//TODO: arity should include check for max as well
-template <class IE>
-std::enable_if_t<is_optional_v<IE>, bool>
-constexpr check_arity(std::size_t count)    { return 0 == count || count >= IE::min; }
+template <class FUNC, class IE>
+inline bool check_arity(FUNC& func, IE const& ie, std::size_t count)
+{
+	if (count >= IE::min)
+	{
+		if (count <= IE::max) return true;
+		func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, count);
+	}
+	else
+	{
+		func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
+	}
+	return false;
+}
 
-template <class IE>
+} //end: namespace detail
+
+//mandatory multi-field
+template <class FUNC, class IE>
 std::enable_if_t<!is_optional_v<IE>, bool>
-constexpr check_arity(std::size_t count)    { return count >= IE::min; }
+inline check_arity(FUNC& func, IE const& ie, std::size_t count)
+{
+	return detail::check_arity(func, ie, count);
+}
+
+template <class FUNC, class IE>
+std::enable_if_t<!is_optional_v<IE>, bool>
+inline check_arity(FUNC& func, IE const& ie)
+{
+	return detail::check_arity(func, ie, ie.count());
+}
+
+//optional multi-field
+template <class FUNC, class IE>
+std::enable_if_t<is_optional_v<IE>, bool>
+inline check_arity(FUNC& func, IE const& ie, std::size_t count)
+{
+	return (0 == count) || detail::check_arity(func, ie, count);
+}
+
+template <class FUNC, class IE>
+std::enable_if_t<is_optional_v<IE>, bool>
+inline check_arity(FUNC& func, IE const& ie)
+{
+	auto const count = ie.count();
+	return (0 == count) || detail::check_arity(func, ie, count);
+}
 
 // user-provided functor to etract field count
 template<typename T, class Enable = void>

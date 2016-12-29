@@ -68,7 +68,7 @@ public:
 	explicit operator bool() const          { return static_cast<bool>(error_ctx()); }
 	allocator_type& get_allocator()         { return m_allocator; }
 
-	void reset(void* data = nullptr, std::size_t size = 0, std::size_t alloc_size = inf)
+	void reset(void* data, std::size_t size, std::size_t alloc_size = inf)
 	{
 		if (alloc_size)
 		{
@@ -84,7 +84,16 @@ public:
 		}
 
 		m_allocator.reset(static_cast<uint8_t*>(data) + size, alloc_size);
-		m_buffer.reset(static_cast<uint8_t*>(data), size);
+		m_buffer.reset(static_cast<typename buffer_type::pointer>(data), size);
+
+		error_ctx().reset();
+		m_idx_snapshot = 0;
+	}
+
+	void reset()
+	{
+		m_allocator.reset();
+		m_buffer.reset();
 
 		error_ctx().reset();
 		m_idx_snapshot = 0;

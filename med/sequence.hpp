@@ -229,20 +229,13 @@ struct seq_dec_imp<std::enable_if_t<
 			}
 		}
 
-		if (check_arity<IE>(field_count(ie)))
+		if (!vtag)
 		{
-			if (!vtag)
-			{
-				func.pop_state(); //restore state
-				func(error::SUCCESS); //clear error
-			}
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
+			func.pop_state(); //restore state
+			func(error::SUCCESS); //clear error
 		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
-			return false;
-		}
+		return check_arity(func, ie)
+			&& seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
 };
 
@@ -284,15 +277,8 @@ struct seq_dec_imp<std::enable_if_t<
 			++count;
 		}
 
-		if (check_arity<IE>(count))
-		{
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-			return false;
-		}
+		return check_arity(func, ie, count)
+			&& seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
 };
 
@@ -322,29 +308,17 @@ struct seq_dec_imp<
 		}
 
 		std::size_t count = typename IE::count_getter{}(to);
-
 		CODEC_TRACE("[%s]*%zu", name<IE>(), count);
+
+		if (!check_arity(func, ie, count)) return false;
+
 		while (count--)
 		{
-			if (auto* field = ie.push_back(func))
-			{
-				if (!med::decode(func, *field, unexp)) return false;
-			}
-			else
-			{
-				return false;
-			}
+			auto* field = ie.push_back(func);
+			if (!field || !med::decode(func, *field, unexp)) return false;
 		}
 
-		if (check_arity<IE>(field_count(ie)))
-		{
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
-			return false;
-		}
+		return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
 };
 
@@ -373,32 +347,23 @@ struct seq_dec_imp<
 		}
 
 		typename IE::counter_type counter_ie;
-		if (!med::decode(func, counter_ie)) return false;
-
-		auto count = counter_ie.get_encoded();
-		if (check_arity<IE>(count))
+		if (med::decode(func, counter_ie))
 		{
-			while (count--)
+			auto count = counter_ie.get_encoded();
+			if (check_arity(func, ie, count))
 			{
-				CODEC_TRACE("[%s]*%zu", name<IE>(), count);
+				while (count--)
+				{
+					CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 
-				if (auto* field = ie.push_back(func))
-				{
-					if (!med::decode(func, *field, unexp)) return false;
+					auto* pfield = ie.push_back(func);
+					if (!pfield || !med::decode(func, *pfield, unexp)) return false;
 				}
-				else
-				{
-					return false;
-				}
+
+				return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 			}
-
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-			return false;
-		}
+		return false;
 	}
 };
 
@@ -490,6 +455,26 @@ struct seq_enc_imp<std::enable_if_t<
 	}
 };
 
+template <class FUNC, class IE>
+inline bool encode_multi(FUNC& func, IE const& ie)
+{
+	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
+	for (auto& field : ie)
+	{
+		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
+		if (field.is_set())
+		{
+			if (!sl::encode<IE>(func, field, typename IE::ie_type{})) return false;
+		}
+		else
+		{
+			func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count() - 1);
+			return false;
+		}
+	}
+	return true;
+}
+
 
 //multi-field w/o counter
 template <class IE, class... IES>
@@ -503,18 +488,9 @@ struct seq_enc_imp<std::enable_if_t<
 	static inline bool encode(TO const& to, FUNC&& func)
 	{
 		IE const& ie = to;
-		int const count = med::encode_multi(func, ie);
-		if (count < 0) return false;
-
-		if (check_arity<IE>(count))
-		{
-			return seq_encoder<IES...>::encode(to, func);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-			return false;
-		}
+		return encode_multi(func, ie)
+			&& check_arity(func, ie)
+			&& seq_encoder<IES...>::encode(to, func);
 	}
 };
 
@@ -531,22 +507,13 @@ struct seq_enc_imp<std::enable_if_t<
 	static inline bool encode(TO const& to, FUNC&& func)
 	{
 		IE const& ie = to;
-		std::size_t const count = field_count(ie);
-		CODEC_TRACE("CV[%s]=%zu", name<IE>(), count);
-		if (check_arity<IE>(count))
-		{
-			typename IE::counter_type counter_ie;
-			counter_ie.set_encoded(count);
-
-			return med::encode(func, counter_ie)
-				&& med::encode_multi(func, ie) == (int)count
-				&& seq_encoder<IES...>::encode(to, func);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-		}
-		return false;
+		CODEC_TRACE("CV[%s]=%zu", name<IE>(), ie.count());
+		typename IE::counter_type counter_ie;
+		counter_ie.set_encoded(ie.count());
+		return check_arity(func, ie)
+			&& med::encode(func, counter_ie)
+			&& encode_multi(func, ie)
+			&& seq_encoder<IES...>::encode(to, func);
 	}
 };
 
@@ -564,28 +531,21 @@ struct seq_enc_imp<std::enable_if_t<
 	{
 		IE const& ie = to;
 		std::size_t const count = field_count(ie);
-		CODEC_TRACE("CV[%s]=%zu", name<IE>(), count);
-		if (check_arity<IE>(count))
+		CODEC_TRACE("CV[%s]=%zu", name<IE>(), ie.count());
+		if (count > 0)
 		{
-			if (count > 0)
-			{
-				typename IE::counter_type counter_ie;
-				counter_ie.set_encoded(count);
+			typename IE::counter_type counter_ie;
+			counter_ie.set_encoded(ie.count());
 
-				return med::encode(func, counter_ie)
-					&& med::encode_multi(func, ie) == (int)count
-					&& seq_encoder<IES...>::encode(to, func);
-			}
-			else
-			{
-				return seq_encoder<IES...>::encode(to, func);
-			}
+			return check_arity(func, ie)
+				&& med::encode(func, counter_ie)
+				&& encode_multi(func, ie)
+				&& seq_encoder<IES...>::encode(to, func);
 		}
 		else
 		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
+			return seq_encoder<IES...>::encode(to, func);
 		}
-		return false;
 	}
 };
 

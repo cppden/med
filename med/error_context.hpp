@@ -89,11 +89,11 @@ inline char const* toString(error_context const& ec)
 		break;
 
 	case error::MISSING_IE:
-		std::snprintf(sz, sizeof(sz), "Missing IE '%s': at least %zu expected, only %zu found", ec.m_name, ec.m_param[0], ec.m_param[1]);
+		std::snprintf(sz, sizeof(sz), "Missing IE '%s': at least %zu expected, got %zu", ec.m_name, ec.m_param[0], ec.m_param[1]);
 		break;
 
 	case error::EXTRA_IE:
-		std::snprintf(sz, sizeof(sz), "Excessive IE '%s': no more than %zu expected", ec.m_name, ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "Excessive IE '%s': no more than %zu expected, got %zu", ec.m_name, ec.m_param[0], ec.m_param[1]);
 		break;
 
 	case error::OUT_OF_MEMORY:

@@ -22,25 +22,11 @@ public:
 	using allocator_type = ALLOCATOR;
 	using buffer_type = BUFFER;
 
-	explicit decoder_context(void const* data = nullptr, std::size_t size = 0, void* alloc_data = nullptr, std::size_t alloc_size = 0)
+	decoder_context(void const* data, std::size_t size, void* alloc_data, std::size_t alloc_size)
 		: m_allocator{ m_errCtx }
 	{
-		reset(data, size, alloc_data, alloc_size);
-	}
+		reset(data, size);
 
-	template <std::size_t SIZE>
-	explicit decoder_context(uint8_t const (&buff)[SIZE], void* alloc_data = nullptr, std::size_t alloc_size = 0)
-		: decoder_context(buff, SIZE, alloc_data, alloc_size)
-	{
-	}
-
-	buffer_type& buffer()                   { return m_buffer; }
-	error_context& error_ctx()              { return m_errCtx; }
-	explicit operator bool() const          { return static_cast<bool>(error_ctx()); }
-	allocator_type& get_allocator()         { return m_allocator; }
-
-	void reset(void const* data = nullptr, std::size_t size = 0, void* alloc_data = nullptr, std::size_t alloc_size = 0)
-	{
 		if (alloc_size)
 		{
 			m_allocator.reset(alloc_data, alloc_size);
@@ -49,8 +35,47 @@ public:
 		{
 			m_allocator.reset();
 		}
+	}
 
-		buffer().reset(static_cast<uint8_t const*>(data), size);
+	decoder_context()
+		: decoder_context(nullptr, 0, nullptr, 0)
+	{
+	}
+
+	decoder_context(void const* data, std::size_t size)
+		: decoder_context(data, size, nullptr, 0)
+	{
+	}
+
+	template <std::size_t SIZE>
+	explicit decoder_context(uint8_t const (&data)[SIZE])
+		: decoder_context(data, SIZE, nullptr, 0)
+	{
+	}
+
+	template <std::size_t SIZE, typename T, std::size_t ALLOC_SIZE>
+	decoder_context(uint8_t const (&data)[SIZE], T const (&alloc_data)[ALLOC_SIZE])
+		: decoder_context(data, SIZE, alloc_data, ALLOC_SIZE*sizeof(T))
+	{
+	}
+
+
+	buffer_type& buffer()                   { return m_buffer; }
+	error_context& error_ctx()              { return m_errCtx; }
+	explicit operator bool() const          { return static_cast<bool>(error_ctx()); }
+	allocator_type& get_allocator()         { return m_allocator; }
+
+	void reset(void const* data, std::size_t size)
+	{
+		m_allocator.reset();
+		buffer().reset(static_cast<typename buffer_type::pointer>(data), size);
+		error_ctx().reset();
+	}
+
+	void reset()
+	{
+		m_allocator.reset();
+		buffer().reset();
 		error_ctx().reset();
 	}
 

@@ -81,12 +81,14 @@ struct set_dec_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 		if (tag_type_t<IE>::match( get_tag(header) ))
 		{
 			IE& ie = static_cast<IE&>(to);
-			CODEC_TRACE("[%s]*", name<typename IE::field_type>());
-			if (auto* field = ie.push_back(func))
+			CODEC_TRACE("[%s]@%zu", name<typename IE::field_type>(), ie.count());
+			if (ie.count() >= IE::max)
 			{
-				return med::decode(func, *field, unexp);
+				func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, ie.count());
+				return false;
 			}
-			return false;
+			auto* pfield = ie.push_back(func);
+			return pfield && med::decode(func, *pfield, unexp);
 		}
 		else
 		{
@@ -98,15 +100,8 @@ struct set_dec_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 	static bool check(TO const& to, FUNC& func)
 	{
 		IE const& ie = static_cast<IE const&>(to);
-		if (check_arity<IE>(field_count(ie)))
-		{
-			return set_decoder<IES...>::check(to, func);
-		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, field_count(ie));
-		}
-		return false;
+		return check_arity(func, ie)
+			&& set_decoder<IES...>::check(to, func);
 	}
 };
 
@@ -183,33 +178,6 @@ struct set_enc_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 	}
 };
 
-template <class HEADER, class FUNC, class IE>
-constexpr int set_invoke_encode(FUNC&, IE&, int count) { return count; }
-
-template <class HEADER, class FUNC, class IE, std::size_t INDEX, std::size_t... Is>
-inline int set_invoke_encode(FUNC& func, IE& ie, int count)
-{
-	//TODO: use iterators
-	if (ie.ref_field(INDEX).is_set())
-	{
-		if (!encode_header<HEADER, IE>(func) || !encode(func, ie.ref_field(INDEX))) return -1;
-		return set_invoke_encode<HEADER, FUNC, IE, Is...>(func, ie, INDEX+1);
-	}
-	return INDEX;
-}
-
-template<class HEADER, class FUNC, class IE, std::size_t... Is>
-inline int set_repeat_encode_impl(FUNC& func, IE& ie, std::index_sequence<Is...>)
-{
-	return set_invoke_encode<HEADER, FUNC, IE, Is...>(func, ie, 0);
-}
-
-template <class HEADER, std::size_t N, class FUNC, class IE>
-inline int set_encode(FUNC& func, IE& ie)
-{
-	return set_repeat_encode_impl<HEADER>(func, ie, std::make_index_sequence<N>{});
-}
-
 
 template <class IE, class... IES>
 struct set_enc_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
@@ -217,21 +185,24 @@ struct set_enc_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 	template <class HEADER, class TO, class FUNC>
 	static inline bool encode(TO const& to, FUNC& func)
 	{
-		CODEC_TRACE("[%s]*%zu", name<typename IE::field_type>(), IE::max);
-
 		IE const& ie = static_cast<IE const&>(to);
-		int const count = set_encode<HEADER, IE::max>(func, ie);
-		if (count < 0) return false;
+		CODEC_TRACE("[%s]*%zu", name<typename IE::field_type>(), ie.count());
 
-		if (check_arity<IE>(count))
+		if (!check_arity(func, ie)) return false;
+		for (auto& field : ie)
 		{
-			return set_encoder<IES...>::template encode<HEADER>(to, func);
+			if (field.is_set())
+			{
+				if (!encode_header<HEADER, IE>(func) || !med::encode(func, field)) return false;
+			}
+			else
+			{
+				//TODO: actually this field was pushed but not set... do we need a new error?
+				func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count()-1);
+				return false;
+			}
 		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
-		}
-		return false;
+		return set_encoder<IES...>::template encode<HEADER>(to, func);
 	}
 };
 

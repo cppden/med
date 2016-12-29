@@ -107,14 +107,13 @@ public:
 	};
 
 
+	void reset()                            { m_state.reset(get_start()); }
+
 	void reset(pointer data, std::size_t size)
 	{
-		if (data && size)
-		{
-			m_start = data;
-			m_end   = get_start() + size;
-		}
-		m_state.reset(get_start());
+		m_start = data;
+		m_end   = get_start() + size;
+		reset();
 	}
 
 	state_type get_state() const            { return m_state; }

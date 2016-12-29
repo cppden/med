@@ -19,10 +19,12 @@ Distributed under the MIT License
 namespace med {
 
 
-template <class FIELD, std::size_t MIN, std::size_t MAX, std::size_t INPLACE = MIN>
+template <class FIELD, std::size_t MIN, std::size_t MAX, std::size_t INPLACE = MAX>
 class multi_field_t
 {
-	static_assert(INPLACE <= MAX, "MAX SHOULD BE GREATER OR EQUAL TO INPLACE STORAGE");
+	static_assert(MIN > 0, "MIN SHOULD BE GREATER ZERO");
+	static_assert(MAX >= MIN, "MAX SHOULD BE GREATER OR EQUAL TO MIN");
+	static_assert(MIN <= INPLACE && INPLACE <= MAX, "INPLACE SHOULD BE BETWEEN MIN AND MAX");
 	static_assert(is_field_v<FIELD>, "FIELD IS REQUIRED");
 public:
 	using ie_type = typename FIELD::ie_type;
@@ -68,35 +70,36 @@ private:
 		reference operator*() const                 { return *get(); }
 		pointer operator->() const                  { return get(); }
 		pointer get() const                         { return m_curr ? &m_curr->value : nullptr; }
+		explicit operator bool() const              { return nullptr != m_curr; }
 	};
 
 public:
 	using iterator = iter_type<field_value>;
-	iterator begin()                                        { return iterator{m_fields}; }
+	iterator begin()                                        { return iterator{empty() ? nullptr : m_fields}; }
 	iterator end()                                          { return iterator{}; }
 	using const_iterator = iter_type<field_value const>;
-	const_iterator begin() const                            { return const_iterator{m_fields}; }
+	const_iterator begin() const                            { return const_iterator{empty() ? nullptr : m_fields}; }
 	const_iterator end() const                              { return const_iterator{}; }
 
 	std::size_t count() const                               { return m_count; }
+	bool const empty() const                                { return 0 == m_count; }
 	//NOTE: clear won't return items allocated from external storage, use reset there
 	void clear()                                            { m_count = 0; }
 	bool is_set() const                                     { return m_count > 0 && m_fields[0].value.is_set(); }
 
-	field_type const& ref_field(std::size_t index) const    { return const_cast<multi_field_t*>(this)->ref_field(index); }
-	field_type& ref_field(std::size_t index)                { return m_fields[index].value; }
+//	field_type* at(std::size_t index)
+//	{
+//		iterator it = begin(), ite = end();
+//		while (index && it != ite) { --index; ++it; }
+//		return it.get();
+//	}
 
-	field_type const* get_field(std::size_t index) const
+	//ineffective read-only access
+	field_type const* at(std::size_t index) const
 	{
 		const_iterator it = begin(), ite = end();
 		while (index && it != ite) { --index; ++it; }
-		return it.get() && it->is_set() ? it.get() : nullptr;
-	}
-	field_type* get_field(std::size_t index)
-	{
-		iterator it = begin(), ite = end();
-		while (index && it != ite) { --index; ++it; }
-		return it.get();
+		return (it && it->is_set()) ? it.get() : nullptr;
 	}
 
 	//uses inplace storage only
@@ -162,7 +165,7 @@ struct is_multi_field<T, void_t<typename T::field_value>> : std::true_type { };
 //struct is_multi_field<T,
 //        std::enable_if_t<
 //                std::is_same<
-//                        typename T::value_type, remove_cref_t<decltype(*std::declval<T>().begin())>
+//                        typename T::iterator::reference, decltype(*std::declval<T>().begin())
 //                >::value
 //        >
 //> : std::true_type { };

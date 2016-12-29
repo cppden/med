@@ -78,7 +78,7 @@ struct FLD_U24 : med::value<24>
 	static constexpr char const* name() { return "U24"; }
 };
 
-struct FLD_U32 : med::value<32>
+struct FLD_IP : med::value<32>
 {
 	static constexpr char const* name() { return "IP-Address"; }
 	template <std::size_t N>
@@ -131,7 +131,7 @@ struct MSG_SEQ : med::sequence<
 	M< FLD_UC >,              //<V>
 	M< T<0x21>, FLD_U16 >,    //<TV>
 	M< L, FLD_U24 >,          //<LV>(fixed)
-	M< T<0x42>, L, FLD_U32 >, //<TLV>(fixed)
+	M< T<0x42>, L, FLD_IP >, //<TLV>(fixed)
 	O< T<0x51>, FLD_DW >,     //[TV]
 	O< T<0x12>, CLEN, VFLD1 > //TLV(var)
 >
@@ -142,7 +142,7 @@ struct MSG_SEQ : med::sequence<
 struct FLD_CHO : med::choice< HDR<8>
 	, med::tag<C<0x01>, FLD_U8>
 	, med::tag<C<0x02>, FLD_U16>
-	, med::tag<C<0x04>, FLD_U32>
+	, med::tag<C<0x04>, FLD_IP>
 >
 {
 };
@@ -286,7 +286,7 @@ struct MSG_MSEQ : med::sequence<
 	M< FLD_UC, med::arity<2>>,            //<V>*2
 	M< T<0x21>, FLD_U16, med::arity<2>>,  //<TV>*2
 	M< L, FLD_U24, med::arity<2>>,        //<LV>*2
-	M< T<0x42>, L, FLD_U32, med::max<2>>, //<TLV>(fixed)*[1,2]
+	M< T<0x42>, L, FLD_IP, med::max<2>>, //<TLV>(fixed)*[1,2]
 	M< T<0x51>, FLD_DW, med::max<2>>,     //<TV>*[1,2]
 	M< CNT, SEQOF_3<0>, med::max<2>>,
 	O< FLD_TN >,
@@ -306,7 +306,7 @@ struct MSG_SET : med::set< HDR<16>,
 	M< T<0x0b>,    FLD_UC >, //<TV>
 	M< T<0x21>, L, FLD_U16 >, //<TLV>
 	O< T<0x49>, L, FLD_U24 >, //[TLV]
-	O< T<0x89>,    FLD_U32 >, //[TV]
+	O< T<0x89>,    FLD_IP >, //[TV]
 	O< T<0x22>, L, VFLD1 >   //[TLV(var)]
 >
 {
@@ -318,8 +318,8 @@ struct MSG_MSET : med::set< HDR<16>,
 	M< T<0x0c>,    FLD_U8, med::max<2> >, //<TV>*[1,2]
 	M< T<0x21>, L, FLD_U16, med::max<3> >, //<TLV>*[1,3]
 	O< T<0x49>, L, FLD_U24, med::arity<2> >, //[TLV]*2
-	O< T<0x89>,    FLD_U32, med::arity<2> >, //[TV]*2
-	O< T<0x22>, L, VFLD1,  med::min<1>, med::max<3> > //[TLV(var)]*[1,3]
+	O< T<0x89>,    FLD_IP, med::arity<2> >, //[TV]*2
+	O< T<0x22>, L, VFLD1, med::max<3> > //[TLV(var)]*[1,3]
 >
 {
 	static constexpr char const* name() { return "Msg-Multi-Set"; }
@@ -383,7 +383,7 @@ struct FLD_FLAGS : med::value<8>
 
 			CODEC_TRACE("*********** bits=%02X uc=%zu u8=%zu", bits, uc_qty, u8_qty);
 
-			if (std::size_t const u32_qty = med::field_count(ies.template as<FLD_U32>()))
+			if (std::size_t const u32_qty = med::field_count(ies.template as<FLD_IP>()))
 			{
 				CODEC_TRACE("*********** u32_qty = %zu", u32_qty);
 				bits |= QTY;
@@ -407,7 +407,7 @@ struct MSG_FUNC : med::sequence<
 	O< FLD_U8, med::max<2>, FLD_FLAGS::counter<FLD_FLAGS::U8_QTY> >,
 	O< FLD_U16, FLD_FLAGS::has_bits<FLD_FLAGS::U16> >,
 	O< FLD_U24, FLD_FLAGS::has_bits<FLD_FLAGS::U24> >,
-	O< FLD_U32, med::max<8>, FLD_QTY::counter >
+	O< FLD_IP, med::max<8>, FLD_QTY::counter >
 >
 {
 	static constexpr char const* name() { return "Msg-With-Functors"; }
@@ -433,7 +433,7 @@ TEST(encode, seq_ok)
 	msg.ref<FLD_UC>().set(37);
 	msg.ref<FLD_U16>().set(0x35D9);
 	msg.ref<FLD_U24>().set(0xDABEEF);
-	msg.ref<FLD_U32>().set(0xFee1ABBA);
+	msg.ref<FLD_IP>().set(0xFee1ABBA);
 
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
@@ -506,26 +506,27 @@ TEST(encode, seq_fail)
 
 TEST(encode, mseq_ok)
 {
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
 	PROTO proto;
 
 	//mandatory only
 	MSG_MSEQ& msg = proto.select();
-	msg.ref<FLD_UC>(0)->set(37);
-	msg.ref<FLD_UC>(1)->set(38);
-	msg.ref<FLD_U16>(0)->set(0x35D9);
-	msg.ref<FLD_U16>(1)->set(0x35DA);
-	msg.ref<FLD_U24>(0)->set(0xDABEEF);
-	msg.ref<FLD_U24>(1)->set(0x22BEEF);
-	msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
-	msg.ref<FLD_DW>(0)->set(0x01020304);
+	msg.push_back<FLD_UC>(ctx)->set(37);
+	msg.push_back<FLD_UC>(ctx)->set(38);
+	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+	msg.push_back<FLD_U16>(ctx)->set(0x35DA);
+	msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+	msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
+	msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
+	msg.push_back<FLD_DW>(ctx)->set(0x01020304);
 	{
-		auto* s = msg.ref<SEQOF_3<0>>(0);
+		auto* s = msg.push_back<SEQOF_3<0>>(ctx);
+		ASSERT_NE(nullptr, s);
 		s->ref<FLD_U8>().set(1);
 		s->ref<FLD_U16>().set(2);
 	}
-
-	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded1[] = { 0x11
@@ -535,7 +536,7 @@ TEST(encode, mseq_ok)
 		, 0x21, 0x35, 0xDA
 		, 3, 0xDA, 0xBE, 0xEF             //M< L, FLD_U24, med::arity<2> >
 		, 3, 0x22, 0xBE, 0xEF
-		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_U32, med::max<2> >
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_IP, med::max<2> >
 		, 0x51, 0x01, 0x02, 0x03, 0x04    //M< T<0x51>, FLD_DW, med::max<2> >
 		, 0,1, 1, 0x21, 0,2 //M<C16, Seq>  <=2
 	};
@@ -545,27 +546,27 @@ TEST(encode, mseq_ok)
 	//with more mandatory and optionals
 	ctx.reset();
 
-	msg.ref<FLD_U32>(1)->set(0xABBAc001);
-	msg.ref<FLD_DW>(1)->set(0x12345678);
+	msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
+	msg.push_back<FLD_DW>(ctx)->set(0x12345678);
 
 	msg.ref<FLD_TN>().set(2);
 
 	msg.ref<FLD_CHO>().ref<FLD_U8>().set(33);
 	SEQOF_1& s1 = msg.ref<SEQOF_1>();
-	s1.ref<FLD_W>(0)->set(0x1223);
-	s1.ref<FLD_W>(1)->set(0x3445);
+	s1.push_back<FLD_W>(ctx)->set(0x1223);
+	s1.push_back<FLD_W>(ctx)->set(0x3445);
 
-	SEQOF_2* s2 = msg.ref<SEQOF_2>(0);
+	SEQOF_2* s2 = msg.push_back<SEQOF_2>(ctx);
 	s2->ref<FLD_W>().set(0x1122);
 	s2->ref<FLD_CHO>().ref<FLD_U16>().set(0x3344);
 
-	msg.ref<SEQOF_2>(1)->ref<FLD_W>().set(0x3344);
+	msg.push_back<SEQOF_2>(ctx)->ref<FLD_W>().set(0x3344);
 
 	uint8_t const bcd[] = {0x34, 0x56};
 	msg.ref<FLD_NSCHO>().ref<BCD_1>().set(2, bcd);
 
-	msg.ref<VFLD1>(0)->set("test.this");
-	msg.ref<VFLD1>(1)->set("test.it");
+	msg.push_back<VFLD1>(ctx)->set("test.this");
+	msg.push_back<VFLD1>(ctx)->set("test.it");
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded2[] = { 0x11
@@ -575,7 +576,7 @@ TEST(encode, mseq_ok)
 		, 0x21, 0x35, 0xDA
 		, 3, 0xDA, 0xBE, 0xEF //M< L, FLD_U24, med::arity<2> >
 		, 3, 0x22, 0xBE, 0xEF
-		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_U32, med::max<2> >
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_IP, med::max<2> >
 		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
 		, 0x51, 0x01, 0x02, 0x03, 0x04 //M< T<0x51>, FLD_DW, med::max<2> >
 		, 0x51, 0x12, 0x34, 0x56, 0x78
@@ -605,7 +606,7 @@ TEST(encode, mseq_ok)
 		FLD_DW const* cpf = cmsg.field(1);
 		ASSERT_NE(nullptr, cpf);
 		ASSERT_EQ(0x12345678, cpf->get());
-		FLD_DW* rf = msg.field(1);
+		FLD_DW const* rf = msg.field(1);
 		ASSERT_EQ(0x12345678, rf->get());
 		//FLD_DW& rpf = msg.field(); //invalid access
 		//FLD_DW* pf = msg.field(); //invalid access
@@ -623,16 +624,16 @@ TEST(encode, mseq_fail)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.ref<FLD_UC>(0)->set(37);
-		msg.ref<FLD_U16>(0)->set(0x35D9);
-		msg.ref<FLD_U16>(1)->set(0x35DA);
-		msg.ref<FLD_U24>(0)->set(0xDABEEF);
-		msg.ref<FLD_U24>(1)->set(0x22BEEF);
-		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
-		msg.ref<FLD_U32>(1)->set(0xABBAc001);
-		msg.ref<FLD_DW>(0)->set(0x01020304);
-		msg.ref<FLD_DW>(1)->set(0x12345678);
-		msg.ref<VFLD1>(0)->set("test.this");
+		msg.push_back<FLD_UC>(ctx)->set(37);
+		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
+		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
+		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
+		msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
+		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
+		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
 		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -643,16 +644,16 @@ TEST(encode, mseq_fail)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.ref<FLD_UC>(0)->set(37);
-		msg.ref<FLD_UC>(1)->set(38);
-		msg.ref<FLD_U16>(0)->set(0x35D9);
-		msg.ref<FLD_U24>(0)->set(0xDABEEF);
-		msg.ref<FLD_U24>(1)->set(0x22BEEF);
-		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
-		msg.ref<FLD_U32>(1)->set(0xABBAc001);
-		msg.ref<FLD_DW>(0)->set(0x01020304);
-		msg.ref<FLD_DW>(1)->set(0x12345678);
-		msg.ref<VFLD1>(0)->set("test.this");
+		msg.push_back<FLD_UC>(ctx)->set(37);
+		msg.push_back<FLD_UC>(ctx)->set(38);
+		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
+		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
+		msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
+		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
+		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
 		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -663,16 +664,16 @@ TEST(encode, mseq_fail)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.ref<FLD_UC>(0)->set(37);
-		msg.ref<FLD_UC>(1)->set(38);
-		msg.ref<FLD_U16>(0)->set(0x35D9);
-		msg.ref<FLD_U16>(1)->set(0x35DA);
-		msg.ref<FLD_U24>(0)->set(0xDABEEF);
-		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
-		msg.ref<FLD_U32>(1)->set(0xABBAc001);
-		msg.ref<FLD_DW>(0)->set(0x01020304);
-		msg.ref<FLD_DW>(1)->set(0x12345678);
-		msg.ref<VFLD1>(0)->set("test.this");
+		msg.push_back<FLD_UC>(ctx)->set(37);
+		msg.push_back<FLD_UC>(ctx)->set(38);
+		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
+		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
+		msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
+		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
+		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
 		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -683,15 +684,15 @@ TEST(encode, mseq_fail)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.ref<FLD_UC>(0)->set(37);
-		msg.ref<FLD_UC>(1)->set(38);
-		msg.ref<FLD_U16>(0)->set(0x35D9);
-		msg.ref<FLD_U16>(1)->set(0x35DA);
-		msg.ref<FLD_U24>(0)->set(0xDABEEF);
-		msg.ref<FLD_U24>(1)->set(0x22BEEF);
-		msg.ref<FLD_DW>(0)->set(0x01020304);
-		msg.ref<FLD_DW>(1)->set(0x12345678);
-		msg.ref<VFLD1>(0)->set("test.this");
+		msg.push_back<FLD_UC>(ctx)->set(37);
+		msg.push_back<FLD_UC>(ctx)->set(38);
+		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
+		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
+		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
+		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
 		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -702,14 +703,14 @@ TEST(encode, mseq_fail)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.ref<FLD_UC>(0)->set(37);
-		msg.ref<FLD_UC>(1)->set(38);
-		msg.ref<FLD_U16>(0)->set(0x35D9);
-		msg.ref<FLD_U16>(1)->set(0x35DA);
-		msg.ref<FLD_U24>(0)->set(0xDABEEF);
-		msg.ref<FLD_U24>(1)->set(0x22BEEF);
-		msg.ref<FLD_U32>(0)->set(0xFee1ABBA);
-		msg.ref<FLD_DW>(0)->set(0x01020304);
+		msg.push_back<FLD_UC>(ctx)->set(37);
+		msg.push_back<FLD_UC>(ctx)->set(38);
+		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
+		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
+		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
+		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
 
 		uint8_t buffer[10];
 		med::encoder_context<> ctx{ buffer };
@@ -760,7 +761,7 @@ TEST(encode, set_ok)
 
 	ctx.reset();
 	msg.ref<FLD_U24>().set(0xDABEEF);
-	msg.ref<FLD_U32>().set(0xfee1ABBA);
+	msg.ref<FLD_IP>().set(0xfee1ABBA);
 
 	uint8_t const encoded3[] = { 4
 		, 0, 0x0b, 0x11
@@ -793,19 +794,19 @@ TEST(encode, set_fail)
 
 TEST(encode, mset_ok)
 {
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
 	PROTO proto;
 
 	MSG_MSET& msg = proto.select();
 
 	//mandatory fields
-	msg.ref<FLD_UC>(0)->set(0x11);
-	msg.ref<FLD_UC>(1)->set(0x12);
-	msg.ref<FLD_U8>(0)->set(0x13);
-	msg.ref<FLD_U16>(0)->set(0x35D9);
-	msg.ref<FLD_U16>(1)->set(0x35DA);
-
-	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
+	msg.push_back<FLD_UC>(ctx)->set(0x11);
+	msg.push_back<FLD_UC>(ctx)->set(0x12);
+	msg.push_back<FLD_U8>(ctx)->set(0x13);
+	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+	msg.push_back<FLD_U16>(ctx)->set(0x35DA);
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
@@ -821,7 +822,7 @@ TEST(encode, mset_ok)
 
 	//optional fields
 	ctx.reset();
-	msg.ref<VFLD1>(0)->set("test.this");
+	msg.push_back<VFLD1>(ctx)->set("test.this");
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
@@ -837,12 +838,12 @@ TEST(encode, mset_ok)
 	EXPECT_TRUE(Matches(encoded2, buffer));
 
 	ctx.reset();
-	msg.ref<FLD_U8>(1)->set(0x14);
-	msg.ref<FLD_U24>(0)->set(0xDABEEF);
-	msg.ref<FLD_U24>(1)->set(0x22BEEF);
-	msg.ref<FLD_U32>(0)->set(0xfee1ABBA);
-	msg.ref<FLD_U32>(1)->set(0xABBAc001);
-	msg.ref<VFLD1>(1)->set("test.it");
+	msg.push_back<FLD_U8>(ctx)->set(0x14);
+	msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+	msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
+	msg.push_back<FLD_IP>(ctx)->set(0xfee1ABBA);
+	msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
+	msg.push_back<VFLD1>(ctx)->set("test.it");
 
 	uint8_t const encoded3[] = { 0x14
 		, 0, 0x0b, 0x11
@@ -873,13 +874,13 @@ TEST(encode, mset_fail)
 
 	//arity violation in optional
 	MSG_MSET& msg = proto.select();
-	msg.ref<FLD_UC>(0)->set(0);
-	msg.ref<FLD_UC>(1)->set(0);
-	msg.ref<FLD_U8>(0)->set(0);
-	msg.ref<FLD_U16>(0)->set(0);
+	msg.push_back<FLD_UC>(ctx)->set(0);
+	msg.push_back<FLD_UC>(ctx)->set(0);
+	msg.push_back<FLD_U8>(ctx)->set(0);
+	msg.push_back<FLD_U16>(ctx)->set(0);
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
-	msg.ref<FLD_U24>(0)->set(0);
+	msg.push_back<FLD_U24>(ctx)->set(0);
 	ctx.reset();
 	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
@@ -889,15 +890,15 @@ constexpr std::size_t make_hash(std::size_t v) { return 137*(v + 39); }
 
 TEST(encode, msg_func)
 {
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
 	PROTO proto;
 
 	//mandatory only
 	MSG_FUNC& msg = proto.select();
-	msg.ref<FLD_UC>(0)->set(37);
-	msg.ref<FLD_UC>(1)->set(38);
-
-	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
+	msg.push_back<FLD_UC>(ctx)->set(37);
+	msg.push_back<FLD_UC>(ctx)->set(38);
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded1[] = { 0xFF
@@ -909,8 +910,8 @@ TEST(encode, msg_func)
 
 	//with 1 optional and 1 optional counted
 	ctx.reset();
-	msg.ref<FLD_UC>(2)->set(39);
-	msg.ref<FLD_U8>(0)->set('a');
+	msg.push_back<FLD_UC>(ctx)->set(39);
+	msg.push_back<FLD_U8>(ctx)->set('a');
 	msg.ref<FLD_U16>().set(0x35D9);
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
@@ -925,12 +926,12 @@ TEST(encode, msg_func)
 
 	//with all optionals
 	ctx.reset();
-	msg.ref<FLD_UC>(3)->set(40);
-	msg.ref<FLD_U8>(1)->set('b');
+	msg.push_back<FLD_UC>(ctx)->set(40);
+	msg.push_back<FLD_U8>(ctx)->set('b');
 	msg.ref<FLD_U24>().set(0xDABEEF);
 	for (uint8_t i = 0; i < 3; ++i)
 	{
-		FLD_U32* p = msg.ref<FLD_U32>(i);
+		FLD_IP* p = msg.push_back<FLD_IP>(ctx);
 		ASSERT_NE(nullptr, p);
 		p->set(make_hash(i));
 	}
@@ -962,7 +963,9 @@ TEST(decode, seq_ok)
 		, 3, 0xDA, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 	};
-	med::decoder_context<> ctx{ encoded1 };
+	med::decoder_context<> ctx;
+
+	ctx.reset(encoded1, sizeof(encoded1));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	//check RO access (compile test)
@@ -978,7 +981,7 @@ TEST(decode, seq_ok)
 	EXPECT_EQ(1, msg->count<FLD_UC>());
 	EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
-	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_U32>().get());
+	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP>().get());
 
 	EXPECT_EQ(0, msg->count<FLD_DW>());
 	FLD_DW const* fld5 = msg->field();
@@ -996,7 +999,7 @@ TEST(decode, seq_ok)
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 	};
-	ctx.reset(encoded2);
+	ctx.reset(encoded2, sizeof(encoded2));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	msg = proto.select();
@@ -1004,7 +1007,7 @@ TEST(decode, seq_ok)
 	EXPECT_EQ(37, msg->get<FLD_UC>().get());
 	EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
-	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_U32>().get());
+	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP>().get());
 
 	fld5 = msg->field();
 	EXPECT_EQ(1, msg->count<FLD_DW>());
@@ -1020,7 +1023,7 @@ TEST(decode, seq_ok)
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 		, 0x12, 4, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's', '!'
 	};
-	ctx.reset(encoded3);
+	ctx.reset(encoded3, sizeof(encoded3));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	msg = proto.select();
@@ -1028,7 +1031,7 @@ TEST(decode, seq_ok)
 	EXPECT_EQ(37, msg->get<FLD_UC>().get());
 	EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
-	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_U32>().get());
+	EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP>().get());
 
 	fld5 = msg->field();
 	EXPECT_EQ(1, msg->count<FLD_DW>());
@@ -1052,19 +1055,19 @@ TEST(decode, seq_fail)
 
 	//wrong tag of required field 2
 	uint8_t const wrong_tag[] = { 2, 37, 0x49, 0xDA, 0xBE, 0xEF };
-	ctx.reset(wrong_tag);
+	ctx.reset(wrong_tag, sizeof(wrong_tag));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::INCORRECT_TAG, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
 	//missing required field
 	uint8_t const missing[] = { 1, 37 };
-	ctx.reset(missing);
+	ctx.reset(missing, sizeof(missing));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
 	//incomplete field
 	uint8_t const incomplete[] = { 1, 37, 0x21, 0x35 };
-	ctx.reset(incomplete);
+	ctx.reset(incomplete, sizeof(incomplete));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1075,7 +1078,7 @@ TEST(decode, seq_fail)
 		, 2, 0xDA, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 	};
-	ctx.reset(bad_length);
+	ctx.reset(bad_length, sizeof(bad_length));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1087,7 +1090,7 @@ TEST(decode, seq_fail)
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 		, 0x12, 3, 't', 'e', 's'
 	};
-	ctx.reset(bad_var_len_lo);
+	ctx.reset(bad_var_len_lo, sizeof(bad_var_len_lo));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1099,9 +1102,39 @@ TEST(decode, seq_fail)
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 		, 0x12, 5, 't', 'e', 's', 't', 'e', 's', 't', 'e', 's', 't', 'e'
 	};
-	ctx.reset(bad_var_len_hi);
+	ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+}
+
+template <class FIELD, class MSG, class T>
+void check_seqof(MSG const& msg, std::initializer_list<T>&& values)
+{
+	std::size_t const count = values.size();
+	ASSERT_EQ(count, msg.template count<FIELD>());
+
+	auto it = std::begin(values);
+	for (auto& v : msg.template get<FIELD>())
+	{
+		decltype(v.get()) expected = *it++;
+		EXPECT_EQ(expected, v.get());
+	}
+}
+
+template <class FIELD, class MSG>
+void check_seqof(MSG const& msg, std::initializer_list<char const*>&& values)
+{
+	std::size_t const count = values.size();
+	ASSERT_EQ(count, msg.template count<FIELD>());
+
+	auto it = std::begin(values);
+	for (auto& v : msg.template get<FIELD>())
+	{
+		char const* expected = *it++;
+		std::size_t const len = std::strlen(expected);
+		ASSERT_EQ(len, v.get().size());
+		ASSERT_TRUE(Matches(expected, v.get().data(), len));
+	}
 }
 
 TEST(decode, mseq_ok)
@@ -1121,27 +1154,22 @@ TEST(decode, mseq_ok)
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 		, 0,1, 2, 0x21, 0,3
 	};
-	ctx.reset(encoded1);
+	ctx.reset(encoded1, sizeof(encoded1));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	MSG_MSEQ const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
-	EXPECT_EQ(2, msg->count<FLD_UC>());
-	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
-	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
-	ASSERT_EQ(2, msg->count<FLD_U16>());
-	EXPECT_EQ(0x35D9, (msg->get<FLD_U16>(0)->get()));
-	EXPECT_EQ(0x35DA, (msg->get<FLD_U16>(1)->get()));
-	ASSERT_EQ(2, msg->count<FLD_U24>());
-	EXPECT_EQ(0xDABEEF, (msg->get<FLD_U24>(0)->get()));
-	EXPECT_EQ(0x22BEEF, (msg->get<FLD_U24>(1)->get()));
-	ASSERT_EQ(1, msg->count<FLD_U32>());
-	EXPECT_EQ(0xfee1ABBA, (msg->get<FLD_U32>(0)->get()));
-	ASSERT_EQ(1, msg->count<FLD_DW>());
-	EXPECT_EQ(0x01020304, (msg->get<FLD_DW>(0)->get()));
+	check_seqof<FLD_UC>(*msg, {37, 38});
+	check_seqof<FLD_U16>(*msg, {0x35D9, 0x35DA});
+	check_seqof<FLD_U24>(*msg, {0xDABEEF, 0x22BEEF});
+	check_seqof<FLD_IP>(*msg, {0xfee1ABBA});
+	check_seqof<FLD_DW>(*msg, {0x01020304});
 	ASSERT_EQ(1, msg->count<SEQOF_3<0>>());
-	EXPECT_EQ(2, (msg->get<SEQOF_3<0>>(0)->get<FLD_U8>().get()));
-	EXPECT_EQ(3, (msg->get<SEQOF_3<0>>(0)->get<FLD_U16>().get()));
+	{
+		auto it = msg->get<SEQOF_3<0>>().begin();
+		EXPECT_EQ(2, it->get<FLD_U8>().get());
+		EXPECT_EQ(3, it->get<FLD_U16>().get());
+	}
 
 	EXPECT_EQ(0, msg->count<VFLD1>());
 	VFLD1 const* vfld1 = msg->field(0);
@@ -1173,32 +1201,26 @@ TEST(decode, mseq_ok)
 		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
 		, 7, 't', 'e', 's', 't', '.', 'i', 't'
 	};
-	ctx.reset(encoded2);
+	ctx.reset(encoded2, sizeof(encoded2));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	ASSERT_EQ(2, msg->count<FLD_UC>());
-	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
-	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
-	ASSERT_EQ(2, msg->count<FLD_U16>());
-	EXPECT_EQ(0x35D9, (msg->get<FLD_U16>(0)->get()));
-	EXPECT_EQ(0x35DA, (msg->get<FLD_U16>(1)->get()));
-	ASSERT_EQ(2, msg->count<FLD_U24>());
-	EXPECT_EQ(0xDABEEF, (msg->get<FLD_U24>(0)->get()));
-	EXPECT_EQ(0x22BEEF, (msg->get<FLD_U24>(1)->get()));
-	ASSERT_EQ(2, msg->count<FLD_U32>());
-	EXPECT_EQ(0xfee1ABBA, (msg->get<FLD_U32>(0)->get()));
-	EXPECT_EQ(0xABBAC001, (msg->get<FLD_U32>(1)->get()));
-	ASSERT_EQ(2, msg->count<FLD_DW>());
-	EXPECT_EQ(0x01020304, (msg->get<FLD_DW>(0)->get()));
-	EXPECT_EQ(0x12345678, (msg->get<FLD_DW>(1)->get()));
+	check_seqof<FLD_UC>(*msg, {37, 38});
+	check_seqof<FLD_U16>(*msg, {0x35D9, 0x35DA});
+	check_seqof<FLD_U24>(*msg, {0xDABEEF, 0x22BEEF});
+	check_seqof<FLD_IP>(*msg, {0xfee1ABBA, 0xABBAC001});
+	check_seqof<FLD_DW>(*msg, {0x01020304, 0x12345678});
 	ASSERT_EQ(2, msg->count<SEQOF_3<0>>());
-	EXPECT_EQ(3, (msg->get<SEQOF_3<0>>(0)->get<FLD_U8>().get()));
-	EXPECT_EQ(4, (msg->get<SEQOF_3<0>>(0)->get<FLD_U16>().get()));
-	EXPECT_EQ(5, (msg->get<SEQOF_3<0>>(1)->get<FLD_U8>().get()));
-	EXPECT_EQ(6, (msg->get<SEQOF_3<0>>(1)->get<FLD_U16>().get()));
+	{
+		auto it = msg->get<SEQOF_3<0>>().begin();
+		EXPECT_EQ(3, it->get<FLD_U8>().get());
+		EXPECT_EQ(4, it->get<FLD_U16>().get());
+		++it;
+		EXPECT_EQ(5, it->get<FLD_U8>().get());
+		EXPECT_EQ(6, it->get<FLD_U16>().get());
+	}
 
 	FLD_CHO const* pcho = msg->field();
 	ASSERT_NE(nullptr, pcho);
@@ -1208,9 +1230,7 @@ TEST(decode, mseq_ok)
 
 	SEQOF_1 const* pso1 = msg->field();
 	ASSERT_NE(nullptr, pso1);
-	ASSERT_EQ(2, pso1->count<FLD_W>());
-	EXPECT_EQ(0x1223, (pso1->get<FLD_W>(0)->get()));
-	EXPECT_EQ(0x3445, (pso1->get<FLD_W>(1)->get()));
+	check_seqof<FLD_W>(*pso1, {0x1223, 0x3445});
 
 	ASSERT_EQ(2, msg->count<SEQOF_2>());
 	SEQOF_2 const* pso2 = msg->field(0);
@@ -1233,9 +1253,7 @@ TEST(decode, mseq_ok)
 	pso2 = msg->field(2);
 	EXPECT_EQ(nullptr, pso2);
 
-	ASSERT_EQ(2, msg->count<VFLD1>());
-	EQ_STRING_O_(0, VFLD1, "test.this");
-	EQ_STRING_O_(1, VFLD1, "test.it");
+	check_seqof<VFLD1>(*msg, {"test.this", "test.it"});
 }
 
 TEST(decode, mseq_fail)
@@ -1255,7 +1273,7 @@ TEST(decode, mseq_fail)
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 		, 0,1, 2, 0x21, 0,3
 	};
-	ctx.reset(wrong_tag);
+	ctx.reset(wrong_tag, sizeof(wrong_tag));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	ASSERT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1271,13 +1289,13 @@ TEST(decode, mseq_fail)
 		, 0,1, 2, 0x21, 0,3
 	};
 
-	ctx.reset(missing);
+	ctx.reset(missing, sizeof(missing));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	ASSERT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
 	//incomplete field
 	uint8_t const incomplete[] = { 0x11, 37, 38, 0x21, 0x35 };
-	ctx.reset(incomplete);
+	ctx.reset(incomplete, sizeof(incomplete));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	ASSERT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1292,7 +1310,7 @@ TEST(decode, mseq_fail)
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 		, 0,1, 2, 0x21, 0,3
 	};
-	ctx.reset(bad_length);
+	ctx.reset(bad_length, sizeof(bad_length));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	ASSERT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1311,7 +1329,7 @@ TEST(decode, mseq_fail)
 		, 0,1, 2, 0x21, 0,3
 		, 3, 't', 'e', 's'
 	};
-	ctx.reset(bad_var_len_lo);
+	ctx.reset(bad_var_len_lo, sizeof(bad_var_len_lo));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	ASSERT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1330,7 +1348,7 @@ TEST(decode, mseq_fail)
 		, 0,1, 2, 0x21, 0,3
 		, 11, 't', 'e', 's', 't', 'e', 's', 't', 'e', 's', 't', 'e'
 	};
-	ctx.reset(bad_var_len_hi);
+	ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	ASSERT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
@@ -1352,7 +1370,7 @@ TEST(decode, set_ok)
 	ASSERT_EQ(0x11, msg->get<FLD_UC>().get());
 	ASSERT_EQ(0x35D9, msg->get<FLD_U16>().get());
 	FLD_U24 const* fld3 = msg->field();
-	FLD_U32 const* fld4 = msg->field();
+	FLD_IP const* fld4 = msg->field();
 	VFLD1 const* vfld1 = msg->field();
 	ASSERT_EQ(nullptr, fld3);
 	ASSERT_EQ(nullptr, fld4);
@@ -1364,7 +1382,7 @@ TEST(decode, set_ok)
 		, 0, 0x21, 2, 0x35, 0xD9
 		, 0, 0x22, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
 	};
-	ctx.reset(encoded2);
+	ctx.reset(encoded2, sizeof(encoded2));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1384,7 +1402,7 @@ TEST(decode, set_ok)
 		, 0, 0x21, 2, 0x35, 0xD9
 		, 0, 0x0b, 0x11
 	};
-	ctx.reset(encoded3);
+	ctx.reset(encoded3, sizeof(encoded3));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1411,7 +1429,7 @@ TEST(decode, set_fail)
 		, 0, 0x21, 2, 0x35, 0xD9
 		, 0, 0x89, 0xFE, 0xE1, 0xAB, 0xBA
 	};
-	ctx.reset(missing_mandatory);
+	ctx.reset(missing_mandatory, sizeof(missing_mandatory));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	//else { printf("expected error: %s\n", toString(ctx.error_ctx())); }
 	ASSERT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
@@ -1421,7 +1439,7 @@ TEST(decode, set_fail)
 		, 0, 0x49, 3, 0xDA, 0xBE, 0xEF
 		, 0, 0x49, 3, 0xDA, 0xBE, 0xEF
 	};
-	ctx.reset(extra_field);
+	ctx.reset(extra_field, sizeof(extra_field));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	//else { printf("expected error: %s\n", toString(ctx.error_ctx())); }
 	ASSERT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
@@ -1451,7 +1469,7 @@ TEST(decode, mset_ok)
 	EXPECT_EQ(0x35D9, (msg->get<FLD_U16>(0)->get()));
 	EXPECT_EQ(0x35DA, (msg->get<FLD_U16>(1)->get()));
 	FLD_U24 const* fld3 = msg->field(0);
-	FLD_U32 const* fld4 = msg->field(0);
+	FLD_IP const* fld4 = msg->field(0);
 	VFLD1 const* vfld1 = msg->field(0);
 	EXPECT_EQ(nullptr, fld3);
 	EXPECT_EQ(nullptr, fld4);
@@ -1466,7 +1484,7 @@ TEST(decode, mset_ok)
 		, 0, 0x0c, 0x13
 		, 0, 0x0b, 0x12
 	};
-	ctx.reset(encoded2);
+	ctx.reset(encoded2, sizeof(encoded2));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1493,7 +1511,7 @@ TEST(decode, mset_ok)
 		, 0, 0x0b, 0x12
 		, 0, 0x0c, 0x13
 	};
-	ctx.reset(encoded3);
+	ctx.reset(encoded3, sizeof(encoded3));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1501,7 +1519,7 @@ TEST(decode, mset_ok)
 	fld3 = msg->field(0);
 	FLD_U24 const* fld3_2 = msg->field(1);
 	fld4 = msg->field(0);
-	FLD_U32 const* fld4_2 = msg->field(1);
+	FLD_IP const* fld4_2 = msg->field(1);
 	ASSERT_NE(nullptr, fld3);
 	ASSERT_NE(nullptr, fld3_2);
 	ASSERT_NE(nullptr, fld4);
@@ -1520,6 +1538,8 @@ TEST(decode, mset_fail)
 {
 	PROTO proto;
 	med::decoder_context<> ctx;
+//	std::size_t alloc_buf[1024];
+//	ctx.get_allocator().reset(alloc_buf);
 
 	//arity underflow in mandatory field
 	uint8_t const mandatory_underflow[] = { 0x14
@@ -1527,7 +1547,7 @@ TEST(decode, mset_fail)
 		, 0, 0x0c, 0x13
 		, 0, 0x21, 2, 0x35, 0xD9
 	};
-	ctx.reset(mandatory_underflow);
+	ctx.reset(mandatory_underflow, sizeof(mandatory_underflow));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	ASSERT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 
@@ -1540,7 +1560,7 @@ TEST(decode, mset_fail)
 		, 0, 0x0c, 0x15
 		, 0, 0x21, 2, 0x35, 0xD9
 	};
-	ctx.reset(mandatory_overflow);
+	ctx.reset(mandatory_overflow, sizeof(mandatory_overflow));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	//else { printf("expected error: %s\n", toString(ctx.error_ctx())); }
 	ASSERT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
@@ -1556,7 +1576,7 @@ TEST(decode, msg_func)
 		, 0x10
 		, 37, 38
 	};
-	ctx.reset(encoded1);
+	ctx.reset(encoded1, sizeof(encoded1));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	MSG_FUNC const* msg = proto.select();
@@ -1569,7 +1589,7 @@ TEST(decode, msg_func)
 	EXPECT_EQ(nullptr, pu16);
 	FLD_U24 const* pu24 = msg->field();
 	EXPECT_EQ(nullptr, pu24);
-	EXPECT_EQ(0, msg->count<FLD_U32>());
+	EXPECT_EQ(0, msg->count<FLD_IP>());
 
 	//with 1 optional
 	uint8_t const encoded2[] = { 0xFF
@@ -1577,7 +1597,7 @@ TEST(decode, msg_func)
 		, 37, 38, 39
 		, 0x35, 0xD9
 	};
-	ctx.reset(encoded2);
+	ctx.reset(encoded2, sizeof(encoded2));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	msg = proto.select();
@@ -1592,7 +1612,7 @@ TEST(decode, msg_func)
 	EXPECT_EQ(0x35D9, pu16->get());
 	pu24 = msg->field();
 	EXPECT_EQ(nullptr, pu24);
-	EXPECT_EQ(0, msg->count<FLD_U32>());
+	EXPECT_EQ(0, msg->count<FLD_IP>());
 
 	//with all optionals
 	uint8_t const encoded3[] = { 0xFF
@@ -1606,7 +1626,7 @@ TEST(decode, msg_func)
 		, 0, 0, 0x15, 0x68
 		, 0, 0, 0x15, 0xF1
 	};
-	ctx.reset(encoded3);
+	ctx.reset(encoded3, sizeof(encoded3));
 	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 
 	msg = proto.select();
@@ -1627,11 +1647,11 @@ TEST(decode, msg_func)
 	EXPECT_EQ(0xDABEEF, pu24->get());
 	FLD_QTY const* pqty = msg->field();
 	ASSERT_NE(nullptr, pqty);
-	auto const u32_qty = msg->count<FLD_U32>();
+	auto const u32_qty = msg->count<FLD_IP>();
 	ASSERT_EQ(pqty->get(), u32_qty);
 	for (uint8_t i = 0; i < u32_qty; ++i)
 	{
-		FLD_U32 const* p = msg->get<FLD_U32>(i);
+		FLD_IP const* p = msg->get<FLD_IP>(i);
 		ASSERT_NE(nullptr, p);
 		EXPECT_EQ(make_hash(i), p->get());
 	}
@@ -1643,7 +1663,7 @@ TEST(decode, msg_func)
 		, 0xDA, 0xBE, 0xEF
 		, 0xFE, 0xE1, 0xAB, 0xBA
 	};
-	ctx.reset(mandatory_underflow);
+	ctx.reset(mandatory_underflow, sizeof(mandatory_underflow));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	//else { printf("expected error: %s\n", toString(ctx.error_ctx())); }
 	ASSERT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
@@ -1656,7 +1676,7 @@ TEST(decode, msg_func)
 		, 0xDA, 0xBE, 0xEF
 		, 0xFE, 0xE1, 0xAB, 0xBA
 	};
-	ctx.reset(conditional_overflow);
+	ctx.reset(conditional_overflow, sizeof(conditional_overflow));
 	if (decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	//else { printf("expected error: %s\n", toString(ctx.error_ctx())); }
 	ASSERT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
@@ -1750,7 +1770,7 @@ TEST(print, container)
 	DEEP_MSG msg;
 	med::decoder_context<> ctx;
 
-	ctx.reset(encoded);
+	ctx.reset(encoded, sizeof(encoded));
 	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
 
 	std::size_t const cont_num[6] = { 21,  1,  9, 15, 19, 21 };
@@ -1786,7 +1806,7 @@ TEST(print_all, container)
 	DEEP_MSG msg;
 	med::decoder_context<> ctx;
 
-	ctx.reset(encoded);
+	ctx.reset(encoded, sizeof(encoded));
 	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
 
 	dummy_sink d{0};

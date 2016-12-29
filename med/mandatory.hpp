@@ -18,7 +18,7 @@ template<
 	class TAG_FLD_LEN,
 	class FLD_LEN_NUM = void,
 	class FLD_NUM     = void,
-	class MIN_MAX     = min<0>,
+	class MIN_MAX     = min<1>,
 	class MAX_MIN     = max<1>,
 	typename Enable   = void >
 struct mandatory
@@ -31,7 +31,7 @@ struct mandatory<
 	FIELD,
 	void,
 	void,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value>
 > : field_t<FIELD>
@@ -43,7 +43,7 @@ struct mandatory<
 	FIELD,
 	FUNC,
 	void,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value && is_setter_v<FUNC>>
 > : field_t<FIELD>
@@ -57,7 +57,7 @@ struct mandatory<
 	FIELD,
 	arity<NUM>,
 	void,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value>
 > : multi_field_t<FIELD, NUM, NUM>
@@ -77,7 +77,7 @@ struct mandatory<
 > : multi_field_t<FIELD, MIN, MAX>
 {
 	using count_getter = COUNTER;
-	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
 
@@ -91,7 +91,7 @@ struct mandatory<
 	std::enable_if_t<is_field<FIELD>::value && is_counter<COUNTER>::value>
 > : multi_field_t<FIELD, MIN, MAX>, COUNTER
 {
-	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
 
@@ -100,12 +100,12 @@ struct mandatory<
 	FIELD,
 	min<MIN>,
 	max<MAX>,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_tagged_field<FIELD>::value>
 > : multi_field_t<FIELD, MIN, MAX>
 {
-	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
 
@@ -114,7 +114,7 @@ struct mandatory<
 	FIELD,
 	max<MAX>,
 	void,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value>
 > : multi_field_t<FIELD, 1, MAX>
@@ -127,7 +127,7 @@ struct mandatory<
 	FIELD,
 	max<MAX>,
 	COUNTER,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value && is_count_getter_v<COUNTER>>
 > : multi_field_t<FIELD, 1, MAX>
@@ -141,7 +141,7 @@ struct mandatory<
 	COUNTER,
 	FIELD,
 	max<MAX>,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value && is_counter<COUNTER>::value>
 > : multi_field_t<FIELD, 1, MAX>, COUNTER
@@ -154,7 +154,7 @@ struct mandatory<
 	TAG,
 	FIELD,
 	void,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag<TAG>::value && is_field<FIELD>::value>
 > : tag_value_t<TAG, FIELD>
@@ -166,7 +166,7 @@ struct mandatory<
 	TAG,
 	FIELD,
 	arity<NUM>,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag<TAG>::value && is_field<FIELD>::value>
 > : multi_tag_value_t<TAG, FIELD, NUM, NUM>
@@ -179,7 +179,7 @@ struct mandatory<
 	TAG,
 	FIELD,
 	max<MAX>,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag<TAG>::value && is_field<FIELD>::value>
 > : multi_tag_value_t<TAG, FIELD, 1, MAX>
@@ -197,7 +197,7 @@ struct mandatory<
 	std::enable_if_t<is_tag<TAG>::value && is_field<FIELD>::value>
 > : multi_tag_value_t<TAG, FIELD, MIN, MAX>
 {
-	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
 
@@ -206,7 +206,7 @@ struct mandatory<
 	LEN,
 	FIELD,
 	void,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value && is_length<LEN>::value>
 > : length_value_t<LEN, FIELD>
@@ -218,7 +218,7 @@ struct mandatory<
 	LEN,
 	FIELD,
 	arity<NUM>,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value && is_length<LEN>::value>
 > : multi_length_value_t<LEN, FIELD, NUM, NUM>
@@ -231,7 +231,7 @@ struct mandatory<
 	LEN,
 	FIELD,
 	max<MAX>,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value && is_length<LEN>::value>
 > : multi_length_value_t<LEN, FIELD, 1, MAX>
@@ -244,7 +244,7 @@ struct mandatory<
 	TAG,
 	LEN,
 	FIELD,
-	min<0>,
+	min<1>,
 	max<1>,
 	std::enable_if_t<is_field<FIELD>::value && is_tag<TAG>::value && is_length<LEN>::value>
 > : tag_value_t<TAG, length_value_t<LEN, FIELD>>
@@ -288,7 +288,7 @@ struct mandatory<
 	std::enable_if_t<is_field<FIELD>::value && is_tag<TAG>::value && is_length<LEN>::value>
 > : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, MIN, MAX>
 {
-	static_assert(MIN > 0, "MIN SHOULD BE MORE THAN 0 OR NOT SPECIFIED");
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
 

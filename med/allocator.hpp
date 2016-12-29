@@ -21,17 +21,17 @@ public:
 		: m_errCtx(err)
 	{}
 
+	void reset()                            { m_begin = m_start; }
+
 	void reset(void* data, std::size_t size)
 	{
 		m_start = static_cast<uint8_t*>(data);
 		m_end   = m_start ? m_start + size : m_start;
-		m_begin = m_start;
+		reset();
 	}
 
-	void reset()
-	{
-		m_begin = m_start;
-	}
+	template <typename T, std::size_t SIZE>
+	void reset(T (&data)[SIZE])             { reset(data, SIZE * sizeof(T)); }
 
 	template <class T>
 	T* allocate()

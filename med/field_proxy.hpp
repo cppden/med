@@ -70,7 +70,7 @@ inline ref_field(IE& ie) { return ie; }
 
 //read-only access optional field returning a pointer or null if not set
 template <class FIELD, class IE>
-std::enable_if_t<is_optional_v<IE>, field_proxy<FIELD const>>
+std::enable_if_t<!is_multi_field_v<IE> && is_optional_v<IE>, field_proxy<FIELD const>>
 inline get_field(IE const& ie)
 {
 	return field_proxy<FIELD const>{ ie.is_set() ? &ie.ref_field() : nullptr };
@@ -78,17 +78,18 @@ inline get_field(IE const& ie)
 
 //read-only access mandatory field returning a reference
 template <class FIELD, class IE>
-std::enable_if_t<!is_optional_v<IE>, FIELD const&>
+std::enable_if_t<!is_multi_field_v<IE> && !is_optional_v<IE>, FIELD const&>
 inline get_field(IE const& ie)
 {
 	return ie.ref_field();
 };
 
-//read-only access mandatory or optional multi-field
+//read-only access of any multi-field
 template <class FIELD, class IE>
-inline field_proxy<FIELD const> get_field(IE const& ie, std::size_t index)
+std::enable_if_t<is_multi_field_v<IE>, IE const&>
+inline get_field(IE const& ie)
 {
-	return field_proxy<FIELD const>{ ie.get_field(index) };
+	return ie;
 };
 
 }	//end: namespace med
