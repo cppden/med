@@ -207,7 +207,7 @@ public:
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
 
 	template <class FIELD>
-	constexpr std::size_t arity() const
+	static constexpr std::size_t arity()
 	{
 		using IE = typename ies<IES...>::template at<FIELD>;
 		return sl::field_arity<IE>();

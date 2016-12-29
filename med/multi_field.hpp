@@ -9,7 +9,6 @@ Distributed under the MIT License
 
 #pragma once
 
-#include <limits>
 #include <iterator>
 
 #include "allocator.hpp"
@@ -19,13 +18,14 @@ Distributed under the MIT License
 namespace med {
 
 
-template <class FIELD, std::size_t MIN, std::size_t MAX, std::size_t INPLACE = MAX>
+template <class FIELD, std::size_t MIN, std::size_t MAX>
 class multi_field_t
 {
 	static_assert(MIN > 0, "MIN SHOULD BE GREATER ZERO");
 	static_assert(MAX >= MIN, "MAX SHOULD BE GREATER OR EQUAL TO MIN");
-	static_assert(MIN <= INPLACE && INPLACE <= MAX, "INPLACE SHOULD BE BETWEEN MIN AND MAX");
+	//static_assert(MIN <= INPLACE && INPLACE <= MAX, "INPLACE SHOULD BE BETWEEN MIN AND MAX");
 	static_assert(is_field_v<FIELD>, "FIELD IS REQUIRED");
+
 public:
 	using ie_type = typename FIELD::ie_type;
 	using field_type = FIELD;
@@ -40,7 +40,7 @@ public:
 	{
 		min     = MIN,
 		max     = MAX,
-		inplace = INPLACE,
+		inplace = (MIN == MAX || sizeof(FIELD) < (16*1024/MAX)) ? MAX : MIN,
 	};
 
 private:

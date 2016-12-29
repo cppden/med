@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <limits>
 
 #include "field.hpp"
 #include "multi_field.hpp"
@@ -25,10 +26,7 @@ struct min : std::integral_constant<std::size_t, MIN> {};
 template <std::size_t N>
 struct arity : std::integral_constant<std::size_t, N> {};
 
-template <std::size_t N>
-struct inplace : std::integral_constant<std::size_t, N> {};
-
-constexpr std::size_t inf = std::numeric_limits<std::size_t>::max();
+using inf = max< std::numeric_limits<std::size_t>::max() >;
 
 
 template <typename PTR>

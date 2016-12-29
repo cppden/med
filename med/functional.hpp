@@ -69,6 +69,8 @@ template <class, class Enable = void>
 struct has_optional_type : std::false_type { };
 template <class T>
 struct has_optional_type<T, void_t<typename T::optional_type>> : std::true_type { };
+template <class T>
+constexpr bool has_optional_type_v = has_optional_type<T>::value;
 
 
 namespace detail {

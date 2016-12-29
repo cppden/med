@@ -22,9 +22,9 @@ class error_context
 {
 public:
 	explicit operator bool() const          { return error::SUCCESS == m_error; }
+	error get_error() const                 { return m_error; }
 
 	void reset()                            { m_error = error::SUCCESS; }
-	error get_error() const                 { return m_error; }
 	void set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
 	{
 		CODEC_TRACE("ERROR[%s]=%d %zu %zu %zu", name, static_cast<int>(err), val0, val1, val2);

@@ -78,7 +78,7 @@ struct mandatory<
 {
 	using count_getter = COUNTER;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
-	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR ARITY USED");
 };
 
 template <class COUNTER, class FIELD, std::size_t MIN, std::size_t MAX>
@@ -92,7 +92,7 @@ struct mandatory<
 > : multi_field_t<FIELD, MIN, MAX>, COUNTER
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
-	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR ARITY USED");
 };
 
 template <class FIELD, std::size_t MIN, std::size_t MAX>
@@ -106,7 +106,7 @@ struct mandatory<
 > : multi_field_t<FIELD, MIN, MAX>
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
-	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR ARITY USED");
 };
 
 template <class FIELD, std::size_t MAX>
@@ -146,7 +146,7 @@ struct mandatory<
 	std::enable_if_t<is_field<FIELD>::value && is_counter<COUNTER>::value>
 > : multi_field_t<FIELD, 1, MAX>, COUNTER
 {
-	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1");
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
 template <class TAG, class FIELD>
@@ -198,7 +198,7 @@ struct mandatory<
 > : multi_tag_value_t<TAG, FIELD, MIN, MAX>
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
-	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR ARITY USED");
 };
 
 template <class LEN, class FIELD>
@@ -289,7 +289,7 @@ struct mandatory<
 > : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, MIN, MAX>
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
-	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR ARITY USED");
 };
 
 } //namespace med

@@ -35,7 +35,7 @@ private:
 public:
 	enum { snapshot_size = sizeof(snapshot_s) };
 
-	encoder_context(uint8_t* data, std::size_t size, std::size_t alloc_size = inf, void* snap_data = nullptr, std::size_t snap_size = 0)
+	encoder_context(uint8_t* data, std::size_t size, std::size_t alloc_size = inf(), void* snap_data = nullptr, std::size_t snap_size = 0)
 		: m_allocator{ m_errCtx }
 		, m_max_snapshots{ static_cast<uint16_t>(snap_size/sizeof(snapshot_s)) }
 	{
@@ -49,13 +49,13 @@ public:
 	}
 
 	template <std::size_t SIZE>
-	explicit encoder_context(uint8_t (&buff)[SIZE], std::size_t alloc_size = inf, void* snap_data = nullptr, std::size_t snap_size = 0)
+	explicit encoder_context(uint8_t (&buff)[SIZE], std::size_t alloc_size = inf(), void* snap_data = nullptr, std::size_t snap_size = 0)
 		: encoder_context(buff, SIZE, alloc_size, snap_data, snap_size)
 	{
 	}
 
 	template <std::size_t SIZE, typename T, std::size_t SNAPSIZE>
-	encoder_context(uint8_t (&buff)[SIZE], T (&snap_data)[SNAPSIZE], std::size_t alloc_size = inf)
+	encoder_context(uint8_t (&buff)[SIZE], T (&snap_data)[SNAPSIZE], std::size_t alloc_size = inf())
 		: encoder_context(buff, SIZE, alloc_size, snap_data, sizeof(snap_data))
 	{
 	}
@@ -68,7 +68,7 @@ public:
 	explicit operator bool() const          { return static_cast<bool>(error_ctx()); }
 	allocator_type& get_allocator()         { return m_allocator; }
 
-	void reset(void* data, std::size_t size, std::size_t alloc_size = inf)
+	void reset(void* data, std::size_t size, std::size_t alloc_size = inf())
 	{
 		if (alloc_size)
 		{

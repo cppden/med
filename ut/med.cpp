@@ -294,7 +294,7 @@ struct MSG_MSEQ : med::sequence<
 	O< T<0x61>, L, SEQOF_1>,
 	O< T<0x62>, L, SEQOF_2, med::max<2>>,
 	O< T<0x70>, L, FLD_NSCHO >,
-	O< T<0x80>, CNT, SEQOF_3<1>, med::max<3>>, //T[CV]*[0,3]
+//	O< T<0x80>, CNT, SEQOF_3<1>, med::max<3>>, //T[CV]*[0,3]
 	O< L, VFLD1, med::max<3> >           //[LV(var)]*[0,3] till EoF
 >
 {
@@ -423,7 +423,7 @@ struct PROTO : med::choice< HDR<8>
 >
 {
 };
-#if 1
+
 TEST(encode, seq_ok)
 {
 	PROTO proto;
@@ -513,6 +513,7 @@ TEST(encode, mseq_ok)
 
 	//mandatory only
 	MSG_MSEQ& msg = proto.select();
+	static_assert(MSG_MSEQ::arity<FLD_UC>() == 2, "");
 	msg.push_back<FLD_UC>(ctx)->set(37);
 	msg.push_back<FLD_UC>(ctx)->set(38);
 	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
@@ -522,7 +523,7 @@ TEST(encode, mseq_ok)
 	msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
 	msg.push_back<FLD_DW>(ctx)->set(0x01020304);
 	{
-		auto* s = msg.push_back<SEQOF_3<0>>(ctx);
+		auto* s = msg.push_back<SEQOF_3<0>>();
 		ASSERT_NE(nullptr, s);
 		s->ref<FLD_U8>().set(1);
 		s->ref<FLD_U16>().set(2);
@@ -565,35 +566,44 @@ TEST(encode, mseq_ok)
 	uint8_t const bcd[] = {0x34, 0x56};
 	msg.ref<FLD_NSCHO>().ref<BCD_1>().set(2, bcd);
 
+	//O< T<0x80>, CNT, SEQOF_3<1>, med::max<3>>, //T[CV]*[0,3]
+//	{
+//		auto* s = msg.push_back<SEQOF_3<1>>(ctx);
+//		s->ref<FLD_U8>().set(7);
+//		s->ref<FLD_U16>().set(0x7654);
+//		s = msg.push_back<SEQOF_3<1>>(ctx);
+//		s->ref<FLD_U8>().set(9);
+//		s->ref<FLD_U16>().set(0x9876);
+//	}
+
 	msg.push_back<VFLD1>(ctx)->set("test.this");
 	msg.push_back<VFLD1>(ctx)->set("test.it");
 
 	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 	uint8_t const encoded2[] = { 0x11
-		, 37 //M< FLD_UC, med::arity<2> >
-		, 38
-		, 0x21, 0x35, 0xD9 //M< T<0x21>, FLD_U16, med::arity<2> >
+		, 37, 38 //2*<FLD_UC>
+		, 0x21, 0x35, 0xD9 //2*<T=0x21, FLD_U16>
 		, 0x21, 0x35, 0xDA
-		, 3, 0xDA, 0xBE, 0xEF //M< L, FLD_U24, med::arity<2> >
+		, 3, 0xDA, 0xBE, 0xEF //2*<L, FLD_U24>
 		, 3, 0x22, 0xBE, 0xEF
-		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_IP, med::max<2> >
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //2*<T=0x42, L, FLD_IP>
 		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
-		, 0x51, 0x01, 0x02, 0x03, 0x04 //M< T<0x51>, FLD_DW, med::max<2> >
+		, 0x51, 0x01, 0x02, 0x03, 0x04 //2*<T=0x51, FLD_DW>
 		, 0x51, 0x12, 0x34, 0x56, 0x78
-		, 0,1, 1, 0x21, 0,2 //M<C16, Seq>  <=2
-		, 0xE2 //O< FLD_TN >,
-		, 0x60, 2, 1, 33 //O< T<0x60>, L, FLD_CHO >
-		, 0x61, 4 //O< T<0x61>, L, SEQOF_1 >
-			, 0x12,0x23, 0x34,0x45 //M< FLD_W, med::max<3> >
-		, 0x62, 7 //O< T<0x62>, L, SEQOF_2, med::max<2> >
-			, 0x11,0x22 //M< FLD_W >,
-			, 0x06, 3, 2, 0x33,0x44 //O< T<0x06>, L, FLD_CHO >
-		, 0x62, 2 //O< T<0x62>, L, SEQOF_2, med::max<2> >
-			, 0x33,0x44 //M< FLD_W >,
+		, 0,1, 1, 0x21, 0,2 //1*<C16, SEQOF_3<u8, 21h=u16>
+		, 0xE2 //[FLD_TN]
+		, 0x60, 2, 1, 33 //[T=0x60, L, FLD_CHO]
+		, 0x61, 4 //[T=0x61, L, SEQOF_1]
+			, 0x12,0x23, 0x34,0x45 //2*<FLD_W>
+		, 0x62, 7 //[T=0x62, L, SEQOF_2]
+			, 0x11,0x22 //<FLD_W>
+			, 0x06, 3, 2, 0x33,0x44 //O[T=0x06, L, FLD_CHO]
+		, 0x62, 2 //[T=0x62, L, SEQOF_2]
+			, 0x33,0x44 //<FLD_W>
 			//O< T<0x06>, L, FLD_CHO >
-		, 0x70, 3, 0x31, 0x45, 0x6F //O< T<0x70>, L, FLD_NSCHO >,
-
-		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
+		, 0x70, 3, 0x31, 0x45, 0x6F //[T=0x70, L, FLD_NSCHO]
+//		, 0x80, 0,2,  7, 0x76,0x54,  9, 0x98, 0x76 //[T=0x80, C16, SEQOF_3<u8, 21h=u16>]
+		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's' //2*[L, VFLD1]
 		, 7, 't', 'e', 's', 't', '.', 'i', 't'
 	};
 
@@ -613,7 +623,6 @@ TEST(encode, mseq_ok)
 	}
 }
 
-#endif
 
 TEST(encode, mseq_fail)
 {
@@ -721,7 +730,6 @@ TEST(encode, mseq_fail)
 	}
 
 }
-#if 1
 
 TEST(encode, set_ok)
 {
@@ -1701,6 +1709,76 @@ TEST(field, tagged_nibble)
 	ASSERT_EQ(field.get(), dfield.get());
 }
 
+//support of 'unlimited' sequence-ofs
+//NOTE: declare a message which can't be decoded
+struct MSEQ_OPEN : med::sequence<
+	M< FLD_UC, med::inf >,                        //<V>*[1,*)
+	M< T<0x21>, FLD_U16, med::min<2>, med::inf >, //<TV>*[2,*)
+	M< L, FLD_U24, med::inf >,                    //<LV>*[1,*)
+	M< T<0x42>, L, FLD_IP, med::inf >,            //<TLV>(fixed)*[1,*)
+	M< CNT, FLD_W, med::inf >,                    //C<V>*[1,*)
+	O< T<0x62>, L, FLD_DW, med::inf >,            //[TLV]*[0,*)
+	//O< T<0x80>, CNT, SEQOF_3<1>, med::inf >,      //T[CV]*[0,*)
+	O< L, VFLD1, med::inf >                       //[LV(var)]*[0,*) till EoF
+>
+{
+};
+
+//encoding-only and only some fields since different IEs are checked above
+TEST(encode, mseq_open)
+{
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
+	MSEQ_OPEN msg;
+	static_assert(msg.arity<FLD_UC>() == med::inf(), "");
+	static_assert(msg.arity<FLD_U16>() == med::inf(), "");
+	static_assert(msg.arity<FLD_U24>() == med::inf(), "");
+	static_assert(msg.arity<FLD_IP>() == med::inf(), "");
+	static_assert(msg.arity<FLD_W>() == med::inf(), "");
+
+	{
+		auto* p = msg.push_back<FLD_UC>();
+		ASSERT_NE(nullptr, p);
+		p->set(37);
+		//check the inplace storage for unlimited field has only one slot
+		p = msg.push_back<FLD_UC>();
+		ASSERT_EQ(nullptr, p);
+		p = msg.push_back<FLD_UC>(ctx);
+		ASSERT_NE(nullptr, p);
+		p->set(38);
+	}
+	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
+	msg.push_back<FLD_U16>(ctx)->set(0x35DA);
+	msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
+	msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
+	msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
+	msg.push_back<FLD_W>(ctx)->set(0x7654);
+	msg.push_back<FLD_W>(ctx)->set(0x9876);
+	msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+	msg.push_back<VFLD1>(ctx)->set("test.this");
+	msg.push_back<VFLD1>(ctx)->set("test.it");
+
+//	O< T<0x80>, CNT, SEQOF_3<1>, med::inf >,      //T[CV]*[0,*)
+
+	if (!encode(med::make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+	uint8_t const encoded[] = {
+		37, 38                          //<FLD_UC>
+		, 0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
+		, 0x21, 0x35, 0xDA
+		, 3, 0xDA, 0xBE, 0xEF             //<L, FLD_U24>
+		, 3, 0x22, 0xBE, 0xEF
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //<T=0x42, L, FLD_IP>
+		, 0,2, 0x76, 0x54,  0x98, 0x76    //<C16, FLD_W>
+		, 0x62, 4, 0x01, 0x02, 0x03, 0x04    //[T=0x51, L, FLD_DW]
+		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
+		, 7, 't', 'e', 's', 't', '.', 'i', 't'
+	};
+	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded, buffer));
+}
+
+
 //customized print of container
 template <int I>
 struct DEEP_SEQ : med::sequence< M<FLD_U8>, M<FLD_U16> >
@@ -1932,7 +2010,7 @@ EncData const test_prints[] = {
 };
 
 INSTANTIATE_TEST_CASE_P(print, PrintUt, ::testing::ValuesIn(test_prints));
-#endif
+
 
 int main(int argc, char **argv)
 {
