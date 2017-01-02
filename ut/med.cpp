@@ -1709,6 +1709,88 @@ TEST(field, tagged_nibble)
 	ASSERT_EQ(field.get(), dfield.get());
 }
 
+//placeholder::_length
+struct PL_HDR : med::sequence<
+	M< FLD_U16 >,
+	med::placeholder::_length<6>, //don't count U16+U8 (2+1 bytes) and length encoded as U24 (3 bytes)
+	M< FLD_U8 >
+>
+{
+	static constexpr char const* name()         { return "PL-Header"; }
+};
+
+struct PL_SEQ : med::sequence<
+	M< PL_HDR >,
+	O< T<0x62>, FLD_DW, med::max<2> >
+>
+{
+	using length_type = FLD_U24;
+	static constexpr char const* name()         { return "PL-Sequence"; }
+};
+
+TEST(placeholder, length)
+{
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+	med::decoder_context<> dctx;
+	std::size_t alloc_buf[1024];
+	dctx.get_allocator().reset(alloc_buf);
+
+	PL_SEQ msg;
+
+	{
+		PL_HDR& hdr = msg.ref<PL_HDR>();
+		hdr.ref<FLD_U16>().set(0x1661);
+		hdr.ref<FLD_U8>().set(0x37);
+
+		if (!encode(med::make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+		uint8_t const encoded[] = {
+			0x16, 0x61
+			, 0, 0, 0    //length 3 bytes
+			, 0x37
+		};
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		PL_SEQ dmsg;
+		if (!decode(med::make_octet_decoder(dctx), dmsg)) { FAIL() << toString(dctx.error_ctx()); }
+		PL_HDR& dhdr = dmsg.ref<PL_HDR>();
+		EXPECT_EQ(hdr.get<FLD_U16>().get(), dhdr.get<FLD_U16>().get());
+		EXPECT_EQ(hdr.get<FLD_U8>().get(), dhdr.get<FLD_U8>().get());
+	}
+
+	ctx.reset();
+	{
+		static_assert(msg.arity<FLD_DW>() == 2, "");
+		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+		msg.push_back<FLD_DW>(ctx)->set(0x05060708);
+
+		if (!encode(med::make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+		uint8_t const encoded[] = {
+			0x16, 0x61
+			, 0, 0, 10    //length 3 bytes
+			, 0x37
+			,0x62, 1,2,3,4
+			,0x62, 5,6,7,8
+		};
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		PL_SEQ dmsg;
+		if (!decode(med::make_octet_decoder(dctx), dmsg)) { FAIL() << toString(dctx.error_ctx()); }
+		ASSERT_EQ(msg.count<FLD_DW>(), dmsg.count<FLD_DW>());
+		auto it = dmsg.get<FLD_DW>().begin();
+		for (auto const& v : msg.get<FLD_DW>())
+		{
+			EXPECT_EQ(v.get(), it->get());
+			it++;
+		}
+	}
+}
+
+
 //support of 'unlimited' sequence-ofs
 //NOTE: declare a message which can't be decoded
 struct MSEQ_OPEN : med::sequence<

@@ -182,6 +182,10 @@ struct length_decoder
 	template <class ...T>
 	auto operator() (T&&... args)   { return m_decoder(std::forward<T>(args)...); }
 
+	bool push_state()               { return m_decoder.push_state(); }
+	void pop_state()                { m_decoder.pop_state(); }
+	typename FUNC::allocator_type& get_allocator() { return m_decoder.ctx.get_allocator(); }
+
 	FUNC&            m_decoder;
 	IE&              m_ie;
 	state_type const m_start;
