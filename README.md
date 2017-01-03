@@ -84,6 +84,7 @@ struct PROTO : med::choice< med::value<8>
 
 ## Description
 C++ library for non-ASN.1 based definition of messages with generating corresponding encoder and decoder via meta-programming.
+See wiki for more details and sample repos (gtpu) for examples of med usage.
 
 ## Dependencies 
 Any modern C++ compiler with C++14 support.
