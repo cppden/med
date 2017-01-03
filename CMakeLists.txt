@@ -1,15 +1,12 @@
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 2.8.7)
 
-project(med_ut)
-
-
+project(med)
 
 include_directories(
   ${PROJECT_SOURCE_DIR}/med/
 )
 
-# Linker options
-set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} ")
+#set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} ")
 
 # Library path
 set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
@@ -23,13 +20,13 @@ set_source_files_properties(
     ${CXX_SRCS} PROPERTIES COMPILE_FLAGS 
     " -g -O3 -std=c++14 -Wall -Werror")
 
-add_executable(med_ut ${CXX_SRCS} ${C_SRCS})
+add_executable(gtest_med ${CXX_SRCS})
 
-target_link_libraries(med_ut
+target_link_libraries(gtest_med
     gtest
 )
 
 enable_testing()
-add_test(UT med_ut)
+add_test(UT gtest_med)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
-                  DEPENDS med_ut)
+                  DEPENDS gtest_med)

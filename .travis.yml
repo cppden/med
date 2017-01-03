@@ -5,16 +5,15 @@ branches:
   except: /pr\/.*/
 
 script:
-  - ./reconf
-  - mkdir build && cd build && ../configure && make V=1 -j check
+  - mkdir build
+  - cd build
+  - cmake .. && make V=1 -j check
   
-
 before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libgtest-dev
   # what a nice bug wasted 3 hours of my life...
   - (mkdir -p /tmp/gtest && cd /tmp/gtest && cmake -DCMAKE_BUILD_TYPE=RELEASE /usr/src/gtest && make && sudo mv libg* /usr/lib/)
-  - find /usr/ -type f -name "*gtest*"
 
 install:
   - export CXX="$COMPILER"
@@ -32,16 +31,16 @@ matrix:
       env:
         - COMPILER=g++-6
 
-#    - compiler: clang
-#      addons:
-#        apt:
-#          sources:
-#            - ubuntu-toolchain-r-test
-#            - llvm-toolchain-precise-3.8
-#          packages:
-#            - clang++-3.8
-#      env:
-#        - COMPILER=clang++-3.8
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.8
+          packages:
+            - clang-3.8
+      env:
+        - COMPILER=clang++-3.8
 
 notifications:
   email: false
