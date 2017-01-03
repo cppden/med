@@ -1,8 +1,12 @@
-cmake_minimum_required(VERSION 2.8.7)
-
+cmake_minimum_required(VERSION 2.8)
 project(med)
+enable_language(CXX)
+
+find_package(GTest REQUIRED)
+find_package(Threads REQUIRED)
 
 include_directories(
+  ${GTEST_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/med/
 )
 
@@ -23,7 +27,8 @@ set_source_files_properties(
 add_executable(gtest_med ${CXX_SRCS})
 
 target_link_libraries(gtest_med
-    gtest
+    ${GTEST_BOTH_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT} 
 )
 
 enable_testing()
