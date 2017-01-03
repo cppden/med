@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+set IE container - tagged elements in any order
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+octet decoder definition
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

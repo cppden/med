@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+base container class used in sequence and set
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License
@@ -84,14 +84,16 @@ struct seq_is_set_imp<void>
 //-----------------------------------------------------------------------
 template <class IE>
 std::enable_if_t<!is_multi_field_v<IE>>
-inline field_clear(IE& ie)           { ie.ref_field().clear(); }
+inline field_clear(IE& ie)
+{
+	ie.ref_field().clear();
+}
 
 template <class IE>
 std::enable_if_t<is_multi_field_v<IE>>
 inline field_clear(IE& ie)
 {
-	//TODO: clear all, not the 1st only
-	ie.template ref_field<0>().clear();
+	ie.clear();
 }
 
 template <class... IES>

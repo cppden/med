@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+IE to represent generic integral value
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

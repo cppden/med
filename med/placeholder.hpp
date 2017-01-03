@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+placeholders for IE replacement to select proper scope
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

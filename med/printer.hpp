@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+special case of encoder to print IEs via user-provided sink
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

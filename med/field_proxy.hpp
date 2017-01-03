@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+proxy helper classes to simplify field access
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

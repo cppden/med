@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+tag related definitions
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License
@@ -87,18 +87,30 @@ template <class T, class TV>
 std::enable_if_t<has_get_tag<T>::value, bool>
 inline set_tag(T& header, TV&& tag)
 {
-	if (header.get_tag() == tag) { return false; }
-	header.set_tag(tag);
-	return true;
+	if (header.is_set() && header.get_tag() == tag)
+	{
+		return false;
+	}
+	else
+	{
+		header.set_tag(tag);
+		return true;
+	}
 }
 
 template <class T, class TV>
 std::enable_if_t<!has_get_tag<T>::value, bool>
 inline set_tag(T& header, TV&& tag)
 {
-	if (header.get_encoded() == tag) { return false; }
-	header.set_encoded(tag);
-	return true;
+	if (header.is_set() && header.get_encoded() == tag)
+	{
+		return false;
+	}
+	else
+	{
+		header.set_encoded(tag);
+		return true;
+	}
 }
 
 }	//end: namespace med

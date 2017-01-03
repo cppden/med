@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+pseudo-states for encoding/decoding buffer
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

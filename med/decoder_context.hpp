@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+context for decoding
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

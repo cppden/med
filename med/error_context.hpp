@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-Defines `med::error_context`.
+error context to hold current error/warning codes and their related arguments
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

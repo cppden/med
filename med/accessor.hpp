@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+accessors for fields in container
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License
@@ -14,17 +14,6 @@ Distributed under the MIT License
 #include "field_proxy.hpp"
 
 namespace med {
-
-//template< class T, class U >
-//struct const_as : std::conditional<
-//	std::is_const<T>::value, std::add_const_t<U>, std::remove_const_t<U>
-//>
-//{
-//};
-//
-//template< class T, class U >
-//using const_as_t = typename const_as<T, U>::type;
-
 
 namespace detail {
 

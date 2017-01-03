@@ -1115,35 +1115,6 @@ TEST(decode, seq_fail)
 	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 }
 
-template <class FIELD, class MSG, class T>
-void check_seqof(MSG const& msg, std::initializer_list<T>&& values)
-{
-	std::size_t const count = values.size();
-	ASSERT_EQ(count, msg.template count<FIELD>());
-
-	auto it = std::begin(values);
-	for (auto& v : msg.template get<FIELD>())
-	{
-		decltype(v.get()) expected = *it++;
-		EXPECT_EQ(expected, v.get());
-	}
-}
-
-template <class FIELD, class MSG>
-void check_seqof(MSG const& msg, std::initializer_list<char const*>&& values)
-{
-	std::size_t const count = values.size();
-	ASSERT_EQ(count, msg.template count<FIELD>());
-
-	auto it = std::begin(values);
-	for (auto& v : msg.template get<FIELD>())
-	{
-		char const* expected = *it++;
-		std::size_t const len = std::strlen(expected);
-		ASSERT_EQ(len, v.get().size());
-		ASSERT_TRUE(Matches(expected, v.get().data(), len));
-	}
-}
 
 TEST(decode, mseq_ok)
 {

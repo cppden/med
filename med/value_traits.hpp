@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+traits for IE of integral values
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

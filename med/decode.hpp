@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+decoding entry point
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License
@@ -177,14 +177,17 @@ struct length_decoder
 		return false;
 	}
 
-	auto size() const               { return m_size_state.size(); }
+	auto size() const                                  { return m_size_state.size(); }
 
 	template <class ...T>
-	auto operator() (T&&... args)   { return m_decoder(std::forward<T>(args)...); }
+	auto operator() (T&&... args)                      { return m_decoder(std::forward<T>(args)...); }
 
-	bool push_state()               { return m_decoder.push_state(); }
-	void pop_state()                { m_decoder.pop_state(); }
-	typename FUNC::allocator_type& get_allocator() { return m_decoder.ctx.get_allocator(); }
+	bool push_state()                                  { return m_decoder.push_state(); }
+	void pop_state()                                   { m_decoder.pop_state(); }
+	auto get_state() const                             { return m_decoder.get_state(); }
+	typename FUNC::allocator_type& get_allocator()     { return m_decoder.ctx.get_allocator(); }
+	auto push_size(std::size_t size)                   { return m_decoder.push_size(size); }
+	bool eof() const                                   { return m_decoder.eof(); }
 
 	FUNC&            m_decoder;
 	IE&              m_ie;

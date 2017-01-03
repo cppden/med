@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+error and warning codes definition
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

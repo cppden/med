@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+set of templates to define mandatory fields within containers
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

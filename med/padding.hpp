@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+pseudo-IE for padding/alignments within containers
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+snapshot updating entry point
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

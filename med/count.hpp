@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+counter related primitives
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

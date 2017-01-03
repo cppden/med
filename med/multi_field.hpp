@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+multi-instance field (aka sequence-of) and its aggregates
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License
@@ -42,6 +42,8 @@ public:
 		max     = MAX,
 		inplace = (MIN == MAX || sizeof(FIELD) < (16*1024/MAX)) ? MAX : MIN,
 	};
+
+	multi_field_t() = default;
 
 private:
 	template <class T>
@@ -139,6 +141,9 @@ public:
 	}
 
 private:
+	multi_field_t(multi_field_t const&) = delete;
+	multi_field_t& operator= (multi_field_t const&) = delete;
+
 	field_value  m_fields[inplace];
 	std::size_t  m_count {0};
 	field_value* m_tail {nullptr};

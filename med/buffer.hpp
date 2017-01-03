@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+buffer for encoding and decoding
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

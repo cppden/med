@@ -1,5 +1,6 @@
-/*!
-TODO: define.
+/**
+@file
+sequence IE container - any IE in strict sequential order
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

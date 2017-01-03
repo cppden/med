@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+snapshot of buffer state for inplace updating
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

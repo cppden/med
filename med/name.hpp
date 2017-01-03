@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+helper traits to extract IE name
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

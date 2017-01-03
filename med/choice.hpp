@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+choice class as union
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License
@@ -158,8 +158,6 @@ public:
 	bool is_set() const                 { return header().is_set(); }
 	std::size_t calc_length() const     { return sl::choice_for<CASES...>::calc_length(*this); }
 
-	template <class IE>
-	choice& operator= (IE const& ie)    { ref<IE>() = ie; return *this; }
 	auto select()                       { return make_selector(this); }
 	auto select() const                 { return make_selector(this); }
 	auto cselect() const                { return make_selector(this); }

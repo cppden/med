@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+single-instance field and its aggregates
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License

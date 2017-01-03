@@ -1,6 +1,6 @@
-/*!
+/**
 @file
-TODO: define.
+octet string IE definition
 
 @copyright Denis Priyomov 2016
 Distributed under the MIT License
@@ -185,6 +185,8 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	iterator end()                          { return begin() + size(); }
 
 	void clear()                            { m_value.clear(); }
+
+	bool set(std::size_t len, void const* data) { return set_encoded(len, data); }
 
 	//NOTE: do not override!
 	bool set_encoded(std::size_t len, void const* data)
