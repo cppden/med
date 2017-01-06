@@ -30,32 +30,45 @@ template <class IE, class FUNC>
 struct padder
 {
 	explicit padder(FUNC& func) noexcept
-		: m_encoder{ func }
-		, m_start{ m_encoder.get_state() }
+		: m_func{ func }
+		, m_start{ m_func(GET_STATE{}) }
 	{}
 
 	padder(padder&& rhs) noexcept
-		: m_encoder{ rhs.m_encoder}
+		: m_func{ rhs.m_func}
 		, m_start{ rhs.m_start }
 	{
 	}
 
-	explicit operator bool() const
+	void enable(bool v) const           { m_enable = v; }
+	//current padding size in bits
+	std::size_t size() const
 	{
-		auto const total_bits = (m_encoder.get_state() - m_start) * FUNC::granularity;
-		auto const pad_bits = (IE::padding::bits::value - (total_bits % IE::padding::bits::value)) % IE::padding::bits::value;
-		//CODEC_TRACE("PADDING %zu bits for %zd = %zu\n", pad_bits, total_bits, pad_bits + total_bits);
-		return pad_bits ? m_encoder.padding(pad_bits, IE::padding::filler::value) : true;
+		if (m_enable)
+		{
+			auto const total_bits = (m_func(GET_STATE{}) - m_start) * FUNC::granularity;
+			//CODEC_TRACE("PADDING %zu bits for %zd = %zu\n", pad_bits, total_bits, pad_bits + total_bits);
+			return (IE::padding::bits::value - (total_bits % IE::padding::bits::value)) % IE::padding::bits::value;
+		}
+		return 0;
 	}
 
-	padder& operator= (padder&&) = delete;
-	padder(padder const&) = delete;
-	padder(padder&) = delete;
-	padder& operator= (padder const&) = delete;
-	padder& operator= (padder&) = delete;
+	explicit operator bool() const
+	{
+		if (auto const pad_bits = size())
+		{
+			CODEC_TRACE("PADDING %zu bits", pad_bits);
+			return m_func(ADD_PADDING{pad_bits, IE::padding::filler::value});
+		}
+		return true;
+	}
 
-	FUNC&                     m_encoder;
+	padder(padder const&) = delete;
+	padder& operator= (padder const&) = delete;
+
+	FUNC&                     m_func;
 	typename FUNC::state_type m_start;
+	bool mutable              m_enable{ true };
 };
 
 
@@ -73,5 +86,12 @@ constexpr add_padding(FUNC&)
 	return true;
 }
 
+template <class T>
+inline void padding_enable(T const& pad, bool v)            { pad.enable(v); }
+constexpr void padding_enable(bool const pad, bool v)       { }
+
+template <class T>
+inline std::size_t padding_size(T const& pad)               { return pad.size(); }
+constexpr std::size_t padding_size(bool const pad)          { return 0; }
 
 }	//end: namespace med

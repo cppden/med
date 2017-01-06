@@ -74,7 +74,7 @@ public:
 			}
 		}
 
-		std::size_t size() const                { return m_buf->size(); }
+		std::size_t size() const                { return m_buf ? m_buf->size() : 0; }
 		explicit operator bool() const          { return nullptr != m_end; }
 
 	private:

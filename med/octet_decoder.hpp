@@ -32,18 +32,25 @@ struct octet_decoder
 	{
 	}
 
-	auto& get_allocator()                              { return ctx.get_allocator(); }
+	allocator_type& get_allocator()                    { return ctx.get_allocator(); }
 
 	//state
-	auto push_size(std::size_t size)                   { return ctx.buffer().push_size(size); }
-	bool push_state()                                  { return ctx.buffer().push_state(); }
-	void pop_state()                                   { ctx.buffer().pop_state(); }
-	auto get_state() const                             { return ctx.buffer().get_state(); }
-	bool eof() const                                   { return ctx.buffer().empty(); }
-	bool advance(int bits)
+	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
+	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
+	void operator() (POP_STATE const&)                 { ctx.buffer().pop_state(); }
+	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
+	bool operator() (CHECK_STATE const&)               { return !ctx.buffer().empty(); }
+	bool operator() (ADVANCE_STATE const& ss)
 	{
-		if (ctx.buffer().advance(bits/granularity)) return true;
-		ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, bits);
+		if (ctx.buffer().advance(ss.bits/granularity)) return true;
+		ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, ss.bits);
+		return false;
+	}
+	bool operator() (ADD_PADDING const& pad)
+	{
+		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
+		if (ctx.buffer().advance(pad.bits/granularity)) return true;
+		ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, pad.bits);
 		return false;
 	}
 
@@ -60,7 +67,7 @@ struct octet_decoder
 	bool operator() (IE& ie, IE_VALUE const&)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
-		//CODEC_TRACE("->VAL[%s] %u bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
+		CODEC_TRACE("->VAL[%s] %u bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
 		if (uint8_t const* pval = ctx.buffer().advance(IE::traits::bits / granularity))
 		{
 			auto const val = get_bytes<IE>(pval);

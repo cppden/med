@@ -152,15 +152,16 @@ private:
 public:
 	using header_type = HEADER;
 
-	header_type const& header() const   { return m_header; }
-	header_type& header()               { return m_header; }
+	header_type const& header() const       { return m_header; }
+	header_type const& get_header() const   { return m_header; }
+	header_type& header()                   { return m_header; }
 
-	bool is_set() const                 { return header().is_set(); }
-	std::size_t calc_length() const     { return sl::choice_for<CASES...>::calc_length(*this); }
+	bool is_set() const                     { return header().is_set(); }
+	std::size_t calc_length() const         { return sl::choice_for<CASES...>::calc_length(*this); }
 
-	auto select()                       { return make_selector(this); }
-	auto select() const                 { return make_selector(this); }
-	auto cselect() const                { return make_selector(this); }
+	auto select()                           { return make_selector(this); }
+	auto select() const                     { return make_selector(this); }
+	auto cselect() const                    { return make_selector(this); }
 
 	template <class CASE>
 	CASE& ref()
@@ -202,7 +203,8 @@ public:
 	template <class DECODER, class UNEXP>
 	bool decode(DECODER&& decoder, UNEXP& unexp)
 	{
-		return med::decode(decoder, header(), unexp) && sl::choice_for<CASES...>::decode(decoder, *this, unexp);
+		return med::decode(decoder, header(), unexp)
+			&& sl::choice_for<CASES...>::decode(decoder, *this, unexp);
 	}
 
 private:

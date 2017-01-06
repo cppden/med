@@ -36,6 +36,13 @@ struct PUSH_SIZE
 	std::size_t  size;
 };
 
+//Pad buffer with specfied number of bits using filler value.
+struct ADD_PADDING
+{
+	std::size_t  bits;
+	uint8_t      filler;
+};
+
 
 //Save current buffer state referred by id.
 //It's similar to PUSH_STATE but saved in optional storage provided by user

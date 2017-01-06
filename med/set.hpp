@@ -223,7 +223,7 @@ template <class T, class FUNC>
 std::enable_if_t<std::is_base_of<CONTAINER, typename T::ie_type>::value>
 inline pop_state(FUNC&& func)
 {
-	func.pop_state();
+	func(POP_STATE{});
 }
 
 }	//end: namespace sl
@@ -243,7 +243,7 @@ struct set : container<IES...>
 	template <class DECODER, class UNEXP>
 	bool decode(DECODER& decoder, UNEXP& unexp)
 	{
-		while (decoder.push_state())
+		while (decoder(PUSH_STATE{}))
 		{
 			header_type header;
 			if (med::decode(decoder, header, unexp))
@@ -257,7 +257,7 @@ struct set : container<IES...>
 			}
 			else
 			{
-				decoder.pop_state();
+				decoder(POP_STATE{});
 				decoder(error::SUCCESS);
 				break;
 			}

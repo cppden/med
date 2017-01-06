@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include "ie_type.hpp"
 #include "value_traits.hpp"
 #include "name.hpp"
+#include "error.hpp"
 #include "debug.hpp"
 
 
@@ -142,30 +143,45 @@ template <class T>
 using has_length_converters = decltype(detail::test_value_to_length<T>(0));
 
 
-template <class FIELD>
+template <class FUNC, class FIELD>
 std::enable_if_t<has_length_converters<FIELD>::value, bool>
-inline length_to_value(FIELD& field, std::size_t len)
+inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-	return FIELD::length_to_value(len) && set_value(field, len);
+	if (FIELD::length_to_value(len) && set_value(field, len))
+	{
+		return true;
+	}
+	func(error::INCORRECT_VALUE, name<FIELD>(), len);
+	return false;
 }
 
-template <class FIELD>
+template <class FUNC, class FIELD>
 std::enable_if_t<!has_length_converters<FIELD>::value, bool>
-inline length_to_value(FIELD& field, std::size_t len)
+inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-	return set_value(field, len);
+	if (set_value(field, len))
+	{
+		return true;
+	}
+	func(error::INCORRECT_VALUE, name<FIELD>(), len);
+	return false;
 }
 
-template <class FIELD>
+template <class FUNC, class FIELD>
 std::enable_if_t<has_length_converters<FIELD>::value, bool>
-inline value_to_length(FIELD const& field, std::size_t& len)
+inline value_to_length(FUNC& func, FIELD const&, std::size_t& len)
 {
-	return FIELD::value_to_length(len);
+	if (FIELD::value_to_length(len))
+	{
+		return true;
+	}
+	func(error::INCORRECT_VALUE, name<FIELD>(), len);
+	return false;
 }
 
-template <class FIELD>
+template <class FUNC, class FIELD>
 std::enable_if_t<!has_length_converters<FIELD>::value, bool>
-constexpr value_to_length(FIELD const&, std::size_t&)
+constexpr value_to_length(FUNC&, FIELD const&, std::size_t&)
 {
 	return true;
 }

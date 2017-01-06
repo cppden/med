@@ -48,7 +48,7 @@ template <class IE, class FUNC, class TAG>
 std::enable_if_t<is_read_only_v<typename IE::tag_type>>
 inline clear_tag(FUNC& func, TAG& vtag)
 {
-	func.pop_state();
+	func(POP_STATE{});
 	vtag.clear();
 }
 
@@ -65,7 +65,7 @@ inline void discard(FUNC& func, TAG& vtag)
 	if (vtag)
 	{
 		CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-		func.pop_state(); //restore state
+		func(POP_STATE{}); //restore state
 		vtag.clear();
 	}
 }
@@ -87,7 +87,7 @@ struct seq_dec_imp<std::enable_if_t<
 		if (!vtag)
 		{
 			//save state before decoding a tag
-			if (func.push_state())
+			if (func(PUSH_STATE{}))
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
@@ -133,7 +133,7 @@ struct seq_dec_imp<std::enable_if_t<
 		CODEC_TRACE("[%s]...", name<IE>());
 		discard(func, vtag);
 
-		if (!func.eof())
+		if (func(CHECK_STATE{}))
 		{
 			IE& ie = to;
 			return med::decode(func, ie.ref_field(), unexp)
@@ -224,7 +224,7 @@ struct seq_dec_imp<std::enable_if_t<
 
 		if (!vtag)
 		{
-			if (func.push_state())
+			if (func(PUSH_STATE{}))
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
@@ -244,7 +244,7 @@ struct seq_dec_imp<std::enable_if_t<
 			auto* field = ie.push_back(func);
 			if (!field || !med::decode(func, *field, unexp)) return false;
 
-			if (func.push_state())
+			if (func(PUSH_STATE{}))
 			{
 				if (auto const tag = decode_tag<typename IE::tag_type>(func))
 				{
@@ -265,7 +265,7 @@ struct seq_dec_imp<std::enable_if_t<
 
 		if (!vtag)
 		{
-			func.pop_state(); //restore state
+			func(POP_STATE{}); //restore state
 			func(error::SUCCESS); //clear error
 		}
 		return check_arity(func, ie)
@@ -293,7 +293,7 @@ struct seq_dec_imp<std::enable_if_t<
 		CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
 
 		std::size_t count = 0;
-		while (!func.eof() && count < IE::max)
+		while (func(CHECK_STATE{}) && count < IE::max)
 		{
 			auto* field = ie.push_back(func);
 			if (!field || !sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp)) return false;

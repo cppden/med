@@ -72,16 +72,8 @@ struct length_encoder
 
 	explicit length_encoder(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
-		, m_start{ m_encoder.get_state() }
+		, m_start{ m_encoder(GET_STATE{}) }
 	{
-	}
-
-	template <int DELTA>
-	bool operator() (placeholder::_length<DELTA> const&)
-	{
-		m_delta = DELTA;
-		m_snapshot = m_encoder.get_state(); //save position in encoded buffer to update with correct length
-		return m_encoder.advance(int(length_type::traits::bits));
 	}
 
 	~length_encoder()
@@ -89,17 +81,32 @@ struct length_encoder
 		//update the length with final value
 		if (m_snapshot)
 		{
-			state_type const end = m_encoder.get_state();
+			state_type const end = m_encoder(GET_STATE{});
 
-			length_type true_len;
-			true_len.set_encoded(end - m_start - m_delta);
-			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", true_len.get(), m_delta);
+			std::size_t len_value = end - m_start - m_delta;
+			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
 
-			m_encoder.set_state(m_snapshot);
-			encode(m_encoder, true_len);
-			m_encoder.set_state(end);
+			length_type len_ie;
+			if (length_to_value(m_encoder, len_ie, len_value))
+			{
+				CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<length_type>());
+				m_encoder(SET_STATE{}, m_snapshot);
+				encode(m_encoder, len_ie);
+				m_encoder(SET_STATE{}, end);
+			}
 		}
 	}
+
+	template <int DELTA>
+	bool operator() (placeholder::_length<DELTA> const&)
+	{
+		m_delta = DELTA;
+		m_snapshot = m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
+		return m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
+	}
+
+	//check if placeholder was visited
+	explicit operator bool() const                     { return static_cast<bool>(m_snapshot); }
 
 	template <class ...T>
 	auto operator() (T&&... args)  { return m_encoder(std::forward<T>(args)...); }
@@ -125,11 +132,17 @@ struct container_encoder
 	std::enable_if_t<has_length_type<IE>::value, bool>
 	static encode(FUNC& func, IE& ie)
 	{
-		CODEC_TRACE("%s with length...:", name<IE>());
 		auto const pad = add_padding<IE>(func);
-		if (ie.encode(length_encoder<FUNC, typename IE::length_type>{ func }))
 		{
-			return static_cast<bool>(pad);
+			CODEC_TRACE("start %s with length...:", name<IE>());
+			length_encoder<FUNC, typename IE::length_type> le{ func };
+			if (ie.encode(le))
+			{
+				CODEC_TRACE("finish %s with length...:", name<IE>());
+				//special case for empty elements w/o length placeholder
+				padding_enable(pad, static_cast<bool>(le));
+				return static_cast<bool>(pad);
+			}
 		}
 		return false;
 	}
@@ -171,15 +184,11 @@ inline bool encode_ie(FUNC& func, IE& ie, IE_LV const&)
 {
 	typename WRAPPER::length_type len_ie{};
 	std::size_t len_value = get_length(ref_field(ie));
-	if (length_to_value(len_ie, len_value))
+	if (length_to_value(func, len_ie, len_value))
 	{
 		CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<IE>());
 		return encode(func, len_ie)
 			&& encode(func, ref_field(ie));
-	}
-	else
-	{
-		func(error::INCORRECT_VALUE, name<typename WRAPPER::length_type>(), len_value);
 	}
 	return false;
 }

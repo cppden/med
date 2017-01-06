@@ -40,16 +40,14 @@ struct accessor
 {
 	explicit accessor(CONTAINER& c) noexcept : m_that(c)  { }
 
-//	template <class T, class U = T>
-//	operator std::enable_if_t<!std::is_const<std::remove_reference_t<U>>::value, U&>()
-	template <class T> operator T& ()
+	template <class T, class = std::enable_if_t<!std::is_pointer<T>::value>> operator T& ()
 	{
-		static_assert(!std::is_pointer<T>(), "INVALID ACCESS BY NON-CONST POINTER");
+		//static_assert(!std::is_pointer<T>(), "INVALID ACCESS BY NON-CONST POINTER");
 		return m_that.template ref<T>();
 	}
-	template <class T> operator T const* () const
+	template <class T, class = std::enable_if_t<std::is_const<T>::value>> operator T* () const
 	{
-		return access<T>::as_optional(m_that.template get<T>());
+		return access<T>::as_optional(m_that.template get<std::remove_const_t<T>>());
 	}
 
 private:
