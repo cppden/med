@@ -16,18 +16,19 @@ Distributed under the MIT License
 
 namespace med {
 
-template <class TAG>
-struct tag_t
-{
-	using tag_type = TAG;
-};
-
 template <class T, class Enable = void>
 struct is_tag : std::false_type {};
 template <class T>
 struct is_tag<T, std::enable_if_t<std::is_const<typename T::ie_type>::value>> : std::true_type {};
 template <class T>
 constexpr bool is_tag_v = is_tag<T>::value;
+
+template <class TAG>
+struct tag_t
+{
+	using tag_type = TAG;
+	static_assert(is_tag_v<TAG>, "TAG IS REQUIRED");
+};
 
 
 template <class, class = void >

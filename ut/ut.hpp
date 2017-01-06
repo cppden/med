@@ -50,6 +50,23 @@ char const* as_string(T const& buffer)
 	return sz;
 }
 
+char const* as_string(void const* p, std::size_t size)
+{
+	static char sz[1024];
+	auto* it = static_cast<uint8_t const*>(p);
+	auto* ite = it + size;
+
+	char* psz = sz;
+	char* end = psz + sizeof(sz);
+	*psz = '\0';
+	for (; it != ite; ++it)
+	{
+		psz += std::snprintf(psz, end - psz, "%02X ", *it);
+	}
+
+	return sz;
+}
+
 template <class FIELD, class MSG, class T>
 void check_seqof(MSG const& msg, std::initializer_list<T>&& values)
 {

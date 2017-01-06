@@ -1,5 +1,7 @@
-# Meta-Encoder/Decoder
 [![Build Status](https://travis-ci.org/cppden/med.svg?branch=master)](https://travis-ci.org/cppden/med)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](../master/LICENSE)
+
+# Meta-Encoder/Decoder
 
 ## Overview
 ```cpp

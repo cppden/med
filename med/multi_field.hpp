@@ -89,6 +89,9 @@ public:
 	void clear()                                            { m_count = 0; }
 	bool is_set() const                                     { return m_count > 0 && m_fields[0].value.is_set(); }
 
+	field_type const* first() const                         { return &m_fields[0]; }
+	field_type const* last() const                          { return &m_tail->value; }
+
 //	field_type* at(std::size_t index)
 //	{
 //		iterator it = begin(), ite = end();
@@ -99,6 +102,8 @@ public:
 	//ineffective read-only access
 	field_type const* at(std::size_t index) const
 	{
+		if (index >= count()) return nullptr;
+		if (index < inplace) return &m_fields[index].value;
 		const_iterator it = begin(), ite = end();
 		while (index && it != ite) { --index; ++it; }
 		return (it && it->is_set()) ? it.get() : nullptr;

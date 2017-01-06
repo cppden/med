@@ -59,12 +59,23 @@ inline clear_tag(FUNC&, TAG& vtag)
 	vtag.clear();
 }
 
+template <class FUNC, class TAG>
+inline void discard(FUNC& func, TAG& vtag)
+{
+	if (vtag)
+	{
+		CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
+		func.pop_state(); //restore state
+		vtag.clear();
+	}
+}
+
 //single-instance optional field w/ tag
 template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
 		!is_multi_field_v<IE> &&
 		is_optional_v<IE> &&
-		!has_optional_type<IE>::value &&
+		!has_condition_v<IE> &&
 		has_tag_type_v<IE>
 	>,
 	IE, IES...>
@@ -112,7 +123,7 @@ struct seq_dec_imp<std::enable_if_t<
 		!is_multi_field_v<IE> &&
 		is_optional_v<IE> &&
 		!has_tag_type_v<IE> &&
-		!has_optional_type<IE>::value
+		!has_condition_v<IE>
 	>,
 	IE, IES...>
 {
@@ -120,12 +131,7 @@ struct seq_dec_imp<std::enable_if_t<
 	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
 	{
 		CODEC_TRACE("[%s]...", name<IE>());
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func.pop_state(); //restore state
-			vtag.clear();
-		}
+		discard(func, vtag);
 
 		if (!func.eof())
 		{
@@ -143,27 +149,58 @@ template <class IE, class... IES>
 struct seq_dec_imp<std::enable_if_t<
 		!is_multi_field_v<IE> &&
 		is_optional_v<IE> &&
-		has_optional_type_v<IE>
+		has_condition_v<IE>
 	>,
 	IE, IES...>
 {
 	template <class TO, class FUNC, class UNEXP, class TAG>
 	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
 	{
-		CODEC_TRACE("[%s]...", name<IE>());
-		if (typename IE::optional_type{}(to))
+		if (typename IE::condition{}(to))
 		{
-			CODEC_TRACE("[%s]", name<IE>());
+			discard(func, vtag);
+
+			CODEC_TRACE("C[%s]", name<IE>());
 			IE& ie = to;
-
-			if (vtag)
-			{
-				CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-				func.pop_state(); //restore state
-				vtag.clear();
-			}
-
 			if (!med::decode(func, ie.ref_field(), unexp)) return false;
+		}
+		else
+		{
+			CODEC_TRACE("skipped C[%s]", name<IE>());
+		}
+		return seq_decoder<IES...>::decode(to, func, unexp, vtag);
+	}
+};
+
+//multi-instance conditional field
+template <class IE, class... IES>
+struct seq_dec_imp<std::enable_if_t<
+		is_multi_field_v<IE> &&
+		is_optional_v<IE> &&
+		has_condition_v<IE>
+	>,
+	IE, IES...>
+{
+	template <class TO, class FUNC, class UNEXP, class TAG>
+	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
+	{
+		if (typename IE::condition{}(to))
+		{
+			discard(func, vtag);
+			IE& ie = to;
+			do
+			{
+				CODEC_TRACE("C[%s]#%zu", name<IE>(), ie.count());
+				auto* field = ie.push_back(func);
+				if (!field || !med::decode(func, *field, unexp)) return false;
+			}
+			while (typename IE::condition{}(to));
+
+			if (!check_arity(func, ie)) return false;
+		}
+		else
+		{
+			CODEC_TRACE("skipped C[%s]", name<IE>());
 		}
 		return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
@@ -175,7 +212,8 @@ struct seq_dec_imp<std::enable_if_t<
 		is_multi_field_v<IE> &&
 		has_tag_type_v<IE> &&
 		!has_count_getter_v<IE> &&
-		!is_counter_v<IE>
+		!is_counter_v<IE> &&
+		!has_condition_v<IE>
 	>,
 	IE, IES...>
 {
@@ -203,15 +241,8 @@ struct seq_dec_imp<std::enable_if_t<
 		while (IE::tag_type::match(vtag.get_encoded()))
 		{
 			CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<IE>());
-
-			if (auto* field = ie.push_back(func))
-			{
-				if (!med::decode(func, *field, unexp)) return false;
-			}
-			else
-			{
-				return false;
-			}
+			auto* field = ie.push_back(func);
+			if (!field || !med::decode(func, *field, unexp)) return false;
 
 			if (func.push_state())
 			{
@@ -248,35 +279,24 @@ struct seq_dec_imp<std::enable_if_t<
 		is_multi_field_v<IE> &&
 		!has_tag_type_v<IE> &&
 		!has_count_getter_v<IE> &&
-		!is_counter_v<IE>
+		!is_counter_v<IE> &&
+		!has_condition_v<IE>
 	>,
 	IE, IES...>
 {
 	template <class TO, class FUNC, class UNEXP, class TAG>
 	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
 	{
+		discard(func, vtag);
+
 		IE& ie = to;
-
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func.pop_state(); //restore state
-			vtag.clear();
-		}
-
 		CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
 
 		std::size_t count = 0;
 		while (!func.eof() && count < IE::max)
 		{
-			if (auto* field = ie.push_back(func))
-			{
-				if (!sl::decode<IE>(func, *field, typename IE::ie_type{}, unexp)) return false;
-			}
-			else
-			{
-				return false;
-			}
+			auto* field = ie.push_back(func);
+			if (!field || !sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp)) return false;
 			++count;
 		}
 
@@ -300,15 +320,10 @@ struct seq_dec_imp<
 	template <class TO, class FUNC, class UNEXP, class TAG>
 	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
 	{
+		discard(func, vtag);
 		CODEC_TRACE("[%s]...", name<IE>());
-		IE& ie = to;
 
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func.pop_state(); //restore state
-			vtag.clear();
-		}
+		IE& ie = to;
 
 		std::size_t count = typename IE::count_getter{}(to);
 		CODEC_TRACE("[%s]*%zu", name<IE>(), count);
@@ -339,16 +354,10 @@ struct seq_dec_imp<
 	template <class TO, class FUNC, class UNEXP, class TAG>
 	static inline bool decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
 	{
+		discard(func, vtag);
 		CODEC_TRACE("[%s]...", name<IE>());
+
 		IE& ie = to;
-
-		if (vtag)
-		{
-			CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
-			func.pop_state(); //restore state
-			vtag.clear();
-		}
-
 		typename IE::counter_type counter_ie;
 		if (med::decode(func, counter_ie))
 		{
@@ -469,7 +478,7 @@ inline bool encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			if (!sl::encode<IE>(func, field, typename IE::ie_type{})) return false;
+			if (!sl::encode_ie<IE>(func, field, typename IE::ie_type{})) return false;
 		}
 		else
 		{
@@ -580,7 +589,7 @@ struct sequence : container<IES...>
 	template <class DECODER, class UNEXP>
 	bool decode(DECODER&& decoder, UNEXP& unexp)
 	{
-		value<32> vtag; //todo: any clue from sequence?
+		value<8*sizeof(std::size_t)> vtag; //todo: any clue from sequence?
 		return sl::seq_decoder<IES...>::decode(this->m_ies, decoder, unexp, vtag);
 	}
 };

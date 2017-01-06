@@ -38,6 +38,7 @@ struct default_handler
 	}
 };
 
+
 template <class FUNC, class IE, class IE_TYPE>
 std::enable_if_t<is_read_only_v<IE>, bool>
 inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
@@ -78,14 +79,14 @@ inline auto decode_tag(FUNC& func)
 
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-constexpr bool decode(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
+constexpr bool decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
 {
 	ie.set();
 	return true; //do nothing
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline bool decode(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
+inline bool decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 {
 	return decode_primitive(func, ie, typename WRAPPER::ie_type{});
 }
@@ -93,7 +94,7 @@ inline bool decode(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 //Tag-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 std::enable_if_t<!is_optional_v<IE>, bool>
-inline decode(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
+inline decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 {
 	if (auto const tag = decode_tag<typename WRAPPER::tag_type>(func))
 	{
@@ -110,11 +111,11 @@ inline decode(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 
 //Length-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline bool decode(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
+inline bool decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 {
 	typename WRAPPER::length_type len_ie;
 	CODEC_TRACE("LV[%s]", name<IE>());
-	if (decode(func, len_ie))
+	if (decode(func, len_ie, unexp))
 	{
 		std::size_t len_value = len_ie.get_encoded();
 		if (value_to_length(len_ie, len_value))
@@ -139,13 +140,13 @@ inline bool decode(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 std::enable_if_t<!has_length_type<IE>::value, bool>
-inline decode(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
+inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
-	CODEC_TRACE("%s...:", name<IE>());
+	CODEC_TRACE("%s w/o length...:", name<IE>());
 	return ie.decode(func, unexp);
 }
 
-template <class FUNC, class IE>
+template <class FUNC, class IE, class UNEXP>
 struct length_decoder
 {
 	using state_type = typename FUNC::state_type;
@@ -154,10 +155,11 @@ struct length_decoder
 
 	using length_type = typename IE::length_type;
 
-	length_decoder(FUNC& decoder, IE& ie) noexcept
+	length_decoder(FUNC& decoder, IE& ie, UNEXP& unexp) noexcept
 		: m_decoder{ decoder }
 		, m_ie{ ie }
 		, m_start{ m_decoder.get_state() }
+		, m_unexp{ unexp }
 	{
 	}
 
@@ -165,7 +167,7 @@ struct length_decoder
 	bool operator() (placeholder::_length<DELTA>&)
 	{
 		length_type len;
-		if (decode(m_decoder, len))
+		if (decode(m_decoder, len, m_unexp))
 		{
 			//reduced size of the input buffer for current length and elements from the start of IE
 			decltype(len.get_encoded()) const size = (len.get_encoded() + DELTA) - (m_decoder.get_state() - m_start);
@@ -185,7 +187,7 @@ struct length_decoder
 	bool push_state()                                  { return m_decoder.push_state(); }
 	void pop_state()                                   { m_decoder.pop_state(); }
 	auto get_state() const                             { return m_decoder.get_state(); }
-	typename FUNC::allocator_type& get_allocator()     { return m_decoder.ctx.get_allocator(); }
+	auto& get_allocator()                              { return m_decoder.get_allocator(); }
 	auto push_size(std::size_t size)                   { return m_decoder.push_size(size); }
 	bool eof() const                                   { return m_decoder.eof(); }
 
@@ -193,16 +195,17 @@ struct length_decoder
 	IE&              m_ie;
 	state_type const m_start;
 	size_state       m_size_state; //to switch end of buffer for this IE
+	UNEXP&           m_unexp;
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 std::enable_if_t<has_length_type<IE>::value, bool>
-inline decode(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
+inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
-	CODEC_TRACE("%s with length...:", name<IE>());
+	CODEC_TRACE("start %s with length...:", name<IE>());
 	auto const pad = add_padding<IE>(func);
 	{
-		length_decoder<FUNC, IE> ld{ func, ie };
+		length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
 		if (!ie.decode(ld, unexp)) return false;
 		if (std::size_t const left = ld.size())
 		{
@@ -210,6 +213,7 @@ inline decode(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 			return false;
 		}
 	}
+	CODEC_TRACE("finish %s with length...:", name<IE>());
 	return static_cast<bool>(pad);
 }
 
@@ -219,7 +223,7 @@ template <class FUNC, class IE, class UNEXP = sl::default_handler>
 std::enable_if_t<has_ie_type<IE>::value, bool>
 inline decode(FUNC&& func, IE& ie, UNEXP&& unexp = sl::default_handler{})
 {
-	return sl::decode<IE>(func, ie, typename IE::ie_type{}, unexp);
+	return sl::decode_ie<IE>(func, ie, typename IE::ie_type{}, unexp);
 }
 
 template <class FUNC, class IE, class UNEXP>

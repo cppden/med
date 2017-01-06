@@ -27,8 +27,6 @@ namespace med {
 //structure layer
 namespace sl {
 
-namespace detail {
-
 template <class T, typename Enable = void>
 struct null_encoder
 {
@@ -147,30 +145,29 @@ struct container_encoder<T, void_t<typename T::container_encoder>>
 	}
 };
 
-}	//end: namespace detail
 
 //IE_NULL
 template <class WRAPPER, class FUNC, class IE>
-constexpr bool encode(FUNC& func, IE& ie, IE_NULL const&)
+constexpr bool encode_ie(FUNC& func, IE& ie, IE_NULL const&)
 {
-	return detail::null_encoder<FUNC>::encode(func, ie);
+	return null_encoder<FUNC>::encode(func, ie);
 };
 
 template <class WRAPPER, class FUNC, class IE>
-inline bool encode(FUNC& func, IE& ie, CONTAINER const&)
+inline bool encode_ie(FUNC& func, IE& ie, CONTAINER const&)
 {
-	return detail::container_encoder<FUNC>::encode(func, ie);
+	return container_encoder<FUNC>::encode(func, ie);
 }
 
 
 template <class WRAPPER, class FUNC, class IE>
-inline bool encode(FUNC& func, IE& ie, PRIMITIVE const&)
+inline bool encode_ie(FUNC& func, IE& ie, PRIMITIVE const&)
 {
-	return detail::encode_primitive(func, ie, typename WRAPPER::ie_type{});
+	return encode_primitive(func, ie, typename WRAPPER::ie_type{});
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline bool encode(FUNC& func, IE& ie, IE_LV const&)
+inline bool encode_ie(FUNC& func, IE& ie, IE_LV const&)
 {
 	typename WRAPPER::length_type len_ie{};
 	std::size_t len_value = get_length(ref_field(ie));
@@ -188,26 +185,26 @@ inline bool encode(FUNC& func, IE& ie, IE_LV const&)
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline bool encode(FUNC& func, IE& ie, IE_TV const&)
+inline bool encode_ie(FUNC& func, IE& ie, IE_TV const&)
 {
 	typename WRAPPER::tag_type const tag_ie{};
 	CODEC_TRACE("T%zx<%s>{%s}", tag_ie.get(), name<WRAPPER>(), name<IE>());
 	return encode(func, tag_ie)
-		&& encode<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
+		&& encode_ie<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }
 
 }	//end: namespace sl
 
 template <class FUNC, class IE>
-std::enable_if_t<has_ie_type<IE>::value, bool>
+std::enable_if_t<has_ie_type_v<IE>, bool>
 inline encode(FUNC&& func, IE& ie)
 {
-	return sl::encode<IE>(func, ie, typename IE::ie_type{});
+	return sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
 }
 
 template <class FUNC, class IE>
-std::enable_if_t<!has_ie_type<IE>::value, bool>
-inline encode(FUNC& func, IE& ie)
+std::enable_if_t<!has_ie_type_v<IE>, bool>
+inline encode(FUNC&& func, IE& ie)
 {
 	return func(ie);
 }

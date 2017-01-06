@@ -22,9 +22,10 @@ using remove_cref_t = typename remove_cref<T>::type;
 
 template <class, class Enable = void>
 struct has_ie_type : std::false_type { };
-
 template <class T>
 struct has_ie_type<T, void_t<typename T::ie_type>> : std::true_type { };
+template <class T>
+constexpr bool has_ie_type_v = has_ie_type<T>::value;
 
 template <class, class Enable = void>
 struct has_field_type : std::false_type { };
@@ -51,26 +52,26 @@ struct optional_t {};
 template <class T>
 constexpr bool is_optional_v = std::is_base_of<optional_t, T>::value;
 
-
+//checks if T looks like a functor to test condition of a field presense
 template<typename T, typename Enable = void>
-struct is_set_function : std::false_type { };
+struct is_condition : std::false_type { };
 template<typename T>
-struct is_set_function<T,
+struct is_condition<T,
 	std::enable_if_t<
 		std::is_same<bool, decltype(std::declval<T>()(std::false_type{}))>::value>
 	> : std::true_type
 {
 };
 template <class T>
-constexpr bool is_set_function_v = is_set_function<T>::value;
+constexpr bool is_condition_v = is_condition<T>::value;
 
 
 template <class, class Enable = void>
-struct has_optional_type : std::false_type { };
+struct has_condition : std::false_type { };
 template <class T>
-struct has_optional_type<T, void_t<typename T::optional_type>> : std::true_type { };
+struct has_condition<T, void_t<typename T::condition>> : std::true_type { };
 template <class T>
-constexpr bool has_optional_type_v = has_optional_type<T>::value;
+constexpr bool has_condition_v = has_condition<T>::value;
 
 
 namespace detail {

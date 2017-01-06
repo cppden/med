@@ -90,13 +90,6 @@ inline auto get_allocator_ptr(T& t) -> std::add_pointer_t<decltype(t.get_allocat
 	return &allocator;
 }
 template <class T>
-inline auto get_allocator_ptr(T& t) -> std::add_pointer_t<decltype(t.ctx.get_allocator())>
-{
-	auto& allocator = t.ctx.get_allocator();
-	static_assert(is_allocator<decltype(allocator)>::value, "IS NOT ALLOCATOR!");
-	return &allocator;
-}
-template <class T>
 inline auto get_allocator_ptr(T* pt) -> std::add_pointer_t<decltype(pt->get_allocator())>
 {
 	auto& allocator = pt->get_allocator();

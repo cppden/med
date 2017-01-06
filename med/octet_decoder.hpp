@@ -32,6 +32,8 @@ struct octet_decoder
 	{
 	}
 
+	auto& get_allocator()                              { return ctx.get_allocator(); }
+
 	//state
 	auto push_size(std::size_t size)                   { return ctx.buffer().push_size(size); }
 	bool push_state()                                  { return ctx.buffer().push_state(); }

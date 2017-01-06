@@ -39,10 +39,17 @@ template <class CONTAINER>
 struct accessor
 {
 	explicit accessor(CONTAINER& c) noexcept : m_that(c)  { }
+
+//	template <class T, class U = T>
+//	operator std::enable_if_t<!std::is_const<std::remove_reference_t<U>>::value, U&>()
 	template <class T> operator T& ()
 	{
 		static_assert(!std::is_pointer<T>(), "INVALID ACCESS BY NON-CONST POINTER");
 		return m_that.template ref<T>();
+	}
+	template <class T> operator T const* () const
+	{
+		return access<T>::as_optional(m_that.template get<T>());
 	}
 
 private:
@@ -91,7 +98,10 @@ template <class CONTAINER>
 struct index_caccessor
 {
 	index_caccessor(CONTAINER const& c, std::size_t i) noexcept : m_that{c}, m_index{i}  { }
-	template <class T> operator T const* () const   { return m_that.template get<T>(m_index); }
+	template <class T> operator T const* () const
+	{
+		return m_that.template get<T>(m_index);
+	}
 
 private:
 	CONTAINER const&  m_that;
