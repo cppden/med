@@ -21,10 +21,10 @@ namespace med {
  * plain field with length counted in bits
  */
 
-template <std::size_t BITS>
+template <std::size_t BITS, class TRAITS = value_traits<BITS>>
 struct value : IE<IE_VALUE>
 {
-	using traits     = value_traits<BITS>;
+	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
 	using base_t = value;
 
@@ -47,12 +47,13 @@ private:
  * plain fixed field with length counted in bits
  * gives error if decoded value doesn't match the fixed one
  */
-template <std::size_t VALUE, std::size_t BITS = sizeof(std::size_t)*8>
+template <std::size_t VALUE, std::size_t BITS = sizeof(std::size_t)*8, class TRAITS = value_traits<BITS>>
 struct cvalue : IE<const IE_VALUE>
 {
-	using traits     = value_traits<BITS>;
+	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
 	using base_t = cvalue;
+	using writable = value<BITS>;
 
 	static constexpr void clear()                       { }
 	static constexpr value_type get()                   { return get_encoded(); }
@@ -69,10 +70,10 @@ struct cvalue : IE<const IE_VALUE>
  * plain initialized field with length counted in bits
  * decoded even if doesn't match initial value
  */
-template <std::size_t VALUE, std::size_t BITS = sizeof(std::size_t)*8>
+template <std::size_t VALUE, std::size_t BITS = sizeof(std::size_t)*8, class TRAITS = value_traits<BITS>>
 struct ivalue : IE<IE_VALUE>
 {
-	using traits     = value_traits<BITS>;
+	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
 	using base_t = ivalue;
 
@@ -82,24 +83,6 @@ struct ivalue : IE<IE_VALUE>
 	static constexpr void set_encoded(value_type v)     { }
 	static constexpr bool is_set()                      { return true; }
 };
-
-//convert cvalue to a value
-template <class T, typename Enable = void>
-struct make_value
-{
-	using type = value<T::traits::bits>;
-};
-
-
-template <class T>
-using make_value_t = typename make_value<T>::type;
-
-//convert read-write value to a fixed one
-template <class T, std::size_t VALUE>
-using make_cvalue = cvalue<VALUE, T::traits::bits>;
-
-template <class T, std::size_t VALUE>
-using make_ivalue = ivalue<VALUE, T::traits::bits>;
 
 template <class IE, typename VALUE>
 constexpr auto set_value(IE& ie, VALUE v) -> std::enable_if_t<std::is_same<bool, decltype(ie.set_encoded(v))>::value, bool>

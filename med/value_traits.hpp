@@ -25,28 +25,28 @@ struct bits_to_bytes : std::integral_constant<std::size_t, (BITS + 7) / 8 > {};
 template <std::size_t LEN, typename Enabler = void> struct value_traits;
 
 template <std::size_t LEN>
-struct value_traits<LEN, std::enable_if_t<(LEN <= 8)>>
+struct value_traits<LEN, std::enable_if_t<(LEN > 0 && LEN <= 8)>>
 {
 	enum { bits = LEN };
 	using value_type = uint8_t;
 };
 
 template <std::size_t LEN>
-struct value_traits<LEN, std::enable_if_t<(LEN > 8 and LEN <= 16)>>
+struct value_traits<LEN, std::enable_if_t<(LEN > 8 && LEN <= 16)>>
 {
 	enum { bits = LEN };
 	using value_type = uint16_t;
 };
 
 template <std::size_t LEN>
-struct value_traits<LEN, std::enable_if_t<(LEN > 16 and LEN <= 32)>>
+struct value_traits<LEN, std::enable_if_t<(LEN > 16 && LEN <= 32)>>
 {
 	enum { bits = LEN };
 	using value_type = uint32_t;
 };
 
 template <std::size_t LEN>
-struct value_traits<LEN, std::enable_if_t<(LEN > 32 and LEN <= 64)>>
+struct value_traits<LEN, std::enable_if_t<(LEN > 32 && LEN <= 64)>>
 {
 	enum { bits = LEN };
 	using value_type = uint64_t;

@@ -69,14 +69,6 @@ inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 	return func(ie, ie_type);
 };
 
-template <class TAG, class FUNC>
-inline auto decode_tag(FUNC& func)
-{
-	make_value_t<TAG> tag;
-	decode_primitive(func, tag, IE_VALUE{});
-	return tag;
-}
-
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 constexpr bool decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
@@ -99,7 +91,10 @@ std::enable_if_t<!is_optional_v<IE>, bool>
 inline decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 {
 	CODEC_TRACE("TV %s", name<IE>());
-	if (auto const tag = decode_tag<typename WRAPPER::tag_type>(func))
+	//convert const to writable
+	using TAG = typename WRAPPER::tag_type::writable;
+	TAG tag;
+	if (func(tag, typename TAG::ie_type{}))
 	{
 		if (WRAPPER::tag_type::match(tag.get_encoded()))
 		{

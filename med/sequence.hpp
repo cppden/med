@@ -89,7 +89,10 @@ struct seq_dec_imp<std::enable_if_t<
 			//save state before decoding a tag
 			if (func(PUSH_STATE{}))
 			{
-				if (auto const tag = decode_tag<typename IE::tag_type>(func))
+				//convert const to writable
+				using TAG_IE = typename IE::tag_type::writable;
+				TAG_IE tag;
+				if (func(tag, typename TAG_IE::ie_type{}))
 				{
 					vtag.set_encoded(tag.get_encoded());
 					CODEC_TRACE("pop tag=%zx", tag.get_encoded());
@@ -226,7 +229,10 @@ struct seq_dec_imp<std::enable_if_t<
 		{
 			if (func(PUSH_STATE{}))
 			{
-				if (auto const tag = decode_tag<typename IE::tag_type>(func))
+				//convert const to writable
+				using TAG_IE = typename IE::tag_type::writable;
+				TAG_IE tag;
+				if (func(tag, typename TAG_IE::ie_type{}))
 				{
 					vtag.set_encoded(tag.get_encoded());
 					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
@@ -246,7 +252,10 @@ struct seq_dec_imp<std::enable_if_t<
 
 			if (func(PUSH_STATE{}))
 			{
-				if (auto const tag = decode_tag<typename IE::tag_type>(func))
+				//convert const to writable
+				using TAG_IE = typename IE::tag_type::writable;
+				TAG_IE tag;
+				if (func(tag, typename TAG_IE::ie_type{}))
 				{
 					vtag.set_encoded(tag.get_encoded());
 					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
