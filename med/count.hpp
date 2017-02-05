@@ -2,9 +2,9 @@
 @file
 counter related primitives
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -38,7 +38,7 @@ constexpr bool is_counter_v = is_counter<T>::value;
 namespace detail {
 
 template <class FUNC, class IE>
-inline bool check_arity(FUNC& func, IE const& ie, std::size_t count)
+inline bool check_arity(FUNC& func, IE const&, std::size_t count)
 {
 	if (count >= IE::min)
 	{

@@ -2,9 +2,9 @@
 @file
 length type definition and traits
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -57,7 +57,7 @@ constexpr std::size_t get_length(FIELD const& field)
 namespace detail {
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, IE_NULL const&)
+constexpr std::size_t calc_length(FIELD const&, IE_NULL const&)
 {
 	return 0;
 }
@@ -81,7 +81,7 @@ constexpr calc_length(FIELD const&, PRIMITIVE const&)
 {
 	//TODO: assuming length in bytes if IE is not customized
 	CODEC_TRACE("length(%s) = %zu", name<FIELD>(), bits_to_bytes<FIELD::traits::bits>::value);
-	return bits_to_bytes<FIELD::traits::bits>::value;
+	return bits_to_bytes(FIELD::traits::bits);
 }
 
 template <class WRAPPER, class FIELD>

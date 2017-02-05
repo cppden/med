@@ -2,9 +2,9 @@
 @file
 special case of encoder to print IEs via user-provided sink
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -112,7 +112,7 @@ public:
 
 		//no customized print, change depth level
 		template <class IE>
-		bool print_named(printer& me, IE const& ie, int_t<0> pt)
+		bool print_named(printer& me, IE const& ie, int_t<0>)
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
@@ -134,7 +134,7 @@ public:
 	//unnamed primitive
 	template <class IE, class IE_TYPE>
 	constexpr std::enable_if_t<!has_name_v<IE>, bool>
-	operator() (IE const& ie, IE_TYPE const&) { return true; }
+	operator() (IE const&, IE_TYPE const&) { return true; }
 
 	//named primitive
 	template <class IE, class IE_TYPE>
@@ -148,7 +148,7 @@ public:
 	//state
 	constexpr void operator() (med::SNAPSHOT const&) { }
 	//errors
-	constexpr void operator() (error e, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
+	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
 	//length encoder
 	template <int DELTA> constexpr bool operator() (placeholder::_length<DELTA> const&) { return true; }
 
@@ -238,7 +238,7 @@ public:
 	//state
 	constexpr void operator() (med::SNAPSHOT const&) { }
 	//errors
-	constexpr void operator() (error e, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
+	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
 	//length encoder
 	template <int DELTA> constexpr bool operator() (placeholder::_length<DELTA> const&) { return true; }
 

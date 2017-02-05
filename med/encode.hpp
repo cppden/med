@@ -2,9 +2,9 @@
 @file
 encoding entry point
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -31,7 +31,7 @@ template <class T, typename Enable = void>
 struct null_encoder
 {
 	template <class FUNC, class IE>
-	static constexpr bool encode(FUNC& func, IE& ie)
+	static constexpr bool encode(FUNC&, IE&)
 	{
 		return true; //do nothing
 	}

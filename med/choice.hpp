@@ -2,9 +2,9 @@
 @file
 choice class as union
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -114,7 +114,7 @@ struct choice_for<>
 	}
 
 	template <class TO>
-	static std::size_t calc_length(TO const& to)
+	static std::size_t calc_length(TO const&)
 	{
 		return 0;
 	}

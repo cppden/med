@@ -2,9 +2,9 @@
 @file
 set of templates to define optional fields within containers
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -25,7 +25,7 @@ template<
 	typename Enable = void >
 struct optional
 {
-	static_assert(std::is_same<TAG_FLD, void>(), "MALFORMED OPTIONAL");
+	static_assert(std::is_void<TAG_FLD>(), "MALFORMED OPTIONAL");
 };
 
 //single-instance optional field by end of data

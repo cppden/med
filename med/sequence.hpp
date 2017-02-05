@@ -2,9 +2,9 @@
 @file
 sequence IE container - any IE in strict sequential order
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -578,7 +578,7 @@ template <>
 struct seq_enc_imp<void>
 {
 	template <class TO, class FUNC>
-	static inline bool encode(TO&, FUNC&& func)
+	static inline bool encode(TO&, FUNC&&)
 	{
 		return true;
 	}
@@ -598,7 +598,7 @@ struct sequence : container<IES...>
 	template <class DECODER, class UNEXP>
 	bool decode(DECODER&& decoder, UNEXP& unexp)
 	{
-		value<8*sizeof(std::size_t)> vtag; //todo: any clue from sequence?
+		value<std::size_t> vtag; //TODO: any clue from sequence?
 		return sl::seq_decoder<IES...>::decode(this->m_ies, decoder, unexp, vtag);
 	}
 };

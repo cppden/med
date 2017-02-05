@@ -2,9 +2,9 @@
 @file
 octet string IE definition
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -37,7 +37,7 @@ struct octets<MIN, MAX, std::enable_if_t<MIN == MAX>>
 
 private:
 	template <typename T>
-	static constexpr void copy_octet(T* out, T const* in) { }
+	static constexpr void copy_octet(T*, T const*) { }
 
 	template <typename T, std::size_t OFS, std::size_t... Is>
 	static void copy_octet(T* out, T const* in)

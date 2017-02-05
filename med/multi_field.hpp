@@ -2,9 +2,9 @@
 @file
 multi-instance field (aka sequence-of) and its aggregates
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -84,7 +84,7 @@ public:
 	const_iterator end() const                              { return const_iterator{}; }
 
 	std::size_t count() const                               { return m_count; }
-	bool const empty() const                                { return 0 == m_count; }
+	bool empty() const                                      { return 0 == m_count; }
 	//NOTE: clear won't return items allocated from external storage, use reset there
 	void clear()                                            { m_count = 0; }
 	bool is_set() const                                     { return m_count > 0 && m_fields[0].value.is_set(); }

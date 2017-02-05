@@ -2,9 +2,9 @@
 @file
 pseudo-IE for padding/alignments within containers
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -88,10 +88,10 @@ constexpr add_padding(FUNC&)
 
 template <class T>
 inline void padding_enable(T const& pad, bool v)            { pad.enable(v); }
-constexpr void padding_enable(bool const pad, bool v)       { }
+constexpr void padding_enable(bool, bool)                   { }
 
 template <class T>
 inline std::size_t padding_size(T const& pad)               { return pad.size(); }
-constexpr std::size_t padding_size(bool const pad)          { return 0; }
+constexpr std::size_t padding_size(bool)                    { return 0; }
 
 }	//end: namespace med

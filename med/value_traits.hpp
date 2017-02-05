@@ -2,7 +2,7 @@
 @file
 traits for IE of integral values
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
 (See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
 */
@@ -14,8 +14,11 @@ Distributed under the MIT License
 
 namespace med {
 
-template<std::size_t BITS>
-struct bits_to_bytes : std::integral_constant<std::size_t, (BITS + 7) / 8 > {};
+constexpr std::size_t bits_to_bytes(std::size_t num_bits)
+{
+	return (num_bits + 7) / 8;
+}
+
 
 /******************************************************************************
 * Class:		value_traits<LEN>
@@ -56,8 +59,17 @@ template <std::size_t LEN>
 struct value_traits<LEN, std::enable_if_t<(LEN > 64)>>
 {
 	enum { bits = LEN };
-	struct value_type {uint8_t value[bits_to_bytes<LEN>::value];};
+	struct value_type {uint8_t value[bits_to_bytes(LEN)];};
 //	using param_type =  value_type const&;
+};
+
+
+template <typename VAL>
+struct integral_traits
+{
+	static_assert(std::is_integral<VAL>(), "EXPECTED INTEGRAL TYPE");
+	enum { bits = sizeof(VAL) * 8 };
+	using value_type = VAL;
 };
 
 }	//end:	namespace med

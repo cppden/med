@@ -2,9 +2,9 @@
 @file
 decoding entry point
 
-@copyright Denis Priyomov 2016
+@copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
-(See accompanying file LICENSE or copy at https://opensource.org/licenses/MIT)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
 #pragma once
@@ -56,7 +56,7 @@ inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 
 template <class FUNC, class IE, class IE_TYPE>
 std::enable_if_t<is_skip_v<IE>, bool>
-inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
+inline decode_primitive(FUNC& func, IE&, IE_TYPE const&)
 {
 	//TODO: need to support fixed octet_string here?
 	return func.advance(IE::traits::bits);

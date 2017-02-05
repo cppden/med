@@ -17,68 +17,69 @@ using O = med::optional<T...>;
 
 #ifdef CODEC_TRACE_ENABLE
 // Length
-struct L : med::length_t<med::value<8>>
+struct L : med::length_t<med::value<uint8_t>>
 {
 	static constexpr char const* name() { return "Length"; }
 };
 // Counter
-struct CNT : med::counter_t<med::value<16>>
+struct CNT : med::counter_t<med::value<uint16_t>>
 {
 	static constexpr char const* name() { return "Counter"; }
 };
 // Tag
 template <std::size_t TAG>
-struct T : med::cvalue<TAG, 8>
+struct T : med::value<med::fixed<TAG, uint8_t>>
 {
 	static constexpr char const* name() { return "Tag"; }
 };
+
 // Tag/Case in choice
 template <std::size_t TAG>
-struct C : med::cvalue<TAG>
+struct C : med::value<med::fixed<TAG>
 {
 	static constexpr char const* name() { return "Case"; }
 };
 // Header
 template <uint8_t BITS>
-struct HDR : med::value<BITS>
+struct HDR : med::value<med::bits<BITS>>
 {
 	static constexpr char const* name() { return "Header"; }
 };
 #else
-using L = med::length_t<med::value<8>>;
-using CNT = med::counter_t<med::value<16>>;
+using L = med::length_t<med::value<uint8_t>>;
+using CNT = med::counter_t<med::value<uint16_t>>;
 template <std::size_t TAG>
-using T = med::cvalue<TAG, 8>;
+using T = med::value<med::fixed<TAG, uint8_t>>;
 template <std::size_t TAG>
-using C = med::cvalue<TAG>;
+using C = med::value<med::fixed<TAG>>;
 template <uint8_t BITS>
-using HDR = med::value<BITS>;
+using HDR = med::value<med::bits<BITS>>;
 #endif
 
-struct FLD_UC : med::value<8>
+struct FLD_UC : med::value<uint8_t>
 {
 	static constexpr char const* name() { return "UC"; }
 };
-struct FLD_U8 : med::value<8>
+struct FLD_U8 : med::value<uint8_t>
 {
 	static constexpr char const* name() { return "U8"; }
 };
 
-struct FLD_U16 : med::value<16>
+struct FLD_U16 : med::value<uint16_t>
 {
 	static constexpr char const* name() { return "U16"; }
 };
-struct FLD_W : med::value<16>
+struct FLD_W : med::value<uint16_t>
 {
 	static constexpr char const* name() { return "Word"; }
 };
 
-struct FLD_U24 : med::value<24>
+struct FLD_U24 : med::value<med::bytes<3>>
 {
 	static constexpr char const* name() { return "U24"; }
 };
 
-struct FLD_IP : med::value<32>
+struct FLD_IP : med::value<uint32_t>
 {
 	static constexpr char const* name() { return "IP-Address"; }
 	template <std::size_t N>
@@ -89,7 +90,7 @@ struct FLD_IP : med::value<32>
 	}
 };
 
-struct FLD_DW : med::value<32>
+struct FLD_DW : med::value<uint32_t>
 {
 	static constexpr char const* name() { return "Double-Word"; }
 };
@@ -101,7 +102,7 @@ struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>, med::with_snapshot
 	static constexpr char const* name() { return "url"; }
 };
 
-struct custom_length : med::value<8>
+struct custom_length : med::value<uint8_t>
 {
 	static bool value_to_length(std::size_t& v)
 	{
@@ -179,21 +180,21 @@ struct SEQOF_3 : med::sequence<
 };
 
 template <std::size_t TAG>
-struct HT : med::read_only<med::cvalue<TAG, 8>>
+struct HT : med::read_only<med::value<med::fixed<TAG, uint8_t>>>
 {
 	static_assert(0 == (TAG & 0xF), "HIGH NIBBLE TAG EXPECTED");
 	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF0); }
 };
 
 //low nibble selector
-struct LT : med::read_only<med::value<8>>
+struct LT : med::read_only<med::value<uint8_t>>
 {
 	//value_type get() const                    { return base_t::get() & 0xF; }
 	void set_encoded(value_type v)            { base_t::set_encoded(v & 0xF); }
 };
 
 //tagged nibble
-struct FLD_TN : med::value<8>, med::tag_t<HT<0xE0>>
+struct FLD_TN : med::value<uint8_t>, med::tag_t<HT<0xE0>>
 {
 	enum : value_type
 	{
@@ -215,7 +216,7 @@ template <uint8_t tag>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 {
 	//NOTE: low nibble of 1st octet is a tag
-	using tag_type = med::cvalue<tag>;
+	using tag_type = med::value<med::fixed<tag, uint8_t>>;
 
 	template <std::size_t N>
 	void print(char (&sz)[N]) const
@@ -325,7 +326,7 @@ struct MSG_MSET : med::set< HDR<16>,
 	static constexpr char const* name() { return "Msg-Multi-Set"; }
 };
 
-struct FLD_QTY : med::value<8>
+struct FLD_QTY : med::value<uint8_t>
 {
 	struct counter
 	{
@@ -337,7 +338,7 @@ struct FLD_QTY : med::value<8>
 	};
 };
 
-struct FLD_FLAGS : med::value<8>
+struct FLD_FLAGS : med::value<uint8_t>
 {
 	enum : value_type
 	{
