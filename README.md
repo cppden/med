@@ -5,32 +5,32 @@
 
 ## Overview
 ```cpp
-#include "med/codec.hpp"
+#include "med/med.hpp"
 
 template <std::size_t TAG>
-using tag = med::cvalue<8, TAG>;
+using tag = med::value<med::fixed<TAG, uint8_t>>;
 template <typename ...T>
 using M = med::mandatory<T...>;
 template <typename ...T>
 using O = med::optional<T...>;
-using L = med::value<8>;
+using L = med::length_t<med::value<uint8_t>>;
 
-struct FIELD1 : med::value<8>
+struct FIELD1 : med::value<uint8_t>
 {
 	static constexpr char const* name() { return "byte"; }
 };
 
-struct FIELD2 : med::value<16>
+struct FIELD2 : med::value<uint16_t>
 {
 	static constexpr char const* name() { return "word"; }
 };
 
-struct FIELD3 : med::value<24>
+struct FIELD3 : med::value<med::bytes<3>>
 {
 	static constexpr char const* name() { return "3byte"; }
 };
 
-struct FIELD4 : med::value<32>
+struct FIELD4 : med::value<uint32_t>
 {
 	static constexpr char const* name() { return "ip-addr"; }
 	std::string print() const
@@ -42,7 +42,7 @@ struct FIELD4 : med::value<32>
 	}
 };
 
-struct FIELD5 : med::value<32>
+struct FIELD5 : med::value<uint32_t>
 {
 	static constexpr char const* name() { return "dword"; }
 };
@@ -64,7 +64,7 @@ struct MSG1 : med::sequence<
 	static constexpr char const* name() { return "Msg-One"; }
 };
 
-struct MSG2 : med::set< med::value<16>,
+struct MSG2 : med::set< med::value<uint16_t>,
 	M< tag<0x0b>,    FIELD1 >, //<TV>
 	M< tag<0x21>, L, FIELD2 >, //<TLV>
 	O< tag<0x49>, L, FIELD3 >, //[TLV]
@@ -76,7 +76,7 @@ struct MSG2 : med::set< med::value<16>,
 };
 
 
-struct PROTO : med::choice< med::value<8>
+struct PROTO : med::choice< med::value<uint8_t>
 	, med::tag<1, MSG1>
 	, med::tag<2, MSG2>
 >
@@ -86,7 +86,7 @@ struct PROTO : med::choice< med::value<8>
 
 ## Description
 C++ library for non-ASN.1 based definition of messages with generating corresponding encoder and decoder via meta-programming.
-See wiki for more details and sample repos (gtpu) for examples of med usage.
+See [wiki](https://github.com/cppden/med/wiki) for details and sample [repos](https://github.com/cppden/gtpu) for examples of med usage.
 
 ## Dependencies 
 Any modern C++ compiler with C++14 support.
