@@ -2,29 +2,67 @@ cmake_minimum_required(VERSION 2.8)
 project(med)
 enable_language(CXX)
 
+message(STATUS "-------------------------------------------------------")
+message(STATUS "MED library optional configuration:")
+message(STATUS "\t(use ccmake or cmake -DWITH_XXX=true)")
+message(STATUS "-------------------------------------------------------")
+option (WITH_BM "With Google Benchmark." OFF)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
+
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
 include_directories(
   ${GTEST_INCLUDE_DIRS}
-  ${PROJECT_SOURCE_DIR}/med/
+  ${PROJECT_SOURCE_DIR}/med
 )
+
+# -----------------------------------------------------------------------------
+# Benchmarks
+# -----------------------------------------------------------------------------
+if (WITH_BM)
+  message(STATUS "\tWITH_BM=true (Google Benchmark)")
+  find_package(Benchmark REQUIRED)
+  if (BENCHMARK_FOUND)
+    include_directories( ${BENCHMARK_INCLUDE_DIRS})
+    message(STATUS "Google Benchmark found.   ${BENCHMARK_LIBS}")
+  else (BENCHMARK_FOUND)
+    message(FATAL_ERROR "Google Benchmark not found. Disable WITH_BM or install it.")
+  endif (BENCHMARK_FOUND)
+endif (WITH_BM)
+
 
 #set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} ")
 
 # Library path
 set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 
-# Define the CXX sources
-set ( CXX_SRCS
-    ut/med.cpp
+set(UT_SRCS
+  ut/med.cpp
+)
+
+set(BM_SRCS
+  benchmark/bm.cpp
 )
 
 set_source_files_properties(
-    ${CXX_SRCS} PROPERTIES COMPILE_FLAGS 
-    " -g -O3 -std=c++14 -Wall -Werror")
+  ${UT_SRCS} ${BM_SRCS} PROPERTIES COMPILE_FLAGS
+  " -g -O3 -std=c++14 -Wall -Werror"
+)
 
-add_executable(gtest_med ${CXX_SRCS})
+add_executable(gtest_med ${UT_SRCS})
+
+if (WITH_BM)
+  add_executable(bm_med ${BM_SRCS})
+  target_link_libraries(bm_med
+    ${BENCHMARK_LIBS}
+    ${CMAKE_THREAD_LIBS_INIT}
+  )
+  add_custom_target(benchmark COMMAND echo "Benchmarking....."
+    DEPENDS bm_med
+  )
+endif (WITH_BM)
 
 target_link_libraries(gtest_med
     ${GTEST_BOTH_LIBRARIES}
@@ -34,4 +72,5 @@ target_link_libraries(gtest_med
 enable_testing()
 add_test(UT gtest_med)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
-                  DEPENDS gtest_med)
+  DEPENDS gtest_med
+)
