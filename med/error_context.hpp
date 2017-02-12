@@ -13,6 +13,7 @@ Distributed under the MIT License
 #include <cstddef>
 #include <cstdio>
 
+#include "exception.hpp"
 #include "error.hpp"
 #include "debug.hpp"
 
@@ -21,11 +22,12 @@ namespace med {
 class error_context
 {
 public:
-	explicit operator bool() const          { return error::SUCCESS == m_error; }
+	explicit operator bool() const          { return success(); }
+	bool success() const                    { return error::SUCCESS == m_error; }
 	error get_error() const                 { return m_error; }
 
 	void reset()                            { m_error = error::SUCCESS; }
-	void set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
+	MED_RESULT set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
 	{
 		CODEC_TRACE("ERROR[%s]=%d %zu %zu %zu", name, static_cast<int>(err), val0, val1, val2);
 		m_name     = name;
@@ -33,20 +35,21 @@ public:
 		m_param[1] = val1;
 		m_param[2] = val2;
 		m_error    = err;
+		return success();
 	}
 
 	warning get_warning() const             { return m_warning; }
 	void set_warning(warning warn)          { m_warning = warn; }
 
 	//TODO: include buffer offset in all errors
-	void spaceError(char const* name, std::size_t bits_left, std::size_t requested)
-		{ set_error(error::OVERFLOW, name, bits_left, requested); }
+	MED_RESULT spaceError(char const* name, std::size_t bits_left, std::size_t requested)
+		{ return set_error(error::OVERFLOW, name, bits_left, requested); }
 
-	void valueError(char const* name, std::size_t got, std::size_t ofs)
-		{ set_error(error::INCORRECT_VALUE, name, got, ofs); }
+	MED_RESULT valueError(char const* name, std::size_t got, std::size_t ofs)
+		{ return set_error(error::INCORRECT_VALUE, name, got, ofs); }
 
-	void allocError(char const* name, std::size_t requested)
-		{ set_error(error::OUT_OF_MEMORY, name, requested); }
+	MED_RESULT allocError(char const* name, std::size_t requested)
+		{ return set_error(error::OUT_OF_MEMORY, name, requested); }
 
 private:
 	friend char const* toString(error_context const&);

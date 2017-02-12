@@ -7,6 +7,7 @@ message(STATUS "MED library optional configuration:")
 message(STATUS "\t(use ccmake or cmake -DWITH_XXX=true)")
 message(STATUS "-------------------------------------------------------")
 option (WITH_BM "With Google Benchmark." OFF)
+option (WITH_EX "With throw exception." OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -32,6 +33,12 @@ if (WITH_BM)
   endif (BENCHMARK_FOUND)
 endif (WITH_BM)
 
+if (WITH_EX)
+  message(STATUS "Throwing exceptions for error handling.")
+else (WITH_EX)
+  add_definitions(-DMED_NO_EXCEPTIONS)
+  message(STATUS "Not using exceptions for error handling.")
+endif (WITH_EX)
 
 #set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} ")
 
@@ -48,13 +55,16 @@ set(BM_SRCS
 
 set_source_files_properties(
   ${UT_SRCS} ${BM_SRCS} PROPERTIES COMPILE_FLAGS
-  " -g -O3 -std=c++14 -Wall -Werror"
+  "-O3 -std=c++14 -Wall -Werror"
 )
+
 
 add_executable(gtest_med ${UT_SRCS})
 
 if (WITH_BM)
   add_executable(bm_med ${BM_SRCS})
+#  set_target_properties(bm_med PROPERTIES
+#    INTERPROCEDURAL_OPTIMIZATION ON)
   target_link_libraries(bm_med
     ${BENCHMARK_LIBS}
     ${CMAKE_THREAD_LIBS_INIT}

@@ -30,83 +30,67 @@ struct octet_encoder
 	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
 	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
 	template <class IE>
-	bool operator() (SET_STATE const&, IE const& ie)
+	MED_RESULT operator() (SET_STATE const&, IE const& ie)
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
 			if (ss == get_length(ie))
 			{
 				ctx.buffer().set_state(ss);
-				return true;
+				MED_RETURN_SUCCESS;
 			}
-			else
-			{
-				ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), 0);
-			}
+			return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), 0);
 		}
-		else
-		{
-			ctx.error_ctx().set_error(error::MISSING_IE, name<IE>(), 0);
-		}
-		return false;
+		return ctx.error_ctx().set_error(error::MISSING_IE, name<IE>(), 0);
 	}
-	bool operator() (PUSH_STATE const&)                 { return ctx.buffer().push_state(); }
+
+	MED_RESULT operator() (PUSH_STATE const&)           { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
-	bool operator() (ADVANCE_STATE const& ss)
+	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{
-		if (ctx.buffer().advance(ss.bits/granularity)) return true;
-		ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, ss.bits);
-		return false;
+		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
+		return ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, ss.bits);
 	}
-	bool operator() (ADD_PADDING const& pad)
+	MED_RESULT operator() (ADD_PADDING const& pad)
 	{
-		if (ctx.buffer().fill(pad.bits/granularity, pad.filler)) return true;
-		ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, pad.bits);
-		return false;
+		if (ctx.buffer().fill(pad.bits/granularity, pad.filler)) MED_RETURN_SUCCESS;
+		return ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, pad.bits);
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
 
 	//errors
 	template <typename... ARGS>
-	void operator() (error e, ARGS&&... args)
+	MED_RESULT operator() (error e, ARGS&&... args)
 	{
-		ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...);
+		return ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...);
 	}
 
 	//IE_VALUE
 	template <class IE>
-	bool operator() (IE const& ie, IE_VALUE const&)
+	MED_RESULT operator() (IE const& ie, IE_VALUE const&)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("VAL[%s]=%#zx %u bits: %s", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits, ctx.buffer().toString());
 		if (uint8_t* out = ctx.buffer().advance(IE::traits::bits / granularity))
 		{
 			put_bytes(ie, out);
-			return true;
+			MED_RETURN_SUCCESS;
 		}
-		else
-		{
-			ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
-			return false;
-		}
+		return ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
-	bool operator() (IE const& ie, IE_OCTET_STRING const&)
+	MED_RESULT operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
 		if ( uint8_t* out = ctx.buffer().advance(ie.get_length()) )
 		{
 			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.get_length());
 			CODEC_TRACE("STR[%s] %u octets: %s", name<IE>(), ie.get_length(), ctx.buffer().toString());
-			return true;
+			MED_RETURN_SUCCESS;
 		}
-		else
-		{
-			ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
-			return false;
-		}
+		return ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
 	}
 
 private:

@@ -72,26 +72,6 @@ private:
 	CONTAINER const& m_that;
 };
 
-//template <class CONTAINER>
-//struct index_accessor
-//{
-//	index_accessor(CONTAINER& c, std::size_t i) noexcept : m_that{c}, m_index{i}  { }
-//	template <class T> operator T* ()
-//	{
-//		return m_that.template ref<T>(m_index);
-//	}
-//
-//	template <class T> operator T& ()
-//	{
-//		static_assert(std::is_same<void,T>(), "INVALID ACCESS OF MULTI-INSTANCE FIELD BY REFERENCE");
-//		return m_that.template ref<T>(m_index);
-//	}
-//
-//private:
-//	CONTAINER&        m_that;
-//	std::size_t const m_index;
-//};
-
 template <class CONTAINER>
 struct index_caccessor
 {
@@ -105,7 +85,6 @@ private:
 	CONTAINER const&  m_that;
 	std::size_t const m_index;
 };
-
 
 }	//end: namespace detail
 

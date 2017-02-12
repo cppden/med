@@ -62,18 +62,18 @@ public:
 	struct null_encoder
 	{
 		template <class IE>
-		constexpr std::enable_if_t<!has_name_v<IE>, bool>
+		constexpr std::enable_if_t<!has_name_v<IE>, MED_RESULT>
 		operator()(printer&, IE const&)
 		{
-			return true;
+			MED_RETURN_SUCCESS;
 		}
 
 		template <class IE>
-		std::enable_if_t<has_name_v<IE>, bool>
+		std::enable_if_t<has_name_v<IE>, MED_RESULT>
 		operator()(printer& me, IE const& ie)
 		{
 			me.print_named(ie, typename has_print<IE>::type{});
-			return true;
+			MED_RETURN_SUCCESS;
 		}
 	};
 
@@ -82,14 +82,14 @@ public:
 	public:
 		//treat un-named container as logical group -> depth not changing
 		template <class IE>
-		std::enable_if_t<!has_name_v<IE>, bool>
+		std::enable_if_t<!has_name_v<IE>, MED_RESULT>
 		operator()(printer& me, IE const& ie)
 		{
 			return ie.encode(me);
 		}
 
 		template <class IE>
-		std::enable_if_t<has_name_v<IE>, bool>
+		std::enable_if_t<has_name_v<IE>, MED_RESULT>
 		operator()(printer& me, IE const& ie)
 		{
 			return print_named(me, ie, typename has_print<IE>::type{});
@@ -98,29 +98,35 @@ public:
 	private:
 		//customized prints
 		template <class IE>
-		bool print_named(printer& me, IE const& ie, int_t<2> pt)
+		MED_RESULT print_named(printer& me, IE const& ie, int_t<2> pt)
 		{
 			me.print_named(ie, pt);
-			return true;
+			MED_RETURN_SUCCESS;
 		}
 		template <class IE>
-		bool print_named(printer& me, IE const& ie, int_t<1> pt)
+		MED_RESULT print_named(printer& me, IE const& ie, int_t<1> pt)
 		{
 			me.print_named(ie, pt);
-			return true;
+			MED_RETURN_SUCCESS;
 		}
 
 		//no customized print, change depth level
 		template <class IE>
-		bool print_named(printer& me, IE const& ie, int_t<0>)
+		MED_RESULT print_named(printer& me, IE const& ie, int_t<0>)
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
 			CODEC_TRACE("depth -> %zu < max=%zu", me.m_depth, me.m_max_depth);
+#ifdef MED_NO_EXCEPTIONS
 			bool const ret = (0 == me.m_max_depth || me.m_max_depth > me.m_depth) ? ie.encode(me) : true;
 			me.m_depth = depth;
 			CODEC_TRACE("depth <- %zu", depth);
 			return ret;
+#else
+			if (0 == me.m_max_depth || me.m_max_depth > me.m_depth) { ie.encode(me); }
+			me.m_depth = depth;
+			CODEC_TRACE("depth <- %zu", depth);
+#endif
 		}
 	};
 
@@ -133,24 +139,24 @@ public:
 
 	//unnamed primitive
 	template <class IE, class IE_TYPE>
-	constexpr std::enable_if_t<!has_name_v<IE>, bool>
-	operator() (IE const&, IE_TYPE const&) { return true; }
+	constexpr std::enable_if_t<!has_name_v<IE>, MED_RESULT>
+	operator() (IE const&, IE_TYPE const&) { MED_RETURN_SUCCESS; }
 
 	//named primitive
 	template <class IE, class IE_TYPE>
-	constexpr std::enable_if_t<has_name_v<IE>, bool>
+	constexpr std::enable_if_t<has_name_v<IE>, MED_RESULT>
 	operator() (IE const& ie, IE_TYPE const&)
 	{
 		print_named(ie, typename has_print<IE>::type{});
-		return true;
+		MED_RETURN_SUCCESS;
 	}
 
 	//state
 	constexpr void operator() (med::SNAPSHOT const&) { }
 	//errors
-	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
+	constexpr MED_RESULT operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { MED_RETURN_SUCCESS; }
 	//length encoder
-	template <int DELTA> constexpr bool operator() (placeholder::_length<DELTA> const&) { return true; }
+	template <int DELTA> constexpr MED_RESULT operator() (placeholder::_length<DELTA> const&) { MED_RETURN_SUCCESS; }
 
 private:
 	friend class container_encoder;
@@ -202,23 +208,28 @@ public:
 	struct null_encoder
 	{
 		template <class IE>
-		bool operator()(dumper& me, IE const& ie)
+		MED_RESULT operator()(dumper& me, IE const& ie)
 		{
 			me.dump(ie);
-			return true;
+			MED_RETURN_SUCCESS;
 		}
 	};
 
 	struct container_encoder
 	{
 		template <class IE>
-		bool operator()(dumper& me, IE const& ie)
+		MED_RESULT operator()(dumper& me, IE const& ie)
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
+#ifdef MED_NO_EXCEPTIONS
 			bool const ret = ie.encode(me);
 			me.m_depth = depth;
 			return ret;
+#else
+			ie.encode(me);
+			me.m_depth = depth;
+#endif
 		}
 	};
 
@@ -229,18 +240,18 @@ public:
 
 	//primitives
 	template <class IE, class IE_TYPE>
-	bool operator() (IE const& ie, IE_TYPE const&)
+	MED_RESULT operator() (IE const& ie, IE_TYPE const&)
 	{
 		dump(ie);
-		return true;
+		MED_RETURN_SUCCESS;
 	}
 
 	//state
 	constexpr void operator() (med::SNAPSHOT const&) { }
 	//errors
-	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
+	constexpr MED_RESULT operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { MED_RETURN_SUCCESS; }
 	//length encoder
-	template <int DELTA> constexpr bool operator() (placeholder::_length<DELTA> const&) { return true; }
+	template <int DELTA> constexpr MED_RESULT operator() (placeholder::_length<DELTA> const&) { MED_RETURN_SUCCESS; }
 
 	template <class IE>
 	void dump(IE const& ie)

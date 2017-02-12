@@ -180,14 +180,14 @@ struct SEQOF_3 : med::sequence<
 };
 
 template <std::size_t TAG>
-struct HT : med::read_only<med::value<med::fixed<TAG, uint8_t>>>
+struct HT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 {
 	static_assert(0 == (TAG & 0xF), "HIGH NIBBLE TAG EXPECTED");
 	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF0); }
 };
 
 //low nibble selector
-struct LT : med::read_only<med::value<uint8_t>>
+struct LT : med::peek<med::value<uint8_t>>
 {
 	//value_type get() const                    { return base_t::get() & 0xF; }
 	void set_encoded(value_type v)            { base_t::set_encoded(v & 0xF); }

@@ -38,32 +38,31 @@ constexpr bool is_counter_v = is_counter<T>::value;
 namespace detail {
 
 template <class FUNC, class IE>
-inline bool check_arity(FUNC& func, IE const&, std::size_t count)
+inline MED_RESULT check_arity(FUNC& func, IE const&, std::size_t count)
 {
 	if (count >= IE::min)
 	{
-		if (count <= IE::max) return true;
-		func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, count);
+		if (count <= IE::max) MED_RETURN_SUCCESS;
+		return func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, count);
 	}
 	else
 	{
-		func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
+		return func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
 	}
-	return false;
 }
 
 } //end: namespace detail
 
 //mandatory multi-field
 template <class FUNC, class IE>
-std::enable_if_t<!is_optional_v<IE>, bool>
+std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
 inline check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
 	return detail::check_arity(func, ie, count);
 }
 
 template <class FUNC, class IE>
-std::enable_if_t<!is_optional_v<IE>, bool>
+std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
 inline check_arity(FUNC& func, IE const& ie)
 {
 	return detail::check_arity(func, ie, ie.count());
@@ -71,18 +70,21 @@ inline check_arity(FUNC& func, IE const& ie)
 
 //optional multi-field
 template <class FUNC, class IE>
-std::enable_if_t<is_optional_v<IE>, bool>
+std::enable_if_t<is_optional_v<IE>, MED_RESULT>
 inline check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
+#ifdef MED_NO_EXCEPTIONS
 	return (0 == count) || detail::check_arity(func, ie, count);
+#else
+	if (count) { detail::check_arity(func, ie, count); }
+#endif
 }
 
 template <class FUNC, class IE>
-std::enable_if_t<is_optional_v<IE>, bool>
+std::enable_if_t<is_optional_v<IE>, MED_RESULT>
 inline check_arity(FUNC& func, IE const& ie)
 {
-	auto const count = ie.count();
-	return (0 == count) || detail::check_arity(func, ie, count);
+	return check_arity(func, ie, ie.count());
 }
 
 // user-provided functor to etract field count

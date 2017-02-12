@@ -134,14 +134,16 @@ public:
 		}
 	}
 
-	void pop_state()
+	bool pop_state()
 	{
 		if (m_store)
 		{
 			m_state = m_store;
 			m_store.reset();
 			CODEC_TRACE("pop_state: %s", toString());
+			return true;
 		}
+		return false;
 	}
 
 

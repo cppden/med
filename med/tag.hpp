@@ -92,11 +92,8 @@ inline set_tag(T& header, TV&& tag)
 	{
 		return false;
 	}
-	else
-	{
-		header.set_tag(tag);
-		return true;
-	}
+	header.set_tag(tag);
+	return true;
 }
 
 template <class T, class TV>
@@ -107,11 +104,8 @@ inline set_tag(T& header, TV&& tag)
 	{
 		return false;
 	}
-	else
-	{
-		header.set_encoded(tag);
-		return true;
-	}
+	header.set_encoded(tag);
+	return true;
 }
 
 }	//end: namespace med

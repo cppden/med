@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "exception.hpp"
 #include "ie_type.hpp"
 #include "value_traits.hpp"
 #include "name.hpp"
@@ -110,7 +111,7 @@ constexpr std::size_t calc_length(FIELD const& field, IE_LV const&)
 
 
 template <class WRAPPER>
-struct length_getter<WRAPPER, std::enable_if_t<!is_read_only_v<WRAPPER>>>
+struct length_getter<WRAPPER, std::enable_if_t<!is_peek_v<WRAPPER>>>
 {
 	template <class FIELD>
 	static std::size_t get(FIELD const& field)
@@ -120,7 +121,7 @@ struct length_getter<WRAPPER, std::enable_if_t<!is_read_only_v<WRAPPER>>>
 };
 
 template <class WRAPPER>
-struct length_getter<WRAPPER, std::enable_if_t<is_read_only_v<WRAPPER>>>
+struct length_getter<WRAPPER, std::enable_if_t<is_peek_v<WRAPPER>>>
 {
 	template <class FIELD>
 	static constexpr std::size_t get(FIELD const&)  { return 0; }
@@ -144,46 +145,34 @@ using has_length_converters = decltype(detail::test_value_to_length<T>(0));
 
 
 template <class FUNC, class FIELD>
-std::enable_if_t<has_length_converters<FIELD>::value, bool>
+std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
 inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-	if (FIELD::length_to_value(len) && set_value(field, len))
-	{
-		return true;
-	}
-	func(error::INCORRECT_VALUE, name<FIELD>(), len);
-	return false;
+	return (FIELD::length_to_value(len) MED_AND set_value(field, len))
+		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
 }
 
 template <class FUNC, class FIELD>
-std::enable_if_t<!has_length_converters<FIELD>::value, bool>
+std::enable_if_t<!has_length_converters<FIELD>::value, MED_RESULT>
 inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-	if (set_value(field, len))
-	{
-		return true;
-	}
-	func(error::INCORRECT_VALUE, name<FIELD>(), len);
-	return false;
+	return set_value(field, len)
+	|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
 }
 
 template <class FUNC, class FIELD>
-std::enable_if_t<has_length_converters<FIELD>::value, bool>
+std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
 inline value_to_length(FUNC& func, FIELD const&, std::size_t& len)
 {
-	if (FIELD::value_to_length(len))
-	{
-		return true;
-	}
-	func(error::INCORRECT_VALUE, name<FIELD>(), len);
-	return false;
+	return FIELD::value_to_length(len)
+	|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
 }
 
 template <class FUNC, class FIELD>
-std::enable_if_t<!has_length_converters<FIELD>::value, bool>
+std::enable_if_t<!has_length_converters<FIELD>::value, MED_RESULT>
 constexpr value_to_length(FUNC&, FIELD const&, std::size_t&)
 {
-	return true;
+	MED_RETURN_SUCCESS;
 }
 
 }	//end: namespace med

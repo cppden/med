@@ -62,13 +62,13 @@ constexpr bool is_empty_v = std::is_base_of<IE<IE_NULL>, T>::value;
 
 //read during decode w/o changing buffer state
 //skipped during encode and length calculation
-struct read_only_t {};
+struct peek_t {};
 
 template <class T>
-struct read_only : T, read_only_t {};
+struct peek : T, peek_t {};
 
 template <class T>
-constexpr bool is_read_only_v = std::is_base_of<read_only_t, T>::value;
+constexpr bool is_peek_v = std::is_base_of<peek_t, T>::value;
 
 //skip IE during both decode and encode
 //can be used to define more efficient complex header for set

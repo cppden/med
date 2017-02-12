@@ -129,8 +129,41 @@ void BM_encode_ok(benchmark::State& state)
 		}
 	}
 }
-
 BENCHMARK(BM_encode_ok);
+
+void BM_encode_ok_trycatch(benchmark::State& state)
+{
+	PROTO proto;
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
+	MSG_SEQ& msg = proto.select();
+	msg.ref<FLD_UC>().set(37);
+	msg.ref<FLD_U16>().set(0x35D9);
+	msg.ref<FLD_U24>().set(0xDABEEF);
+	msg.ref<FLD_IP>().set(0xFee1ABBA);
+
+
+	msg.ref<FLD_DW>().set(0x01020304);
+	msg.ref<VFLD1>().set("test.this!");
+
+	while (state.KeepRunning())
+	{
+		try
+		{
+			ctx.reset();
+			if (!encode(med::make_octet_encoder(ctx), proto))
+			{
+				std::abort();
+			}
+		}
+		catch (std::exception const& ex)
+		{
+			std::printf("ERROR: %s\n", ex.what());
+		}
+	}
+}
+BENCHMARK(BM_encode_ok_trycatch);
 
 
 void BM_encode_fail(benchmark::State& state)

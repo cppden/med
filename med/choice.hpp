@@ -10,9 +10,11 @@ Distributed under the MIT License
 #pragma once
 
 #include <new>
-#include "tag.hpp"
+
+#include "exception.hpp"
 #include "error.hpp"
 #include "debug.hpp"
+#include "tag.hpp"
 #include "length.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
@@ -46,7 +48,7 @@ template <class IE, class... IEs>
 struct choice_for<IE, IEs...>
 {
 	template <class ENCODER, class TO>
-	static bool encode(ENCODER&& encoder, TO const& to)
+	static MED_RESULT encode(ENCODER&& encoder, TO const& to)
 	{
 		if (IE::tag_type::match(get_tag(to.header())))
 		{
@@ -55,7 +57,7 @@ struct choice_for<IE, IEs...>
 			void const* store_p = &to.m_storage;
 
 			return med::encode(encoder, to.header())
-				&& med::encode(encoder, *static_cast<case_t const*>(store_p));
+				MED_AND med::encode(encoder, *static_cast<case_t const*>(store_p));
 		}
 		else
 		{
@@ -64,7 +66,7 @@ struct choice_for<IE, IEs...>
 	}
 
 	template <class DECODER, class TO, class UNEXP>
-	static bool decode(DECODER&& decoder, TO& to, UNEXP& unexp)
+	static MED_RESULT decode(DECODER&& decoder, TO& to, UNEXP& unexp)
 	{
 		if (IE::tag_type::match( get_tag(to.header()) ))
 		{
@@ -101,16 +103,15 @@ template <>
 struct choice_for<>
 {
 	template <class FUNC, class TO, class UNEXP>
-	static bool decode(FUNC&& func, TO& to, UNEXP& unexp)
+	static MED_RESULT decode(FUNC&& func, TO& to, UNEXP& unexp)
 	{
 		return unexp(func, to, to.header());
 	}
 
 	template <class FUNC, class TO>
-	static bool encode(FUNC&& func, TO const& to)
+	static MED_RESULT encode(FUNC&& func, TO const& to)
 	{
-		func(error::INCORRECT_TAG, name<TO>(), get_tag(to.header()));
-		return false;
+		return func(error::INCORRECT_TAG, name<TO>(), get_tag(to.header()));
 	}
 
 	template <class TO>
@@ -195,16 +196,16 @@ public:
 	}
 
 	template <class ENCODER>
-	bool encode(ENCODER&& encoder) const
+	MED_RESULT encode(ENCODER&& encoder) const
 	{
 		return sl::choice_for<CASES...>::encode(encoder, *this);
 	}
 
 	template <class DECODER, class UNEXP>
-	bool decode(DECODER&& decoder, UNEXP& unexp)
+	MED_RESULT decode(DECODER&& decoder, UNEXP& unexp)
 	{
 		return med::decode(decoder, header(), unexp)
-			&& sl::choice_for<CASES...>::decode(decoder, *this, unexp);
+			MED_AND sl::choice_for<CASES...>::decode(decoder, *this, unexp);
 	}
 
 private:
@@ -217,5 +218,4 @@ private:
 	storage_type m_storage;
 };
 
-
-}
+} //end: namespace med

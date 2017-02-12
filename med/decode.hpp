@@ -31,31 +31,24 @@ namespace sl {
 struct default_handler
 {
 	template <class FUNC, class IE, class HEADER>
-	constexpr bool operator()(FUNC& func, IE const&, HEADER const& header) const
+	constexpr MED_RESULT operator()(FUNC& func, IE const&, HEADER const& header) const
 	{
-		func(error::INCORRECT_TAG, name<IE>(), get_tag(header));
-		return false;
+		return func(error::INCORRECT_TAG, name<IE>(), get_tag(header));
 	}
 };
 
 
 template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<is_read_only_v<IE>, bool>
+std::enable_if_t<is_peek_v<IE>, MED_RESULT>
 inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 {
-	if (func(PUSH_STATE{}))
-	{
-		if (func(ie, ie_type))
-		{
-			func(POP_STATE{});
-			return true;
-		}
-	}
-	return false;
+	return func(PUSH_STATE{})
+		MED_AND func(ie, ie_type)
+		MED_AND func(POP_STATE{});
 };
 
 template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<is_skip_v<IE>, bool>
+std::enable_if_t<is_skip_v<IE>, MED_RESULT>
 inline decode_primitive(FUNC& func, IE&, IE_TYPE const&)
 {
 	//TODO: need to support fixed octet_string here?
@@ -63,7 +56,7 @@ inline decode_primitive(FUNC& func, IE&, IE_TYPE const&)
 };
 
 template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<!is_read_only_v<IE> && !is_skip_v<IE>, bool>
+std::enable_if_t<!is_peek_v<IE> && !is_skip_v<IE>, MED_RESULT>
 inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 {
 	return func(ie, ie_type);
@@ -71,15 +64,15 @@ inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-constexpr bool decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
+constexpr MED_RESULT decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
 {
 	CODEC_TRACE("NULL %s", name<IE>());
 	ie.set();
-	return true; //do nothing
+	MED_RETURN_SUCCESS; //do nothing
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline bool decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
+inline MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 {
 	CODEC_TRACE("PRIMITIVE %s", name<IE>());
 	return decode_primitive(func, ie, typename WRAPPER::ie_type{});
@@ -87,7 +80,7 @@ inline bool decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 
 //Tag-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-std::enable_if_t<!is_optional_v<IE>, bool>
+std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
 inline decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 {
 	CODEC_TRACE("TV %s", name<IE>());
@@ -102,14 +95,14 @@ inline decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 			return decode(func, ref_field(ie), unexp);
 		}
 		//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-		func(error::INCORRECT_TAG, name<typename WRAPPER::field_type>(), tag.get_encoded());
+		return func(error::INCORRECT_TAG, name<typename WRAPPER::field_type>(), tag.get_encoded());
 	}
-	return false;
+	MED_RETURN_FAILURE;
 }
 
 //Length-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline bool decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
+inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 {
 	typename WRAPPER::length_type len_ie;
 	CODEC_TRACE("LV[%s]", name<IE>());
@@ -124,16 +117,16 @@ inline bool decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 			{
 				if (0 == end.size()) return true;
 				//TODO: ??? as warning not error
-				func(error::OVERFLOW, name<typename WRAPPER::field_type>(), end.size() * FUNC::granularity);
+				return func(error::OVERFLOW, name<typename WRAPPER::field_type>(), end.size() * FUNC::granularity);
 			}
 		}
 	}
-	return false;
+	MED_RETURN_FAILURE;
 }
 
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-std::enable_if_t<!has_length_type<IE>::value, bool>
+std::enable_if_t<!has_length_type<IE>::value, MED_RESULT>
 inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
 	CODEC_TRACE("%s w/o length...:", name<IE>());
@@ -167,7 +160,7 @@ struct length_decoder
 #endif
 
 	template <int DELTA>
-	bool operator() (placeholder::_length<DELTA>&)
+	MED_RESULT operator() (placeholder::_length<DELTA>&)
 	{
 		length_type len_ie;
 		if (decode(m_decoder, len_ie, m_unexp))
@@ -180,11 +173,10 @@ struct length_decoder
 				CODEC_TRACE("size(%zu)=length(%zu) + %d - %d", size, len_value, DELTA, (m_decoder(GET_STATE{}) - m_start));
 				m_size_state = m_decoder(PUSH_SIZE{size});
 				if (m_size_state) { return true; }
-				m_decoder(error::OVERFLOW, name<get_field_type_t<IE>>(), m_size_state.size() * FUNC::granularity, size * FUNC::granularity);
+				return m_decoder(error::OVERFLOW, name<get_field_type_t<IE>>(), m_size_state.size() * FUNC::granularity, size * FUNC::granularity);
 			}
 		}
-		return false;
-
+		MED_RETURN_FAILURE;
 	}
 
 	//check if placeholder was visited
@@ -204,20 +196,19 @@ struct length_decoder
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-std::enable_if_t<has_length_type<IE>::value, bool>
+std::enable_if_t<has_length_type<IE>::value, MED_RESULT>
 inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
 	auto const pad = add_padding<IE>(func);
 	{
 		length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
-		if (!ie.decode(ld, unexp)) return false;
+		if (!ie.decode(ld, unexp)) MED_RETURN_FAILURE;
 		//special case for empty elements w/o length placeholder
 		padding_enable(pad, static_cast<bool>(ld));
 		CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", padding_size(pad), ld.size());
 		if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
 		{
-			func(error::OVERFLOW, name<IE>(), left);
-			return false;
+			return func(error::OVERFLOW, name<IE>(), left);
 		}
 	}
 	return static_cast<bool>(pad);
@@ -226,14 +217,14 @@ inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 }	//end: namespace sl
 
 template <class FUNC, class IE, class UNEXP = sl::default_handler>
-std::enable_if_t<has_ie_type<IE>::value, bool>
+std::enable_if_t<has_ie_type<IE>::value, MED_RESULT>
 inline decode(FUNC&& func, IE& ie, UNEXP&& unexp = sl::default_handler{})
 {
 	return sl::decode_ie<IE>(func, ie, typename IE::ie_type{}, unexp);
 }
 
 template <class FUNC, class IE, class UNEXP>
-std::enable_if_t<!has_ie_type<IE>::value, bool>
+std::enable_if_t<!has_ie_type<IE>::value, MED_RESULT>
 inline decode(FUNC& func, IE& ie, UNEXP&)
 {
 	return func(ie);

@@ -34,7 +34,7 @@ template <class IE, class... IES>
 struct set_dec_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class TO, class FUNC, class UNEXP, class HEADER>
-	static inline bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
+	static inline MED_RESULT decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
 	{
 		if (tag_type_t<IE>::match( get_tag(header) ))
 		{
@@ -44,11 +44,7 @@ struct set_dec_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 			{
 				return med::decode(func, ie.ref_field(), unexp);
 			}
-			else
-			{
-				func(error::EXTRA_IE, name<typename IE::field_type>(), 1);
-				return false;
-			}
+			return func(error::EXTRA_IE, name<typename IE::field_type>(), 1);
 		}
 		else
 		{
@@ -57,18 +53,14 @@ struct set_dec_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 	}
 
 	template <class TO, class FUNC>
-	static bool check(TO const& to, FUNC& func)
+	static MED_RESULT check(TO const& to, FUNC& func)
 	{
 		IE const& ie = static_cast<IE const&>(to);
 		if (is_optional_v<IE> || ie.ref_field().is_set())
 		{
 			return set_decoder<IES...>::check(to, func);
 		}
-		else
-		{
-			func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
-			return false;
-		}
+		return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 	}
 };
 
@@ -76,7 +68,7 @@ template <class IE, class... IES>
 struct set_dec_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class TO, class FUNC, class UNEXP, class HEADER>
-	static inline bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
+	static inline MED_RESULT decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
 	{
 		if (tag_type_t<IE>::match( get_tag(header) ))
 		{
@@ -84,24 +76,20 @@ struct set_dec_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 			CODEC_TRACE("[%s]@%zu", name<typename IE::field_type>(), ie.count());
 			if (ie.count() >= IE::max)
 			{
-				func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, ie.count());
-				return false;
+				return func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, ie.count());
 			}
 			auto* pfield = ie.push_back(func);
-			return pfield && med::decode(func, *pfield, unexp);
+			return pfield MED_AND med::decode(func, *pfield, unexp);
 		}
-		else
-		{
-			return set_decoder<IES...>::decode(to, func, unexp, header);
-		}
+		return set_decoder<IES...>::decode(to, func, unexp, header);
 	}
 
 	template <class TO, class FUNC>
-	static bool check(TO const& to, FUNC& func)
+	static MED_RESULT check(TO const& to, FUNC& func)
 	{
 		IE const& ie = static_cast<IE const&>(to);
 		return check_arity(func, ie)
-			&& set_decoder<IES...>::check(to, func);
+			MED_AND set_decoder<IES...>::check(to, func);
 	}
 };
 
@@ -109,13 +97,13 @@ template <>
 struct set_dec_imp<void>
 {
 	template <class TO, class FUNC, class UNEXP, class HEADER>
-	static bool decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
+	static MED_RESULT decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
 	{
 		return unexp(func, to, header);
 	}
 
 	template <class TO, class FUNC>
-	static constexpr bool check(TO&, FUNC&)       { return true; }
+	static constexpr MED_RESULT check(TO&, FUNC&)       { MED_RETURN_SUCCESS; }
 };
 
 
@@ -126,7 +114,7 @@ template <class... IES>
 using set_encoder = set_enc_imp<void, IES...>;
 
 template <class HEADER, class IE, class FUNC>
-std::enable_if_t<std::is_base_of<PRIMITIVE, typename HEADER::ie_type>::value, bool>
+std::enable_if_t<std::is_base_of<PRIMITIVE, typename HEADER::ie_type>::value, MED_RESULT>
 inline encode_header(FUNC& func)
 {
 	HEADER header;
@@ -135,26 +123,25 @@ inline encode_header(FUNC& func)
 }
 
 template <class HEADER, class IE, class FUNC>
-std::enable_if_t<std::is_base_of<CONTAINER, typename HEADER::ie_type>::value, bool>
+std::enable_if_t<std::is_base_of<CONTAINER, typename HEADER::ie_type>::value, MED_RESULT>
 constexpr encode_header(FUNC&)
 {
-	return true;
+	MED_RETURN_SUCCESS;
 }
 
 
 template <class TO, class FUNC, class HEADER, class IE, class... IES>
-std::enable_if_t<is_optional_v<IE>, bool>
+std::enable_if_t<is_optional_v<IE>, MED_RESULT>
 inline continue_encode(TO const& to, FUNC& func)
 {
 	return set_encoder<IES...>::template encode<HEADER>(to, func);
 }
 
 template <class TO, class FUNC, class HEADER, class IE, class... IES>
-std::enable_if_t<!is_optional_v<IE>, bool>
+std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
 inline continue_encode(TO const&, FUNC& func)
 {
-	func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
-	return false;
+	return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 }
 
 
@@ -162,19 +149,16 @@ template <class IE, class... IES>
 struct set_enc_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class HEADER, class TO, class FUNC>
-	static inline bool encode(TO const& to, FUNC& func)
+	static inline MED_RESULT encode(TO const& to, FUNC& func)
 	{
 		IE const& ie = static_cast<IE const&>(to);
 		if (ie.ref_field().is_set())
 		{
 			CODEC_TRACE("[%s]", name<IE>());
 			return encode_header<HEADER, IE>(func) && med::encode(func, ie.ref_field())
-				&& set_encoder<IES...>::template encode<HEADER>(to, func);
+				MED_AND set_encoder<IES...>::template encode<HEADER>(to, func);
 		}
-		else
-		{
-			return continue_encode<TO, FUNC, HEADER, IE, IES...>(to, func);
-		}
+		return continue_encode<TO, FUNC, HEADER, IE, IES...>(to, func);
 	}
 };
 
@@ -183,24 +167,20 @@ template <class IE, class... IES>
 struct set_enc_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 {
 	template <class HEADER, class TO, class FUNC>
-	static inline bool encode(TO const& to, FUNC& func)
+	static inline MED_RESULT encode(TO const& to, FUNC& func)
 	{
 		IE const& ie = static_cast<IE const&>(to);
 		CODEC_TRACE("[%s]*%zu", name<typename IE::field_type>(), ie.count());
 
-		if (!check_arity(func, ie)) return false;
+		if (!check_arity(func, ie)) MED_RETURN_FAILURE;
 		for (auto& field : ie)
 		{
-			if (field.is_set())
+			//TODO: actually this field was pushed but not set... do we need a new error?
+			if (!field.is_set())
 			{
-				if (!encode_header<HEADER, IE>(func) || !med::encode(func, field)) return false;
+				return func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count()-1);
 			}
-			else
-			{
-				//TODO: actually this field was pushed but not set... do we need a new error?
-				func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count()-1);
-				return false;
-			}
+			if (!encode_header<HEADER, IE>(func) || !med::encode(func, field)) MED_RETURN_FAILURE;
 		}
 		return set_encoder<IES...>::template encode<HEADER>(to, func);
 	}
@@ -210,7 +190,7 @@ template <>
 struct set_enc_imp<void>
 {
 	template <class HEADER, class TO, class FUNC>
-	static constexpr bool encode(TO&, FUNC&)       { return true; }
+	static constexpr MED_RESULT encode(TO&, FUNC&)       { MED_RETURN_SUCCESS; }
 };
 
 template <class T, class FUNC>
@@ -235,13 +215,13 @@ struct set : container<IES...>
 	using header_type = HEADER;
 
 	template <class ENCODER>
-	bool encode(ENCODER& encoder) const
+	MED_RESULT encode(ENCODER& encoder) const
 	{
 		return sl::set_encoder<IES...>::template encode<header_type>(this->m_ies, encoder);
 	}
 
 	template <class DECODER, class UNEXP>
-	bool decode(DECODER& decoder, UNEXP& unexp)
+	MED_RESULT decode(DECODER& decoder, UNEXP& unexp)
 	{
 		while (decoder(PUSH_STATE{}))
 		{
@@ -252,7 +232,7 @@ struct set : container<IES...>
 				CODEC_TRACE("tag=%#zx", get_tag(header));
 				if (!sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header))
 				{
-					return false;
+					MED_RETURN_FAILURE;
 				}
 			}
 			else
