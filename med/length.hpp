@@ -81,7 +81,7 @@ std::enable_if_t<!has_get_length<FIELD>::value, std::size_t>
 constexpr calc_length(FIELD const&, PRIMITIVE const&)
 {
 	//TODO: assuming length in bytes if IE is not customized
-	CODEC_TRACE("length(%s) = %zu", name<FIELD>(), bits_to_bytes<FIELD::traits::bits>::value);
+	CODEC_TRACE("length(%s) = %zu", name<FIELD>(), bits_to_bytes(FIELD::traits::bits));
 	return bits_to_bytes(FIELD::traits::bits);
 }
 
@@ -148,24 +148,45 @@ template <class FUNC, class FIELD>
 std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
 inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-	return (FIELD::length_to_value(len) MED_AND set_value(field, len))
+#ifdef MED_NO_EXCEPTION
+	return (FIELD::length_to_value(len) && set_value(field, len))
 		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+#else
+	if (!FIELD::length_to_value(len) || !set_value(field, len))
+	{
+		func(error::INCORRECT_VALUE, name<FIELD>(), len);
+	}
+#endif
 }
 
 template <class FUNC, class FIELD>
 std::enable_if_t<!has_length_converters<FIELD>::value, MED_RESULT>
 inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
+#ifdef MED_NO_EXCEPTION
 	return set_value(field, len)
-	|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+#else
+	if (!set_value(field, len))
+	{
+		func(error::INCORRECT_VALUE, name<FIELD>(), len);
+	}
+#endif //MED_NO_EXCEPTION
 }
 
 template <class FUNC, class FIELD>
 std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
 inline value_to_length(FUNC& func, FIELD const&, std::size_t& len)
 {
+#ifdef MED_NO_EXCEPTION
 	return FIELD::value_to_length(len)
-	|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+#else
+	if (!FIELD::value_to_length(len))
+	{
+		func(error::INCORRECT_VALUE, name<FIELD>(), len);
+	}
+#endif //MED_NO_EXCEPTION
 }
 
 template <class FUNC, class FIELD>

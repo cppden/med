@@ -73,7 +73,7 @@ template <class FUNC, class IE>
 std::enable_if_t<is_optional_v<IE>, MED_RESULT>
 inline check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
-#ifdef MED_NO_EXCEPTIONS
+#ifdef MED_NO_EXCEPTION
 	return (0 == count) || detail::check_arity(func, ie, count);
 #else
 	if (count) { detail::check_arity(func, ie, count); }

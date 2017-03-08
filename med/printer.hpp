@@ -117,7 +117,7 @@ public:
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
 			CODEC_TRACE("depth -> %zu < max=%zu", me.m_depth, me.m_max_depth);
-#ifdef MED_NO_EXCEPTIONS
+#ifdef MED_NO_EXCEPTION
 			bool const ret = (0 == me.m_max_depth || me.m_max_depth > me.m_depth) ? ie.encode(me) : true;
 			me.m_depth = depth;
 			CODEC_TRACE("depth <- %zu", depth);
@@ -222,7 +222,7 @@ public:
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
-#ifdef MED_NO_EXCEPTIONS
+#ifdef MED_NO_EXCEPTION
 			bool const ret = ie.encode(me);
 			me.m_depth = depth;
 			return ret;

@@ -53,14 +53,14 @@ struct padder
 		return 0;
 	}
 
-	explicit operator bool() const
+	MED_RESULT add() const
 	{
 		if (auto const pad_bits = size())
 		{
 			CODEC_TRACE("PADDING %zu bits", pad_bits);
 			return m_func(ADD_PADDING{pad_bits, IE::padding::filler::value});
 		}
-		return true;
+		MED_RETURN_SUCCESS;
 	}
 
 	padder(padder const&) = delete;
@@ -71,6 +71,7 @@ struct padder
 	bool mutable              m_enable{ true };
 };
 
+using dummy_padder = std::true_type;
 
 template <class IE, class FUNC>
 std::enable_if_t<has_padding<IE>::value, padder<IE, FUNC>>
@@ -80,18 +81,26 @@ inline add_padding(FUNC& func)
 }
 
 template <class IE, class FUNC>
-std::enable_if_t<!has_padding<IE>::value, bool>
+std::enable_if_t<!has_padding<IE>::value, dummy_padder>
 constexpr add_padding(FUNC&)
 {
-	return true;
+	return dummy_padder{};
 }
 
 template <class T>
 inline void padding_enable(T const& pad, bool v)            { pad.enable(v); }
-constexpr void padding_enable(bool, bool)                   { }
+constexpr void padding_enable(dummy_padder, bool)           { }
 
 template <class T>
 inline std::size_t padding_size(T const& pad)               { return pad.size(); }
-constexpr std::size_t padding_size(bool)                    { return 0; }
+constexpr std::size_t padding_size(dummy_padder)            { return 0; }
+
+template <class T>
+inline MED_RESULT padding_do(T const& pad)                  { return pad.add(); }
+#ifdef MED_NO_EXCEPTION
+constexpr MED_RESULT padding_do(dummy_padder)               { return true; }
+#else //!MED_NO_EXCEPTION
+constexpr MED_RESULT padding_do(dummy_padder)               { }
+#endif //MED_NO_EXCEPTIONS
 
 }	//end: namespace med

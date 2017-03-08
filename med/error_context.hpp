@@ -22,12 +22,13 @@ namespace med {
 class error_context
 {
 public:
+#ifdef MED_NO_EXCEPTION
 	explicit operator bool() const          { return success(); }
 	bool success() const                    { return error::SUCCESS == m_error; }
 	error get_error() const                 { return m_error; }
 
 	void reset()                            { m_error = error::SUCCESS; }
-	MED_RESULT set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
+	bool set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
 	{
 		CODEC_TRACE("ERROR[%s]=%d %zu %zu %zu", name, static_cast<int>(err), val0, val1, val2);
 		m_name     = name;
@@ -37,6 +38,44 @@ public:
 		m_error    = err;
 		return success();
 	}
+#else //!MED_NO_EXCEPTION
+	static constexpr void reset()           { }
+	void set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
+	{
+		if (error::SUCCESS != err)
+		{
+			CODEC_TRACE("ERROR[%s]=%d %zu %zu %zu", name, static_cast<int>(err), val0, val1, val2);
+
+			switch (err)
+			{
+			case error::OVERFLOW:
+				if (val1)
+				{
+					throw exception(err, "%zu bits left, '%s' needs %zu", val0, name, val1);
+				}
+				throw exception(err, "%zu bits left after '%s'", val0, name);
+
+			case error::INCORRECT_VALUE:
+				throw exception(err, "Invalid value of '%s' at %zu: 0x%zX", name, val1, val0);
+
+			case error::INCORRECT_TAG:
+				throw exception(err, "Wrong tag of '%s': %zu", name, val0);
+
+			case error::MISSING_IE:
+				throw exception(err, "Missing IE '%s': at least %zu expected, got %zu", name, val0, val1);
+
+			case error::EXTRA_IE:
+				throw exception(err, "Excessive IE '%s': no more than %zu expected, got %zu", name, val0, val1);
+
+			case error::OUT_OF_MEMORY:
+				throw exception(err, "No space to allocate IE '%s': %zu bytes", name, val0);
+
+			default:
+				break;
+			}
+		}
+	}
+#endif //MED_NO_EXCEPTION
 
 	warning get_warning() const             { return m_warning; }
 	void set_warning(warning warn)          { m_warning = warn; }
@@ -52,6 +91,7 @@ public:
 		{ return set_error(error::OUT_OF_MEMORY, name, requested); }
 
 private:
+#ifdef MED_NO_EXCEPTION
 	friend char const* toString(error_context const&);
 
 	enum { MAX_PARAMS = 3 };
@@ -59,9 +99,11 @@ private:
 	char const* m_name;
 	std::size_t m_param[MAX_PARAMS];
 	error       m_error{ error::SUCCESS };
+#endif //MED_NO_EXCEPTION
 	warning     m_warning{ warning::NONE };
 };
 
+#ifdef MED_NO_EXCEPTION
 //TODO: add offsets for all errors
 inline char const* toString(error_context const& ec)
 {
@@ -106,6 +148,6 @@ inline char const* toString(error_context const& ec)
 
 	return sz;
 }
-
+#endif //MED_NO_EXCEPTION
 
 }	//end: namespace med

@@ -96,7 +96,7 @@ struct seq_dec_imp<std::enable_if_t<
 			//convert const to writable
 			using TAG_IE = typename IE::tag_type::writable;
 			TAG_IE tag;
-			if (!func(tag, typename TAG_IE::ie_type{})) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
 			vtag.set_encoded(tag.get_encoded());
 			CODEC_TRACE("pop tag=%zx", tag.get_encoded());
 		}
@@ -106,7 +106,7 @@ struct seq_dec_imp<std::enable_if_t<
 			CODEC_TRACE("T=%zx[%s]", vtag.get_encoded(), name<IE>());
 			clear_tag<IE>(func, vtag); //clear current tag as decoded
 			IE& ie = to;
-			if (!med::decode(func, ie.ref_field(), unexp)) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
 		}
 		return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
@@ -157,7 +157,7 @@ struct seq_dec_imp<std::enable_if_t<
 
 			CODEC_TRACE("C[%s]", name<IE>());
 			IE& ie = to;
-			if (!med::decode(func, ie.ref_field(), unexp)) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
 		}
 		else
 		{
@@ -187,11 +187,11 @@ struct seq_dec_imp<std::enable_if_t<
 			{
 				CODEC_TRACE("C[%s]#%zu", name<IE>(), ie.count());
 				auto* field = ie.push_back(func);
-				if (!field || !med::decode(func, *field, unexp)) MED_RETURN_FAILURE;
+				MED_CHECK_FAIL(field || !med::decode(func, *field, unexp));
 			}
 			while (typename IE::condition{}(to));
 
-			if (!check_arity(func, ie)) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(check_arity(func, ie));
 		}
 		else
 		{
@@ -222,7 +222,7 @@ struct seq_dec_imp<std::enable_if_t<
 			//convert const to writable
 			using TAG_IE = typename IE::tag_type::writable;
 			TAG_IE tag;
-			if (!func(tag, typename TAG_IE::ie_type{})) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
 			vtag.set_encoded(tag.get_encoded());
 			CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 		}
@@ -231,13 +231,14 @@ struct seq_dec_imp<std::enable_if_t<
 		{
 			CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<IE>());
 			auto* field = ie.push_back(func);
-			if (!field || !med::decode(func, *field, unexp)) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 
 			if (func(PUSH_STATE{}))
 			{
 				//convert const to writable
 				using TAG_IE = typename IE::tag_type::writable;
 				TAG_IE tag;
+#ifdef MED_NO_EXCEPTION
 				if (func(tag, typename TAG_IE::ie_type{}))
 				{
 					vtag.set_encoded(tag.get_encoded());
@@ -247,6 +248,19 @@ struct seq_dec_imp<std::enable_if_t<
 				{
 					vtag.clear();
 				}
+#else //!MED_NO_EXCEPTION
+				//TODO: avoid try/catch
+				try
+				{
+					func(tag, typename TAG_IE::ie_type{});
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+				}
+				catch (med::exception const& ex)
+				{
+					vtag.clear();
+				}
+#endif //MED_NO_EXCEPTION
 			}
 			else
 			{
@@ -288,7 +302,7 @@ struct seq_dec_imp<std::enable_if_t<
 		while (func(CHECK_STATE{}) && count < IE::max)
 		{
 			auto* field = ie.push_back(func);
-			if (!field || !sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp)) return false;
+			MED_CHECK_FAIL(MED_EXPR_AND(field) sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp));
 			++count;
 		}
 
@@ -320,12 +334,12 @@ struct seq_dec_imp<
 		std::size_t count = typename IE::count_getter{}(to);
 		CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 
-		if (!check_arity(func, ie, count)) MED_RETURN_FAILURE;
+		MED_CHECK_FAIL(check_arity(func, ie, count));
 
 		while (count--)
 		{
 			auto* field = ie.push_back(func);
-			if (!field || !med::decode(func, *field, unexp)) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 		}
 
 		return seq_decoder<IES...>::decode(to, func, unexp, vtag);
@@ -351,23 +365,18 @@ struct seq_dec_imp<
 
 		IE& ie = to;
 		typename IE::counter_type counter_ie;
-		if (med::decode(func, counter_ie))
+		MED_CHECK_FAIL(med::decode(func, counter_ie));
+		auto count = counter_ie.get_encoded();
+		MED_CHECK_FAIL(check_arity(func, ie, count));
+		while (count--)
 		{
-			auto count = counter_ie.get_encoded();
-			if (check_arity(func, ie, count))
-			{
-				while (count--)
-				{
-					CODEC_TRACE("[%s]*%zu", name<IE>(), count);
+			CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 
-					auto* pfield = ie.push_back(func);
-					if (!pfield || !med::decode(func, *pfield, unexp)) MED_RETURN_FAILURE;
-				}
-
-				return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-			}
+			auto* field = ie.push_back(func);
+			MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 		}
-		MED_RETURN_FAILURE;
+
+		return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 	}
 };
 
@@ -401,7 +410,7 @@ struct seq_enc_imp<std::enable_if_t<
 		CODEC_TRACE("%c{%s}", ie.ref_field().is_set()?'+':'-', class_name<IE>());
 		if (ie.ref_field().is_set())
 		{
-			return med::encode(func, ie) && seq_encoder<IES...>::encode(to, func);
+			return med::encode(func, ie) MED_AND seq_encoder<IES...>::encode(to, func);
 		}
 		return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 	}
@@ -424,7 +433,7 @@ struct seq_enc_imp<std::enable_if_t<
 		IE const& ie = to;
 		if (ie.ref_field().is_set())
 		{
-			return med::encode(func, ie) && seq_encoder<IES...>::encode(to, func);
+			return med::encode(func, ie) MED_AND seq_encoder<IES...>::encode(to, func);
 		}
 		return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 	}
@@ -444,7 +453,7 @@ struct seq_enc_imp<std::enable_if_t<
 		CODEC_TRACE("%c[%s]", ie.ref_field().is_set()?'+':'-', name<IE>());
 		if (ie.ref_field().is_set())
 		{
-			return med::encode(func, ie) && seq_encoder<IES...>::encode(to, func);
+			return med::encode(func, ie) MED_AND seq_encoder<IES...>::encode(to, func);
 		}
 		return seq_encoder<IES...>::encode(to, func);
 	}
@@ -459,7 +468,7 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			if (!sl::encode_ie<IE>(func, field, typename IE::ie_type{})) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL(sl::encode_ie<IE>(func, field, typename IE::ie_type{}));
 		}
 		else
 		{

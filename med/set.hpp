@@ -78,8 +78,8 @@ struct set_dec_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 			{
 				return func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, ie.count());
 			}
-			auto* pfield = ie.push_back(func);
-			return pfield MED_AND med::decode(func, *pfield, unexp);
+			auto* field = ie.push_back(func);
+			return MED_EXPR_AND(field) med::decode(func, *field, unexp);
 		}
 		return set_decoder<IES...>::decode(to, func, unexp, header);
 	}
@@ -155,7 +155,7 @@ struct set_enc_imp<std::enable_if_t<!is_multi_field<IE>::value>, IE, IES...>
 		if (ie.ref_field().is_set())
 		{
 			CODEC_TRACE("[%s]", name<IE>());
-			return encode_header<HEADER, IE>(func) && med::encode(func, ie.ref_field())
+			return encode_header<HEADER, IE>(func) MED_AND med::encode(func, ie.ref_field())
 				MED_AND set_encoder<IES...>::template encode<HEADER>(to, func);
 		}
 		return continue_encode<TO, FUNC, HEADER, IE, IES...>(to, func);
@@ -172,7 +172,7 @@ struct set_enc_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 		IE const& ie = static_cast<IE const&>(to);
 		CODEC_TRACE("[%s]*%zu", name<typename IE::field_type>(), ie.count());
 
-		if (!check_arity(func, ie)) MED_RETURN_FAILURE;
+		MED_CHECK_FAIL(check_arity(func, ie));
 		for (auto& field : ie)
 		{
 			//TODO: actually this field was pushed but not set... do we need a new error?
@@ -180,7 +180,7 @@ struct set_enc_imp<std::enable_if_t<is_multi_field<IE>::value>, IE, IES...>
 			{
 				return func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count()-1);
 			}
-			if (!encode_header<HEADER, IE>(func) || !med::encode(func, field)) MED_RETURN_FAILURE;
+			MED_CHECK_FAIL((encode_header<HEADER, IE>(func)) MED_AND med::encode(func, field));
 		}
 		return set_encoder<IES...>::template encode<HEADER>(to, func);
 	}
@@ -226,14 +226,12 @@ struct set : container<IES...>
 		while (decoder(PUSH_STATE{}))
 		{
 			header_type header;
+#ifdef MED_NO_EXCEPTION
 			if (med::decode(decoder, header, unexp))
 			{
 				sl::pop_state<header_type>(decoder);
 				CODEC_TRACE("tag=%#zx", get_tag(header));
-				if (!sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header))
-				{
-					MED_RETURN_FAILURE;
-				}
+				MED_CHECK_FAIL(sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header));
 			}
 			else
 			{
@@ -241,6 +239,22 @@ struct set : container<IES...>
 				decoder(error::SUCCESS);
 				break;
 			}
+#else //!MED_NO_EXCEPTION
+			//TODO: avoid try/catch
+			try
+			{
+				med::decode(decoder, header, unexp);
+			}
+			catch (med::exception const& ex)
+			{
+				decoder(POP_STATE{});
+				decoder(error::SUCCESS);
+				break;
+			}
+			sl::pop_state<header_type>(decoder);
+			CODEC_TRACE("tag=%#zx", get_tag(header));
+			MED_CHECK_FAIL(sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header));
+#endif //MED_NO_EXCEPTION
 		}
 
 		return sl::set_decoder<IES...>::check(this->m_ies, decoder);

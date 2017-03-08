@@ -123,48 +123,17 @@ void BM_encode_ok(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset();
+#ifdef MED_NO_EXCEPTION
 		if (!encode(med::make_octet_encoder(ctx), proto))
 		{
 			std::abort();
 		}
+#else
+		encode(med::make_octet_encoder(ctx), proto);
+#endif
 	}
 }
 BENCHMARK(BM_encode_ok);
-
-void BM_encode_ok_trycatch(benchmark::State& state)
-{
-	PROTO proto;
-	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
-
-	MSG_SEQ& msg = proto.select();
-	msg.ref<FLD_UC>().set(37);
-	msg.ref<FLD_U16>().set(0x35D9);
-	msg.ref<FLD_U24>().set(0xDABEEF);
-	msg.ref<FLD_IP>().set(0xFee1ABBA);
-
-
-	msg.ref<FLD_DW>().set(0x01020304);
-	msg.ref<VFLD1>().set("test.this!");
-
-	while (state.KeepRunning())
-	{
-		try
-		{
-			ctx.reset();
-			if (!encode(med::make_octet_encoder(ctx), proto))
-			{
-				std::abort();
-			}
-		}
-		catch (std::exception const& ex)
-		{
-			std::printf("ERROR: %s\n", ex.what());
-		}
-	}
-}
-BENCHMARK(BM_encode_ok_trycatch);
-
 
 void BM_encode_fail(benchmark::State& state)
 {
@@ -179,11 +148,26 @@ void BM_encode_fail(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset();
+#ifdef MED_NO_EXCEPTION
 		if (encode(med::make_octet_encoder(ctx), proto)
 		|| med::error::MISSING_IE != ctx.error_ctx().get_error())
 		{
 			std::abort();
 		}
+#else
+		try
+		{
+			encode(med::make_octet_encoder(ctx), proto);
+			std::abort();
+		}
+		catch (med::exception const& ex)
+		{
+			if (med::error::MISSING_IE != ex.error())
+			{
+				std::abort();
+			}
+		}
+#endif
 	}
 }
 BENCHMARK(BM_encode_fail);
@@ -205,10 +189,14 @@ void BM_decode_ok(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset(encoded, sizeof(encoded));
+#ifdef MED_NO_EXCEPTION
 		if (!decode(med::make_octet_decoder(ctx), proto))
 		{
 			std::abort();
 		}
+#else
+		decode(med::make_octet_decoder(ctx), proto);
+#endif
 	}
 }
 BENCHMARK(BM_decode_ok);
@@ -230,11 +218,26 @@ void BM_decode_fail(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
+#ifdef MED_NO_EXCEPTION
 		if (decode(med::make_octet_decoder(ctx), proto)
 		|| med::error::INCORRECT_VALUE != ctx.error_ctx().get_error())
 		{
 			std::abort();
 		}
+#else
+		try
+		{
+			decode(med::make_octet_decoder(ctx), proto);
+			std::abort();
+		}
+		catch (med::exception const& ex)
+		{
+			if (med::error::INCORRECT_VALUE != ex.error())
+			{
+				std::abort();
+			}
+		}
+#endif
 	}
 }
 BENCHMARK(BM_decode_fail);
