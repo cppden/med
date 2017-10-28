@@ -74,7 +74,7 @@ std::enable_if_t<!is_multi_field_v<IE> && is_optional_v<IE>, field_proxy<FIELD c
 inline get_field(IE const& ie)
 {
 	return field_proxy<FIELD const>{ ie.is_set() ? &ie.ref_field() : nullptr };
-};
+}
 
 //read-only access mandatory field returning a reference
 template <class FIELD, class IE>
@@ -82,7 +82,7 @@ std::enable_if_t<!is_multi_field_v<IE> && !is_optional_v<IE>, FIELD const&>
 inline get_field(IE const& ie)
 {
 	return ie.ref_field();
-};
+}
 
 //read-only access of any multi-field
 template <class FIELD, class IE>
@@ -90,6 +90,6 @@ std::enable_if_t<is_multi_field_v<IE>, IE const&>
 inline get_field(IE const& ie)
 {
 	return ie;
-};
+}
 
 }	//end: namespace med

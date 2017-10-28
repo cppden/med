@@ -1,8 +1,11 @@
 
 language: cpp
+os: linux
+dist: trusty
 
 branches:
-  except: /pr\/.*/
+  only:
+    - master
 
 script:
   - mkdir build
@@ -25,24 +28,42 @@ matrix:
     - compiler: gcc
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-6
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-6']
       env:
         - COMPILER=g++-6
+
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-7']
+      env:
+        - COMPILER=g++-7
 
     - compiler: clang
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.8
-          packages:
-            - g++-6
-            - clang-3.8
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
+          packages: ['g++-7', 'clang-4.0']
       env:
-        - COMPILER=clang++-3.8
+        - COMPILER=clang++-4.0
+
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-7']
+      env:
+        - COMPILER=g++-7
+        - BUILD_FLAGS="-g -O0"
+        - CXXFLAGS="--coverage"
+      before_install:
+        - pip install --user cpp-coveralls
+      script:
+        - cmake . && make VERBOSE=1 -j check
+      after_success:
+        - coveralls --verbose --exclude-pattern '.*/CMakeFiles/.*' --gcov gcov-7 --gcov-options '\-lp'
 
 notifications:
   email: false

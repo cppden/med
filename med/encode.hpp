@@ -53,7 +53,7 @@ std::enable_if_t<is_peek_v<IE>, MED_RESULT>
 constexpr encode_primitive(FUNC&, IE&, IE_TYPE const&)
 {
 	MED_RETURN_SUCCESS; //do nothing
-};
+}
 
 template <class FUNC, class IE, class IE_TYPE>
 std::enable_if_t<!is_peek_v<IE>, MED_RESULT>
@@ -61,7 +61,7 @@ inline encode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 {
 	snapshot(func, ie);
 	return func(ie, ie_type);
-};
+}
 
 template <class FUNC, class LEN>
 struct length_encoder
@@ -176,7 +176,7 @@ template <class WRAPPER, class FUNC, class IE>
 constexpr MED_RESULT encode_ie(FUNC& func, IE& ie, IE_NULL const&)
 {
 	return null_encoder<FUNC>::encode(func, ie);
-};
+}
 
 template <class WRAPPER, class FUNC, class IE>
 inline MED_RESULT encode_ie(FUNC& func, IE& ie, CONTAINER const&)

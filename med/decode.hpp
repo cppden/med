@@ -53,7 +53,7 @@ inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 		func(POP_STATE{});
 	}
 #endif //MED_NO_EXCEPTION
-};
+}
 
 template <class FUNC, class IE, class IE_TYPE>
 std::enable_if_t<is_skip_v<IE>, MED_RESULT>
@@ -61,14 +61,14 @@ inline decode_primitive(FUNC& func, IE&, IE_TYPE const&)
 {
 	//TODO: need to support fixed octet_string here?
 	return func.advance(IE::traits::bits);
-};
+}
 
 template <class FUNC, class IE, class IE_TYPE>
 std::enable_if_t<!is_peek_v<IE> && !is_skip_v<IE>, MED_RESULT>
 inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 {
 	return func(ie, ie_type);
-};
+}
 
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
@@ -77,7 +77,7 @@ constexpr MED_RESULT decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
 	CODEC_TRACE("NULL %s", name<IE>());
 	ie.set();
 	MED_RETURN_SUCCESS; //do nothing
-};
+}
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 inline MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)

@@ -26,6 +26,9 @@
 
 #project files
 .codelite/
+.autotools
+.cproject
+.settings/
 Debug/
 Release/
 build/

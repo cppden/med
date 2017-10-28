@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
-project(med)
+
+set(THIS_NAME med)
+
+project(${THIS_NAME})
 enable_language(CXX)
 
 message(STATUS "-------------------------------------------------------")
@@ -43,6 +46,14 @@ else (WITH_EX)
   message(STATUS "\tWITH_EX=false (bool for error handling)")
 endif (WITH_EX)
 
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag("-std=c++14" COMPILER_SUPPORTS_CXX14)
+if (COMPILER_SUPPORTS_CXX14)
+    add_definitions(-std=c++14)
+else ()
+    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
+endif ()
+
 #set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} ")
 
 # Library path
@@ -56,11 +67,24 @@ set(BM_SRCS
   benchmark/bm.cpp
 )
 
-set_source_files_properties(
-  ${UT_SRCS} ${BM_SRCS} PROPERTIES COMPILE_FLAGS
-  "-O3 -std=c++14 -Wall -Werror"
-)
+#set_source_files_properties(
+#  ${UT_SRCS} ${BM_SRCS} PROPERTIES COMPILE_FLAGS
+#  "-O3 -std=c++14 -Wall -Werror"
+#)
 
+add_compile_options(
+    -Werror 
+    -Wall 
+    -Wextra 
+    -Waddress
+    -Warray-bounds
+#    -Wconversion
+    -Winit-self
+    -Wsuggest-attribute=const
+    -Wunreachable-code
+    -pedantic
+    -pedantic-errors
+)
 
 add_executable(gtest_med ${UT_SRCS})
 
@@ -77,13 +101,23 @@ if (WITH_BM)
   )
 endif (WITH_BM)
 
+if(DEFINED ENV{BUILD_FLAGS})
+    set(BUILD_FLAGS "$ENV{BUILD_FLAGS}")
+else ()
+    set(BUILD_FLAGS "-O3")
+endif ()
+
+set_target_properties(gtest_${THIS_NAME} PROPERTIES COMPILE_FLAGS 
+    ${BUILD_FLAGS}
+)
+
 target_link_libraries(gtest_med
     ${GTEST_BOTH_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT} 
 )
 
 enable_testing()
-add_test(UT gtest_med)
+add_test(UT gtest_${THIS_NAME})
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
-  DEPENDS gtest_med
+  DEPENDS gtest_${THIS_NAME}
 )

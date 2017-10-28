@@ -234,7 +234,7 @@ struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 		bool b1st = true;
 		for (uint8_t digit : *this)
 		{
-			to_char(digit >> 4);
+			to_char(uint8_t(digit >> 4));
 			//not 1st octet - print both nibbles
 			if (!b1st) to_char(digit & 0xF);
 			b1st = false;
