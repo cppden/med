@@ -78,9 +78,7 @@ add_compile_options(
     -Wextra 
     -Waddress
     -Warray-bounds
-#    -Wconversion
     -Winit-self
-    -Wsuggest-attribute=const
     -Wunreachable-code
     -pedantic
     -pedantic-errors
