@@ -28,23 +28,22 @@ public:
 	error get_error() const                 { return m_error; }
 
 	void reset()                            { m_error = error::SUCCESS; }
-	bool set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
+	bool set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
-		CODEC_TRACE("ERROR[%s]=%d %zu %zu %zu", name, static_cast<int>(err), val0, val1, val2);
+		CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
 		m_name     = name;
 		m_param[0] = val0;
 		m_param[1] = val1;
-		m_param[2] = val2;
 		m_error    = err;
 		return success();
 	}
 #else //!MED_NO_EXCEPTION
 	static constexpr void reset()           { }
-	void set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0, std::size_t val2 = 0)
+	void set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
 		if (error::SUCCESS != err)
 		{
-			CODEC_TRACE("ERROR[%s]=%d %zu %zu %zu", name, static_cast<int>(err), val0, val1, val2);
+			CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
 
 			switch (err)
 			{
@@ -94,7 +93,7 @@ private:
 #ifdef MED_NO_EXCEPTION
 	friend char const* toString(error_context const&);
 
-	enum { MAX_PARAMS = 3 };
+	enum { MAX_PARAMS = 2 };
 
 	char const* m_name;
 	std::size_t m_param[MAX_PARAMS];
