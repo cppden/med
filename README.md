@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/cppden/med.svg?branch=master)](https://travis-ci.org/cppden/med)
+i[![Coverage Status](https://coveralls.io/repos/github/cppden/med/badge.svg?branch=master)](https://coveralls.io/github/cppden/med?branch=master)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](../master/LICENSE)
 
 # Meta-Encoder/Decoder

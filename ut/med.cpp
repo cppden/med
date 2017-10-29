@@ -2258,9 +2258,6 @@ TEST(encode, mseq_open)
 		auto* p = msg.push_back<FLD_UC>();
 		ASSERT_NE(nullptr, p);
 		p->set(37);
-		//check the inplace storage for unlimited field has only one slot
-		p = msg.push_back<FLD_UC>();
-		ASSERT_EQ(nullptr, p);
 		p = msg.push_back<FLD_UC>(ctx);
 		ASSERT_NE(nullptr, p);
 		p->set(38);
@@ -2297,6 +2294,56 @@ TEST(encode, mseq_open)
 	};
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
+}
+
+TEST(encode, alloc_fail)
+{
+	uint8_t buffer[1];
+	med::encoder_context<> ctx{ buffer };
+
+	MSEQ_OPEN msg;
+
+	//check the inplace storage for unlimited field has only one slot
+	auto* p = msg.push_back<FLD_UC>();
+	ASSERT_NE(nullptr, p);
+	p->set(37);
+
+#ifdef MED_NO_EXCEPTION
+	p = msg.push_back<FLD_UC>();
+	ASSERT_EQ(nullptr, p);
+	p = msg.push_back<FLD_UC>(ctx);
+	ASSERT_EQ(nullptr, p);
+#else
+	ASSERT_THROW(msg.push_back<FLD_UC>(), med::exception);
+	ASSERT_THROW(msg.push_back<FLD_UC>(ctx), med::exception);
+#endif
+}
+
+TEST(decode, alloc_fail)
+{
+	uint8_t const encoded[] = {
+		37, 38                          //<FLD_UC>
+		, 0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
+		, 0x21, 0x35, 0xDA
+		, 3, 0xDA, 0xBE, 0xEF             //<L, FLD_U24>
+		, 3, 0x22, 0xBE, 0xEF
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //<T=0x42, L, FLD_IP>
+		, 0,2, 0x76, 0x54,  0x98, 0x76    //<C16, FLD_W>
+		, 0x62, 4, 0x01, 0x02, 0x03, 0x04    //[T=0x51, L, FLD_DW]
+		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
+		, 7, 't', 'e', 's', 't', '.', 'i', 't'
+	};
+
+	med::decoder_context<> ctx{ encoded };
+
+	MSEQ_OPEN msg;
+
+#ifdef MED_NO_EXCEPTION
+	ASSERT_FALSE(decode(make_octet_decoder(ctx), msg));
+	EXPECT_EQ(med::error::OUT_OF_MEMORY, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+#else //!MED_NO_EXCEPTION
+	ASSERT_THROW(decode(make_octet_decoder(ctx), msg), med::exception);
+#endif //MED_NO_EXCEPTION
 }
 
 

@@ -50,6 +50,7 @@ char const* as_string(T const& buffer)
 	return sz;
 }
 
+/*
 char const* as_string(void const* p, std::size_t size)
 {
 	static char sz[1024];
@@ -66,6 +67,7 @@ char const* as_string(void const* p, std::size_t size)
 
 	return sz;
 }
+*/
 
 template <class FIELD, class MSG, class T>
 void check_seqof(MSG const& msg, std::initializer_list<T>&& values)

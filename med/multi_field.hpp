@@ -120,7 +120,9 @@ public:
 			m_tail = piv;
 			return &m_tail->value;
 		}
-
+#ifndef MED_NO_EXCEPTION
+		throw exception(error::OUT_OF_MEMORY, "No in-place space for IE '%s': %zu bytes", name<field_type>(), sizeof(field_type));
+#endif
 		return nullptr;
 	}
 
@@ -130,8 +132,11 @@ public:
 	field_type* push_back(CTX& ctx)
 	{
 		//try inplace 1st then external
-		field_type* pv = push_back();
-		if (!pv)
+		if (count() < inplace)
+		{
+			return push_back();
+		}
+		else
 		{
 			if (auto* piv = get_allocator_ptr(ctx)->template allocate<field_value>())
 			{
@@ -139,10 +144,10 @@ public:
 				m_tail->next = piv;
 				piv->next = nullptr;
 				m_tail = piv;
-				pv = &m_tail->value;
+				return &m_tail->value;
 			}
 		}
-		return pv;
+		return nullptr;
 	}
 
 private:
