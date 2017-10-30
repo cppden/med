@@ -186,7 +186,7 @@ struct seq_dec_imp<std::enable_if_t<
 			{
 				CODEC_TRACE("C[%s]#%zu", name<IE>(), ie.count());
 				auto* field = ie.push_back(func);
-				MED_CHECK_FAIL(field || !med::decode(func, *field, unexp));
+				MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 			}
 			while (typename IE::condition{}(to));
 

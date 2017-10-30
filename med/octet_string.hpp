@@ -11,7 +11,7 @@ Distributed under the MIT License
 
 #include <utility>
 
-#include "debug.hpp"
+#include "multi_field.hpp"
 
 namespace med {
 
