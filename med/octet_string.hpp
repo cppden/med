@@ -12,7 +12,6 @@ Distributed under the MIT License
 #include <utility>
 #include <cstring>
 
-#include "ie.hpp"
 
 namespace med {
 

@@ -425,6 +425,7 @@ struct PROTO : med::choice< HDR<8>
 {
 };
 
+#if 1
 TEST(encode, seq_ok)
 {
 	PROTO proto;
@@ -502,7 +503,9 @@ TEST(encode, seq_ok)
 		//FLD_DW* pf = msg.field(); //invalid access
 	}
 }
+#endif
 
+#if 1
 TEST(encode, seq_fail)
 {
 	PROTO proto;
@@ -656,7 +659,6 @@ TEST(encode, mseq_ok)
 		//FLD_DW* pf = msg.field(); //invalid access
 	}
 }
-
 
 TEST(encode, mseq_fail)
 {
@@ -2224,19 +2226,19 @@ TEST(placeholder, length)
 		}
 	}
 }
+#endif
 
-
+#if 1
 //support of 'unlimited' sequence-ofs
 //NOTE: declare a message which can't be decoded
 struct MSEQ_OPEN : med::sequence<
-	M< FLD_UC, med::inf >,                        //<V>*[1,*)
-	M< T<0x21>, FLD_U16, med::min<2>, med::inf >, //<TV>*[2,*)
-	M< L, FLD_U24, med::inf >,                    //<LV>*[1,*)
-	M< T<0x42>, L, FLD_IP, med::inf >,            //<TLV>(fixed)*[1,*)
-	M< CNT, FLD_W, med::inf >,                    //C<V>*[1,*)
-	O< T<0x62>, L, FLD_DW, med::inf >,            //[TLV]*[0,*)
-	//O< T<0x80>, CNT, SEQOF_3<1>, med::inf >,      //T[CV]*[0,*)
-	O< L, VFLD1, med::inf >                       //[LV(var)]*[0,*) till EoF
+	M< T<0x21>, FLD_U16, med::min<2>, med::inf >,  //<TV>*[2,*)
+	M< L, FLD_U24, med::inf >,                     //<LV>*[1,*)
+	M< T<0x42>, L, FLD_IP, med::inf >,             //<TLV>(fixed)*[1,*)
+	M< CNT, FLD_W, med::inf >,                     //C<V>*[1,*)
+	O< T<0x62>, L, FLD_DW, med::inf >,             //[TLV]*[0,*)
+	//O< T<0x80>, CNT, SEQOF_3<1>, med::inf >,     //T[CV]*[0,*)
+	O< L, VFLD1, med::inf >                        //[LV(var)]*[0,*) till EoF
 >
 {
 };
@@ -2248,22 +2250,19 @@ TEST(encode, mseq_open)
 	med::encoder_context<> ctx{ buffer };
 
 	MSEQ_OPEN msg;
-	static_assert(msg.arity<FLD_UC>() == med::inf(), "");
 	static_assert(msg.arity<FLD_U16>() == med::inf(), "");
 	static_assert(msg.arity<FLD_U24>() == med::inf(), "");
 	static_assert(msg.arity<FLD_IP>() == med::inf(), "");
 	static_assert(msg.arity<FLD_W>() == med::inf(), "");
 
 	{
-		auto* p = msg.push_back<FLD_UC>();
+		auto* p = msg.push_back<FLD_U16>();
 		ASSERT_NE(nullptr, p);
-		p->set(37);
-		p = msg.push_back<FLD_UC>(ctx);
+		p->set(0x35D9);
+		p = msg.push_back<FLD_U16>(ctx);
 		ASSERT_NE(nullptr, p);
-		p->set(38);
+		p->set(0x35DA);
 	}
-	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-	msg.push_back<FLD_U16>(ctx)->set(0x35DA);
 	msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
 	msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
 	msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
@@ -2281,8 +2280,7 @@ TEST(encode, mseq_open)
 	encode(make_octet_encoder(ctx), msg);
 #endif
 	uint8_t const encoded[] = {
-		37, 38                          //<FLD_UC>
-		, 0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
+		  0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
 		, 0x21, 0x35, 0xDA
 		, 3, 0xDA, 0xBE, 0xEF             //<L, FLD_U24>
 		, 3, 0x22, 0xBE, 0xEF
@@ -2304,26 +2302,25 @@ TEST(encode, alloc_fail)
 	MSEQ_OPEN msg;
 
 	//check the inplace storage for unlimited field has only one slot
-	auto* p = msg.push_back<FLD_UC>();
+	auto* p = msg.push_back<FLD_U24>();
 	ASSERT_NE(nullptr, p);
-	p->set(37);
+	p->set(1);
 
 #ifdef MED_NO_EXCEPTION
-	p = msg.push_back<FLD_UC>();
+	p = msg.push_back<FLD_U24>();
 	ASSERT_EQ(nullptr, p);
-	p = msg.push_back<FLD_UC>(ctx);
+	p = msg.push_back<FLD_U24>(ctx);
 	ASSERT_EQ(nullptr, p);
 #else
-	ASSERT_THROW(msg.push_back<FLD_UC>(), med::exception);
-	ASSERT_THROW(msg.push_back<FLD_UC>(ctx), med::exception);
+	ASSERT_THROW(msg.push_back<FLD_U24>(), med::exception);
+	ASSERT_THROW(msg.push_back<FLD_U24>(ctx), med::exception);
 #endif
 }
 
 TEST(decode, alloc_fail)
 {
 	uint8_t const encoded[] = {
-		37, 38                          //<FLD_UC>
-		, 0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
+		  0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
 		, 0x21, 0x35, 0xDA
 		, 3, 0xDA, 0xBE, 0xEF             //<L, FLD_U24>
 		, 3, 0x22, 0xBE, 0xEF
@@ -2345,7 +2342,7 @@ TEST(decode, alloc_fail)
 	ASSERT_THROW(decode(make_octet_decoder(ctx), msg), med::exception);
 #endif //MED_NO_EXCEPTION
 }
-
+#endif
 
 //customized print of container
 template <int I>

@@ -9,8 +9,8 @@ Distributed under the MIT License
 
 #pragma once
 
-#include "ie.hpp"
 #include "accessor.hpp"
+#include "multi_field.hpp"
 
 namespace med {
 

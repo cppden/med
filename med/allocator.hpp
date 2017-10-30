@@ -10,6 +10,8 @@ Distributed under the MIT License
 #pragma once
 
 #include <memory>
+
+#include "name.hpp"
 #include "error_context.hpp"
 
 namespace med {

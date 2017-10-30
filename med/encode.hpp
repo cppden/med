@@ -11,7 +11,6 @@ Distributed under the MIT License
 
 #include <utility>
 
-#include "ie.hpp"
 #include "error.hpp"
 #include "optional.hpp"
 #include "snapshot.hpp"

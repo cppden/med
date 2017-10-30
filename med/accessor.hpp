@@ -23,14 +23,14 @@ struct access
 	template <class R>
 	static auto& as_mandatory(R&& ret)
 	{
-		static_assert(!std::is_same<field_proxy<T const>, R>(), "ACCESSING OPTIONAL NOT BY POINTER");
+		static_assert(!std::is_same<T const*, R>(), "ACCESSING OPTIONAL NOT BY POINTER");
 		return ret;
 	}
 
 	template <class R>
 	static auto as_optional(R&& ret)
 	{
-		static_assert(std::is_same<field_proxy<T const>, R>(), "ACCESSING MANDATORY NOT BY REFERENCE");
+		static_assert(std::is_same<T const*, R>(), "ACCESSING MANDATORY NOT BY REFERENCE");
 		return ret;
 	}
 };

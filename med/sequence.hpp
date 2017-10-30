@@ -9,7 +9,6 @@ Distributed under the MIT License
 
 #pragma once
 
-#include "ie.hpp"
 #include "state.hpp"
 #include "container.hpp"
 #include "encode.hpp"

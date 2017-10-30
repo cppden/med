@@ -11,7 +11,7 @@ Distributed under the MIT License
 
 #include <type_traits>
 
-#include "ie.hpp"
+#include "ie_type.hpp"
 #include "value_traits.hpp"
 
 

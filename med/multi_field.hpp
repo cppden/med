@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include <iterator>
+#include <limits>
 
 #include "allocator.hpp"
 #include "field.hpp"
@@ -17,12 +18,39 @@ Distributed under the MIT License
 
 namespace med {
 
+template <std::size_t MIN>
+struct min : std::integral_constant<std::size_t, MIN> {};
 
-template <class FIELD, std::size_t MIN, std::size_t MAX>
-class multi_field_t
+template <std::size_t MAX>
+struct max : std::integral_constant<std::size_t, MAX> {};
+
+template <std::size_t MAX>
+struct pmax : std::integral_constant<std::size_t, MAX> {};
+
+using inf = pmax< std::numeric_limits<std::size_t>::max() >;
+
+template <std::size_t N>
+struct arity : std::integral_constant<std::size_t, N> {};
+
+
+namespace {
+
+template <std::size_t MIN, class CMAX>
+struct get_inplace;
+
+template <std::size_t MIN, std::size_t MAX>
+struct get_inplace<MIN, max<MAX>> : std::integral_constant<std::size_t, MAX> {};
+
+template <std::size_t MIN, std::size_t MAX>
+struct get_inplace<MIN, pmax<MAX>> : std::integral_constant<std::size_t, MIN> {};
+
+}
+
+template <class FIELD, std::size_t MIN, class CMAX>
+class multi_field
 {
 	static_assert(MIN > 0, "MIN SHOULD BE GREATER ZERO");
-	static_assert(MAX >= MIN, "MAX SHOULD BE GREATER OR EQUAL TO MIN");
+	static_assert(CMAX::value >= MIN, "MAX SHOULD BE GREATER OR EQUAL TO MIN");
 	//static_assert(MIN <= INPLACE && INPLACE <= MAX, "INPLACE SHOULD BE BETWEEN MIN AND MAX");
 	static_assert(is_field_v<FIELD>, "FIELD IS REQUIRED");
 
@@ -39,11 +67,11 @@ public:
 	enum bounds : std::size_t
 	{
 		min     = MIN,
-		max     = MAX,
-		inplace = (MIN == MAX || sizeof(FIELD) < (16*1024/MAX)) ? MAX : MIN,
+		max     = CMAX::value,
+		inplace = get_inplace<MIN, CMAX>::value,
 	};
 
-	multi_field_t() = default;
+	multi_field() = default;
 
 private:
 	template <class T>
@@ -151,8 +179,8 @@ public:
 	}
 
 private:
-	multi_field_t(multi_field_t const&) = delete;
-	multi_field_t& operator= (multi_field_t const&) = delete;
+	multi_field(multi_field const&) = delete;
+	multi_field& operator= (multi_field const&) = delete;
 
 	field_value  m_fields[inplace];
 	std::size_t  m_count {0};
@@ -160,14 +188,14 @@ private:
 };
 
 
-template <class TAG, class VAL, std::size_t MIN, std::size_t MAX>
-struct multi_tag_value_t : multi_field_t<VAL, MIN, MAX>, tag_t<TAG>
+template <class TAG, class VAL, std::size_t MIN, class CMAX>
+struct multi_tag_value : multi_field<VAL, MIN, CMAX>, tag_t<TAG>
 {
 	using ie_type = IE_TV;
 };
 
-template <class LEN, class VAL, std::size_t MIN, std::size_t MAX>
-struct multi_length_value_t : multi_field_t<VAL, MIN, MAX>, LEN
+template <class LEN, class VAL, std::size_t MIN, class CMAX>
+struct multi_length_value : multi_field<VAL, MIN, CMAX>, LEN
 {
 	using ie_type = IE_LV;
 };

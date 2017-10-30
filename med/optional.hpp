@@ -9,7 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
-#include "ie.hpp"
+#include "multi_field.hpp"
 #include "length.hpp"
 #include "count.hpp"
 
@@ -50,7 +50,20 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD>>
-> : multi_field_t<FIELD, 1, MAX>, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, optional_t
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class FIELD, std::size_t MAX>
+struct optional<
+	FIELD,
+	pmax<MAX>,
+	void,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD>>
+> : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -80,7 +93,21 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_condition_v<CONDITION>>
-> : multi_field_t<FIELD, 1, MAX>, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, optional_t
+{
+	using condition = CONDITION;
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class FIELD, std::size_t MAX, class CONDITION>
+struct optional<
+	FIELD,
+	pmax<MAX>,
+	CONDITION,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_condition_v<CONDITION>>
+> : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	using condition = CONDITION;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -95,7 +122,21 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_condition_v<CONDITION>>
-> : multi_field_t<FIELD, 1, MAX>, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, optional_t
+{
+	using condition = CONDITION;
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class FIELD, class CONDITION, std::size_t MAX>
+struct optional<
+	FIELD,
+	CONDITION,
+	pmax<MAX>,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_condition_v<CONDITION>>
+> : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	using condition = CONDITION;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -113,7 +154,20 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
-> : multi_field_t<FIELD, 1, MAX>, COUNTER, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, COUNTER, optional_t
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class COUNTER, class FIELD, std::size_t MAX>
+struct optional<
+	COUNTER,
+	FIELD,
+	pmax<MAX>,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
+> : multi_field<FIELD, 1, pmax<MAX>>, COUNTER, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -127,7 +181,21 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
-> : multi_field_t<FIELD, 1, MAX>, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, optional_t
+{
+	using count_getter = COUNTER;
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class FIELD, std::size_t MAX, class COUNTER>
+struct optional<
+	FIELD,
+	pmax<MAX>,
+	COUNTER,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
+> : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	using count_getter = COUNTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -142,7 +210,22 @@ struct optional<
 	COUNTER,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
-> : multi_field_t<FIELD, MIN, MAX>, optional_t
+> : multi_field<FIELD, MIN, max<MAX>>, optional_t
+{
+	using count_getter = COUNTER;
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+};
+
+template <class FIELD, std::size_t MIN, std::size_t MAX, class COUNTER>
+struct optional<
+	FIELD,
+	min<MIN>,
+	pmax<MAX>,
+	COUNTER,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
+> : multi_field<FIELD, MIN, pmax<MAX>>, optional_t
 {
 	using count_getter = COUNTER;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -158,7 +241,21 @@ struct optional<
 	max<MAX>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
-> : multi_field_t<FIELD, MIN, MAX>, COUNTER, optional_t
+> : multi_field<FIELD, MIN, max<MAX>>, COUNTER, optional_t
+{
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+};
+
+template <class COUNTER, class FIELD, std::size_t MIN, std::size_t MAX>
+struct optional<
+	COUNTER,
+	FIELD,
+	min<MIN>,
+	pmax<MAX>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
+> : multi_field<FIELD, MIN, pmax<MAX>>, COUNTER, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
@@ -188,7 +285,20 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
-> : multi_tag_value_t<TAG, FIELD, 1, MAX>, optional_t
+> : multi_tag_value<TAG, FIELD, 1, max<MAX>>, optional_t
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class TAG, class FIELD, std::size_t MAX>
+struct optional<
+	TAG,
+	FIELD,
+	pmax<MAX>,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
+> : multi_tag_value<TAG, FIELD, 1, pmax<MAX>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -202,7 +312,7 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
-> : multi_tag_value_t<TAG, FIELD, NUM, NUM>, optional_t
+> : multi_tag_value<TAG, FIELD, NUM, max<NUM>>, optional_t
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -216,7 +326,21 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tagged_field_v<FIELD>>
-> : multi_field_t<FIELD, MIN, MAX>, optional_t
+> : multi_field<FIELD, MIN, max<MAX>>, optional_t
+{
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+};
+
+template <class FIELD, std::size_t MIN, std::size_t MAX>
+struct optional<
+	FIELD,
+	min<MIN>,
+	pmax<MAX>,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_tagged_field_v<FIELD>>
+> : multi_field<FIELD, MIN, pmax<MAX>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
@@ -231,7 +355,7 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tagged_field_v<FIELD>>
-> : multi_field_t<FIELD, NUM, NUM>, optional_t
+> : multi_field<FIELD, NUM, max<NUM>>, optional_t
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -259,7 +383,7 @@ struct optional<
 	arity<NUM>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, NUM, NUM>, optional_t
+> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, NUM, max<NUM>>, optional_t
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -272,7 +396,20 @@ struct optional<
 	max<MAX>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, 1, MAX>, optional_t
+> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, 1, max<MAX>>, optional_t
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class TAG, class LEN, class FIELD, std::size_t MAX>
+struct optional<
+	TAG,
+	LEN,
+	FIELD,
+	pmax<MAX>,
+	max<1>,
+	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
+> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, 1, pmax<MAX>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -285,7 +422,21 @@ struct optional<
 	min<MIN>,
 	max<MAX>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value_t<TAG, length_value_t<LEN, FIELD>, MIN, MAX>, optional_t
+> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, MIN, max<MAX>>, optional_t
+{
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+};
+
+template <class TAG, class LEN, class FIELD, std::size_t MIN, std::size_t MAX>
+struct optional<
+	TAG,
+	LEN,
+	FIELD,
+	min<MIN>,
+	pmax<MAX>,
+	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
+> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, MIN, pmax<MAX>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
@@ -316,7 +467,20 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_length_value_t<LEN, FIELD, 1, MAX>, optional_t
+> : multi_length_value<LEN, FIELD, 1, max<MAX>>, optional_t
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+template <class LEN, class FIELD, std::size_t MAX>
+struct optional<
+	LEN,
+	FIELD,
+	pmax<MAX>,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
+> : multi_length_value<LEN, FIELD, 1, pmax<MAX>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -329,7 +493,21 @@ struct optional<
 	max<MAX>,
 	max<1>,
 	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_length_value_t<LEN, FIELD, MIN, MAX>, optional_t
+> : multi_length_value<LEN, FIELD, MIN, max<MAX>>, optional_t
+{
+	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
+};
+
+template <class LEN, class FIELD,  std::size_t MIN, std::size_t MAX>
+struct optional<
+	LEN,
+	FIELD,
+	min<MIN>,
+	pmax<MAX>,
+	max<1>,
+	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
+> : multi_length_value<LEN, FIELD, MIN, pmax<MAX>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
