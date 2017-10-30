@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "debug.hpp"
 
 namespace med {
 

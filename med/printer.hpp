@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 
+#include "debug.hpp"
 #include "encode.hpp"
 #include "error.hpp"
 #include "name.hpp"

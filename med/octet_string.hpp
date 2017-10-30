@@ -10,8 +10,8 @@ Distributed under the MIT License
 #pragma once
 
 #include <utility>
-#include <cstring>
 
+#include "debug.hpp"
 
 namespace med {
 

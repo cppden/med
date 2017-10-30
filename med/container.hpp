@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "debug.hpp"
 #include "accessor.hpp"
 #include "multi_field.hpp"
 

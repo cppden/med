@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include <utility>
 
+#include "debug.hpp"
 #include "state.hpp"
 #include "name.hpp"
 #include "ie_type.hpp"
