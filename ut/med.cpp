@@ -141,7 +141,7 @@ struct MSG_SEQ : med::sequence<
 };
 
 struct FLD_CHO : med::choice< HDR<8>
-	, med::tag<C<0x01>, FLD_U8>
+	, med::tag<C<0x00>, FLD_U8>
 	, med::tag<C<0x02>, FLD_U16>
 	, med::tag<C<0x04>, FLD_IP>
 >
@@ -629,7 +629,7 @@ TEST(encode, mseq_ok)
 		, 0x51, 0x12, 0x34, 0x56, 0x78
 		, 0,1, 1, 0x21, 0,2 //1*<C16, SEQOF_3<u8, 21h=u16>
 		, 0xE2 //[FLD_TN]
-		, 0x60, 2, 1, 33 //[T=0x60, L, FLD_CHO]
+		, 0x60, 2, 0, 33 //[T=0x60, L, FLD_CHO]
 		, 0x61, 4 //[T=0x61, L, SEQOF_1]
 			, 0x12,0x23, 0x34,0x45 //2*<FLD_W>
 		, 0x62, 7 //[T=0x62, L, SEQOF_2]
@@ -1430,7 +1430,7 @@ TEST(decode, mseq_ok)
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 		, 0x51, 0x12, 0x34, 0x56, 0x78
 		, 0,2, 3, 0x21, 0,4,  5, 0x21, 0,6
-		, 0x60, 2, 1, 33 //O< T<0x60>, L, FLD_CHO >
+		, 0x60, 2, 0, 33 //O< T<0x60>, L, FLD_CHO >
 		, 0x61, 4 //O< T<0x61>, L, SEQOF_1 >
 			, 0x12,0x23, 0x34,0x45 //M< FLD_W, med::max<3> >
 		, 0x62, 7 //O< T<0x62>, L, SEQOF_2, med::max<2> >
@@ -2342,6 +2342,64 @@ TEST(decode, alloc_fail)
 	ASSERT_THROW(decode(make_octet_decoder(ctx), msg), med::exception);
 #endif //MED_NO_EXCEPTION
 }
+#endif
+
+#if 1
+//setter with length calc
+struct SHDR : med::value<uint8_t>
+{
+	template <class FLD>
+	struct setter
+	{
+		template <class T>
+		void operator()(T& ies) const
+		{
+			auto const qty = med::field_count(ies.template as<FLD>());
+			static_cast<SHDR&>(ies).set(qty);
+		}
+	};
+
+};
+struct SFLD : med::sequence<
+	M<SHDR, SHDR::setter<FLD_U16>>,
+	M<FLD_U16>
+>{};
+struct SMFLD : med::sequence<
+	M<SHDR, SHDR::setter<FLD_U8>>,
+	M<FLD_U8, med::max<7>>
+>{};
+struct SLEN : med::sequence<
+	M<L, SFLD>,
+	M<L, SMFLD>
+>
+{
+};
+
+TEST(encode, setter_with_length)
+{
+	SLEN msg;
+	msg.ref<SFLD>().ref<FLD_U16>().set(0x55AA);
+	for (std::size_t i = 0; i < 7; ++i)
+	{
+		msg.ref<SMFLD>().push_back<FLD_U8>()->set(i);
+	}
+
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
+#ifdef MED_NO_EXCEPTION
+	if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+#else
+	encode(make_octet_encoder(ctx), msg);
+#endif
+	uint8_t const encoded[] = {
+		3, 1, 0x55, 0xAA,
+		8, 7, 0,1,2,3,4,5,6
+	};
+	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded, buffer));
+}
+
 #endif
 
 //customized print of container

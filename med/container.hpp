@@ -128,7 +128,7 @@ struct container_for_imp<std::enable_if_t<!is_multi_field_v<IE>>, IE, IES...>
 	static inline std::size_t calc_length(TO const& to)
 	{
 		IE const& ie = to;
-		return (ie.ref_field().is_set() ? med::get_length<IE>(ie.ref_field()) : 0)
+		return (has_setter_type_v<IE> || ie.ref_field().is_set() ? get_length<IE>(ie.ref_field()) : 0)
 			+ container_for<IES...>::calc_length(to);
 	}
 };
@@ -142,7 +142,7 @@ struct container_for_imp<std::enable_if_t<is_multi_field_v<IE>>, IE, IES...>
 		IE const& ie = to;
 		CODEC_TRACE("calc_length[%s]*", name<IE>());
 		std::size_t len = 0;
-		for (auto& v : ie) { len += med::get_length<IE>(v); }
+		for (auto& v : ie) { len += get_length<IE>(v); }
 		return len + container_for<IES...>::calc_length(to);
 	}
 };
