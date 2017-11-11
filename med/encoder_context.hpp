@@ -35,11 +35,12 @@ private:
 public:
 	enum { snapshot_size = sizeof(snapshot_s) };
 
+	//TODO: allocate from front and back to get rid of alloc_size and snap_data
 	encoder_context(void* data, std::size_t size, std::size_t alloc_size = inf(), void* snap_data = nullptr, std::size_t snap_size = 0)
 		: m_allocator{ m_errCtx }
 		, m_max_snapshots{ static_cast<uint16_t>(snap_size/sizeof(snapshot_s)) }
 	{
-		//NOTE: max floored above is corrent since alignment less than sizeof
+		//NOTE: max floored above is correct since alignment less than sizeof
 		if (std::align(alignof(snapshot_s), sizeof(snapshot_s), snap_data, snap_size))
 		{
 			m_snapshot = static_cast<snapshot_s*>(snap_data);

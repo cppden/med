@@ -1,6 +1,7 @@
 #include "med.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
+#include "update.hpp"
 #include "printer.hpp"
 #include "encoder_context.hpp"
 #include "decoder_context.hpp"
@@ -97,7 +98,7 @@ struct FLD_DW : med::value<uint32_t>
 
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, std::vector<uint8_t>>
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, boost::container::static_vector<uint8_t, 10>>
-struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>, med::with_snapshot
+struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>//, med::with_snapshot
 {
 	static constexpr char const* name() { return "url"; }
 };
@@ -2399,8 +2400,52 @@ TEST(encode, setter_with_length)
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
 }
+#endif
+
+#if 1
+//update
+struct UFLD : med::value<uint32_t>, med::with_snapshot
+{
+	static constexpr char const* name() { return "Updatalbe-Field"; }
+};
+struct UMSG : med::sequence<
+	M<T<7>, L, UFLD>
+>
+{
+};
+
+TEST(update, fixed)
+{
+	UMSG msg;
+	auto& ufld = msg.ref<UFLD>();
+	ufld.set(0x12345678);
+
+	uint8_t buffer[1024];
+	uint8_t snap[32];
+	med::encoder_context<> ctx{ buffer, snap };
+	auto encoder = make_octet_encoder(ctx);
+
+#ifdef MED_NO_EXCEPTION
+	if (!encode(encoder, msg)) { FAIL() << toString(ctx.error_ctx()); }
+#else
+	encode(encoder, msg);
+#endif
+	uint8_t const encoded[] = {7, 4, 0x12,0x34,0x56,0x78};
+	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded, buffer));
+
+	ufld.set(0x3456789A);
+#ifdef MED_NO_EXCEPTION
+	if (!med::update(encoder, ufld)) { FAIL() << toString(ctx.error_ctx()); }
+#else
+	med::update(encoder, ufld);
+#endif
+	uint8_t const updated[] = {7, 4, 0x34,0x56,0x78,0x9A};
+	EXPECT_TRUE(Matches(updated, buffer));
+}
 
 #endif
+
 
 //customized print of container
 template <int I>

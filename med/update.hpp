@@ -23,7 +23,7 @@ inline MED_RESULT update(FUNC&& func, IE const& ie)
 	static_assert(has_ie_type<IE>(), "IE IS EXPECTED");
 	CODEC_TRACE("update %s", name<typename IE::ie_type>());
 	return func(SET_STATE{}, ie)
-		MED_AND sl::encode<IE>(func, ie, typename IE::ie_type{});
+		MED_AND sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
 }
 
 }	//end: namespace med
