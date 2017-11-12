@@ -366,12 +366,12 @@ struct seq_dec_imp<
 		typename IE::counter_type counter_ie;
 		MED_CHECK_FAIL(med::decode(func, counter_ie));
 		auto count = counter_ie.get_encoded();
+		CODEC_TRACE("[%s] = %zu", name<IE>(), count);
 		MED_CHECK_FAIL(check_arity(func, ie, count));
 		while (count--)
 		{
-			CODEC_TRACE("[%s]*%zu", name<IE>(), count);
-
 			auto* field = ie.push_back(func);
+			CODEC_TRACE("#%zu = %p", count, (void*)field);
 			MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 		}
 

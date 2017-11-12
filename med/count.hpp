@@ -42,8 +42,14 @@ inline MED_RESULT check_arity(FUNC& func, IE const&, std::size_t count)
 {
 	if (count >= IE::min)
 	{
-		if (count <= IE::max) MED_RETURN_SUCCESS;
-		return func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, count);
+		if (count <= IE::max)
+		{
+			MED_RETURN_SUCCESS;
+		}
+		else
+		{
+			return func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, count);
+		}
 	}
 	else
 	{

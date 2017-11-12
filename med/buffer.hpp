@@ -87,7 +87,7 @@ public:
 			m_buf->m_end = m_buf->begin() + size;
 			if (m_buf->end() > m_end)
 			{
-				CODEC_TRACE("INVALID END BEOYOND CURRENT BY %zd", m_buf->end() - m_end);
+				CODEC_TRACE("INVALID END ABOVE CURRENT BY %zd", m_buf->end() - m_end);
 				m_buf->m_end = m_end;
 				m_end = nullptr;
 			}
@@ -107,17 +107,17 @@ public:
 	};
 
 
-	void reset()                            { m_state.reset(get_start()); }
+	void reset()                           { m_state.reset(get_start()); }
 
 	void reset(pointer data, std::size_t size)
 	{
 		m_start = data;
-		m_end   = get_start() + size;
-		reset();
+		m_state.reset(data);
+		end(data + size);
 	}
 
-	state_type get_state() const            { return m_state; }
-	void set_state(state_type const& st)    { m_state = st; }
+	state_type get_state() const           { return m_state; }
+	void set_state(state_type const& st)   { m_state = st; }
 
 	bool push_state()
 	{
@@ -146,11 +146,10 @@ public:
 		return false;
 	}
 
-
-	pointer get_start() const               { return m_start; }
-	std::size_t get_offset() const          { return begin() - get_start(); }
-	std::size_t size() const                { return end() - begin(); }
-	bool empty() const                      { return begin() >= end(); }
+	pointer get_start() const              { return m_start; }
+	std::size_t get_offset() const         { return begin() - get_start(); }
+	std::size_t size() const               { return end() - begin(); }
+	bool empty() const                     { return begin() >= end(); }
 
 	pointer advance(int delta)
 	{
@@ -179,10 +178,18 @@ public:
 		return false;
 	}
 
-	pointer begin() const                   { return m_state.cursor; }
-	pointer end() const                     { return m_end; }
+	pointer begin() const                  { return m_state.cursor; }
+	pointer end() const                    { return m_end; }
 
-	auto push_size(std::size_t size)        { return size_state{this, size}; }
+	/**
+	 * Adjusts the end of buffer pointer
+	 * @details Used by allocator to adjust buffer space after allocation from back
+	 * @param p new end of buffer
+	 */
+	void end(pointer p)                    { m_end = p > begin() ? p : begin(); }
+//	void end(void* p)                      { m_end = p > begin() ? static_cast<pointer>(p) : begin(); }
+
+	auto push_size(std::size_t size)       { return size_state{this, size}; }
 
 #ifdef CODEC_TRACE_ENABLE
 	char const* toString() const

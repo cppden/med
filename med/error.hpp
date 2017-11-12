@@ -24,10 +24,4 @@ enum class error : uint8_t
 	OUT_OF_MEMORY,   //no space to allocate
 };
 
-enum class warning : uint8_t
-{
-	NONE = 0,
-	OVERFLOW, //insufficient snapshot storage
-};
-
 }	//end: namespace med

@@ -17,7 +17,7 @@ Distributed under the MIT License
 
 namespace med {
 
-template < class BUFFER = buffer<uint8_t*>, class ALLOCATOR = allocator >
+template < class BUFFER = buffer<uint8_t*>, class ALLOCATOR = allocator<false, BUFFER> >
 class encoder_context
 {
 public:
@@ -28,36 +28,22 @@ public:
 private:
 	struct snapshot_s
 	{
-		SNAPSHOT  snapshot;
-		state_t   state;
+		SNAPSHOT    snapshot;
+		state_t     state;
+		snapshot_s* next;
 	};
 
 public:
-	enum { snapshot_size = sizeof(snapshot_s) };
-
-	//TODO: allocate from front and back to get rid of alloc_size and snap_data
-	encoder_context(void* data, std::size_t size, std::size_t alloc_size = inf(), void* snap_data = nullptr, std::size_t snap_size = 0)
-		: m_allocator{ m_errCtx }
-		, m_max_snapshots{ static_cast<uint16_t>(snap_size/sizeof(snapshot_s)) }
+	encoder_context(void* data, std::size_t size)
+		: m_buffer{ }
+		, m_allocator{ m_errCtx, m_buffer }
 	{
-		//NOTE: max floored above is correct since alignment less than sizeof
-		if (std::align(alignof(snapshot_s), sizeof(snapshot_s), snap_data, snap_size))
-		{
-			m_snapshot = static_cast<snapshot_s*>(snap_data);
-		}
-
-		reset(data, size, alloc_size);
+		reset(data, size);
 	}
 
 	template <typename T, std::size_t SIZE>
-	explicit encoder_context(T (&buf)[SIZE], std::size_t alloc_size = inf(), void* snap_data = nullptr, std::size_t snap_size = 0)
-		: encoder_context(buf, sizeof(buf), alloc_size, snap_data, snap_size)
-	{
-	}
-
-	template <typename T0, std::size_t SIZE, typename T1, std::size_t SNAPSIZE>
-	encoder_context(T0 (&buf)[SIZE], T1 (&snap_data)[SNAPSIZE], std::size_t alloc_size = inf())
-		: encoder_context(buf, sizeof(buf), alloc_size, snap_data, sizeof(snap_data))
+	explicit encoder_context(T (&buf)[SIZE])
+		: encoder_context(buf, sizeof(buf))
 	{
 	}
 
@@ -69,57 +55,45 @@ public:
 	explicit operator bool() const          { return static_cast<bool>(error_ctx()); }
 	allocator_type& get_allocator()         { return m_allocator; }
 
-	void reset(void* data, std::size_t size, std::size_t alloc_size = inf())
+	void reset(void* data, std::size_t size)
 	{
-		if (alloc_size)
-		{
-			if (size > alloc_size)
-			{
-				size -= alloc_size;
-			}
-			else //a wild guess option
-			{
-				size /= 2;
-				alloc_size = size;
-			}
-		}
-
-		m_allocator.reset(static_cast<uint8_t*>(data) + size, alloc_size);
+		get_allocator().reset(static_cast<uint8_t*>(data), size);
 		m_buffer.reset(static_cast<typename buffer_type::pointer>(data), size);
 
 		error_ctx().reset();
-		m_idx_snapshot = 0;
+		m_snapshot = nullptr;
 	}
 
 	void reset()
 	{
-		m_allocator.reset();
+		get_allocator().reset();
 		m_buffer.reset();
 
 		error_ctx().reset();
-		m_idx_snapshot = 0;
+		m_snapshot = nullptr;
 	}
 
+	/**
+	 * Stores the buffer snapshot
+	 * @param snap
+	 */
 	void snapshot(SNAPSHOT const& snap)
 	{
-		if (m_idx_snapshot < m_max_snapshots)
+		CODEC_TRACE("snapshot %p{%zu}", snap.id, snap.size);
+		if (snapshot_s* p = get_allocator().template allocate<snapshot_s>())
 		{
-			CODEC_TRACE("snapshot @%u/%u %p{%zu}", m_idx_snapshot, m_max_snapshots, snap.id, snap.size);
-			auto& ss = m_snapshot[m_idx_snapshot++];
-			ss.snapshot = snap;
-			ss.state = m_buffer.get_state();
-		}
-		else
-		{
-			CODEC_TRACE("WARNING: all %u slots used", m_max_snapshots);
-			error_ctx().set_warning(warning::OVERFLOW);
+			p->snapshot = snap;
+			p->state = m_buffer.get_state();
+
+			p->next = m_snapshot ? m_snapshot->next : nullptr;
+			m_snapshot = p;
 		}
 	}
 
 	class snap_s : public state_t
 	{
 	public:
-		operator std::size_t() const          { return m_length; }
+		bool validate_length(std::size_t s) const       { return m_length == s; }
 
 	private:
 		friend class encoder_context;
@@ -129,28 +103,32 @@ public:
 		std::size_t  m_length;
 	};
 
+	/**
+	 * Finds snapshot of the buffer state for the IE
+	 * @details Used in encoder to set the buffer state before updating
+	 * @param IE to retrieve its snapshot
+	 * @return snapshot or empty snapshot if not found
+	 */
 	template <class IE>
 	snap_s snapshot(IE const&) const
 	{
-		for (snapshot_s const& ss : *this)
+		static_assert(std::is_base_of<with_snapshot, IE>(), "IE WITH med::with_snapshot EXPECTED");
+
+		for (snapshot_s const* p = m_snapshot; p != nullptr; p = p->next)
 		{
-			if (ss.snapshot.id == snapshot_id<IE>) { return snap_s{ss.state, ss.snapshot.size}; }
+			if (p->snapshot.id == snapshot_id<IE>) { return snap_s{p->state, p->snapshot.size}; }
 		}
 		return snap_s{};
 	}
 
 private:
 	using const_iterator = snapshot_s const*;
-	const_iterator begin() const              { return m_snapshot; }
-	const_iterator end() const                { return begin() + m_idx_snapshot; }
 
 	error_context  m_errCtx;
 	buffer_type    m_buffer;
 	allocator_type m_allocator;
 
 	snapshot_s*    m_snapshot{ nullptr };
-	uint16_t const m_max_snapshots;
-	uint16_t       m_idx_snapshot{ 0 };
 };
 
 } //namespace med

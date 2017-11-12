@@ -153,7 +153,7 @@ public:
 	}
 
 	//state
-	constexpr void operator() (med::SNAPSHOT const&) { }
+	constexpr void operator() (SNAPSHOT const&) { }
 	//errors
 	constexpr MED_RESULT operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { MED_RETURN_SUCCESS; }
 	//length encoder
@@ -248,7 +248,7 @@ public:
 	}
 
 	//state
-	constexpr void operator() (med::SNAPSHOT const&) { }
+	constexpr void operator() (SNAPSHOT const&) { }
 	//errors
 	constexpr MED_RESULT operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { MED_RETURN_SUCCESS; }
 	//length encoder

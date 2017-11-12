@@ -1,6 +1,6 @@
 /**
 @file
-error context to hold current error/warning codes and their related arguments
+error context to hold current error codes and their related arguments
 
 @copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
@@ -23,11 +23,11 @@ class error_context
 {
 public:
 #ifdef MED_NO_EXCEPTION
-	explicit operator bool() const          { return success(); }
-	bool success() const                    { return error::SUCCESS == m_error; }
-	error get_error() const                 { return m_error; }
+	explicit operator bool() const         { return success(); }
+	bool success() const                   { return error::SUCCESS == m_error; }
+	error get_error() const                { return m_error; }
 
-	void reset()                            { m_error = error::SUCCESS; }
+	void reset()                           { m_error = error::SUCCESS; }
 	bool set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
 		CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
@@ -38,7 +38,7 @@ public:
 		return success();
 	}
 #else //!MED_NO_EXCEPTION
-	static constexpr void reset()           { }
+	static constexpr void reset()          { }
 	void set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
 		if (error::SUCCESS != err)
@@ -76,9 +76,6 @@ public:
 	}
 #endif //MED_NO_EXCEPTION
 
-	warning get_warning() const             { return m_warning; }
-	void set_warning(warning warn)          { m_warning = warn; }
-
 	//TODO: include buffer offset in all errors
 	MED_RESULT spaceError(char const* name, std::size_t bits_left, std::size_t requested)
 		{ return set_error(error::OVERFLOW, name, bits_left, requested); }
@@ -99,7 +96,6 @@ private:
 	std::size_t m_param[MAX_PARAMS];
 	error       m_error{ error::SUCCESS };
 #endif //MED_NO_EXCEPTION
-	warning     m_warning{ warning::NONE };
 };
 
 #ifdef MED_NO_EXCEPTION
@@ -111,7 +107,7 @@ inline char const* toString(error_context const& ec)
 	switch (ec.m_error)
 	{
 	case error::SUCCESS:
-		return "";
+		return nullptr;
 
 	case error::OVERFLOW:
 		if (ec.m_param[1])

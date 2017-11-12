@@ -12,8 +12,8 @@ Distributed under the MIT License
 #include <iterator>
 #include <limits>
 
-#include "allocator.hpp"
 #include "field.hpp"
+#include "debug.hpp"
 
 
 namespace med {
@@ -142,6 +142,7 @@ public:
 	{
 		if (count() < inplace)
 		{
+			CODEC_TRACE("inplace multi-%s", name<field_type>());
 			auto* piv = m_fields + count();
 			if (m_count++) { m_tail->next = piv; }
 			piv->next = nullptr;
@@ -166,6 +167,7 @@ public:
 		}
 		else
 		{
+			CODEC_TRACE("allocating multi-%s", name<field_type>());
 			if (auto* piv = get_allocator_ptr(ctx)->template allocate<field_value>())
 			{
 				++m_count;

@@ -16,34 +16,94 @@ Distributed under the MIT License
 
 namespace med {
 
-class allocator
+/**
+ * Aligns pointer for the type T incrementing initial address if needed
+ * @param p initial possibly unaligned pointer
+ */
+template <class T>
+constexpr void* forward_aligned(void* p) noexcept
+{
+	const auto uptr = reinterpret_cast<uintptr_t>(p);
+	return reinterpret_cast<void*>((uptr + alignof(T) - 1) & -alignof(T));
+}
+
+/**
+ * Returns pointer to place aligned type T before the given pointer
+ * @param p pointer to point after or to the end of T
+ */
+template <class T>
+constexpr void* backward_aligned(void* p) noexcept
+{
+	const auto uptr = reinterpret_cast<uintptr_t>(p) - sizeof(T);
+	return reinterpret_cast<void*>(uptr & -alignof(T));
+}
+
+namespace internal {
+
+class base_allocator
 {
 public:
-	explicit allocator(error_context& err)
-		: m_errCtx(err)
-	{}
+	/**
+	 * Resets to the current allocation buffer
+	 */
+	void reset() noexcept                  { m_begin = m_start; m_end = m_finish; }
 
-	void reset()                            { m_begin = m_start; }
-
-	void reset(void* data, std::size_t size)
+	/**
+	 * Resets to new allocation buffer
+	 * @param data start of allocation buffer
+	 * @param size size of allocation buffer
+	 */
+	void reset(void* data, std::size_t size) noexcept
 	{
 		m_start = static_cast<uint8_t*>(data);
-		m_end   = m_start ? m_start + size : m_start;
+		m_finish = m_start + (m_start ? size : 0);
 		reset();
 	}
 
 	template <typename T, std::size_t SIZE>
-	void reset(T (&data)[SIZE])             { reset(data, SIZE * sizeof(T)); }
+	void reset(T (&data)[SIZE]) noexcept   { reset(data, SIZE * sizeof(T)); }
 
+	std::size_t size() const noexcept      { return m_end > m_begin ? std::size_t(m_end - m_begin) : 0; }
+
+	uint8_t* begin()                       { return m_begin; }
+	uint8_t* end()                         { return m_end; }
+
+protected:
+	void begin(void* p)                    { m_begin = static_cast<uint8_t*>(p); }
+	void end(void* p)                      { m_end = static_cast<uint8_t*>(p); }
+
+private:
+	uint8_t*    m_begin {nullptr}; //current starting allocation space
+	uint8_t*    m_end {nullptr}; //the end of current allocation space
+	uint8_t*    m_start {nullptr}; //start of assigned allocation buffer
+	uint8_t*    m_finish {nullptr}; //end of assigned allocation buffer
+};
+
+} //end: namespace
+
+template <bool FORWARD, class BUFFER>
+class allocator;
+
+template <class BUFFER>
+class allocator<true, BUFFER> : public internal::base_allocator
+{
+public:
+	explicit allocator(error_context& err) noexcept
+		: m_errCtx(err)
+	{}
+
+	/**
+	 * Allocates T from the beginning of current free buffer space
+	 * @return pointer to instance of T or nullptr/throw when out of space
+	 */
 	template <class T>
 	T* allocate()
 	{
-		std::size_t sz = size();
-		void* p = m_begin;
-		if (std::align(alignof(T), sizeof(T), p, sz))
+		void* p = forward_aligned<T>(this->begin());
+		if (this->end() - static_cast<uint8_t*>(p) >= int(sizeof(T)))
 		{
 			T* result = new (p) T{};
-			m_begin = static_cast<uint8_t*>(p) + sizeof(T);
+			this->begin(result + 1);
 			return result;
 		}
 		m_errCtx.allocError(name<T>(), sizeof(T));
@@ -51,15 +111,42 @@ public:
 	}
 
 private:
-	std::size_t size() const
+	error_context&  m_errCtx;
+};
+
+template <class BUFFER>
+class allocator<false, BUFFER> : public internal::base_allocator
+{
+public:
+	//TODO: anything better than depending on buffer? pointer to end doesn't look better though...
+	explicit allocator(error_context& err, BUFFER& buf) noexcept
+		: m_buffer{ buf }
+		, m_errCtx{ err }
+	{}
+
+	/**
+	 * Allocates T from the back of current free buffer space
+	 * @return pointer to instance of T or nullptr/throw when out of space
+	 */
+	template <class T>
+	T* allocate()
 	{
-		return m_end > m_begin ? std::size_t(m_end - m_begin) : 0;
+		void* p = backward_aligned<T>(this->end());
+		if (this->begin() <= p)
+		{
+			T* result = new (p) T{};
+			this->end(p);
+			//also need to adjust the space left to the buffer
+			m_buffer.end(static_cast<typename BUFFER::pointer>(p));
+			return result;
+		}
+		m_errCtx.allocError(name<T>(), sizeof(T));
+		return nullptr;
 	}
 
+private:
+	BUFFER&         m_buffer;
 	error_context&  m_errCtx;
-	uint8_t*        m_start {nullptr};
-	uint8_t*        m_begin {nullptr};
-	uint8_t*        m_end {nullptr};
 };
 
 

@@ -34,14 +34,20 @@ struct octet_encoder
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
-			if (ss == get_length(ie))
+			if (ss.validate_length(get_length(ie)))
 			{
 				ctx.buffer().set_state(ss);
 				MED_RETURN_SUCCESS;
 			}
-			return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), 0);
+			else
+			{
+				return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), 0);
+			}
 		}
-		return ctx.error_ctx().set_error(error::MISSING_IE, name<IE>(), 0);
+		else
+		{
+			return ctx.error_ctx().set_error(error::MISSING_IE, name<IE>(), 0);
+		}
 	}
 
 	MED_RESULT operator() (PUSH_STATE const&)           { return ctx.buffer().push_state(); }

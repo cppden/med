@@ -15,13 +15,24 @@ Distributed under the MIT License
 
 namespace med {
 
-template < class BUFFER = buffer<uint8_t const*>, class ALLOCATOR = allocator >
+template < class BUFFER = buffer<uint8_t const*>, class ALLOCATOR = allocator<true, BUFFER> >
 class decoder_context
 {
 public:
 	using allocator_type = ALLOCATOR;
 	using buffer_type = BUFFER;
+	using state_t = typename buffer_type::state_type;
 
+private:
+	//TODO: support during decode (possibly different with_snapshot types for encoding/decoding)
+	struct snapshot_s
+	{
+		SNAPSHOT    snapshot;
+		state_t     state;
+		snapshot_s* next;
+	};
+
+public:
 	decoder_context(void const* data, std::size_t size, void* alloc_data, std::size_t alloc_size)
 		: m_allocator{ m_errCtx }
 	{
@@ -67,14 +78,14 @@ public:
 
 	void reset(void const* data, std::size_t size)
 	{
-		m_allocator.reset();
+		get_allocator().reset();
 		buffer().reset(static_cast<typename buffer_type::pointer>(data), size);
 		error_ctx().reset();
 	}
 
 	void reset()
 	{
-		m_allocator.reset();
+		get_allocator().reset();
 		buffer().reset();
 		error_ctx().reset();
 	}
