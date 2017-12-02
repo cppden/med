@@ -1233,6 +1233,14 @@ TEST(decode, seq_ok)
 	vfld1 = msg->field();
 	ASSERT_EQ(1, msg->count<VFLD1>());
 	EQ_STRING_O(VFLD1, "test.this!");
+
+	//check clear
+	{
+		auto& r = proto.ref<MSG_SEQ>();
+		ASSERT_TRUE(r.is_set());
+		r.clear();
+		ASSERT_FALSE(r.is_set());
+	}
 }
 
 TEST(decode, seq_fail)

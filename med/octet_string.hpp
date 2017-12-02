@@ -135,6 +135,10 @@ public:
 	uint8_t* data()                                     { return m_data; }
 
 	void clear()                                        { m_is_set = false; }
+	//let external data to be set externally (risky but more efficient)
+	uint8_t* emplace()                                  { m_is_set = true; return data(); }
+
+	//copy external data
 	void assign(uint8_t const* beg_, uint8_t const* end_)
 	{
 		std::size_t const nsize = static_cast<std::size_t>(end_ - beg_);
@@ -185,6 +189,18 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 
 	void clear()                            { m_value.clear(); }
 
+	template <class T = VALUE>
+	decltype(std::declval<T>().resize(0)) resize(std::size_t new_size)
+	{
+		return m_value.resize(new_size);
+	}
+
+	template <class T = VALUE>
+	decltype(std::declval<T>().emplace()) emplace()
+	{
+		return m_value.emplace();
+	}
+
 	bool set(std::size_t len, void const* data) { return set_encoded(len, data); }
 
 	//NOTE: do not override!
@@ -210,6 +226,21 @@ protected:
 
 
 template <class VALUE = octets_var_extern, class = void, class = void> struct octet_string;
+
+//ASCII-printable string not zero-terminated
+template <class ...T>
+struct ascii_string : octet_string<T...>
+{
+	using base_t = octet_string<T...>;
+
+	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
+	template <std::size_t N>
+	void print(char (&sz)[N]) const
+	{
+		int const n = int(this->size());
+		std::snprintf(sz, sizeof(sz), "%*.*s", n, n, (char const*)(this->data()));
+	}
+};
 
 template <class VALUE>
 struct octet_string<VALUE, void, void> : octet_string_impl<0, std::numeric_limits<std::size_t>::max(), VALUE> {};
@@ -254,21 +285,5 @@ struct octet_string<octets_fix_intern<FIXED>, void, void> : octet_string_impl<FI
 };
 template <std::size_t MAX, std::size_t MIN>
 struct octet_string<octets_var_intern<MAX>, min<MIN>,void> : octet_string_impl<MIN, MAX, octets_var_intern<MAX>> {};
-
-//ASCII-printable string not zero-terminated
-template <class ...T>
-struct ascii_string : octet_string<T...>
-{
-	using base_t = octet_string<T...>;
-	//using base_t::set;
-
-	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
-	template <std::size_t N>
-	void print(char (&sz)[N]) const
-	{
-		int const n = int(this->size());
-		std::snprintf(sz, sizeof(sz), "%*.*s", n, n, (char const*)(this->data()));
-	}
-};
 
 }	//end: namespace med
