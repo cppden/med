@@ -148,14 +148,14 @@ template <class FUNC, class FIELD>
 std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
 inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-#ifdef MED_NO_EXCEPTION
-	return (FIELD::length_to_value(len) && set_value(field, len))
-		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
-#else
+#if (MED_EXCEPTIONS)
 	if (!FIELD::length_to_value(len) || !set_value(field, len))
 	{
 		func(error::INCORRECT_VALUE, name<FIELD>(), len);
 	}
+#else
+	return (FIELD::length_to_value(len) && set_value(field, len))
+		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
 #endif
 }
 
@@ -163,30 +163,30 @@ template <class FUNC, class FIELD>
 std::enable_if_t<!has_length_converters<FIELD>::value, MED_RESULT>
 inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-#ifdef MED_NO_EXCEPTION
-	return set_value(field, len)
-		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
-#else
+#if (MED_EXCEPTIONS)
 	if (!set_value(field, len))
 	{
 		func(error::INCORRECT_VALUE, name<FIELD>(), len);
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	return set_value(field, len)
+		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+#endif //MED_EXCEPTIONS
 }
 
 template <class FUNC, class FIELD>
 std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
 inline value_to_length(FUNC& func, FIELD const&, std::size_t& len)
 {
-#ifdef MED_NO_EXCEPTION
-	return FIELD::value_to_length(len)
-		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
-#else
+#if (MED_EXCEPTIONS)
 	if (!FIELD::value_to_length(len))
 	{
 		func(error::INCORRECT_VALUE, name<FIELD>(), len);
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	return FIELD::value_to_length(len)
+		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+#endif //MED_EXCEPTIONS
 }
 
 template <class FUNC, class FIELD>

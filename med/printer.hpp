@@ -118,15 +118,15 @@ public:
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
 			CODEC_TRACE("depth -> %zu < max=%zu", me.m_depth, me.m_max_depth);
-#ifdef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
+			if (0 == me.m_max_depth || me.m_max_depth > me.m_depth) { ie.encode(me); }
+			me.m_depth = depth;
+			CODEC_TRACE("depth <- %zu", depth);
+#else
 			bool const ret = (0 == me.m_max_depth || me.m_max_depth > me.m_depth) ? ie.encode(me) : true;
 			me.m_depth = depth;
 			CODEC_TRACE("depth <- %zu", depth);
 			return ret;
-#else
-			if (0 == me.m_max_depth || me.m_max_depth > me.m_depth) { ie.encode(me); }
-			me.m_depth = depth;
-			CODEC_TRACE("depth <- %zu", depth);
 #endif
 		}
 	};
@@ -223,13 +223,13 @@ public:
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
-#ifdef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
+			ie.encode(me);
+			me.m_depth = depth;
+#else
 			bool const ret = ie.encode(me);
 			me.m_depth = depth;
 			return ret;
-#else
-			ie.encode(me);
-			me.m_depth = depth;
 #endif
 		}
 	};

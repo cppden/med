@@ -68,15 +68,16 @@ struct choice_for<IE, IEs...>
 	template <class DECODER, class TO, class UNEXP>
 	static MED_RESULT decode(DECODER&& decoder, TO& to, UNEXP& unexp)
 	{
+		using case_t = typename IE::case_type;
 		if (IE::tag_type::match( get_tag(to.header()) ))
 		{
-			using case_t = typename IE::case_type;
 			CODEC_TRACE("->CASE[%s]", name<case_t>());
 			case_t* case_p = new (&to.m_storage) case_t{};
 			return med::decode(decoder, *case_p, unexp);
 		}
 		else
 		{
+			CODEC_TRACE("!CASE[%s]=%zu not a match for %zu", name<case_t>(), IE::tag_type::traits::value, get_tag(to.header()));
 			return choice_for<IEs...>::decode(decoder, to, unexp);
 		}
 	}
@@ -105,12 +106,14 @@ struct choice_for<>
 	template <class FUNC, class TO, class UNEXP>
 	static MED_RESULT decode(FUNC&& func, TO& to, UNEXP& unexp)
 	{
+		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), get_tag(to.header()));
 		return unexp(func, to, to.header());
 	}
 
 	template <class FUNC, class TO>
 	static MED_RESULT encode(FUNC&& func, TO const& to)
 	{
+		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), get_tag(to.header()));
 		return func(error::INCORRECT_TAG, name<TO>(), get_tag(to.header()));
 	}
 

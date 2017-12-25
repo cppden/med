@@ -32,6 +32,7 @@ struct default_handler
 	template <class FUNC, class IE, class HEADER>
 	constexpr MED_RESULT operator()(FUNC& func, IE const&, HEADER const& header) const
 	{
+		CODEC_TRACE("ERROR tag=%zu", get_tag(header));
 		return func(error::INCORRECT_TAG, name<IE>(), get_tag(header));
 	}
 };
@@ -41,17 +42,17 @@ template <class FUNC, class IE, class IE_TYPE>
 std::enable_if_t<is_peek_v<IE>, MED_RESULT>
 inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
 {
-#ifdef MED_NO_EXCEPTION
-	return func(PUSH_STATE{})
-		&& func(ie, ie_type)
-		&& func(POP_STATE{});
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	if (func(PUSH_STATE{}))
 	{
 		func(ie, ie_type);
 		func(POP_STATE{});
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	return func(PUSH_STATE{})
+		&& func(ie, ie_type)
+		&& func(POP_STATE{});
+#endif //MED_EXCEPTIONS
 }
 
 template <class FUNC, class IE, class IE_TYPE>
@@ -101,6 +102,7 @@ inline decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 		return decode(func, ref_field(ie), unexp);
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
+	CODEC_TRACE("ERROR tag=%zu", tag.get_encoded());
 	return func(error::INCORRECT_TAG, name<typename WRAPPER::field_type>(), tag.get_encoded());
 }
 
@@ -192,15 +194,16 @@ std::enable_if_t<has_length_type<IE>::value, MED_RESULT>
 inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
 	auto const pad = add_padding<IE>(func);
+	//NOTE: need to scope the length_encoder dtor to be called before optionally adding a padding
 	{
 		length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
 		MED_CHECK_FAIL(ie.decode(ld, unexp));
 		//special case for empty elements w/o length placeholder
 		padding_enable(pad, static_cast<bool>(ld));
 		CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", padding_size(pad), ld.size());
-		if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
+		if (std::size_t const left = ld.size())
 		{
-			return func(error::OVERFLOW, name<IE>(), left);
+			return func(error::OVERFLOW, name<IE>(), left * FUNC::granularity);
 		}
 	}
 	return padding_do(pad);

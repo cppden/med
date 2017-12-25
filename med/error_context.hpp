@@ -22,22 +22,8 @@ namespace med {
 class error_context
 {
 public:
-#ifdef MED_NO_EXCEPTION
-	explicit operator bool() const         { return success(); }
-	bool success() const                   { return error::SUCCESS == m_error; }
-	error get_error() const                { return m_error; }
 
-	void reset()                           { m_error = error::SUCCESS; }
-	bool set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
-	{
-		CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
-		m_name     = name;
-		m_param[0] = val0;
-		m_param[1] = val1;
-		m_error    = err;
-		return success();
-	}
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	static constexpr void reset()          { }
 	void set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
@@ -74,8 +60,36 @@ public:
 			}
 		}
 	}
-#endif //MED_NO_EXCEPTION
 
+#else
+
+	explicit operator bool() const         { return success(); }
+	bool success() const                   { return error::SUCCESS == m_error; }
+	error get_error() const                { return m_error; }
+
+	void reset()                           { m_error = error::SUCCESS; }
+	bool set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
+	{
+		CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
+		m_name     = name;
+		m_param[0] = val0;
+		m_param[1] = val1;
+		m_error    = err;
+		return success();
+	}
+
+private:
+	friend char const* toString(error_context const&);
+
+	enum { MAX_PARAMS = 2 };
+
+	char const* m_name;
+	std::size_t m_param[MAX_PARAMS];
+	error       m_error{ error::SUCCESS };
+
+#endif //MED_EXCEPTIONS
+
+public:
 	//TODO: include buffer offset in all errors
 	MED_RESULT spaceError(char const* name, std::size_t bits_left, std::size_t requested)
 		{ return set_error(error::OVERFLOW, name, bits_left, requested); }
@@ -85,20 +99,10 @@ public:
 
 	MED_RESULT allocError(char const* name, std::size_t requested)
 		{ return set_error(error::OUT_OF_MEMORY, name, requested); }
-
-private:
-#ifdef MED_NO_EXCEPTION
-	friend char const* toString(error_context const&);
-
-	enum { MAX_PARAMS = 2 };
-
-	char const* m_name;
-	std::size_t m_param[MAX_PARAMS];
-	error       m_error{ error::SUCCESS };
-#endif //MED_NO_EXCEPTION
 };
 
-#ifdef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
+#else
 //TODO: add offsets for all errors
 inline char const* toString(error_context const& ec)
 {
@@ -143,6 +147,6 @@ inline char const* toString(error_context const& ec)
 
 	return sz;
 }
-#endif //MED_NO_EXCEPTION
+#endif //MED_EXCEPTIONS
 
 }	//end: namespace med

@@ -307,6 +307,7 @@ struct MSG_MSEQ : med::sequence<
 struct MSG_SET : med::set< HDR<16>,
 	M< T<0x0b>,    FLD_UC >, //<TV>
 	M< T<0x21>, L, FLD_U16 >, //<TLV>
+	//M< FLD_TN >,
 	O< T<0x49>, L, FLD_U24 >, //[TLV]
 	O< T<0x89>,    FLD_IP >, //[TV]
 	O< T<0x22>, L, VFLD1 >   //[TLV(var)]
@@ -441,10 +442,10 @@ TEST(encode, seq_ok)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	encode(make_octet_encoder(ctx), proto);
+#else
+	if (!encode(make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 	uint8_t const encoded1[] = { 1
 		, 37
@@ -459,10 +460,10 @@ TEST(encode, seq_ok)
 	ctx.reset();
 	msg.ref<FLD_DW>().set(0x01020304);
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 	uint8_t const encoded2[] = { 1
 		, 37
@@ -478,10 +479,10 @@ TEST(encode, seq_ok)
 	ctx.reset();
 	msg.ref<VFLD1>().set("test.this!");
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 	uint8_t const encoded3[] = { 1
 		, 37
@@ -517,11 +518,8 @@ TEST(encode, seq_fail)
 	msg.ref<FLD_UC>().set(0);
 	msg.ref<FLD_U24>().set(0);
 	ctx.reset();
-#ifdef MED_NO_EXCEPTION
-	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else /* !MED_NO_EXCEPTION */
+
+#if (MED_EXCEPTIONS)
 	try
 	{
 		encode(med::make_octet_encoder(ctx), proto);
@@ -531,7 +529,11 @@ TEST(encode, seq_fail)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif //MED_EXCEPTIONS
 }
 
 TEST(encode, mseq_ok)
@@ -559,11 +561,11 @@ TEST(encode, mseq_ok)
 		s->ref<FLD_U16>().set(2);
 	}
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif //MED_EXCEPTIONS
 
 	uint8_t const encoded1[] = { 0x11
 		, 37                              //M< FLD_UC, med::arity<2> >
@@ -614,11 +616,11 @@ TEST(encode, mseq_ok)
 	msg.push_back<VFLD1>(ctx)->set("test.this");
 	msg.push_back<VFLD1>(ctx)->set("test.it");
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif //MED_EXCEPTIONS
 	uint8_t const encoded2[] = { 0x11
 		, 37, 38 //2*<FLD_UC>
 		, 0x21, 0x35, 0xD9 //2*<T=0x21, FLD_U16>
@@ -683,11 +685,7 @@ TEST(encode, mseq_fail)
 		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
-#ifdef MED_NO_EXCEPTION
-		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		try
 		{
 			encode(med::make_octet_encoder(ctx), proto);
@@ -697,7 +695,11 @@ TEST(encode, mseq_fail)
 		{
 			EXPECT_EQ(med::error::MISSING_IE, ex.error());
 		}
-#endif //MED_NO_EXCEPTION
+#else
+		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif //MED_EXCEPTIONS
 	}
 
 	//arity of <TV> violation
@@ -716,11 +718,7 @@ TEST(encode, mseq_fail)
 		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
-#ifdef MED_NO_EXCEPTION
-		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		try
 		{
 			encode(med::make_octet_encoder(ctx), proto);
@@ -730,7 +728,11 @@ TEST(encode, mseq_fail)
 		{
 			EXPECT_EQ(med::error::MISSING_IE, ex.error());
 		}
-#endif //MED_NO_EXCEPTION
+#else
+		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif //MED_EXCEPTIONS
 	}
 
 	//arity of <LV> violation
@@ -749,11 +751,7 @@ TEST(encode, mseq_fail)
 		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
-#ifdef MED_NO_EXCEPTION
-		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		try
 		{
 			encode(med::make_octet_encoder(ctx), proto);
@@ -763,7 +761,11 @@ TEST(encode, mseq_fail)
 		{
 			EXPECT_EQ(med::error::MISSING_IE, ex.error());
 		}
-#endif //MED_NO_EXCEPTION
+#else
+		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif //MED_EXCEPTIONS
 	}
 
 	//arity of <TLV> violation
@@ -781,11 +783,7 @@ TEST(encode, mseq_fail)
 		msg.push_back<VFLD1>(ctx)->set("test.this");
 
 		ctx.reset();
-#ifdef MED_NO_EXCEPTION
-		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		try
 		{
 			encode(med::make_octet_encoder(ctx), proto);
@@ -795,7 +793,11 @@ TEST(encode, mseq_fail)
 		{
 			EXPECT_EQ(med::error::MISSING_IE, ex.error());
 		}
-#endif //MED_NO_EXCEPTION
+#else
+		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+		EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif //MED_EXCEPTIONS
 	}
 
 	//output buffer overflow
@@ -815,11 +817,7 @@ TEST(encode, mseq_fail)
 		med::encoder_context<> ctx{ buffer };
 
 		ctx.reset();
-#ifdef MED_NO_EXCEPTION
-		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-		EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		try
 		{
 			encode(med::make_octet_encoder(ctx), proto);
@@ -829,7 +827,11 @@ TEST(encode, mseq_fail)
 		{
 			EXPECT_EQ(med::error::OVERFLOW, ex.error());
 		}
-#endif //MED_NO_EXCEPTION
+#else
+		if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+		EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+		EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif //MED_EXCEPTIONS
 	}
 
 }
@@ -847,11 +849,11 @@ TEST(encode, set_ok)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif //MED_EXCEPTIONS
 
 	uint8_t const encoded1[] = { 4
 		, 0, 0x0b, 0x11
@@ -864,11 +866,11 @@ TEST(encode, set_ok)
 	ctx.reset();
 	msg.ref<VFLD1>().set("test.this");
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	uint8_t const encoded2[] = { 4
 		, 0, 0x0b, 0x11
@@ -890,11 +892,11 @@ TEST(encode, set_ok)
 		, 0, 0x22, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
 	};
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	EXPECT_EQ(sizeof(encoded3), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded3, buffer));
@@ -911,11 +913,7 @@ TEST(encode, set_fail)
 	msg.ref<FLD_UC>().set(0);
 	msg.ref<FLD_U24>().set(0);
 	ctx.reset();
-#ifdef MED_NO_EXCEPTION
-	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		encode(med::make_octet_encoder(ctx), proto);
@@ -925,7 +923,11 @@ TEST(encode, set_fail)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 }
 
 TEST(encode, mset_ok)
@@ -944,11 +946,11 @@ TEST(encode, mset_ok)
 	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
 	msg.push_back<FLD_U16>(ctx)->set(0x35DA);
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	uint8_t const encoded1[] = { 0x14
 		, 0, 0x0b, 0x11
@@ -964,11 +966,11 @@ TEST(encode, mset_ok)
 	ctx.reset();
 	msg.push_back<VFLD1>(ctx)->set("test.this");
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	uint8_t const encoded2[] = { 0x14
 		, 0, 0x0b, 0x11
@@ -1004,11 +1006,11 @@ TEST(encode, mset_ok)
 		, 0, 0x22, 7, 't', 'e', 's', 't', '.', 'i', 't'
 	};
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	EXPECT_EQ(sizeof(encoded3), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded3, buffer));
@@ -1026,19 +1028,15 @@ TEST(encode, mset_fail)
 	msg.push_back<FLD_UC>(ctx)->set(0);
 	msg.push_back<FLD_U8>(ctx)->set(0);
 	msg.push_back<FLD_U16>(ctx)->set(0);
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	msg.push_back<FLD_U24>(ctx)->set(0);
 	ctx.reset();
-#ifdef MED_NO_EXCEPTION
-	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		encode(med::make_octet_encoder(ctx), proto);
@@ -1048,7 +1046,11 @@ TEST(encode, mset_fail)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 }
 
 constexpr std::size_t make_hash(std::size_t v) { return 137*(v + 39); }
@@ -1065,11 +1067,11 @@ TEST(encode, msg_func)
 	msg.push_back<FLD_UC>(ctx)->set(37);
 	msg.push_back<FLD_UC>(ctx)->set(38);
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	uint8_t const encoded1[] = { 0xFF
 		, 0x10
@@ -1084,11 +1086,11 @@ TEST(encode, msg_func)
 	msg.push_back<FLD_U8>(ctx)->set('a');
 	msg.ref<FLD_U16>().set(0x35D9);
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	uint8_t const encoded2[] = { 0xFF
 		, 0x61
@@ -1111,11 +1113,11 @@ TEST(encode, msg_func)
 		p->set(make_hash(i));
 	}
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(med::make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	uint8_t const encoded3[] = { 0xFF
 		, 0xB7
@@ -1146,11 +1148,11 @@ TEST(decode, seq_ok)
 	med::decoder_context<> ctx;
 
 	ctx.reset(encoded1, sizeof(encoded1));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	//check RO access (compile test)
 	{
@@ -1184,11 +1186,11 @@ TEST(decode, seq_ok)
 		, 0x51, 0x01, 0x02, 0x03, 0x04
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1212,11 +1214,11 @@ TEST(decode, seq_ok)
 		, 0x12, 4, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's', '!'
 	};
 	ctx.reset(encoded3, sizeof(encoded3));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1250,11 +1252,7 @@ TEST(decode, seq_fail)
 	//wrong choice tag
 	uint8_t const wrong_choice[] = { 100, 37, 0x49 };
 	med::decoder_context<> ctx{ wrong_choice };
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::INCORRECT_TAG, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1264,16 +1262,16 @@ TEST(decode, seq_fail)
 	{
 		EXPECT_EQ(med::error::INCORRECT_TAG, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::INCORRECT_TAG, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//wrong tag of required field 2
 	uint8_t const wrong_tag[] = { 2, 37, 0x49, 0xDA, 0xBE, 0xEF };
 	ctx.reset(wrong_tag, sizeof(wrong_tag));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::INCORRECT_TAG, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1283,16 +1281,16 @@ TEST(decode, seq_fail)
 	{
 		EXPECT_EQ(med::error::INCORRECT_TAG, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::INCORRECT_TAG, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//missing required field
 	uint8_t const missing[] = { 1, 37 };
 	ctx.reset(missing, sizeof(missing));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1302,16 +1300,16 @@ TEST(decode, seq_fail)
 	{
 		EXPECT_EQ(med::error::OVERFLOW, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//incomplete field
 	uint8_t const incomplete[] = { 1, 37, 0x21, 0x35 };
 	ctx.reset(incomplete, sizeof(incomplete));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1321,7 +1319,11 @@ TEST(decode, seq_fail)
 	{
 		EXPECT_EQ(med::error::OVERFLOW, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//invalid length of fixed field
 	uint8_t const bad_length[] = { 1
@@ -1331,11 +1333,7 @@ TEST(decode, seq_fail)
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
 	};
 	ctx.reset(bad_length, sizeof(bad_length));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1345,7 +1343,11 @@ TEST(decode, seq_fail)
 	{
 		EXPECT_EQ(med::error::OVERFLOW, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//invalid length of variable field (shorter)
 	uint8_t const bad_var_len_lo[] = { 1
@@ -1356,11 +1358,7 @@ TEST(decode, seq_fail)
 		, 0x12, 3, 't', 'e', 's'
 	};
 	ctx.reset(bad_var_len_lo, sizeof(bad_var_len_lo));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1370,7 +1368,11 @@ TEST(decode, seq_fail)
 	{
 		EXPECT_EQ(med::error::INCORRECT_VALUE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//invalid length of variable field (longer)
 	uint8_t const bad_var_len_hi[] = { 1
@@ -1381,11 +1383,7 @@ TEST(decode, seq_fail)
 		, 0x12, 5, 't', 'e', 's', 't', 'e', 's', 't', 'e', 's', 't', 'e'
 	};
 	ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1395,7 +1393,11 @@ TEST(decode, seq_fail)
 	{
 		EXPECT_EQ(med::error::INCORRECT_VALUE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 }
 
 
@@ -1417,11 +1419,11 @@ TEST(decode, mseq_ok)
 		, 0,1, 2, 0x21, 0,3
 	};
 	ctx.reset(encoded1, sizeof(encoded1));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	MSG_MSEQ const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1468,11 +1470,11 @@ TEST(decode, mseq_ok)
 		, 7, 't', 'e', 's', 't', '.', 'i', 't'
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -1544,11 +1546,7 @@ TEST(decode, mseq_fail)
 		, 0,1, 2, 0x21, 0,3
 	};
 	ctx.reset(wrong_tag, sizeof(wrong_tag));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1558,7 +1556,11 @@ TEST(decode, mseq_fail)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//missing required field
 	uint8_t const missing[] = { 0x11
@@ -1573,11 +1575,7 @@ TEST(decode, mseq_fail)
 	};
 
 	ctx.reset(missing, sizeof(missing));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1587,16 +1585,16 @@ TEST(decode, mseq_fail)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//incomplete field
 	uint8_t const incomplete[] = { 0x11, 37, 38, 0x21, 0x35 };
 	ctx.reset(incomplete, sizeof(incomplete));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1606,7 +1604,11 @@ TEST(decode, mseq_fail)
 	{
 		EXPECT_EQ(med::error::OVERFLOW, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//invalid length of fixed field
 	uint8_t const bad_length[] = { 0x11
@@ -1620,11 +1622,7 @@ TEST(decode, mseq_fail)
 		, 0,1, 2, 0x21, 0,3
 	};
 	ctx.reset(bad_length, sizeof(bad_length));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1634,7 +1632,11 @@ TEST(decode, mseq_fail)
 	{
 		EXPECT_EQ(med::error::OVERFLOW, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//invalid length of variable field (shorter)
 	uint8_t const bad_var_len_lo[] = { 0x11
@@ -1652,11 +1654,7 @@ TEST(decode, mseq_fail)
 		, 3, 't', 'e', 's'
 	};
 	ctx.reset(bad_var_len_lo, sizeof(bad_var_len_lo));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1666,7 +1664,11 @@ TEST(decode, mseq_fail)
 	{
 		EXPECT_EQ(med::error::INCORRECT_VALUE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//invalid length of variable field (longer)
 	uint8_t const bad_var_len_hi[] = { 0x11
@@ -1684,11 +1686,7 @@ TEST(decode, mseq_fail)
 		, 11, 't', 'e', 's', 't', 'e', 's', 't', 'e', 's', 't', 'e'
 	};
 	ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1698,7 +1696,11 @@ TEST(decode, mseq_fail)
 	{
 		EXPECT_EQ(med::error::OVERFLOW, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 }
 
 TEST(decode, set_ok)
@@ -1711,11 +1713,11 @@ TEST(decode, set_ok)
 		, 0, 0x21, 2, 0x35, 0xD9
 	};
 	med::decoder_context<> ctx{ encoded1 };
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	MSG_SET const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
@@ -1735,11 +1737,11 @@ TEST(decode, set_ok)
 		, 0, 0x22, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
@@ -1759,11 +1761,11 @@ TEST(decode, set_ok)
 		, 0, 0x0b, 0x11
 	};
 	ctx.reset(encoded3, sizeof(encoded3));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
@@ -1790,11 +1792,7 @@ TEST(decode, set_fail)
 		, 0, 0x89, 0xFE, 0xE1, 0xAB, 0xBA
 	};
 	ctx.reset(missing_mandatory, sizeof(missing_mandatory));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1804,7 +1802,11 @@ TEST(decode, set_fail)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//extra field in set
 	uint8_t const extra_field[] = { 4
@@ -1812,11 +1814,7 @@ TEST(decode, set_fail)
 		, 0, 0x49, 3, 0xDA, 0xBE, 0xEF
 	};
 	ctx.reset(extra_field, sizeof(extra_field));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1826,7 +1824,11 @@ TEST(decode, set_fail)
 	{
 		EXPECT_EQ(med::error::EXTRA_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 }
 
 TEST(decode, mset_ok)
@@ -1842,11 +1844,11 @@ TEST(decode, mset_ok)
 		, 0, 0x0c, 0x13
 	};
 	med::decoder_context<> ctx{ encoded1 };
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	MSG_MSET const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
@@ -1873,11 +1875,11 @@ TEST(decode, mset_ok)
 		, 0, 0x0b, 0x12
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
@@ -1904,11 +1906,11 @@ TEST(decode, mset_ok)
 		, 0, 0x0c, 0x13
 	};
 	ctx.reset(encoded3, sizeof(encoded3));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
@@ -1944,11 +1946,7 @@ TEST(decode, mset_fail)
 		, 0, 0x21, 2, 0x35, 0xD9
 	};
 	ctx.reset(mandatory_underflow, sizeof(mandatory_underflow));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1958,7 +1956,11 @@ TEST(decode, mset_fail)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	//arity overflow in mandatory field
 	uint8_t const mandatory_overflow[] = { 0x14
@@ -1970,11 +1972,7 @@ TEST(decode, mset_fail)
 		, 0, 0x21, 2, 0x35, 0xD9
 	};
 	ctx.reset(mandatory_overflow, sizeof(mandatory_overflow));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -1984,7 +1982,11 @@ TEST(decode, mset_fail)
 	{
 		EXPECT_EQ(med::error::EXTRA_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 }
 
 TEST(decode, msg_func)
@@ -1998,11 +2000,11 @@ TEST(decode, msg_func)
 		, 37, 38
 	};
 	ctx.reset(encoded1, sizeof(encoded1));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	MSG_FUNC const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -2023,11 +2025,11 @@ TEST(decode, msg_func)
 		, 0x35, 0xD9
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -2056,11 +2058,11 @@ TEST(decode, msg_func)
 		, 0, 0, 0x15, 0xF1
 	};
 	ctx.reset(encoded3, sizeof(encoded3));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -2097,11 +2099,7 @@ TEST(decode, msg_func)
 		, 0xFE, 0xE1, 0xAB, 0xBA
 	};
 	ctx.reset(mandatory_underflow, sizeof(mandatory_underflow));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -2111,7 +2109,11 @@ TEST(decode, msg_func)
 	{
 		EXPECT_EQ(med::error::MISSING_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 
 	uint8_t const conditional_overflow[] = { 0xFF
 		, 0xD7
@@ -2122,11 +2124,7 @@ TEST(decode, msg_func)
 		, 0xFE, 0xE1, 0xAB, 0xBA
 	};
 	ctx.reset(conditional_overflow, sizeof(conditional_overflow));
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
-	EXPECT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(ctx), proto);
@@ -2136,7 +2134,11 @@ TEST(decode, msg_func)
 	{
 		EXPECT_EQ(med::error::EXTRA_IE, ex.error());
 	}
-#endif //MED_NO_EXCEPTION
+#else
+	if (decode(make_octet_decoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+#endif
 }
 
 
@@ -2148,21 +2150,21 @@ TEST(field, tagged_nibble)
 
 	FLD_TN field;
 	field.set(5);
-#ifdef MED_NO_EXCEPTION
-	if (!encode(make_octet_encoder(ctx), field)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	encode(make_octet_encoder(ctx), field);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!encode(make_octet_encoder(ctx), field)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	EXPECT_STRCASEEQ("E5 ", as_string(ctx.buffer()));
 
 	decltype(field) dfield;
 	med::decoder_context<> dctx;
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
-#ifdef MED_NO_EXCEPTION
-	if (!decode(make_octet_decoder(dctx), dfield)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(make_octet_decoder(dctx), dfield);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(make_octet_decoder(dctx), dfield)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 	EXPECT_EQ(field.get(), dfield.get());
 }
 
@@ -2200,10 +2202,10 @@ TEST(placeholder, length)
 		hdr.ref<FLD_U16>().set(0x1661);
 		hdr.ref<FLD_U8>().set(0x37);
 
-#ifdef MED_NO_EXCEPTION
-		if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 		encode(make_octet_encoder(ctx), msg);
+#else
+		if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 		uint8_t const encoded[] = {
 			0x16, 0x61
@@ -2215,11 +2217,11 @@ TEST(placeholder, length)
 
 		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 		PL_SEQ dmsg;
-#ifdef MED_NO_EXCEPTION
-		if (!decode(med::make_octet_decoder(dctx), dmsg)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		decode(med::make_octet_decoder(dctx), dmsg);
-#endif //MED_NO_EXCEPTION
+#else
+		if (!decode(med::make_octet_decoder(dctx), dmsg)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 		PL_HDR& dhdr = dmsg.ref<PL_HDR>();
 		EXPECT_EQ(hdr.get<FLD_U16>().get(), dhdr.get<FLD_U16>().get());
 		EXPECT_EQ(hdr.get<FLD_U8>().get(), dhdr.get<FLD_U8>().get());
@@ -2231,10 +2233,10 @@ TEST(placeholder, length)
 		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
 		msg.push_back<FLD_DW>(ctx)->set(0x05060708);
 
-#ifdef MED_NO_EXCEPTION
-		if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 		encode(make_octet_encoder(ctx), msg);
+#else
+		if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 		uint8_t const encoded[] = {
 			0x16, 0x61
@@ -2248,11 +2250,11 @@ TEST(placeholder, length)
 
 		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 		PL_SEQ dmsg;
-#ifdef MED_NO_EXCEPTION
-		if (!decode(med::make_octet_decoder(dctx), dmsg)) { FAIL() << toString(dctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		decode(med::make_octet_decoder(dctx), dmsg);
-#endif //MED_NO_EXCEPTION
+#else
+		if (!decode(med::make_octet_decoder(dctx), dmsg)) { FAIL() << toString(dctx.error_ctx()); }
+#endif
 		ASSERT_EQ(msg.count<FLD_DW>(), dmsg.count<FLD_DW>());
 		auto it = dmsg.get<FLD_DW>().begin();
 		for (auto const& v : msg.get<FLD_DW>())
@@ -2262,6 +2264,665 @@ TEST(placeholder, length)
 		}
 	}
 }
+#endif
+
+#if 1 //GTPC-like header for testing
+
+namespace gtpc {
+
+//Bits: 7   6   5   4   3   2   1   0
+//     [   Msg Prio  ] [   Spare     ]
+// The relative priority of the GTP-C message may take any value between 0 and 15,
+// where 0 corresponds to the highest priority and 15 the lowest priority.
+struct message_priority : med::value<med::defaults<0, uint8_t>>
+{
+	static constexpr char const* name()         { return "Message-Priority"; }
+
+	enum : value_type
+	{
+		MASK = 0b11110000
+	};
+
+	uint8_t get() const                         { return (get_encoded() & MASK) >> 4; }
+	void set(uint8_t v)                         { set_encoded((v << 4) & MASK); }
+};
+
+//Bits: 7   6   5   4   3   2   1   0
+//     [ Version ] [P] [T] [MP][Spare]
+struct version_flags : med::value<uint8_t>
+{
+	enum : value_type
+	{
+		MP = 1u << 2, //Message Priority flag
+		T  = 1u << 3, //TEID flag
+		P  = 1u << 4, //Piggybacking flag
+		MASK_VERSION = 0xE0u, //1110 0000
+	};
+
+	uint8_t version() const             { return (get() & MASK_VERSION) >> 5; }
+
+	bool piggyback() const              { return get() & P; }
+	void piggyback(bool v)              { set(v ? (get() | P) : (get() & ~P)); }
+
+	static constexpr char const* name() { return "Version-Flags"; }
+
+	struct setter
+	{
+		template <class HDR>
+		void operator()(HDR& hdr) const
+		{
+			auto& flags = hdr.template as<version_flags>();
+			auto bits = flags.get();
+			if (hdr.template as<message_priority>().is_set()) { bits |= MP; } else { bits &= ~MP; }
+			flags.set(bits);
+		}
+	};
+
+	struct has_message_priority
+	{
+		template <class HDR>
+		bool operator()(HDR const& hdr) const
+		{
+			return (static_cast<version_flags const&>(hdr).get() & version_flags::MP);
+		}
+	};
+};
+
+struct sequence_number : med::value<med::bits<24>>
+{
+	static constexpr char const* name()         { return "Sequence-Number"; }
+};
+
+/*Oct\Bit  8   7   6   5   4   3   2   1
+-----------------------------------------
+  1       [ Version ] [P] [T] [MP][Spare]
+  2       [ Sequence Number (1st octet) ]
+  3       [ Sequence Number (2nd octet) ]
+  4       [ Sequence Number (3rd octet) ]
+  5       [ Msg Priority] [  Spare      ]
+----------------------------------------- */
+struct header : med::sequence<
+	M< version_flags, version_flags::setter >,
+	M< sequence_number >,
+	O< message_priority, version_flags::has_message_priority >
+>
+{
+	version_flags const& flags() const          { return get<version_flags>(); }
+	version_flags& flags()                      { return ref<version_flags>(); }
+
+	sequence_number::value_type sn() const      { return get<sequence_number>().get(); }
+	void sn(sequence_number::value_type v)      { ref<sequence_number>().set(v); }
+
+	static constexpr char const* name()         { return "Header"; }
+
+	explicit header(uint8_t ver = 2)
+	{
+		flags().set(ver << 5);
+	}
+};
+
+} //end: namespace gtpc
+
+TEST(opt_defs, unset)
+{
+	uint8_t const encoded[] = {
+		0x40,
+		1,2,3,
+		0
+	};
+
+	{
+		gtpc::header header;
+		header.sn(0x010203);
+
+		uint8_t buffer[1024];
+		med::encoder_context<> ctx{ buffer };
+#if (MED_EXCEPTIONS)
+		encode(med::make_octet_encoder(ctx), header);
+#else
+		if (!encode(med::make_octet_encoder(ctx), header)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+	}
+	{
+		med::decoder_context<> ctx;
+		//std::size_t alloc_buf[1024];
+		//ctx.get_allocator().reset(alloc_buf);
+
+		gtpc::header header;
+		ctx.reset(encoded, sizeof(encoded));
+#if (MED_EXCEPTIONS)
+		decode(med::make_octet_decoder(ctx), header);
+#else
+		if (!decode(med::make_octet_decoder(ctx), header)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+		gtpc::message_priority const* prio = header.field();
+		EXPECT_EQ(nullptr, prio);
+		ASSERT_EQ(0x010203, header.sn());
+	}
+}
+
+TEST(opt_defs, set)
+{
+	uint8_t const encoded[] = {
+		0x44,
+		1,2,3,
+		0x70
+	};
+
+	{
+		gtpc::header header;
+		header.sn(0x010203);
+		header.ref<gtpc::message_priority>().set(7);
+
+		uint8_t buffer[1024];
+		med::encoder_context<> ctx{ buffer };
+#if (MED_EXCEPTIONS)
+		encode(med::make_octet_encoder(ctx), header);
+#else
+		if (!encode(med::make_octet_encoder(ctx), header)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+	}
+	{
+		med::decoder_context<> ctx;
+		//std::size_t alloc_buf[1024];
+		//ctx.get_allocator().reset(alloc_buf);
+
+		gtpc::header header;
+		ctx.reset(encoded, sizeof(encoded));
+#if (MED_EXCEPTIONS)
+		decode(med::make_octet_decoder(ctx), header);
+#else
+		if (!decode(med::make_octet_decoder(ctx), header)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+		gtpc::message_priority const* prio = header.cfield();
+		ASSERT_NE(nullptr, prio);
+		EXPECT_EQ(7, prio->get());
+		ASSERT_EQ(0x010203, header.sn());
+	}
+}
+
+#endif
+
+
+#if 1 // Diameter
+
+namespace diameter {
+
+//to concat message code and request/answer bit
+enum msg_code_e : std::size_t
+{
+	REQUEST = 0x80000000,
+	ANSWER  = 0x00000000,
+};
+
+struct version : med::value<med::fixed<1, uint8_t>> {};
+struct length : med::value<med::bytes<3>> {};
+
+struct cmd_flags : med::value<uint8_t>
+{
+	enum : value_type
+	{
+		R = 0x80,
+		P = 0x40,
+		E = 0x20,
+		T = 0x10,
+	};
+
+	bool request() const                { return get() & R; }
+	void request(bool v)                { set(v ? (get() | R) : (get() & ~R)); }
+
+	bool proxiable() const              { return get() & P; }
+	void proxiable(bool v)              { set(v ? (get() | P) : (get() & ~P)); }
+
+	bool error() const                  { return get() & E; }
+	void error(bool v)                  { set(v ? (get() | E) : (get() & ~E)); }
+
+	bool retx() const                   { return get() & T; }
+	void retx(bool v)                   { set(v ? (get() | T) : (get() & ~T)); }
+
+	static constexpr char const* name() { return "Cmd-Flags"; }
+};
+
+struct cmd_code : med::value<med::bytes<3>>
+{
+	static constexpr char const* name() { return "Cmd-Code"; }
+};
+
+struct app_id : med::value<uint32_t>
+{
+	static constexpr char const* name() { return "App-Id"; }
+};
+
+struct hop_by_hop_id : med::value<uint32_t>
+{
+	static constexpr char const* name() { return "Hop-by-Hop-Id"; }
+};
+
+struct end_to_end_id : med::value<uint32_t>
+{
+	static constexpr char const* name() { return "End-to-End-Id"; }
+};
+
+/*0                   1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |    Version    |                 Message Length                |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ | command flags |                  Command-Code                 |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                         Application-ID                        |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                      Hop-by-Hop Identifier                    |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                      End-to-End Identifier                    |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |  AVPs ...
+ +-+-+-+-+-+-+-+-+-+-+-+-+- */
+
+struct header : med::sequence<
+	med::mandatory< version >,
+	med::placeholder::_length<0>,
+	med::mandatory< cmd_flags >,
+	med::mandatory< cmd_code >,
+	med::mandatory< app_id >,
+	med::mandatory< hop_by_hop_id >,
+	med::mandatory< end_to_end_id >
+>
+{
+	std::size_t get_tag() const                 { return get<cmd_code>().get() + (flags().request() ? REQUEST : ANSWER); }
+	void set_tag(std::size_t tag)               { ref<cmd_code>().set(tag & 0xFFFFFF); flags().request(tag & REQUEST); }
+
+	cmd_flags const& flags() const              { return get<cmd_flags>(); }
+	cmd_flags& flags()                          { return ref<cmd_flags>(); }
+
+	app_id::value_type ap_id() const            { return get<app_id>().get(); }
+	void ap_id(app_id::value_type id)           { ref<app_id>().set(id); }
+
+	hop_by_hop_id::value_type hop_id() const    { return get<hop_by_hop_id>().get(); }
+	void hop_id(hop_by_hop_id::value_type id)   { ref<hop_by_hop_id>().set(id); }
+
+	end_to_end_id::value_type end_id() const    { return get<end_to_end_id>().get(); }
+	void end_id(end_to_end_id::value_type id)   { ref<end_to_end_id>().set(id); }
+
+	static constexpr char const* name()         { return "Header"; }
+};
+
+template <class MSG>
+using request = med::tag<med::value<med::fixed<REQUEST + MSG::code>>, MSG>;
+
+template <class MSG>
+using answer = med::tag<med::value<med::fixed<ANSWER + MSG::code>>, MSG>;
+
+struct avp_code : med::value<uint32_t>
+{
+	static constexpr char const* name() { return "AVP-Code"; }
+};
+
+template <avp_code::value_type CODE>
+struct avp_code_fixed : med::value<med::fixed<CODE, uint32_t>>
+{
+};
+
+struct avp_flags : med::value<uint8_t>
+{
+	enum : value_type
+	{
+		V = 0x80, //vendor specific/vendor-id is present
+		M = 0x40, //AVP is mandatory
+		P = 0x20, //protected
+	};
+
+	bool mandatory() const              { return get() & M; }
+	void mandatory(bool v)              { set(v ? (get() | M) : (get() & ~M)); }
+
+	bool protect() const                { return get() & P; }
+	void protect(bool v)                { set(v ? (get() | P) : (get() & ~P)); }
+
+	static constexpr char const* name() { return "AVP-Flags"; }
+};
+
+struct vendor : med::value<uint32_t>
+{
+	static constexpr char const* name()   { return "Vendor"; }
+};
+
+struct has_vendor
+{
+	template <class HDR>
+	bool operator()(HDR const& hdr) const { return static_cast<avp_flags const&>(hdr).get() & avp_flags::V; }
+};
+
+template <class BODY, class BASE, typename Enable = void>
+struct with_length : med::length_t<med::value<med::bytes<3>>> {};
+
+template <class BODY, class BASE>
+struct with_length<BODY, BASE, std::enable_if_t<med::is_empty_v<BODY>> >
+{
+	//to optionally skip unknown AVPs
+	auto get_length() const               { return static_cast<BASE const*>(this)->template get<length>().get(); }
+	std::size_t get_tag() const           { return static_cast<BASE const*>(this)->template get<avp_code>().get(); }
+	void set_tag(std::size_t val)         { static_cast<BASE const*>(this)->template ref<avp_code>().set(val); }
+};
+
+/*0                   1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                           AVP Code                            |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |V M P r r r r r|                  AVP Length                   |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                        Vendor-ID (opt)                        |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |    Data ...
+ +-+-+-+-+-+-+-+-+                                                 */
+template <class BODY = med::empty, avp_code::value_type CODE = 0>
+struct avp_header : med::sequence<
+	M< std::conditional_t<CODE, avp_code_fixed<CODE>, avp_code> >,
+	M< avp_flags >,
+	std::conditional_t<med::is_empty_v<BODY>, M< length >, med::placeholder::_length<0> >,
+	O< vendor, has_vendor >,
+	M< BODY >
+	>
+	, with_length<BODY, avp_header<BODY,CODE>>
+{
+	auto const& flags() const             { return this->template get<avp_flags>(); }
+	auto& flags()                         { return this->template ref<avp_flags>(); }
+	vendor const* get_vendor() const      { return this->template get<vendor>(); }
+
+	static constexpr char const* name()   { return "AVP-Header"; }
+};
+
+template <class T, typename Enable = void>
+struct with_padding
+{
+};
+
+template <class T>
+struct with_padding<T, std::enable_if_t<std::is_same<typename T::ie_type, med::IE_OCTET_STRING>::value>>
+{
+	using padding = med::padding<32>;
+};
+
+template <class AVP, avp_code::value_type CODE, uint8_t FLAGS = 0, vendor::value_type VENDOR = 0>
+struct avp : avp_header<AVP,CODE>, med::tag<med::value<med::fixed<CODE>>>, with_padding<AVP>
+{
+	enum : avp_code::value_type { id = CODE };
+
+	AVP const& body() const                     { return this->template get<AVP>(); }
+	AVP& body()                                 { return this->template ref<AVP>(); }
+	bool is_set() const                         { return body().is_set(); }
+
+	using avp_header<AVP,CODE>::get;
+	decltype(auto) get() const                  { return body().get(); }
+	template <typename... ARGS>
+	auto set(ARGS&&... args)                    { return body().set(std::forward<ARGS>(args)...); }
+
+	avp()
+	{
+		if (VENDOR)
+		{
+			this->template ref<vendor>().set(VENDOR);
+			this->template ref<avp_flags>().set(FLAGS | avp_flags::V);
+		}
+		else
+		{
+			this->template ref<avp_flags>().set(FLAGS & ~avp_flags::V);
+		}
+	}
+};
+
+struct any_avp : avp_header<med::octet_string<>>
+{
+	using AVP = med::octet_string<>;
+	AVP const& body() const                     { return this->template get<AVP>(); }
+	AVP& body()                                 { return this->template ref<AVP>(); }
+	bool is_set() const                         { return body().is_set(); }
+};
+
+struct unsigned32 : med::value<uint32_t>
+{
+	static constexpr char const* name() { return "Unsigned32"; }
+};
+
+struct result_code : avp<unsigned32, 268, avp_flags::M>
+{
+	static constexpr char const* name() { return "Result-Code"; }
+};
+
+struct origin_host : avp<med::ascii_string<>, 264, avp_flags::M>
+{
+	static constexpr char const* name() { return "Origin-Host"; }
+};
+
+struct origin_realm : avp<med::ascii_string<>, 296, avp_flags::M>
+{
+	static constexpr char const* name() { return "Origin-Realm"; }
+};
+
+struct disconnect_cause : avp<unsigned32, 273, avp_flags::M>
+{
+	static constexpr char const* name() { return "Disconnect-Cause"; }
+};
+
+struct error_message : avp<med::ascii_string<>, 281>
+{
+	static constexpr char const* name() { return "Error-Message"; }
+};
+
+struct failed_avp : avp<any_avp, 279, avp_flags::M>
+{
+	using length_type = length;
+	static constexpr char const* name() { return "Failed-AVP"; }
+};
+
+/*
+<DPR>  ::= < Diameter Header: 282, REQ >
+		 { Origin-Host }
+		 { Origin-Realm }
+		 { Disconnect-Cause }
+*/
+struct DPR : med::set< avp_header<>
+	, med::mandatory< origin_host >
+	, med::mandatory< origin_realm >
+	, med::mandatory< disconnect_cause >
+>
+{
+	enum : std::size_t { code = 282 };
+	static constexpr char const* name() { return "Disconnect-Peer-Request"; }
+};
+
+/*
+<DPA>  ::= < Diameter Header: 282 >
+		 { Result-Code }
+		 { Origin-Host }
+		 { Origin-Realm }
+		 [ Error-Message ]
+	   * [ Failed-AVP ]
+*/
+struct DPA : med::set< avp_header<>
+	, med::mandatory< result_code >
+	, med::mandatory< origin_host >
+	, med::mandatory< origin_realm >
+	, med::optional< error_message >
+	, med::optional< failed_avp, med::inf >
+>
+{
+	enum : std::size_t { code = 282 };
+	static constexpr char const* name() { return "Disconnect-Peer-Answer"; }
+};
+
+//couple of messages from base protocol for testing
+struct BASE : med::choice< header
+	, request<DPR>
+	, answer<DPA>
+>
+{
+	using length_type = length;
+};
+
+uint8_t const dpr[] = {
+	0x01, 0x00, 0x00, 0x4C, //VER(1), LEN(3)
+	0x80, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
+	0x00, 0x00, 0x00, 0x00, //APP-ID
+	0x22, 0x22, 0x22, 0x22, //H2H-ID
+	0x55, 0x55, 0x55, 0x55, //E2E-ID
+
+	0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
+	0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17 + padding
+	'O', 'r', 'i', 'g',
+	'.', 'H', 'o', 's',
+	't',   0,   0,   0,
+
+	0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
+	0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
+	'o', 'r', 'i', 'g',
+	'.', 'r', 'e', 'a',
+	'l', 'm', '.', 'n',
+	'e', 't',   0,   0,
+
+	0x00, 0x00, 0x01, 0x11, //AVP = 273 Disconnect-Cause AVP
+	0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+	0x00, 0x00, 0x00, 0x02, //cause = 2
+};
+
+uint8_t const dpa[] = {
+	0x01, 0x00, 0x00, 76+12+20, //VER(1), LEN(3)
+	0x00, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
+	0x00, 0x00, 0x00, 0x00, //APP-ID
+	0x22, 0x22, 0x22, 0x22, //H2H-ID
+	0x55, 0x55, 0x55, 0x55, //E2E-ID
+
+	0x00, 0x00, 0x01, 0x0C, //AVP = 268 Result Code
+	0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+	0x00, 0x00, 0x0B, 0xBC, //result = 3004
+
+	0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
+	0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17 + padding
+	'O', 'r', 'i', 'g',
+	'.', 'H', 'o', 's',
+	't',   0,   0,   0,
+
+	//NOTE: this AVP is not expected in DWA
+	0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
+	0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+	0x01, 0x00, 0x00, 0x16, //id = Gx
+
+	0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
+	0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
+	'o', 'r', 'i', 'g',
+	'.', 'r', 'e', 'a',
+	'l', 'm', '.', 'n',
+	'e', 't',   0,   0,
+
+	0x00, 0x00, 0x01, 0x17, //AVP-CODE = 279 Failed-AVP (grouped)
+	0x40, 0x00, 0x00, 20, //V.M.P(1), LEN(3)
+	0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
+	0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+	0x01, 0x00, 0x00, 0x23, //id = S6a
+
+};
+
+struct unexp_handler
+{
+	//unexpected message
+	template <class FUNC, class IE>
+	auto operator()(FUNC& func, IE const&, diameter::header const& header) const
+	{
+		return func(med::error::INCORRECT_TAG, med::name<IE>(), med::get_tag(header));
+	}
+
+	//unexpected AVP
+	template <class FUNC, class IE>
+	auto operator()(FUNC& func, IE const&, diameter::avp_header<> const& header) const
+	{
+		int const skip = 4 * ((header.get_length() + 3)/4);
+		std::printf("UNEXPECTED AVP code = %zu, skipping %d bytes\n", med::get_tag(header), skip);
+		return func(med::ADVANCE_STATE{8 * skip});
+	}
+};
+
+} //end: namespace diameter
+
+TEST(encode, dpr_padding)
+{
+	diameter::BASE base;
+
+	diameter::DPR& msg = base.select();
+
+	base.header().ap_id(0);
+	base.header().hop_id(0x22222222);
+	base.header().end_id(0x55555555);
+
+	uint8_t buffer[1024] = {};
+	med::encoder_context<> ctx{ buffer };
+
+	msg.ref<diameter::origin_host>().set("Orig.Host");
+	msg.ref<diameter::origin_realm>().set("orig.realm.net");
+	msg.ref<diameter::disconnect_cause>().set(2);
+
+#if (MED_EXCEPTIONS)
+	encode(med::make_octet_encoder(ctx), base);
+#else
+	if (!encode(med::make_octet_encoder(ctx), base)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+
+	ASSERT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
+	ASSERT_TRUE(Matches(diameter::dpr, buffer));
+}
+
+TEST(decode, dpr_padding)
+{
+	diameter::BASE base;
+
+	med::decoder_context<> ctx{ diameter::dpr };
+#if (MED_EXCEPTIONS)
+	decode(med::make_octet_decoder(ctx), base);
+#else
+	if (!decode(med::make_octet_decoder(ctx), base)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+
+	ASSERT_EQ(0, base.header().ap_id());
+	ASSERT_EQ(0x22222222, base.header().hop_id());
+	ASSERT_EQ(0x55555555, base.header().end_id());
+
+	diameter::DPR const* msg = base.cselect();
+	ASSERT_NE(nullptr, msg);
+
+	EQ_STRING_M(diameter::origin_host, "Orig.Host");
+	EQ_STRING_M(diameter::origin_realm, "orig.realm.net");
+	ASSERT_EQ(2, msg->get<diameter::disconnect_cause>().get());
+}
+
+TEST(decode, dpa_unexp)
+{
+	diameter::BASE base;
+
+	med::decoder_context<> ctx{ diameter::dpa };
+	diameter::unexp_handler uh{};
+#if (MED_EXCEPTIONS)
+	decode(med::make_octet_decoder(ctx), base, uh);
+#else
+	if (!decode(med::make_octet_decoder(ctx), base, uh)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+
+	ASSERT_EQ(0, base.header().ap_id());
+	ASSERT_EQ(0x22222222, base.header().hop_id());
+	ASSERT_EQ(0x55555555, base.header().end_id());
+
+	diameter::DPA const* msg = base.cselect();
+	ASSERT_NE(nullptr, msg);
+
+	ASSERT_EQ(3004, msg->get<diameter::result_code>().get());
+	EQ_STRING_M(diameter::origin_host, "Orig.Host");
+	EQ_STRING_M(diameter::origin_realm, "orig.realm.net");
+
+	EXPECT_EQ(1, msg->count<diameter::failed_avp>());
+}
+
 #endif
 
 #if 1
@@ -2306,10 +2967,10 @@ TEST(encode, mseq_open)
 
 //	O< T<0x80>, CNT, SEQOF_3<1>, med::inf >,      //T[CV]*[0,*)
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	encode(make_octet_encoder(ctx), msg);
+#else
+	if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 	uint8_t const encoded[] = {
 		  0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
@@ -2336,14 +2997,14 @@ TEST(encode, alloc_fail)
 	ASSERT_NE(nullptr, p);
 	p->set(1);
 
-#ifdef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
+	ASSERT_THROW(msg.push_back<FLD_IP>(), med::exception);
+	ASSERT_THROW(msg.push_back<FLD_IP>(ctx), med::exception);
+#else
 	p = msg.push_back<FLD_IP>();
 	ASSERT_EQ(nullptr, p);
 	p = msg.push_back<FLD_IP>(ctx);
 	ASSERT_EQ(nullptr, p);
-#else
-	ASSERT_THROW(msg.push_back<FLD_IP>(), med::exception);
-	ASSERT_THROW(msg.push_back<FLD_IP>(ctx), med::exception);
 #endif
 }
 
@@ -2363,7 +3024,9 @@ TEST(decode, alloc_fail)
 
 	MSEQ_OPEN msg;
 
-#ifdef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
+	ASSERT_THROW(decode(make_octet_decoder(ctx), msg), med::exception);
+#else
 	ASSERT_FALSE(decode(make_octet_decoder(ctx), msg));
 	EXPECT_EQ(med::error::OUT_OF_MEMORY, ctx.error_ctx().get_error()) <<
 		[&]()
@@ -2380,9 +3043,7 @@ TEST(decode, alloc_fail)
 			}
 		}();
 	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#else //!MED_NO_EXCEPTION
-	ASSERT_THROW(decode(make_octet_decoder(ctx), msg), med::exception);
-#endif //MED_NO_EXCEPTION
+#endif
 }
 #endif
 
@@ -2429,10 +3090,10 @@ TEST(encode, setter_with_length)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	encode(make_octet_encoder(ctx), msg);
+#else
+	if (!encode(make_octet_encoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 	uint8_t const encoded[] = {
 		3, 1, 0x55, 0xAA,
@@ -2465,20 +3126,20 @@ TEST(update, fixed)
 	med::encoder_context<> ctx{ buffer };
 	auto encoder = make_octet_encoder(ctx);
 
-#ifdef MED_NO_EXCEPTION
-	if (!encode(encoder, msg)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	encode(encoder, msg);
+#else
+	if (!encode(encoder, msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 	uint8_t const encoded[] = {7, 4, 0x12,0x34,0x56,0x78};
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
 
 	ufld.set(0x3456789A);
-#ifdef MED_NO_EXCEPTION
-	if (!med::update(encoder, ufld)) { FAIL() << toString(ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	med::update(encoder, ufld);
+#else
+	if (!med::update(encoder, ufld)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 	uint8_t const updated[] = {7, 4, 0x34,0x56,0x78,0x9A};
 	EXPECT_TRUE(Matches(updated, buffer));
@@ -2557,11 +3218,11 @@ TEST(print, container)
 	med::decoder_context<> ctx;
 
 	ctx.reset(encoded, sizeof(encoded));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), msg);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	std::size_t const cont_num[6] = { 21,  1,  9, 15, 19, 21 };
 	std::size_t const cust_num[6] = { 10,  0,  2,  4,  6,  8 };
@@ -2597,11 +3258,11 @@ TEST(print_all, container)
 	med::decoder_context<> ctx;
 
 	ctx.reset(encoded, sizeof(encoded));
-#ifdef MED_NO_EXCEPTION
-	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), msg);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(med::make_octet_decoder(ctx), msg)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
 
 	dummy_sink d{0};
 	med::print_all(d, msg);
@@ -2639,11 +3300,11 @@ private:
 
 TEST_P(PrintUt, levels)
 {
-#ifdef MED_NO_EXCEPTION
-	if (!decode(make_octet_decoder(m_ctx), m_proto)) { FAIL() << toString(m_ctx.error_ctx()); }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 	decode(make_octet_decoder(m_ctx), m_proto);
-#endif //MED_NO_EXCEPTION
+#else
+	if (!decode(make_octet_decoder(m_ctx), m_proto)) { FAIL() << toString(m_ctx.error_ctx()); }
+#endif
 
 	dummy_sink d{0};
 	med::print(d, m_proto, 1);
@@ -2673,9 +3334,7 @@ TEST_P(PrintUt, incomplete)
 	EncData const& param = GetParam();
 	m_ctx.reset(param.encoded.data(), 2);
 
-#ifdef MED_NO_EXCEPTION
-	if (decode(make_octet_decoder(m_ctx), m_proto)) { FAIL() << toString(m_ctx.error_ctx()); }
-#else
+#if (MED_EXCEPTIONS)
 	try
 	{
 		decode(make_octet_decoder(m_ctx), m_proto);
@@ -2685,6 +3344,8 @@ TEST_P(PrintUt, incomplete)
 	{
 		//EXPECT_EQ(med::error::INCORRECT_TAG, ex.error());
 	}
+#else
+	if (decode(make_octet_decoder(m_ctx), m_proto)) { FAIL() << toString(m_ctx.error_ctx()); }
 #endif
 
 	dummy_sink d{0};

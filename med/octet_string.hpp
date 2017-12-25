@@ -232,6 +232,7 @@ template <class ...T>
 struct ascii_string : octet_string<T...>
 {
 	using base_t = octet_string<T...>;
+	using base_t::set;
 
 	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
 	template <std::size_t N>
@@ -272,7 +273,7 @@ struct octet_string<octets_fix_extern<FIXED>, void, void> : octet_string_impl<FI
 	using base_t = octet_string_impl<FIXED, FIXED, octets_fix_extern<FIXED>>;
 	using base_t::set;
 
-	void set(uint8_t const(&data)[FIXED])   { set_encoded(FIXED, &data[0]); }
+	void set(uint8_t const(&data)[FIXED])   { this->set_encoded(FIXED, &data[0]); }
 };
 
 template <std::size_t FIXED>
@@ -281,7 +282,7 @@ struct octet_string<octets_fix_intern<FIXED>, void, void> : octet_string_impl<FI
 	using base_t = octet_string_impl<FIXED, FIXED, octets_fix_intern<FIXED>>;
 	using base_t::set;
 
-	void set(uint8_t const(&data)[FIXED])   { set_encoded(FIXED, &data[0]); }
+	void set(uint8_t const(&data)[FIXED])   { this->set_encoded(FIXED, &data[0]); }
 };
 template <std::size_t MAX, std::size_t MIN>
 struct octet_string<octets_var_intern<MAX>, min<MIN>,void> : octet_string_impl<MIN, MAX, octets_var_intern<MAX>> {};

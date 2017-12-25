@@ -99,4 +99,15 @@ struct has_setter_type<T, void_t<typename T::setter_type>> : std::true_type { };
 template <class T>
 constexpr bool has_setter_type_v = has_setter_type<T>::value;
 
+template <class T, class Enable = void>
+struct has_default_value : std::false_type {};
+template <class T>
+struct has_default_value<T,
+	std::enable_if_t<
+		!std::is_void<decltype(T::traits::default_value)>::value
+	>
+> : std::true_type {};
+template <class T>
+constexpr bool has_default_value_v = has_default_value<T>::value;
+
 }	//end: namespace med

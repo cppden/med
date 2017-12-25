@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include <utility>
 #include <type_traits>
 
+#include "config.hpp"
 #include "functional.hpp"
 
 namespace med {
@@ -79,10 +80,10 @@ template <class FUNC, class IE>
 std::enable_if_t<is_optional_v<IE>, MED_RESULT>
 inline check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
-#ifdef MED_NO_EXCEPTION
-	return (0 == count) || detail::check_arity(func, ie, count);
-#else
+#if (MED_EXCEPTIONS)
 	if (count) { detail::check_arity(func, ie, count); }
+#else
+	return (0 == count) || detail::check_arity(func, ie, count);
 #endif
 }
 

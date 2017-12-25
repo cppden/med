@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "config.hpp"
 #include "debug.hpp"
 
 namespace med {
@@ -97,10 +98,10 @@ constexpr std::size_t padding_size(dummy_padder)            { return 0; }
 
 template <class T>
 inline MED_RESULT padding_do(T const& pad)                  { return pad.add(); }
-#ifdef MED_NO_EXCEPTION
-constexpr MED_RESULT padding_do(dummy_padder)               { return true; }
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 constexpr MED_RESULT padding_do(dummy_padder)               { }
-#endif //MED_NO_EXCEPTIONS
+#else
+constexpr MED_RESULT padding_do(dummy_padder)               { return true; }
+#endif //MED_EXCEPTIONS
 
 }	//end: namespace med

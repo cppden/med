@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include <iterator>
 #include <limits>
 
+#include "exception.hpp"
 #include "field.hpp"
 #include "debug.hpp"
 
@@ -149,10 +150,11 @@ public:
 			m_tail = piv;
 			return &m_tail->value;
 		}
-#ifndef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 		throw exception(error::OUT_OF_MEMORY, "No in-place space for IE '%s': %zu bytes", name<field_type>(), sizeof(field_type));
-#endif
+#else
 		return nullptr;
+#endif
 	}
 
 	//uses inplace or external storage

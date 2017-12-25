@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "config.hpp"
 #include "error.hpp"
 #include "optional.hpp"
 #include "container.hpp"
@@ -225,20 +226,7 @@ struct set : container<IES...>
 		while (decoder(PUSH_STATE{}))
 		{
 			header_type header;
-#ifdef MED_NO_EXCEPTION
-			if (med::decode(decoder, header, unexp))
-			{
-				sl::pop_state<header_type>(decoder);
-				CODEC_TRACE("tag=%#zx", get_tag(header));
-				MED_CHECK_FAIL(sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header));
-			}
-			else
-			{
-				decoder(POP_STATE{});
-				decoder(error::SUCCESS);
-				break;
-			}
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 			//TODO: avoid try/catch
 			try
 			{
@@ -253,7 +241,20 @@ struct set : container<IES...>
 			sl::pop_state<header_type>(decoder);
 			CODEC_TRACE("tag=%#zx", get_tag(header));
 			MED_CHECK_FAIL(sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header));
-#endif //MED_NO_EXCEPTION
+#else
+			if (med::decode(decoder, header, unexp))
+			{
+				sl::pop_state<header_type>(decoder);
+				CODEC_TRACE("tag=%#zx", get_tag(header));
+				MED_CHECK_FAIL(sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header));
+			}
+			else
+			{
+				decoder(POP_STATE{});
+				decoder(error::SUCCESS);
+				break;
+			}
+#endif //MED_EXCEPTIONS
 		}
 
 		return sl::set_decoder<IES...>::check(this->m_ies, decoder);

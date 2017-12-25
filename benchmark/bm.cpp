@@ -123,13 +123,13 @@ void BM_encode_ok(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset();
-#ifdef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
+		encode(med::make_octet_encoder(ctx), proto);
+#else
 		if (!encode(med::make_octet_encoder(ctx), proto))
 		{
 			std::abort();
 		}
-#else
-		encode(med::make_octet_encoder(ctx), proto);
 #endif
 	}
 }
@@ -148,13 +148,7 @@ void BM_encode_fail(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset();
-#ifdef MED_NO_EXCEPTION
-		if (encode(med::make_octet_encoder(ctx), proto)
-		|| med::error::MISSING_IE != ctx.error_ctx().get_error())
-		{
-			std::abort();
-		}
-#else
+#if (MED_EXCEPTIONS)
 		try
 		{
 			encode(med::make_octet_encoder(ctx), proto);
@@ -166,6 +160,12 @@ void BM_encode_fail(benchmark::State& state)
 			{
 				std::abort();
 			}
+		}
+#else
+		if (encode(med::make_octet_encoder(ctx), proto)
+		|| med::error::MISSING_IE != ctx.error_ctx().get_error())
+		{
+			std::abort();
 		}
 #endif
 	}
@@ -189,13 +189,13 @@ void BM_decode_ok(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset(encoded, sizeof(encoded));
-#ifdef MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
+		decode(med::make_octet_decoder(ctx), proto);
+#else
 		if (!decode(med::make_octet_decoder(ctx), proto))
 		{
 			std::abort();
 		}
-#else
-		decode(med::make_octet_decoder(ctx), proto);
 #endif
 	}
 }
@@ -218,13 +218,7 @@ void BM_decode_fail(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
-#ifdef MED_NO_EXCEPTION
-		if (decode(med::make_octet_decoder(ctx), proto)
-		|| med::error::INCORRECT_VALUE != ctx.error_ctx().get_error())
-		{
-			std::abort();
-		}
-#else
+#if (MED_EXCEPTIONS)
 		try
 		{
 			decode(med::make_octet_decoder(ctx), proto);
@@ -236,6 +230,12 @@ void BM_decode_fail(benchmark::State& state)
 			{
 				std::abort();
 			}
+		}
+#else
+		if (decode(med::make_octet_decoder(ctx), proto)
+		|| med::error::INCORRECT_VALUE != ctx.error_ctx().get_error())
+		{
+			std::abort();
 		}
 #endif
 	}

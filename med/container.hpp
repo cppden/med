@@ -115,6 +115,49 @@ struct seq_clear<>
 };
 
 //-----------------------------------------------------------------------
+template <class IE>
+std::enable_if_t<!is_multi_field_v<IE>>
+inline field_copy(IE& to, IE const& from)
+{
+	to.ref_field() = from.ref_field();
+}
+
+template <class IE>
+std::enable_if_t<is_multi_field_v<IE>>
+inline field_copy(IE& to, IE const& from)
+{
+	to.clear();
+	for (auto const& rhs : from)
+	{
+		if (auto* p = to.push_back())
+		{
+			*p = rhs;
+		}
+	}
+}
+
+template <class... IES>
+struct seq_copy;
+
+template <class IE, class... IES>
+struct seq_copy<IE, IES...>
+{
+	template <class FIELDS>
+	static inline void copy(FIELDS& to, FIELDS const& from)
+	{
+		field_copy<IE>(to, from);
+		seq_copy<IES...>::copy(to, from);
+	}
+};
+
+template <>
+struct seq_copy<>
+{
+	template <class FIELDS>
+	static constexpr void copy(FIELDS&, FIELDS const&)    { }
+};
+
+//-----------------------------------------------------------------------
 template <class Enable, class... IES>
 struct container_for_imp;
 
@@ -205,6 +248,7 @@ public:
 	auto field() const                      { return make_accessor(*this); }
 	auto cfield() const                     { return make_accessor(*this); }
 	auto field(std::size_t index) const     { return make_accessor(*this, index); }
+	auto cfield(std::size_t index) const    { return make_accessor(*this, index); }
 
 	template <class FIELD>
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
@@ -216,9 +260,13 @@ public:
 		return sl::field_arity<IE>();
 	}
 
+	template <class FIELD>
+	void clear()                            { m_ies.template as<FIELD>().clear(); }
 	void clear()                            { sl::seq_clear<IES...>::clear(this->m_ies); }
 	bool is_set() const                     { return sl::seq_is_set<IES...>::is_set(this->m_ies); }
 	std::size_t calc_length() const         { return sl::container_for<IES...>::calc_length(this->m_ies); }
+
+	void copy(container_t const& rhs)       { sl::seq_copy<IES...>::copy(this->m_ies, rhs.m_ies); }
 
 protected:
 	struct ies_t : IES...

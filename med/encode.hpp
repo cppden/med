@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include <utility>
 
+#include "config.hpp"
 #include "error.hpp"
 #include "optional.hpp"
 #include "snapshot.hpp"
@@ -86,15 +87,7 @@ struct length_encoder
 			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
 
 			length_type len_ie;
-#ifdef MED_NO_EXCEPTION
-			if (length_to_value(m_encoder, len_ie, len_value))
-			{
-				CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<length_type>());
-				m_encoder(SET_STATE{}, m_snapshot);
-				encode(m_encoder, len_ie);
-				m_encoder(SET_STATE{}, end);
-			}
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 			//TODO: what to do in case of error?
 			try
 			{
@@ -107,7 +100,15 @@ struct length_encoder
 			catch (med::exception const& ex)
 			{
 			}
-#endif //MED_NO_EXCEPTION
+#else
+			if (length_to_value(m_encoder, len_ie, len_value))
+			{
+				CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<length_type>());
+				m_encoder(SET_STATE{}, m_snapshot);
+				encode(m_encoder, len_ie);
+				m_encoder(SET_STATE{}, end);
+			}
+#endif //MED_EXCEPTIONS
 		}
 	}
 
@@ -147,6 +148,7 @@ struct container_encoder
 	static encode(FUNC& func, IE& ie)
 	{
 		auto const pad = add_padding<IE>(func);
+		//NOTE: need to scope the length_encoder dtor to be called before optionally adding a padding
 		{
 			CODEC_TRACE("start %s with length...:", name<IE>());
 			length_encoder<FUNC, typename IE::length_type> le{ func };
@@ -154,8 +156,8 @@ struct container_encoder
 			CODEC_TRACE("finish %s with length...:", name<IE>());
 			//special case for empty elements w/o length placeholder
 			padding_enable(pad, static_cast<bool>(le));
-			return padding_do(pad);
 		}
+		return padding_do(pad);
 	}
 };
 

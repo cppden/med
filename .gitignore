@@ -36,3 +36,8 @@ build/
 *.mk
 *.project
 *.txt
+*.config
+*.creator*
+*.includes
+*.files
+

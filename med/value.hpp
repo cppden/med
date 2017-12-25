@@ -31,6 +31,7 @@ struct bytes
 	static constexpr uint8_t size = NUM;
 };
 
+//traits representing a fixed value of particular size (in bits/bytes/int)
 template <std::size_t VAL, class T = std::size_t, class Enable = void>
 struct fixed
 {
@@ -59,6 +60,34 @@ struct fixed< VAL, T, std::enable_if_t<std::is_integral<T>::value> >
 {
 	static constexpr bool is_const = true;
 	static constexpr typename integral_traits<T>::value_type value = VAL;
+};
+
+//traits representing a fixed value with default
+template <std::size_t VAL, class T = std::size_t, class Enable = void>
+struct defaults
+{
+	static_assert(std::is_void<T>(), "MALFORMED DEFAULTS");
+};
+
+template <std::size_t VAL, uint8_t BITS>
+struct defaults<VAL, bits<BITS>, void>
+	: value_traits<BITS>
+{
+	static constexpr typename value_traits<BITS>::value_type default_value = VAL;
+};
+
+template <std::size_t VAL, uint8_t BYTES>
+struct defaults<VAL, bytes<BYTES>, void>
+	: value_traits<BYTES*8>
+{
+	static constexpr typename value_traits<BYTES*8>::value_type default_value = VAL;
+};
+
+template <std::size_t VAL, typename T>
+struct defaults< VAL, T, std::enable_if_t<std::is_integral<T>::value> >
+	: integral_traits<T>
+{
+	static constexpr typename integral_traits<T>::value_type default_value = VAL;
 };
 
 template <std::size_t VAL, class T>
@@ -92,7 +121,6 @@ private:
 	value_type m_value{};
 	bool       m_set{false};
 };
-
 
 
 /**
@@ -137,6 +165,28 @@ struct init_integer : IE<IE_VALUE>
 	static constexpr bool is_set()                      { return true; }
 };
 
+
+/**
+ * integer with a default value
+ */
+template <class TRAITS>
+struct def_integer : integer<TRAITS>
+{
+	using traits     = TRAITS;
+	using value_type = typename traits::value_type;
+	using base_t     = def_integer;
+
+	//NOTE: do not override!
+	value_type get_encoded() const
+	{
+		return this->is_set() ? integer<TRAITS>::get_encoded() : traits::default_value;
+	}
+};
+
+
+/**
+ * generic value - a facade for integers above
+ */
 template <class T, class Enable = void>
 struct value;
 
@@ -152,36 +202,48 @@ template <typename VAL>
 struct value< VAL, std::enable_if_t<std::is_integral<VAL>::value> >
 	: integer<integral_traits<VAL>> {};
 
-template <class, typename Enable = void>
-struct is_fixed_traits : std::integral_constant<int, 0> { };
+//meta-function to select proper int
+template <class T, typename Enable = void>
+struct integer_selector
+{
+	static_assert(std::is_void<T>(), "INVALID TRAITS");
+};
 
 template <class T>
-struct is_fixed_traits<T,
+struct integer_selector<T,
 	std::enable_if_t<
 		std::is_same<typename T::value_type, std::remove_const_t<decltype(T::value)>>::value
 		&& T::is_const
 	>
-> : std::integral_constant<int, 1> { };
+>
+{
+	using type = const_integer<T>;
+};
 
 template <class T>
-struct is_fixed_traits<T,
+struct integer_selector<T,
 	std::enable_if_t<
 		std::is_same<typename T::value_type, std::remove_const_t<decltype(T::value)>>::value
 		&& !T::is_const
 	>
-> : std::integral_constant<int, -1> { };
+>
+{
+	using type = init_integer<T>;
+};
 
 template <class T>
-struct value< T, std::enable_if_t<!std::is_void<typename T::value_type>::value && (0 == is_fixed_traits<T>::value)> >
-	: integer<T> {};
+struct integer_selector<T,
+	std::enable_if_t<
+		std::is_same<typename T::value_type, std::remove_const_t<decltype(T::default_value)>>::value
+	>
+>
+{
+	using type = def_integer<T>;
+};
 
 template <class T>
-struct value< T, std::enable_if_t<(1 == is_fixed_traits<T>::value)> >
-	: const_integer<T> {};
-
-template <class T>
-struct value< T, std::enable_if_t<(-1 == is_fixed_traits<T>::value)> >
-	: init_integer<T> {};
+struct value< T, std::enable_if_t<!std::is_void<typename T::value_type>::value> >
+	: integer_selector<T>::type {};
 
 
 template <class IE, typename VALUE>

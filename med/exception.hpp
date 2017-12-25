@@ -1,6 +1,6 @@
 /**
 @file
-med exception is only used if MED_NO_EXCEPTION is defined
+med exception is only used if MED_EXCEPTIONS=1 was defined
 
 @copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
@@ -9,17 +9,9 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "config.hpp"
 
-#ifdef MED_NO_EXCEPTION
-
-#define MED_RESULT           bool
-#define MED_RETURN_SUCCESS   return true
-#define MED_RETURN_FAILURE   return false
-#define MED_AND              &&
-#define MED_EXPR_AND(expr)   (expr) &&
-#define MED_CHECK_FAIL(expr) if (!(expr)) MED_RETURN_FAILURE
-
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 
 #include <cstdio>
 #include <cstdarg>
@@ -78,4 +70,13 @@ protected:
 
 }	//end: namespace med
 
-#endif //MED_NO_EXCEPTION
+#else //w/o exceptions
+
+#define MED_RESULT           bool
+#define MED_RETURN_SUCCESS   return true
+#define MED_RETURN_FAILURE   return false
+#define MED_AND              &&
+#define MED_EXPR_AND(expr)   (expr) &&
+#define MED_CHECK_FAIL(expr) if (!(expr)) MED_RETURN_FAILURE
+
+#endif //MED_EXCEPTIONS

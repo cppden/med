@@ -99,6 +99,19 @@ void check_seqof(MSG const& msg, std::initializer_list<char const*>&& values)
 	}
 }
 
+template <class T>
+inline decltype(auto) get_string(T const& field) ->
+	std::enable_if_t<std::is_class<std::remove_reference_t<decltype(field.body())>>::value, decltype(field.body())>
+{
+	return field.body();
+}
+
+template <class T>
+inline auto get_string(T const& field) -> std::enable_if_t<std::is_pointer<decltype(field.data())>::value, T const&>
+{
+	return field;
+}
+
 
 #define EQ_STRING_O(fld_type, expected) \
 {                                                             \
@@ -112,18 +125,19 @@ void check_seqof(MSG const& msg, std::initializer_list<char const*>&& values)
 #define EQ_STRING_O_(index, fld_type, expected) \
 {                                                             \
 	char const exp[] = expected;                              \
-	auto const got = msg->get<fld_type>(index);             \
+	auto const got = msg->get<fld_type>(index);               \
 	ASSERT_NE(nullptr, static_cast<fld_type const*>(got));    \
 	ASSERT_EQ(sizeof(exp)-1, got->size());                    \
 	ASSERT_TRUE(Matches(exp, got->data(), sizeof(exp)-1));    \
 }
 
 #define EQ_STRING_M(fld_type, expected) \
-{                                                             \
-	char const exp[] = expected;                              \
-	fld_type const& got = msg->field();                       \
-	ASSERT_EQ(sizeof(exp)-1, got->size());                    \
-	ASSERT_TRUE(Matches(exp, got->data(), sizeof(exp)-1));    \
+{                                                         \
+	char const exp[] = expected;                          \
+	fld_type const& field = msg->get<fld_type>();         \
+	auto const& str = get_string(field);                  \
+	ASSERT_EQ(sizeof(exp)-1, str.size());                 \
+	ASSERT_TRUE(Matches(exp, str.data(), sizeof(exp)-1)); \
 }
 
 struct dummy_sink

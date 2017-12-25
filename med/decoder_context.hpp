@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include "allocator.hpp"
 #include "buffer.hpp"
+#include "snapshot.hpp"
 #include "error_context.hpp"
 
 namespace med {

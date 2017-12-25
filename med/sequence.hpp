@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "config.hpp"
 #include "state.hpp"
 #include "container.hpp"
 #include "encode.hpp"
@@ -150,13 +151,15 @@ struct seq_dec_imp<std::enable_if_t<
 	template <class TO, class FUNC, class UNEXP, class TAG>
 	static inline MED_RESULT decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
 	{
-		if (typename IE::condition{}(to))
+		bool const was_set = typename IE::condition{}(to);
+		if (was_set || has_default_value_v<IE>)
 		{
 			discard(func, vtag);
 
 			CODEC_TRACE("C[%s]", name<IE>());
 			IE& ie = to;
 			MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
+			if (!was_set) { ie.ref_field().clear(); } //discard since it's a default
 		}
 		else
 		{
@@ -237,17 +240,7 @@ struct seq_dec_imp<std::enable_if_t<
 				//convert const to writable
 				using TAG_IE = typename IE::tag_type::writable;
 				TAG_IE tag;
-#ifdef MED_NO_EXCEPTION
-				if (func(tag, typename TAG_IE::ie_type{}))
-				{
-					vtag.set_encoded(tag.get_encoded());
-					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-				}
-				else
-				{
-					vtag.clear();
-				}
-#else //!MED_NO_EXCEPTION
+#if (MED_EXCEPTIONS)
 				//TODO: avoid try/catch
 				try
 				{
@@ -259,7 +252,17 @@ struct seq_dec_imp<std::enable_if_t<
 				{
 					vtag.clear();
 				}
-#endif //MED_NO_EXCEPTION
+#else
+				if (func(tag, typename TAG_IE::ie_type{}))
+				{
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+				}
+				else
+				{
+					vtag.clear();
+				}
+#endif //MED_EXCEPTIONS
 			}
 			else
 			{
@@ -450,7 +453,7 @@ struct seq_enc_imp<std::enable_if_t<
 	{
 		IE const& ie = to;
 		CODEC_TRACE("%c[%s]", ie.ref_field().is_set()?'+':'-', name<IE>());
-		if (ie.ref_field().is_set())
+		if (ie.ref_field().is_set() || has_default_value_v<IE>)
 		{
 			return med::encode(func, ie) MED_AND seq_encoder<IES...>::encode(to, func);
 		}

@@ -38,10 +38,10 @@ constexpr bool is_const_ie_v = std::is_const<typename IE::ie_type>::value;
 //always-set empty IE as a message w/o body
 struct empty : IE<IE_NULL>
 {
-	constexpr void clear()                  { }
-	constexpr void set()                    { }
-	constexpr bool get()                    { return true; }
-	constexpr bool is_set()                 { return true; }
+	static constexpr void clear()           { }
+	static constexpr void set()             { }
+	static constexpr bool get()             { return true; }
+	static constexpr bool is_set()          { return true; }
 };
 
 //selectable IE as empty case in choice

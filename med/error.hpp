@@ -10,12 +10,13 @@ Distributed under the MIT License
 #pragma once
 
 #include <cstdint>
+#undef OVERFLOW
 
 namespace med {
 
 enum class error : uint8_t
 {
-	SUCCESS = 0,
+	SUCCESS,
 	OVERFLOW,   //insufficient input or output buffer
 	INCORRECT_VALUE,
 	INCORRECT_TAG,

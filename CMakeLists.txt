@@ -40,9 +40,9 @@ endif (WITH_BM)
 
 if (WITH_EX)
   message(STATUS "\tWITH_EX=true (exceptions for error handling)")
-  add_definitions(-DMED_WITH_EXCEPTION)
+  add_definitions(-DMED_EXCEPTIONS=1)
 else (WITH_EX)
-  add_definitions(-DMED_NO_EXCEPTION)
+  add_definitions(-DMED_EXCEPTIONS=0)
   message(STATUS "\tWITH_EX=false (bool for error handling)")
 endif (WITH_EX)
 
