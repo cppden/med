@@ -100,7 +100,7 @@ void check_seqof(MSG const& msg, std::initializer_list<char const*>&& values)
 }
 
 template <class T>
-inline decltype(auto) get_string(T const& field) ->
+inline auto get_string(T const& field) ->
 	std::enable_if_t<std::is_class<std::remove_reference_t<decltype(field.body())>>::value, decltype(field.body())>
 {
 	return field.body();

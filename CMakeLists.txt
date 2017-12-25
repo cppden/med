@@ -54,7 +54,6 @@ else ()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
 endif ()
 
-#set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} ")
 
 # Library path
 set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
@@ -83,6 +82,8 @@ add_compile_options(
     -pedantic
     -pedantic-errors
 )
+
+#set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -Wno-gnu-zero-variadic-macro-arguments")
 
 add_executable(gtest_med ${UT_SRCS})
 

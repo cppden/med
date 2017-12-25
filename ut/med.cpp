@@ -1,3 +1,11 @@
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+//#pragma clang diagnostic pop
+
+
 #include "med.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
@@ -2621,7 +2629,7 @@ struct with_length<BODY, BASE, std::enable_if_t<med::is_empty_v<BODY>> >
  +-+-+-+-+-+-+-+-+                                                 */
 template <class BODY = med::empty, avp_code::value_type CODE = 0>
 struct avp_header : med::sequence<
-	M< std::conditional_t<CODE, avp_code_fixed<CODE>, avp_code> >,
+	M< std::conditional_t<(0 != CODE), avp_code_fixed<CODE>, avp_code> >,
 	M< avp_flags >,
 	std::conditional_t<med::is_empty_v<BODY>, M< length >, med::placeholder::_length<0> >,
 	O< vendor, has_vendor >,
