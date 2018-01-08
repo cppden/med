@@ -1,4 +1,4 @@
-#MED
+# MED
 > Baby, did you forget to take your meds?
 > *(c) Placebo*
 
@@ -15,8 +15,8 @@ The user of the library needs only to define the structure of the messages consi
 
 The library is split in 3 layers:
 
-1. The [representation layer](doc/Representation-Layer.md) to describe a message from the collection of building blocks, their presence and inter-dependencies if any.
+1. The [representation layer](Representation-Layer.md) to describe a message from the collection of building blocks, their presence and inter-dependencies if any.
 
-2. The [structural layer](doc/Structural-Layer.md) to provide internal means to traverse constructed protocol, messages and fields.
+2. The [structural layer](Structural-Layer.md) to provide internal means to traverse constructed protocol, messages and fields.
 
-3. The [physical layer](doc/Physical-Layer.md) to encode or decode the underlying primitives.
+3. The [physical layer](Physical-Layer.md) to encode or decode the underlying primitives.
