@@ -1,10 +1,17 @@
 [![Build Status](https://travis-ci.org/cppden/med.svg?branch=master)](https://travis-ci.org/cppden/med)
-i[![Coverage Status](https://coveralls.io/repos/github/cppden/med/badge.svg?branch=master)](https://coveralls.io/github/cppden/med?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/cppden/med/badge.svg?branch=master)](https://coveralls.io/github/cppden/med?branch=master)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](../master/LICENSE)
 
 # Meta-Encoder/Decoder
 
-## Overview
+## Description
+Header-only C++ library for non-ASN.1 based definition of messages with generating corresponding encoder and decoder via meta-programming.
+
+See [overview](doc/Overview.md) for details and samples.
+
+See [repos](https://github.com/cppden/gtpu) for real-world examples of med usage.
+
+## Code sample
 ```cpp
 #include "med/med.hpp"
 
@@ -85,10 +92,6 @@ struct PROTO : med::choice< med::value<uint8_t>
 };
 ```
 
-## Description
-C++ library for non-ASN.1 based definition of messages with generating corresponding encoder and decoder via meta-programming.
-See [wiki](https://github.com/cppden/med/wiki) for details and sample [repos](https://github.com/cppden/gtpu) for examples of med usage.
-
-## Dependencies 
+## Dependencies
 Any modern C++ compiler with C++14 support.
 > Tested on gcc-5.1 and clang-3.8.
