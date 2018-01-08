@@ -13,6 +13,7 @@ Distributed under the MIT License
 
 #include "ie_type.hpp"
 #include "value_traits.hpp"
+#include "exception.hpp"
 
 
 namespace med {
@@ -116,6 +117,13 @@ struct integer : IE<IE_VALUE>
 	void clear()                                { m_set = false; }
 	bool is_set() const                         { return m_set; }
 	explicit operator bool() const              { return is_set(); }
+	template <class... ARGS>
+	MED_RESULT copy(base_t const& from, ARGS&&...)
+	{
+		m_value = from.m_value;
+		m_set = from.m_set;
+		MED_RETURN_SUCCESS;
+	}
 
 private:
 	value_type m_value{};
@@ -140,10 +148,13 @@ struct const_integer : IE<const IE_VALUE>
 
 
 	//NOTE: do not override!
+	explicit operator bool() const                      { return is_set(); }
 	static constexpr value_type get_encoded()           { return traits::value; }
 	static constexpr bool set_encoded(value_type v)     { return traits::value == v; }
 	static constexpr bool is_set()                      { return true; }
 	static constexpr bool match(value_type v)           { return traits::value == v; }
+	template <class... ARGS>
+	static constexpr MED_RESULT copy(base_t const&, ARGS&&...) { MED_RETURN_SUCCESS; }
 };
 
 
@@ -159,10 +170,13 @@ struct init_integer : IE<IE_VALUE>
 	using base_t     = init_integer;
 
 	static constexpr void clear()                       { }
+	explicit operator bool() const                      { return is_set(); }
 	//NOTE: do not override!
 	static constexpr value_type get_encoded()           { return traits::value; }
 	static constexpr void set_encoded(value_type)       { }
 	static constexpr bool is_set()                      { return true; }
+	template <class... ARGS>
+	static constexpr MED_RESULT copy(base_t const&, ARGS&&...) { MED_RETURN_SUCCESS; }
 };
 
 

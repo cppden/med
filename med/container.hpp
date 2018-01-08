@@ -115,25 +115,30 @@ struct seq_clear<>
 };
 
 //-----------------------------------------------------------------------
-template <class IE>
-std::enable_if_t<!is_multi_field_v<IE>>
-inline field_copy(IE& to, IE const& from)
+template <class IE, class ...ARGS>
+std::enable_if_t<!is_multi_field_v<IE>, MED_RESULT>
+inline field_copy(IE& to, IE const& from, ARGS&&... args)
 {
-	to.ref_field() = from.ref_field();
+	return to.ref_field().copy(from.ref_field(), std::forward<ARGS>(args)...);
 }
 
-template <class IE>
-std::enable_if_t<is_multi_field_v<IE>>
-inline field_copy(IE& to, IE const& from)
+template <class IE, class ...ARGS>
+std::enable_if_t<is_multi_field_v<IE>, MED_RESULT>
+inline field_copy(IE& to, IE const& from, ARGS&&... args)
 {
 	to.clear();
 	for (auto const& rhs : from)
 	{
-		if (auto* p = to.push_back())
+		if (auto* p = to.push_back(std::forward<ARGS>(args)...))
 		{
-			*p = rhs;
+			MED_CHECK_FAIL(p->copy(rhs, std::forward<ARGS>(args)...));
+		}
+		else
+		{
+			MED_RETURN_FAILURE;
 		}
 	}
+	MED_RETURN_SUCCESS;
 }
 
 template <class... IES>
@@ -142,19 +147,22 @@ struct seq_copy;
 template <class IE, class... IES>
 struct seq_copy<IE, IES...>
 {
-	template <class FIELDS>
-	static inline void copy(FIELDS& to, FIELDS const& from)
+	template <class FIELDS, class... ARGS>
+	static inline MED_RESULT copy(FIELDS& to, FIELDS const& from, ARGS&&... args)
 	{
-		field_copy<IE>(to, from);
-		seq_copy<IES...>::copy(to, from);
+		return field_copy<IE>(to, from, std::forward<ARGS>(args)...)
+			MED_AND seq_copy<IES...>::copy(to, from, std::forward<ARGS>(args)...);
 	}
 };
 
 template <>
 struct seq_copy<>
 {
-	template <class FIELDS>
-	static constexpr void copy(FIELDS&, FIELDS const&)    { }
+	template <class FIELDS, class... ARGS>
+	static constexpr MED_RESULT copy(FIELDS&, FIELDS const&, ARGS&&...)
+	{
+		MED_RETURN_SUCCESS;
+	}
 };
 
 //-----------------------------------------------------------------------
@@ -266,7 +274,11 @@ public:
 	bool is_set() const                     { return sl::seq_is_set<IES...>::is_set(this->m_ies); }
 	std::size_t calc_length() const         { return sl::container_for<IES...>::calc_length(this->m_ies); }
 
-	void copy(container_t const& rhs)       { sl::seq_copy<IES...>::copy(this->m_ies, rhs.m_ies); }
+	template <class... ARGS>
+	MED_RESULT copy(container_t const& from, ARGS&&... args)
+	{
+		return sl::seq_copy<IES...>::copy(this->m_ies, from.m_ies, std::forward<ARGS>(args)...);
+	}
 
 protected:
 	struct ies_t : IES...

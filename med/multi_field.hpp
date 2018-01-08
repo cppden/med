@@ -121,13 +121,6 @@ public:
 	field_type const* first() const                         { return &m_fields[0]; }
 	field_type const* last() const                          { return &m_tail->value; }
 
-//	field_type* at(std::size_t index)
-//	{
-//		iterator it = begin(), ite = end();
-//		while (index && it != ite) { --index; ++it; }
-//		return it.get();
-//	}
-
 	//ineffective read-only access
 	field_type const* at(std::size_t index) const
 	{

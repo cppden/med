@@ -66,7 +66,7 @@ public:
 	}
 
 	template <std::size_t SIZE, typename T, std::size_t ALLOC_SIZE>
-	decoder_context(uint8_t const (&data)[SIZE], T const (&alloc_data)[ALLOC_SIZE])
+	decoder_context(uint8_t const (&data)[SIZE], T (&alloc_data)[ALLOC_SIZE])
 		: decoder_context(data, SIZE, alloc_data, ALLOC_SIZE*sizeof(T))
 	{
 	}

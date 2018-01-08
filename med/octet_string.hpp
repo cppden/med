@@ -130,7 +130,7 @@ class octets_fix_intern
 public:
 	bool empty() const                                  { return !m_is_set; }
 
-	constexpr std::size_t size() const                  { return LEN; }
+	static constexpr std::size_t size()                 { return LEN; }
 	uint8_t const* data() const                         { return m_data; }
 	uint8_t* data()                                     { return m_data; }
 
@@ -188,6 +188,14 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	iterator end()                          { return begin() + size(); }
 
 	void clear()                            { m_value.clear(); }
+
+	template <class... ARGS>
+	MED_RESULT copy(base_t const& from, ARGS&&...)
+	{
+		clear();
+		m_value.assign(from.begin(), from.end());
+		MED_RETURN_SUCCESS;
+	}
 
 	template <class T = VALUE>
 	decltype(std::declval<T>().resize(0)) resize(std::size_t new_size)
