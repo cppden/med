@@ -9,6 +9,8 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "exception.hpp"
+
 namespace med {
 
 namespace placeholder {
@@ -23,6 +25,8 @@ struct _length
 	{
 		static constexpr void clear()       { }
 		static constexpr bool is_set()      { return true; }
+		template <class... ARGS>
+		static constexpr MED_RESULT copy(field_t const&, ARGS&&...) { MED_RETURN_SUCCESS; }
 	};
 	static constexpr field_t ref_field()    { return field_t{}; }
 };

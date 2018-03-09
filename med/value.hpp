@@ -12,25 +12,12 @@ Distributed under the MIT License
 #include <type_traits>
 
 #include "ie_type.hpp"
+#include "units.hpp"
 #include "value_traits.hpp"
 #include "exception.hpp"
 
 
 namespace med {
-
-template <uint8_t NUM>
-struct bits
-{
-	static_assert(NUM > 0 && NUM <= 64, "INVALID NUMBER OF BITS");
-	static constexpr uint8_t size = NUM;
-};
-
-template <uint8_t NUM>
-struct bytes
-{
-	static_assert(NUM > 0 && NUM <= 8, "INVALID NUMBER OF BYTES");
-	static constexpr uint8_t size = NUM;
-};
 
 //traits representing a fixed value of particular size (in bits/bytes/int)
 template <std::size_t VAL, class T = std::size_t, class Enable = void>

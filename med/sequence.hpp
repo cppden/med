@@ -159,7 +159,10 @@ struct seq_dec_imp<std::enable_if_t<
 			CODEC_TRACE("C[%s]", name<IE>());
 			IE& ie = to;
 			MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
-			if (!was_set) { ie.ref_field().clear(); } //discard since it's a default
+			if constexpr (has_default_value_v<IE>)
+			{
+				if (!was_set) { ie.ref_field().clear(); } //discard since it's a default
+			}
 		}
 		else
 		{

@@ -125,10 +125,14 @@ inline auto get_string(T const& field) -> std::enable_if_t<std::is_pointer<declt
 #define EQ_STRING_O_(index, fld_type, expected) \
 {                                                             \
 	char const exp[] = expected;                              \
-	auto const got = msg->get<fld_type>(index);               \
-	ASSERT_NE(nullptr, static_cast<fld_type const*>(got));    \
-	ASSERT_EQ(sizeof(exp)-1, got->size());                    \
-	ASSERT_TRUE(Matches(exp, got->data(), sizeof(exp)-1));    \
+	auto const& range = msg->get<fld_type>();                   \
+	auto it = range.begin(); \
+	ASSERT_NE(range.end(), it); \
+	for (std::size_t i = index; i > 0; --i, ++it) { \
+		ASSERT_NE(range.end(), it); \
+	} \
+	ASSERT_EQ(sizeof(exp)-1, it->size());                    \
+	ASSERT_TRUE(Matches(exp, it->data(), sizeof(exp)-1));    \
 }
 
 #define EQ_STRING_M(fld_type, expected) \

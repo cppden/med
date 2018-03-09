@@ -193,20 +193,41 @@ template <class WRAPPER, class FUNC, class IE, class UNEXP>
 std::enable_if_t<has_length_type<IE>::value, MED_RESULT>
 inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
-	auto const pad = add_padding<IE>(func);
-	//NOTE: need to scope the length_encoder dtor to be called before optionally adding a padding
+	if constexpr (has_padding<IE>::value)
+	{
+		using pad_t = padder<IE, FUNC>;
+		pad_t pad{func};
+		if constexpr (pad_t::pad_traits::inclusive)
+		{
+			length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
+			MED_CHECK_FAIL(ie.decode(ld, unexp));
+			//special case for empty elements w/o length placeholder
+			pad.enable(static_cast<bool>(ld));
+			CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", pad.size(), ld.size());
+			return pad.add();
+		}
+		else
+		{
+			//scope length_encoder dtor to be called before optionally adding a padding
+			{
+				length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
+				MED_CHECK_FAIL(ie.decode(ld, unexp));
+				//special case for empty elements w/o length placeholder
+				pad.enable(static_cast<bool>(ld));
+				CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", pad.size(), ld.size());
+			}
+			return pad.add();
+			//TODO: may treat this case as warning? happens only in case of last IE with padding ended prematuraly
+//		if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
+//			return func(error::OVERFLOW, name<IE>(), left * FUNC::granularity);
+		}
+	}
+	else
 	{
 		length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
 		MED_CHECK_FAIL(ie.decode(ld, unexp));
-		//special case for empty elements w/o length placeholder
-		padding_enable(pad, static_cast<bool>(ld));
-		CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", padding_size(pad), ld.size());
-		if (std::size_t const left = ld.size())
-		{
-			return func(error::OVERFLOW, name<IE>(), left * FUNC::granularity);
-		}
+		MED_RETURN_SUCCESS;
 	}
-	return padding_do(pad);
 }
 
 }	//end: namespace sl

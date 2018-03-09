@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include "functional.hpp"
+#include "exception.hpp"
 
 namespace med {
 
@@ -42,6 +43,8 @@ struct empty : IE<IE_NULL>
 	static constexpr void set()             { }
 	static constexpr bool get()             { return true; }
 	static constexpr bool is_set()          { return true; }
+	template <class... ARGS>
+	static constexpr MED_RESULT copy(empty const&, ARGS&&...) { MED_RETURN_SUCCESS; }
 };
 
 //selectable IE as empty case in choice
@@ -52,6 +55,8 @@ struct selectable : IE<IE_NULL>
 	void clear()                            { m_set = false; }
 	bool is_set() const                     { return m_set; }
 	explicit operator bool() const          { return is_set(); }
+	template <class... ARGS>
+	MED_RESULT copy(selectable const& from, ARGS&&...) { m_set = from.m_set; MED_RETURN_SUCCESS; }
 
 private:
 	bool    m_set{false};

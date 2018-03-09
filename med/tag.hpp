@@ -50,7 +50,7 @@ template <class, class Enable = void>
 struct has_get_tag : std::false_type { };
 
 template <class T>
-struct has_get_tag<T, void_t<decltype(std::declval<T>().get_tag())>> : std::true_type { };
+struct has_get_tag<T, std::void_t<decltype(std::declval<T>().get_tag())>> : std::true_type { };
 
 
 template <class IE, typename Enable = void>

@@ -29,7 +29,7 @@ struct length_t
 template <class, class Enable = void>
 struct has_length_type : std::false_type { };
 template <class T>
-struct has_length_type<T, void_t<typename T::length_type>> : std::true_type { };
+struct has_length_type<T, std::void_t<typename T::length_type>> : std::true_type { };
 
 template <class T>
 using is_length = has_length_type<T>;
@@ -74,7 +74,7 @@ template <class, typename Enable = void>
 struct has_get_length : std::false_type { };
 
 template <class T>
-struct has_get_length<T, void_t<decltype(std::declval<T>().get_length())>> : std::true_type { };
+struct has_get_length<T, std::void_t<decltype(std::declval<T>().get_length())>> : std::true_type { };
 
 template <class WRAPPER, class FIELD>
 std::enable_if_t<!has_get_length<FIELD>::value, std::size_t>

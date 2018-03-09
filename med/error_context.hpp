@@ -81,11 +81,9 @@ public:
 private:
 	friend char const* toString(error_context const&);
 
-	enum { MAX_PARAMS = 2 };
-
-	char const* m_name;
-	std::size_t m_param[MAX_PARAMS];
-	error       m_error{ error::SUCCESS };
+	char const* m_name {nullptr};
+	std::size_t m_param[2] {};
+	error       m_error { error::SUCCESS };
 
 #endif //MED_EXCEPTIONS
 

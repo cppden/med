@@ -10,36 +10,53 @@ Distributed under the MIT License
 #pragma once
 
 #include "config.hpp"
+#include "units.hpp"
 #include "debug.hpp"
 
 namespace med {
 
-template <std::size_t BITS, uint8_t FILLER = 0>
-struct padding
+namespace detail {
+
+template <std::size_t BITS, bool INCLUSIVE, uint8_t FILLER>
+struct pad
 {
-	using bits   = std::integral_constant<std::size_t, BITS>;
-	using filler = std::integral_constant<uint8_t, FILLER>;
+	static constexpr bool inclusive = INCLUSIVE;
+	static constexpr std::size_t bits = BITS;
+	static constexpr uint8_t filler = FILLER;
 };
+
+} //end: namespace detail
+
+template <class UNIT, bool INCLUSIVE = false, uint8_t FILLER = 0, class Enable = void>
+struct padding;
+
+template <uint8_t BITS, bool INCLUSIVE, uint8_t FILLER>
+struct padding<bits<BITS>, INCLUSIVE, FILLER, void>
+	: detail::pad<BITS, INCLUSIVE, FILLER> {};
+
+template <uint8_t BYTES, bool INCLUSIVE, uint8_t FILLER>
+struct padding<bytes<BYTES>, INCLUSIVE, FILLER, void>
+	: detail::pad<BYTES*8, INCLUSIVE, FILLER> {};
+
+template <typename INT, bool INCLUSIVE, uint8_t FILLER>
+struct padding<INT, INCLUSIVE, FILLER, std::enable_if_t<std::is_integral_v<INT>>>
+	: detail::pad<sizeof(INT)*8, INCLUSIVE, FILLER> {};
 
 template <class, class Enable = void>
 struct has_padding : std::false_type { };
 
 template <class T>
-struct has_padding<T, void_t<typename T::padding>> : std::true_type { };
+struct has_padding<T, std::void_t<typename T::padding>> : std::true_type { };
 
 template <class IE, class FUNC>
 struct padder
 {
+	using pad_traits = typename IE::padding;
+
 	explicit padder(FUNC& func) noexcept
 		: m_func{ func }
 		, m_start{ m_func(GET_STATE{}) }
 	{}
-
-	padder(padder&& rhs) noexcept
-		: m_func{ rhs.m_func}
-		, m_start{ rhs.m_start }
-	{
-	}
 
 	void enable(bool v) const           { m_enable = v; }
 	//current padding size in bits
@@ -49,7 +66,7 @@ struct padder
 		{
 			auto const total_bits = (m_func(GET_STATE{}) - m_start) * FUNC::granularity;
 			//CODEC_TRACE("PADDING %zu bits for %zd = %zu\n", pad_bits, total_bits, pad_bits + total_bits);
-			return (IE::padding::bits::value - (total_bits % IE::padding::bits::value)) % IE::padding::bits::value;
+			return (pad_traits::bits - (total_bits % pad_traits::bits)) % pad_traits::bits;
 		}
 		return 0;
 	}
@@ -59,11 +76,12 @@ struct padder
 		if (auto const pad_bits = size())
 		{
 			CODEC_TRACE("PADDING %zu bits", pad_bits);
-			return m_func(ADD_PADDING{pad_bits, IE::padding::filler::value});
+			return m_func(ADD_PADDING{pad_bits, IE::padding::filler});
 		}
 		MED_RETURN_SUCCESS;
 	}
 
+private:
 	padder(padder const&) = delete;
 	padder& operator= (padder const&) = delete;
 
@@ -71,37 +89,5 @@ struct padder
 	typename FUNC::state_type m_start;
 	bool mutable              m_enable{ true };
 };
-
-using dummy_padder = std::true_type;
-
-template <class IE, class FUNC>
-std::enable_if_t<has_padding<IE>::value, padder<IE, FUNC>>
-inline add_padding(FUNC& func)
-{
-	return padder<IE, FUNC>{func};
-}
-
-template <class IE, class FUNC>
-std::enable_if_t<!has_padding<IE>::value, dummy_padder>
-constexpr add_padding(FUNC&)
-{
-	return dummy_padder{};
-}
-
-template <class T>
-inline void padding_enable(T const& pad, bool v)            { pad.enable(v); }
-constexpr void padding_enable(dummy_padder, bool)           { }
-
-template <class T>
-inline std::size_t padding_size(T const& pad)               { return pad.size(); }
-constexpr std::size_t padding_size(dummy_padder)            { return 0; }
-
-template <class T>
-inline MED_RESULT padding_do(T const& pad)                  { return pad.add(); }
-#if (MED_EXCEPTIONS)
-constexpr MED_RESULT padding_do(dummy_padder)               { }
-#else
-constexpr MED_RESULT padding_do(dummy_padder)               { return true; }
-#endif //MED_EXCEPTIONS
 
 }	//end: namespace med

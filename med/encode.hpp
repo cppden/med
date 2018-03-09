@@ -38,7 +38,7 @@ struct null_encoder
 };
 
 template <class T>
-struct null_encoder<T, void_t<typename T::null_encoder>>
+struct null_encoder<T, std::void_t<typename T::null_encoder>>
 {
 	template <class FUNC, class IE>
 	static MED_RESULT encode(FUNC& func, IE& ie)
@@ -147,22 +147,45 @@ struct container_encoder
 	std::enable_if_t<has_length_type<IE>::value, MED_RESULT>
 	static encode(FUNC& func, IE& ie)
 	{
-		auto const pad = add_padding<IE>(func);
-		//NOTE: need to scope the length_encoder dtor to be called before optionally adding a padding
+		CODEC_TRACE("start %s with length...:", name<IE>());
+		if constexpr (has_padding<IE>::value)
 		{
-			CODEC_TRACE("start %s with length...:", name<IE>());
+			using pad_t = padder<IE, FUNC>;
+			pad_t pad{func};
+			if constexpr (pad_t::pad_traits::inclusive)
+			{
+				length_encoder<FUNC, typename IE::length_type> le{ func };
+				MED_CHECK_FAIL(ie.encode(le));
+				CODEC_TRACE("finish %s with length...:", name<IE>());
+				//special case for empty elements w/o length placeholder
+				pad.enable(static_cast<bool>(le));
+				return pad.add();
+			}
+			else
+			{
+				//scope length_encoder dtor to be called before optionally adding a padding
+				{
+					length_encoder<FUNC, typename IE::length_type> le{ func };
+					MED_CHECK_FAIL(ie.encode(le));
+					CODEC_TRACE("finish %s with length...:", name<IE>());
+					//special case for empty elements w/o length placeholder
+					pad.enable(static_cast<bool>(le));
+				}
+				return pad.add();
+			}
+		}
+		else
+		{
 			length_encoder<FUNC, typename IE::length_type> le{ func };
 			MED_CHECK_FAIL(ie.encode(le));
 			CODEC_TRACE("finish %s with length...:", name<IE>());
-			//special case for empty elements w/o length placeholder
-			padding_enable(pad, static_cast<bool>(le));
+			MED_RETURN_SUCCESS;
 		}
-		return padding_do(pad);
 	}
 };
 
 template <class T>
-struct container_encoder<T, void_t<typename T::container_encoder>>
+struct container_encoder<T, std::void_t<typename T::container_encoder>>
 {
 	template <class FUNC, class IE>
 	static MED_RESULT encode(FUNC& func, IE& ie)

@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include <utility>
 
 #include "debug.hpp"
+#include "error.hpp"
 #include "state.hpp"
 #include "name.hpp"
 #include "ie_type.hpp"
@@ -114,7 +115,7 @@ private:
 	template <class IE>
 	static auto get_bytes(uint8_t const* input)
 	{
-		enum { NUM_BYTES = IE::traits::bits / granularity };
+		constexpr std::size_t NUM_BYTES = IE::traits::bits / granularity;
 		typename IE::value_type value{};
 		get_bytes_impl(input, value, std::make_index_sequence<NUM_BYTES>{});
 		return value;

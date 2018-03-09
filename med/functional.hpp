@@ -10,7 +10,6 @@ Distributed under the MIT License
 #pragma once
 
 #include <type_traits>
-#include "void.hpp"
 
 namespace med {
 
@@ -23,14 +22,14 @@ using remove_cref_t = typename remove_cref<T>::type;
 template <class, class Enable = void>
 struct has_ie_type : std::false_type { };
 template <class T>
-struct has_ie_type<T, void_t<typename T::ie_type>> : std::true_type { };
+struct has_ie_type<T, std::void_t<typename T::ie_type>> : std::true_type { };
 template <class T>
 constexpr bool has_ie_type_v = has_ie_type<T>::value;
 
 template <class, class Enable = void>
 struct has_field_type : std::false_type { };
 template <class T>
-struct has_field_type<T, void_t<typename T::field_type>> : std::true_type { };
+struct has_field_type<T, std::void_t<typename T::field_type>> : std::true_type { };
 
 
 template <class T, typename Enable = void>
@@ -69,7 +68,7 @@ constexpr bool is_condition_v = is_condition<T>::value;
 template <class, class Enable = void>
 struct has_condition : std::false_type { };
 template <class T>
-struct has_condition<T, void_t<typename T::condition>> : std::true_type { };
+struct has_condition<T, std::void_t<typename T::condition>> : std::true_type { };
 template <class T>
 constexpr bool has_condition_v = has_condition<T>::value;
 
@@ -95,7 +94,7 @@ constexpr bool is_setter_v = is_setter<T>::value;
 template <class, class Enable = void >
 struct has_setter_type : std::false_type { };
 template <class T>
-struct has_setter_type<T, void_t<typename T::setter_type>> : std::true_type { };
+struct has_setter_type<T, std::void_t<typename T::setter_type>> : std::true_type { };
 template <class T>
 constexpr bool has_setter_type_v = has_setter_type<T>::value;
 

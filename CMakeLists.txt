@@ -47,11 +47,11 @@ else (WITH_EX)
 endif (WITH_EX)
 
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-std=c++14" COMPILER_SUPPORTS_CXX14)
-if (COMPILER_SUPPORTS_CXX14)
-    add_definitions(-std=c++14)
+check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
+if (COMPILER_SUPPORTS_CXX17)
+    add_definitions(-std=c++17)
 else ()
-    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
+    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler.")
 endif ()
 
 
@@ -68,7 +68,7 @@ set(BM_SRCS
 
 #set_source_files_properties(
 #  ${UT_SRCS} ${BM_SRCS} PROPERTIES COMPILE_FLAGS
-#  "-O3 -std=c++14 -Wall -Werror"
+#  "-O3 -std=c++17 -Wall -Werror"
 #)
 
 add_compile_options(

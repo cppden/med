@@ -28,7 +28,7 @@ template <class, class Enable = void>
 struct has_counter_type : std::false_type { };
 
 template <class T>
-struct has_counter_type<T, void_t<typename T::counter_type>> : std::true_type { };
+struct has_counter_type<T, std::void_t<typename T::counter_type>> : std::true_type { };
 
 template <class T>
 using is_counter = has_counter_type<T>;
@@ -109,7 +109,7 @@ constexpr bool is_count_getter_v = is_count_getter<T>::value;
 template <class, class Enable = void >
 struct has_count_getter : std::false_type { };
 template <class T>
-struct has_count_getter<T, void_t<typename T::count_getter>> : std::true_type { };
+struct has_count_getter<T, std::void_t<typename T::count_getter>> : std::true_type { };
 template <class T>
 constexpr bool has_count_getter_v = has_count_getter<T>::value;
 

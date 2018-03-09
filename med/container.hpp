@@ -235,6 +235,7 @@ public:
 	}
 
 	template <class FIELD>
+	[[deprecated("inefficient, may be removed")]]
 	FIELD const* get(std::size_t index) const
 	{
 		auto& ie = m_ies.template as<FIELD>();
@@ -255,7 +256,9 @@ public:
 	auto field()                            { return make_accessor(*this); }
 	auto field() const                      { return make_accessor(*this); }
 	auto cfield() const                     { return make_accessor(*this); }
+	[[deprecated("inefficient, will be removed")]]
 	auto field(std::size_t index) const     { return make_accessor(*this, index); }
+	[[deprecated("inefficient, will be removed")]]
 	auto cfield(std::size_t index) const    { return make_accessor(*this, index); }
 
 	template <class FIELD>

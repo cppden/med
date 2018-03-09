@@ -662,11 +662,15 @@ TEST(encode, mseq_ok)
 	//check RO access (compile test)
 	{
 		MSG_MSEQ const& cmsg = msg;
-		FLD_DW const* cpf = cmsg.field(1);
-		ASSERT_NE(nullptr, cpf);
-		ASSERT_EQ(0x12345678, cpf->get());
-		FLD_DW const* rf = msg.field(1);
-		ASSERT_EQ(0x12345678, rf->get());
+		auto& rdw = cmsg.get<FLD_DW>();
+		auto it = rdw.begin();
+		ASSERT_NE(rdw.end(), it);
+		ASSERT_EQ(0x01020304, it->get());
+		++it;
+		ASSERT_NE(rdw.end(), it);
+		ASSERT_EQ(0x12345678, it->get());
+//		FLD_DW const* rf = msg.field(1);
+//		ASSERT_EQ(0x12345678, rf->get());
 		//FLD_DW& rpf = msg.field(); //invalid access
 		//FLD_DW* pf = msg.field(); //invalid access
 	}
@@ -1448,8 +1452,7 @@ TEST(decode, mseq_ok)
 	}
 
 	EXPECT_EQ(0, msg->count<VFLD1>());
-	VFLD1 const* vfld1 = msg->field(0);
-	EXPECT_EQ(nullptr, vfld1);
+	EXPECT_TRUE(msg->get<VFLD1>().empty());
 
 	//with more mandatory and optionals
 	uint8_t const encoded2[] = { 0x11
@@ -1513,25 +1516,26 @@ TEST(decode, mseq_ok)
 	check_seqof<FLD_W>(*pso1, {0x1223, 0x3445});
 
 	ASSERT_EQ(2, msg->count<SEQOF_2>());
-	SEQOF_2 const* pso2 = msg->field(0);
-	ASSERT_NE(nullptr, pso2);
-	EXPECT_EQ(0x1122, pso2->get<FLD_W>().get());
+	auto& rso2 = msg->get<SEQOF_2>();
+	auto so2_it = rso2.begin();
+	ASSERT_NE(rso2.end(), so2_it);
+	EXPECT_EQ(0x1122, so2_it->get<FLD_W>().get());
 
-	pcho = pso2->field();
+	pcho = so2_it->field();
 	ASSERT_NE(nullptr, pcho);
 	FLD_U16 const* pu16 = pcho->select();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x3344, pu16->get());
 
-	pso2 = msg->field(1);
-	ASSERT_NE(nullptr, pso2);
-	EXPECT_EQ(0x3344, pso2->get<FLD_W>().get());
+	so2_it++;
+	ASSERT_NE(rso2.end(), so2_it);
+	EXPECT_EQ(0x3344, so2_it->get<FLD_W>().get());
 
-	pcho = pso2->field();
+	pcho = so2_it->field();
 	EXPECT_EQ(nullptr, pcho);
 
-	pso2 = msg->field(2);
-	EXPECT_EQ(nullptr, pso2);
+	so2_it++;
+	ASSERT_EQ(rso2.end(), so2_it);
 
 	check_seqof<VFLD1>(*msg, {"test.this", "test.it"});
 }
@@ -1860,18 +1864,27 @@ TEST(decode, mset_ok)
 	MSG_MSET const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	EXPECT_EQ(0x11, (msg->get<FLD_UC>(0)->get()));
-	EXPECT_EQ(0x12, (msg->get<FLD_UC>(1)->get()));
-	EXPECT_EQ(1, msg->count<FLD_U8>());
-	EXPECT_EQ(0x13, (msg->get<FLD_U8>(0)->get()));
-	EXPECT_EQ(0x35D9, (msg->get<FLD_U16>(0)->get()));
-	EXPECT_EQ(0x35DA, (msg->get<FLD_U16>(1)->get()));
-	FLD_U24 const* fld3 = msg->field(0);
-	FLD_IP const* fld4 = msg->field(0);
-	VFLD1 const* vfld1 = msg->field(0);
-	EXPECT_EQ(nullptr, fld3);
-	EXPECT_EQ(nullptr, fld4);
-	EXPECT_EQ(nullptr, vfld1);
+	{
+		ASSERT_EQ(2, msg->count<FLD_UC>());
+		auto it = msg->get<FLD_UC>().begin();
+		EXPECT_EQ(0x11, it->get());
+		++it;
+		EXPECT_EQ(0x12, it->get());
+	}
+	{
+		ASSERT_EQ(1, msg->count<FLD_U8>());
+		EXPECT_EQ(0x13, (msg->get<FLD_U8>().begin()->get()));
+	}
+	{
+		ASSERT_EQ(2, msg->count<FLD_U16>());
+		auto it = msg->get<FLD_U16>().begin();
+		EXPECT_EQ(0x35D9, it->get());
+		++it;
+		EXPECT_EQ(0x35DA, it->get());
+	}
+	EXPECT_TRUE(msg->get<FLD_U24>().empty());
+	EXPECT_TRUE(msg->get<FLD_IP>().empty());
+	EXPECT_TRUE(msg->get<VFLD1>().empty());
 
 	//optional fields
 	uint8_t const encoded2[] = { 0x14
@@ -1891,10 +1904,8 @@ TEST(decode, mset_ok)
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	fld3 = msg->field(0);
-	fld4 = msg->field(0);
-	EXPECT_EQ(nullptr, fld3);
-	EXPECT_EQ(nullptr, fld4);
+	EXPECT_TRUE(msg->get<FLD_U24>().empty());
+	EXPECT_TRUE(msg->get<FLD_IP>().empty());
 
 	EXPECT_EQ(1, msg->count<VFLD1>());
 	EQ_STRING_O_(0, VFLD1, "test.this");
@@ -1922,19 +1933,24 @@ TEST(decode, mset_ok)
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
-	fld3 = msg->field(0);
-	FLD_U24 const* fld3_2 = msg->field(1);
-	fld4 = msg->field(0);
-	FLD_IP const* fld4_2 = msg->field(1);
-	ASSERT_NE(nullptr, fld3);
-	ASSERT_NE(nullptr, fld3_2);
-	ASSERT_NE(nullptr, fld4);
-	ASSERT_NE(nullptr, fld4_2);
-
-	EXPECT_EQ(0xDABEEF, fld3->get());
-	EXPECT_EQ(0x22BEEF, fld3_2->get());
-	EXPECT_EQ(0xfee1ABBA, fld4->get());
-	EXPECT_EQ(0xABBAc001, fld4_2->get());
+	{
+		uint32_t const exp[] = {0xDABEEF, 0x22BEEF};
+		auto const* p = exp;
+		ASSERT_EQ(std::size(exp), msg->count<FLD_U24>());
+		for (auto& f : msg->get<FLD_U24>())
+		{
+			EXPECT_EQ(*p++, f.get());
+		}
+	}
+	{
+		uint32_t const exp[] = {0xfee1ABBA, 0xABBAc001};
+		auto const* p = exp;
+		ASSERT_EQ(std::size(exp), msg->count<FLD_IP>());
+		for (auto& f : msg->get<FLD_IP>())
+		{
+			EXPECT_EQ(*p++, f.get());
+		}
+	}
 	EXPECT_EQ(2, msg->count<VFLD1>());
 	EQ_STRING_O_(0, VFLD1, "test.this");
 	EQ_STRING_O_(1, VFLD1, "test.it");
@@ -2017,9 +2033,12 @@ TEST(decode, msg_func)
 	MSG_FUNC const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 	ASSERT_EQ(2, msg->count<FLD_UC>());
-	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
-	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
-	ASSERT_EQ(0, msg->count<FLD_U8>());
+	{
+		auto it = msg->get<FLD_UC>().begin();
+		EXPECT_EQ(37, it->get());
+		EXPECT_EQ(38, std::next(it)->get());
+		ASSERT_EQ(0, msg->count<FLD_U8>());
+	}
 	FLD_U16 const* pu16 = msg->field();
 	EXPECT_EQ(nullptr, pu16);
 	FLD_U24 const* pu24 = msg->field();
@@ -2042,10 +2061,14 @@ TEST(decode, msg_func)
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 	ASSERT_EQ(3, msg->count<FLD_UC>());
-	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
-	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
-	EXPECT_EQ(39, (msg->get<FLD_UC>(2)->get()));
+	{
+		auto it = msg->get<FLD_UC>().begin();
+		EXPECT_EQ(37, it->get()); ++it;
+		EXPECT_EQ(38, it->get()); ++it;
+		EXPECT_EQ(39, it->get());
+	}
 	ASSERT_EQ(0, msg->count<FLD_U8>());
+	EXPECT_EQ(msg->get<FLD_U8>().end(), msg->get<FLD_U8>().begin());
 	pu16 = msg->field();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x35D9, pu16->get());
@@ -2074,14 +2097,18 @@ TEST(decode, msg_func)
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
-	ASSERT_EQ(4, msg->count<FLD_UC>());
-	EXPECT_EQ(37, (msg->get<FLD_UC>(0)->get()));
-	EXPECT_EQ(38, (msg->get<FLD_UC>(1)->get()));
-	EXPECT_EQ(39, (msg->get<FLD_UC>(2)->get()));
-	EXPECT_EQ(40, (msg->get<FLD_UC>(3)->get()));
-	ASSERT_EQ(2, msg->count<FLD_U8>());
-	EXPECT_EQ('a', (msg->get<FLD_U8>(0)->get()));
-	EXPECT_EQ('b', (msg->get<FLD_U8>(1)->get()));
+	{
+		uint8_t const exp[] = {37,38,39,40};
+		ASSERT_EQ(std::size(exp), msg->count<FLD_UC>());
+		auto* p = exp;
+		for (auto& f : msg->get<FLD_UC>()) { EXPECT_EQ(*p++, f.get()); }
+	}
+	{
+		uint8_t const exp[] = {'a','b'};
+		ASSERT_EQ(std::size(exp), msg->count<FLD_U8>());
+		auto* p = exp;
+		for (auto& f : msg->get<FLD_U8>()) { EXPECT_EQ(*p++, f.get()); }
+	}
 	pu16 = msg->field();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x35D9, pu16->get());
@@ -2092,11 +2119,10 @@ TEST(decode, msg_func)
 	ASSERT_NE(nullptr, pqty);
 	auto const u32_qty = msg->count<FLD_IP>();
 	ASSERT_EQ(pqty->get(), u32_qty);
-	for (uint8_t i = 0; i < u32_qty; ++i)
+	std::size_t i = 0;
+	for (auto& f : msg->get<FLD_IP>())
 	{
-		FLD_IP const* p = msg->get<FLD_IP>(i);
-		ASSERT_NE(nullptr, p);
-		EXPECT_EQ(make_hash(i), p->get());
+		EXPECT_EQ(make_hash(i), f.get()); i++;
 	}
 
 	//------------ fail cases
@@ -2652,7 +2678,7 @@ struct with_padding
 template <class T>
 struct with_padding<T, std::enable_if_t<std::is_same<typename T::ie_type, med::IE_OCTET_STRING>::value>>
 {
-	using padding = med::padding<32>;
+	using padding = med::padding<uint32_t>;
 };
 
 template <class AVP, avp_code::value_type CODE, uint8_t FLAGS = 0, vendor::value_type VENDOR = 0>
@@ -2905,6 +2931,44 @@ TEST(decode, dpr_padding)
 	ASSERT_EQ(2, msg->get<diameter::disconnect_cause>().get());
 }
 
+TEST(decode, bad_padding)
+{
+	diameter::BASE base;
+
+	uint8_t const dpr[] = {
+			0x01, 0x00, 0x00, 76-3, //VER(1), LEN(3)
+			0x80, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
+			0x00, 0x00, 0x00, 0x00, //APP-ID
+			0x22, 0x22, 0x22, 0x22, //H2H-ID
+			0x55, 0x55, 0x55, 0x55, //E2E-ID
+
+			0x00, 0x00, 0x01, 0x11, //AVP = 273 Disconnect-Cause AVP
+			0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+			0x00, 0x00, 0x00, 0x02, //cause = 2
+
+			0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
+			0x40, 0x00, 0x00, 22, //V.M.P(1), LEN(3) = 22 + padding
+			'o', 'r', 'i', 'g',
+			'.', 'r', 'e', 'a',
+			'l', 'm', '.', 'n',
+			'e', 't',   0,   0,
+
+			0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
+			0x40, 0x00, 0x00, 17, //V.M.P(1), LEN(3) = 17 + padding
+			'O', 'r', 'i', 'g',
+			'.', 'H', 'o', 's',
+			't',   //0,   0,   0,
+	};
+
+	med::decoder_context<> ctx{ dpr };
+
+#if (MED_EXCEPTIONS)
+	EXPECT_THROW(decode(med::make_octet_decoder(ctx), base), med::exception);
+#else
+	EXPECT_FALSE(decode(med::make_octet_decoder(ctx), base));
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error());
+#endif
+}
 TEST(decode, dpa_unexp)
 {
 	diameter::BASE base;
@@ -2931,6 +2995,196 @@ TEST(decode, dpa_unexp)
 	EXPECT_EQ(1, msg->count<diameter::failed_avp>());
 }
 
+#endif
+
+#if 1
+namespace pad {
+
+template <class T>
+using CASE = med::tag<med::value<med::fixed<T::id>>, T>;
+
+struct flag : med::sequence<
+	med::placeholder::_length<>,
+	M< FLD_U8 >
+>
+{
+	static constexpr uint8_t id = 1;
+	using container_t::get;
+	uint8_t get() const         { return get<FLD_U8>().get(); }
+	void set(uint8_t v)         { ref<FLD_U8>().set(v); }
+};
+
+struct port : med::sequence<
+	med::placeholder::_length<>,
+	M< FLD_U16 >
+>
+{
+	static constexpr uint8_t id = 2;
+	using container_t::get;
+	uint16_t get() const        { return get<FLD_U16>().get(); }
+	void set(uint16_t v)        { ref<FLD_U16>().set(v); }
+};
+
+struct pdu : med::sequence<
+	med::placeholder::_length<>,
+	M< FLD_U24 >
+>
+{
+	static constexpr uint8_t id = 3;
+	using container_t::get;
+	FLD_U24::value_type get() const  { return get<FLD_U24>().get(); }
+	void set(FLD_U24::value_type v)  { ref<FLD_U24>().set(v); }
+};
+
+struct ip : med::sequence<
+	med::placeholder::_length<>,
+	M< FLD_IP >
+>
+{
+	static constexpr uint8_t id = 4;
+	using container_t::get;
+	FLD_IP::value_type get() const  { return get<FLD_IP>().get(); }
+	void set(FLD_IP::value_type v)  { ref<FLD_IP>().set(v); }
+};
+
+struct exclusive : med::choice< med::value<uint8_t>
+	, CASE< flag >
+	, CASE< port >
+	, CASE< pdu >
+	, CASE< ip >
+>
+{
+	using length_type = med::value<uint8_t>;
+	using padding = med::padding<uint32_t>;
+	static constexpr char const* name() { return "Header"; }
+};
+
+struct inclusive : med::choice< med::value<uint8_t>
+	, CASE< flag >
+	, CASE< port >
+	, CASE< pdu >
+	, CASE< ip >
+>
+{
+	using length_type = med::value<uint8_t>;
+	using padding = med::padding<uint32_t, true>;
+	static constexpr char const* name() { return "Header"; }
+};
+
+} //end: namespace pad
+
+
+TEST(padding, exclusive)
+{
+	uint8_t buffer[16];
+	med::encoder_context<> ctx{ buffer };
+
+	pad::exclusive hdr;
+
+	//-- 1 byte
+	ctx.reset();
+	hdr.ref<pad::flag>().set(0x12);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_1[] = { 1, 3, 0x12, 0 };
+	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_1, buffer));
+
+	//-- 2 bytes
+	ctx.reset();
+	hdr.ref<pad::port>().set(0x1234);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_2[] = { 2, 4, 0x12, 0x34 };
+	EXPECT_EQ(sizeof(encoded_2), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_2, buffer));
+
+	//-- 3 bytes
+	ctx.reset();
+	hdr.ref<pad::pdu>().set(0x123456);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_3[] = { 3, 5, 0x12, 0x34, 0x56, 0, 0, 0 };
+	EXPECT_EQ(sizeof(encoded_3), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_3, buffer));
+
+	//-- 4 bytes
+	ctx.reset();
+	hdr.ref<pad::ip>().set(0x12345678);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_4[] = { 4, 6, 0x12, 0x34, 0x56, 0x78, 0, 0 };
+	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_4, buffer));
+}
+
+TEST(padding, inclusive)
+{
+	uint8_t buffer[16];
+	med::encoder_context<> ctx{ buffer };
+
+	pad::inclusive hdr;
+
+	//-- 1 byte
+	ctx.reset();
+	hdr.ref<pad::flag>().set(0x12);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_1[] = { 1, 4, 0x12, 0 };
+	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_1, buffer));
+
+	//-- 2 bytes
+	ctx.reset();
+	hdr.ref<pad::port>().set(0x1234);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_2[] = { 2, 4, 0x12, 0x34 };
+	EXPECT_EQ(sizeof(encoded_2), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_2, buffer));
+
+	//-- 3 bytes
+	ctx.reset();
+	hdr.ref<pad::pdu>().set(0x123456);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_3[] = { 3, 8, 0x12, 0x34, 0x56, 0, 0, 0 };
+	EXPECT_EQ(sizeof(encoded_3), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_3, buffer));
+
+	//-- 4 bytes
+	ctx.reset();
+	hdr.ref<pad::ip>().set(0x12345678);
+#if (MED_EXCEPTIONS)
+	encode(make_octet_encoder(ctx), hdr);
+#else
+	if (!encode(make_octet_encoder(ctx), hdr)) { FAIL() << toString(ctx.error_ctx()); }
+#endif
+	uint8_t const encoded_4[] = { 4, 8, 0x12, 0x34, 0x56, 0x78, 0, 0 };
+	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_4, buffer));
+}
 #endif
 
 #if 1

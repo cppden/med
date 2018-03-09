@@ -18,7 +18,7 @@ namespace med {
 template <class, class Enable = void>
 struct has_ref_field : std::false_type { };
 template <class T>
-struct has_ref_field<T, void_t<decltype(std::declval<T>().ref_field())>> : std::true_type { };
+struct has_ref_field<T, std::void_t<decltype(std::declval<T>().ref_field())>> : std::true_type { };
 
 template <class IE>
 std::enable_if_t<has_ref_field<IE>::value, typename IE::field_type&>

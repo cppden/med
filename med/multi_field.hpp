@@ -76,23 +76,15 @@ public:
 
 private:
 	template <class T>
-	struct iter_base : std::iterator<
-		std::forward_iterator_tag,
-		T,
-		std::ptrdiff_t,
-		std::conditional_t<std::is_const<T>::value, field_type const*, field_type*>,
-		std::conditional_t<std::is_const<T>::value, field_type const&, field_type&>
-	> {};
-
-	template <class T>
-	class iter_type : public iter_base<T>
+	class iter_type
 	{
-		using value_type = typename iter_base<T>::value_type;
-		using reference = typename iter_base<T>::reference;
-		using pointer = typename iter_base<T>::pointer;
-		value_type* m_curr;
-
 	public:
+		using iterator_category = std::forward_iterator_tag;
+		using value_type = T;
+		using difference_type = std::ptrdiff_t;
+		using pointer = std::conditional_t<std::is_const<T>::value, field_type const*, field_type*>;
+		using reference = std::conditional_t<std::is_const<T>::value, field_type const&, field_type&>;
+
 		explicit iter_type(value_type* p = nullptr) : m_curr{p} { }
 		iter_type& operator++()                     { m_curr = m_curr ? m_curr->next : nullptr; return *this; }
 		iter_type operator++(int)                   { iter_type ret = *this; ++(*this); return ret;}
@@ -102,6 +94,9 @@ private:
 		pointer operator->() const                  { return get(); }
 		pointer get() const                         { return m_curr ? &m_curr->value : nullptr; }
 		explicit operator bool() const              { return nullptr != m_curr; }
+
+	private:
+		value_type* m_curr;
 	};
 
 public:
@@ -118,8 +113,8 @@ public:
 	void clear()                                            { m_count = 0; }
 	bool is_set() const                                     { return m_count > 0 && m_fields[0].value.is_set(); }
 
-	field_type const* first() const                         { return &m_fields[0]; }
-	field_type const* last() const                          { return &m_tail->value; }
+	field_type const* first() const                         { return empty() ? nullptr : &m_fields[0].value; }
+	field_type const* last() const                          { return empty() ? nullptr : &m_tail->value; }
 
 	//ineffective read-only access
 	field_type const* at(std::size_t index) const
@@ -200,7 +195,7 @@ struct multi_length_value : multi_field<VAL, MIN, CMAX>, LEN
 template <class, class Enable = void>
 struct is_multi_field : std::false_type { };
 template <class T>
-struct is_multi_field<T, void_t<typename T::field_value>> : std::true_type { };
+struct is_multi_field<T, std::void_t<typename T::field_value>> : std::true_type { };
 //template <class T>
 //struct is_multi_field<T,
 //        std::enable_if_t<
