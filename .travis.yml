@@ -29,14 +29,6 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-6']
-      env:
-        - COMPILER=g++-6
-
-    - compiler: gcc
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-7']
       env:
         - COMPILER=g++-7
@@ -44,10 +36,10 @@ matrix:
     - compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-          packages: ['g++-7', 'clang-4.0']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
+          packages: ['g++-7', 'clang-5.0']
       env:
-        - COMPILER=clang++-4.0
+        - COMPILER=clang++-5.0
 
     - compiler: gcc
       addons:

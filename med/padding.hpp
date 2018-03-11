@@ -39,7 +39,7 @@ struct padding<bytes<BYTES>, INCLUSIVE, FILLER, void>
 	: detail::pad<BYTES*8, INCLUSIVE, FILLER> {};
 
 template <typename INT, bool INCLUSIVE, uint8_t FILLER>
-struct padding<INT, INCLUSIVE, FILLER, std::enable_if_t<std::is_integral_v<INT>>>
+struct padding<INT, INCLUSIVE, FILLER, std::enable_if_t<std::is_integral<INT>::value>>
 	: detail::pad<sizeof(INT)*8, INCLUSIVE, FILLER> {};
 
 template <class, class Enable = void>

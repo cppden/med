@@ -93,5 +93,4 @@ struct PROTO : med::choice< med::value<uint8_t>
 ```
 
 ## Dependencies
-Any modern C++ compiler with C++14 support.
-> Tested on gcc-5.1 and clang-3.8.
+Any modern C++ compiler with C++17 support.
