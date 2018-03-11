@@ -79,7 +79,7 @@ struct length_encoder
 	~length_encoder()
 	{
 		//update the length with final value
-		if (m_snapshot)
+		if (m_lenpos)
 		{
 			state_type const end = m_encoder(GET_STATE{});
 
@@ -88,23 +88,16 @@ struct length_encoder
 
 			length_type len_ie;
 #if (MED_EXCEPTIONS)
-			//TODO: what to do in case of error?
-			try
-			{
-				length_to_value(m_encoder, len_ie, len_value);
-				CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<length_type>());
-				m_encoder(SET_STATE{}, m_snapshot);
-				encode(m_encoder, len_ie);
-				m_encoder(SET_STATE{}, end);
-			}
-			catch (med::exception const& ex)
-			{
-			}
+			length_to_value(m_encoder, len_ie, len_value);
+			CODEC_TRACE("L=%zx[%s]:", std::size_t(len_ie.get()), name<length_type>());
+			m_encoder(SET_STATE{}, m_lenpos);
+			encode(m_encoder, len_ie);
+			m_encoder(SET_STATE{}, end);
 #else
 			if (length_to_value(m_encoder, len_ie, len_value))
 			{
-				CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<length_type>());
-				m_encoder(SET_STATE{}, m_snapshot);
+				CODEC_TRACE("L=%zx[%s]:", std::size_t(len_ie.get()), name<length_type>());
+				m_encoder(SET_STATE{}, m_lenpos);
 				encode(m_encoder, len_ie);
 				m_encoder(SET_STATE{}, end);
 			}
@@ -116,12 +109,12 @@ struct length_encoder
 	MED_RESULT operator() (placeholder::_length<DELTA> const&)
 	{
 		m_delta = DELTA;
-		m_snapshot = m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
+		m_lenpos = m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
 		return m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
 	}
 
 	//check if placeholder was visited
-	explicit operator bool() const                       { return static_cast<bool>(m_snapshot); }
+	explicit operator bool() const                       { return static_cast<bool>(m_lenpos); }
 
 	template <class ...T>
 	auto operator() (T&&... args)                        { return m_encoder(std::forward<T>(args)...); }
@@ -129,7 +122,7 @@ struct length_encoder
 	FUNC&            m_encoder;
 	int              m_delta {0};
 	state_type const m_start;
-	state_type       m_snapshot{ };
+	state_type       m_lenpos { };
 };
 
 template <class T, typename Enable = void>
@@ -220,7 +213,7 @@ inline MED_RESULT encode_ie(FUNC& func, IE& ie, IE_LV const&)
 {
 	typename WRAPPER::length_type len_ie{};
 	std::size_t len_value = get_length(ref_field(ie));
-	CODEC_TRACE("L=%zx[%s]:", len_ie.get(), name<IE>());
+	CODEC_TRACE("L=%zx[%s]:", std::size_t(len_ie.get()), name<IE>());
 	return length_to_value(func, len_ie, len_value)
 		MED_AND encode(func, len_ie)
 		MED_AND encode(func, ref_field(ie));
@@ -230,7 +223,7 @@ template <class WRAPPER, class FUNC, class IE>
 inline MED_RESULT encode_ie(FUNC& func, IE& ie, IE_TV const&)
 {
 	typename WRAPPER::tag_type const tag_ie{};
-	CODEC_TRACE("T%zx<%s>{%s}", tag_ie.get(), name<WRAPPER>(), name<IE>());
+	CODEC_TRACE("T%zx<%s>{%s}", std::size_t(tag_ie.get()), name<WRAPPER>(), name<IE>());
 	return encode(func, tag_ie)
 		MED_AND encode_ie<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }

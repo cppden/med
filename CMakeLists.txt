@@ -59,17 +59,13 @@ endif ()
 set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 
 set(UT_SRCS
-  ut/med.cpp
+	ut/med.cpp
+	ut/octets.cpp
 )
 
 set(BM_SRCS
-  benchmark/bm.cpp
+	benchmark/bm.cpp
 )
-
-#set_source_files_properties(
-#  ${UT_SRCS} ${BM_SRCS} PROPERTIES COMPILE_FLAGS
-#  "-O3 -std=c++17 -Wall -Werror"
-#)
 
 add_compile_options(
     -Werror 

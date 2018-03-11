@@ -32,7 +32,7 @@ struct default_handler
 	template <class FUNC, class IE, class HEADER>
 	constexpr MED_RESULT operator()(FUNC& func, IE const&, HEADER const& header) const
 	{
-		CODEC_TRACE("ERROR tag=%zu", get_tag(header));
+		CODEC_TRACE("ERROR tag=%zu", std::size_t(get_tag(header)));
 		return func(error::INCORRECT_TAG, name<IE>(), get_tag(header));
 	}
 };
@@ -98,11 +98,11 @@ inline decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 	MED_CHECK_FAIL(func(tag, typename TAG::ie_type{}));
 	if (WRAPPER::tag_type::match(tag.get_encoded()))
 	{
-		CODEC_TRACE("TV[%zu : %s]", tag.get(), name<typename WRAPPER::field_type>());
+		CODEC_TRACE("TV[%zu : %s]", std::size_t(tag.get()), name<typename WRAPPER::field_type>());
 		return decode(func, ref_field(ie), unexp);
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-	CODEC_TRACE("ERROR tag=%zu", tag.get_encoded());
+	CODEC_TRACE("ERROR tag=%zu", std::size_t(tag.get_encoded()));
 	return func(error::INCORRECT_TAG, name<typename WRAPPER::field_type>(), tag.get_encoded());
 }
 
@@ -167,7 +167,7 @@ struct length_decoder
 		std::size_t len_value = len_ie.get_encoded();
 		MED_CHECK_FAIL(value_to_length(m_decoder, len_ie, len_value));
 		typename length_type::value_type const size = (len_value + DELTA) - (m_decoder(GET_STATE{}) - m_start);
-		CODEC_TRACE("size(%zu)=length(%zu) + %d - %d", size, len_value, DELTA, (m_decoder(GET_STATE{}) - m_start));
+		CODEC_TRACE("size(%zu)=length(%zu) + %d - %ld", std::size_t(size), len_value, DELTA, (m_decoder(GET_STATE{}) - m_start));
 		m_size_state = m_decoder(PUSH_SIZE{size});
 		if (!m_size_state) return m_decoder(error::OVERFLOW, name<get_field_type_t<IE>>(), m_size_state.size() * FUNC::granularity, size * FUNC::granularity);
 		MED_RETURN_SUCCESS;

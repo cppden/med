@@ -239,13 +239,13 @@ struct set : container<IES...>
 				break;
 			}
 			sl::pop_state<header_type>(decoder);
-			CODEC_TRACE("tag=%#zx", get_tag(header));
+			CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
 			MED_CHECK_FAIL(sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header));
 #else
 			if (med::decode(decoder, header, unexp))
 			{
 				sl::pop_state<header_type>(decoder);
-				CODEC_TRACE("tag=%#zx", get_tag(header));
+				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
 				MED_CHECK_FAIL(sl::set_decoder<IES...>::decode(this->m_ies, decoder, unexp, header));
 			}
 			else

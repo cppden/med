@@ -67,7 +67,7 @@ struct octet_decoder
 	MED_RESULT operator() (IE& ie, IE_VALUE const&)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
-		CODEC_TRACE("->VAL[%s] %u bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
+		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
 		if (uint8_t const* pval = ctx.buffer().advance(IE::traits::bits / granularity))
 		{
 			auto const val = get_bytes<IE>(pval);
@@ -85,10 +85,10 @@ struct octet_decoder
 	template <class IE>
 	MED_RESULT operator() (IE& ie, IE_OCTET_STRING const&)
 	{
-		CODEC_TRACE("STR[%s] <-(%u bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
+		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
 		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))
 		{
-			CODEC_TRACE("STR[%s] -> len = %u bytes", name<IE>(), ie.get_length());
+			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.get_length()));
 			if (ctx.buffer().advance(ie.get_length())) MED_RETURN_SUCCESS;
 			return ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
 		}

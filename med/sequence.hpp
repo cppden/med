@@ -98,12 +98,12 @@ struct seq_dec_imp<std::enable_if_t<
 			TAG_IE tag;
 			MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
 			vtag.set_encoded(tag.get_encoded());
-			CODEC_TRACE("pop tag=%zx", tag.get_encoded());
+			CODEC_TRACE("pop tag=%zx", std::size_t(tag.get_encoded()));
 		}
 
 		if (IE::tag_type::match(vtag.get_encoded())) //check tag decoded
 		{
-			CODEC_TRACE("T=%zx[%s]", vtag.get_encoded(), name<IE>());
+			CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 			clear_tag<IE>(func, vtag); //clear current tag as decoded
 			IE& ie = to;
 			MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
@@ -372,12 +372,12 @@ struct seq_dec_imp<
 		typename IE::counter_type counter_ie;
 		MED_CHECK_FAIL(med::decode(func, counter_ie));
 		auto count = counter_ie.get_encoded();
-		CODEC_TRACE("[%s] = %zu", name<IE>(), count);
+		CODEC_TRACE("[%s] = %zu", name<IE>(), std::size_t(count));
 		MED_CHECK_FAIL(check_arity(func, ie, count));
 		while (count--)
 		{
 			auto* field = ie.push_back(func);
-			CODEC_TRACE("#%zu = %p", count, (void*)field);
+			CODEC_TRACE("#%zu = %p", std::size_t(count), (void*)field);
 			MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 		}
 

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 
+#include "med.hpp"
 
 /*
  * EXPECT_TRUE(Matches(buff, out_buff, size));
@@ -218,3 +219,48 @@ struct dummy_sink
 	}
 };
 
+template <typename ...T>
+using M = med::mandatory<T...>;
+template <typename ...T>
+using O = med::optional<T...>;
+
+#ifdef CODEC_TRACE_ENABLE
+// Length
+struct L : med::length_t<med::value<uint8_t>>
+{
+	static constexpr char const* name() { return "Length"; }
+};
+// Counter
+struct CNT : med::counter_t<med::value<uint16_t>>
+{
+	static constexpr char const* name() { return "Counter"; }
+};
+// Tag
+template <std::size_t TAG>
+struct T : med::value<med::fixed<TAG, uint8_t>>
+{
+	static constexpr char const* name() { return "Tag"; }
+};
+
+// Tag/Case in choice
+template <std::size_t TAG>
+struct C : med::value<med::fixed<TAG>>
+{
+	static constexpr char const* name() { return "Case"; }
+};
+// Header
+template <uint8_t BITS>
+struct HDR : med::value<med::bits<BITS>>
+{
+	static constexpr char const* name() { return "Header"; }
+};
+#else
+using L = med::length_t<med::value<uint8_t>>;
+using CNT = med::counter_t<med::value<uint16_t>>;
+template <std::size_t TAG>
+using T = med::value<med::fixed<TAG, uint8_t>>;
+template <std::size_t TAG>
+using C = med::value<med::fixed<TAG>>;
+template <uint8_t BITS>
+using HDR = med::value<med::bits<BITS>>;
+#endif

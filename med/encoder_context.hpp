@@ -79,7 +79,7 @@ public:
 	 */
 	void snapshot(SNAPSHOT const& snap)
 	{
-		CODEC_TRACE("snapshot %p{%zu}", snap.id, snap.size);
+		CODEC_TRACE("snapshot %p{%zu}", (void*)snap.id, snap.size);
 		if (snapshot_s* p = get_allocator().template allocate<snapshot_s>())
 		{
 			p->snapshot = snap;

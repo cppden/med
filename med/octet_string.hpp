@@ -2,7 +2,7 @@
 @file
 octet string IE definition
 
-@copyright Denis Priyomov 2016-2017
+@copyright Denis Priyomov 2016-2018
 Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
@@ -15,23 +15,20 @@ Distributed under the MIT License
 
 namespace med {
 
-//varying string
-template <std::size_t MIN, std::size_t MAX, typename Enable = void>
+template <std::size_t MIN, std::size_t MAX>
 struct octets
 {
 	static void copy(uint8_t* out, uint8_t const* in, std::size_t size)
 	{
-		std::memcpy(out, in, size);
-	}
-};
-
-//fixed string
-template <std::size_t MIN, std::size_t MAX>
-struct octets<MIN, MAX, std::enable_if_t<MIN == MAX>>
-{
-	static void copy(uint8_t* out, uint8_t const* in, std::size_t)
-	{
-		copy_impl(out, in, std::make_index_sequence<MIN>{});
+		if constexpr (MIN != MAX) //varying string
+		{
+			std::memcpy(out, in, size);
+		}
+		else //fixed string
+		{
+			(void)size;
+			copy_impl(out, in, std::make_index_sequence<MIN>{});
+		}
 	}
 
 private:
@@ -56,17 +53,18 @@ private:
 class octets_var_extern
 {
 public:
-	bool empty() const                                  { return 0 == m_size; }
+	bool is_set() const                                 { return m_is_set; }
 
 	std::size_t size() const                            { return m_size; }
 	uint8_t const* data() const                         { return m_data; }
 
-	void clear()                                        { m_data = nullptr; m_size = 0; }
-	void assign(uint8_t const* b_, uint8_t const* e_)   { m_data = b_; m_size = e_ - b_;}
+	void clear()                                        { m_data = nullptr; m_size = 0; m_is_set = false; }
+	void assign(uint8_t const* b_, uint8_t const* e_)   { m_data = b_; m_size = e_ - b_; m_is_set = true; }
 
 private:
 	uint8_t const* m_data;
 	std::size_t    m_size {0};
+	bool           m_is_set {false};
 };
 
 //variable length octets with internal storage
@@ -74,24 +72,29 @@ template <std::size_t MAX_LEN>
 class octets_var_intern
 {
 public:
-	bool empty() const                                  { return 0 == m_size; }
+	bool is_set() const                                 { return m_is_set; }
 
 	std::size_t size() const                            { return m_size; }
-	void resize(std::size_t v)                          { m_size = (v <= MAX_LEN) ? v : 0; }
-	uint8_t const* data() const                         { return m_data; }
+	void resize(std::size_t v)                          { m_size = (v <= MAX_LEN) ? v : MAX_LEN; m_is_set = true; }
+	uint8_t const* data() const                         { return is_set() ? m_data : nullptr; }
 	uint8_t* data()                                     { return m_data; }
-	void clear()                                        { m_size = 0; }
+	void clear()                                        { m_size = 0; m_is_set =false; }
+
+	//let external data to be set externally (risky but more efficient)
+	uint8_t* emplace(std::size_t num)                   { resize(num); return data(); }
 
 	//NOTE: no check for MAX_LEN since it's limited by caller in octet_string::set
 	void assign(uint8_t const* beg_, uint8_t const* end_)
 	{
 		m_size = static_cast<std::size_t>(end_ - beg_);
 		octets<0, MAX_LEN>::copy(m_data, beg_, m_size);
+		m_is_set = true;
 	}
 
 private:
 	uint8_t     m_data[MAX_LEN];
 	std::size_t m_size {0};
+	bool        m_is_set {false};
 };
 
 //fixed length octets with external storage
@@ -99,7 +102,7 @@ template <std::size_t LEN>
 class octets_fix_extern
 {
 public:
-	bool empty() const                                  { return nullptr == data(); }
+	bool is_set() const                                 { return nullptr != data(); }
 
 	constexpr std::size_t size() const                  { return LEN; }
 	uint8_t const* data() const                         { return m_data; }
@@ -128,7 +131,7 @@ template <std::size_t LEN>
 class octets_fix_intern
 {
 public:
-	bool empty() const                                  { return !m_is_set; }
+	bool is_set() const                                 { return m_is_set; }
 
 	static constexpr std::size_t size()                 { return LEN; }
 	uint8_t const* data() const                         { return m_data; }
@@ -204,12 +207,13 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	}
 
 	template <class T = VALUE>
-	decltype(std::declval<T>().emplace()) emplace()
-	{
-		return m_value.emplace();
-	}
+	decltype(std::declval<T>().emplace()) emplace() { return m_value.emplace(); }
+	template <class T = VALUE>
+	decltype(std::declval<T>().emplace(0)) emplace(std::size_t num_bytes)
+		{ return m_value.emplace(num_bytes); }
 
-	bool set(std::size_t len, void const* data) { return set_encoded(len, data); }
+	bool set(std::size_t len, void const* data)     { return set_encoded(len, data); }
+	bool set()                                      { return set_encoded(0, nullptr); }
 
 	//NOTE: do not override!
 	bool set_encoded(std::size_t len, void const* data)
@@ -218,14 +222,14 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 		{
 			uint8_t const* it = static_cast<uint8_t const*>(data);
 			m_value.assign(it, it + (len <= MAX_LEN ? len : MAX_LEN));
-			return !m_value.empty();
+			return is_set();
 		}
 		CODEC_TRACE("ERROR: len=%zu < min=%zu", len, MIN_LEN);
 		return false;
 	}
 
 	value_type const& get() const           { return m_value; }
-	bool is_set() const                     { return !m_value.empty(); }
+	bool is_set() const                     { return m_value.is_set(); }
 	explicit operator bool() const          { return is_set(); }
 
 protected:
@@ -233,7 +237,8 @@ protected:
 };
 
 
-template <class VALUE = octets_var_extern, class = void, class = void> struct octet_string;
+template <class VALUE = octets_var_extern, class = void, class = void>
+struct octet_string;
 
 //ASCII-printable string not zero-terminated
 template <class ...T>

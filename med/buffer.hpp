@@ -70,7 +70,7 @@ public:
 			if (m_end)
 			{
 				m_buf->m_end = m_end;
-				CODEC_TRACE("restored end to %p: %s", m_end, m_buf->toString());
+				CODEC_TRACE("restored end to %p: %s", (void*)m_end, m_buf->toString());
 			}
 		}
 
@@ -93,7 +93,7 @@ public:
 			}
 			else
 			{
-				CODEC_TRACE("changed size to %zu ends at %p (was %p): %s", size, m_buf->end(), m_end, m_buf->toString());
+				CODEC_TRACE("changed size to %zu ends at %p (was %p): %s", size, (void*)m_buf->end(), (void*)m_end, m_buf->toString());
 			}
 		}
 
@@ -196,7 +196,7 @@ public:
 	{
 		static char sz[64];
 		uint8_t const* p = begin();
-		snprintf(sz, sizeof(sz), "%p@%zu+%zu: %02x %02x [%02x] %02x %02x", p, get_offset(), size()
+		snprintf(sz, sizeof(sz), "%p@%zu+%zu: %02x %02x [%02x] %02x %02x", (void*)p, get_offset(), size()
 			, p[-2], p[-1], p[0], p[1], p[2]);
 		return sz;
 	}
