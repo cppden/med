@@ -60,38 +60,35 @@ inline MED_RESULT check_arity(FUNC& func, IE const&, std::size_t count)
 
 } //end: namespace detail
 
-//mandatory multi-field
+//multi-field
 template <class FUNC, class IE>
-std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
-inline check_arity(FUNC& func, IE const& ie, std::size_t count)
+constexpr MED_RESULT check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
-	return detail::check_arity(func, ie, count);
-}
-
-template <class FUNC, class IE>
-std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
-inline check_arity(FUNC& func, IE const& ie)
-{
-	return detail::check_arity(func, ie, ie.count());
-}
-
-//optional multi-field
-template <class FUNC, class IE>
-std::enable_if_t<is_optional_v<IE>, MED_RESULT>
-inline check_arity(FUNC& func, IE const& ie, std::size_t count)
-{
+	if constexpr (is_optional_v<IE>)
+	{
 #if (MED_EXCEPTIONS)
-	if (count) { detail::check_arity(func, ie, count); }
+		if (count) { detail::check_arity(func, ie, count); }
 #else
-	return (0 == count) || detail::check_arity(func, ie, count);
+		return (0 == count) || detail::check_arity(func, ie, count);
 #endif
+	}
+	else
+	{
+		return detail::check_arity(func, ie, count);
+	}
 }
 
 template <class FUNC, class IE>
-std::enable_if_t<is_optional_v<IE>, MED_RESULT>
-inline check_arity(FUNC& func, IE const& ie)
+constexpr MED_RESULT check_arity(FUNC& func, IE const& ie)
 {
-	return check_arity(func, ie, ie.count());
+	if constexpr (is_optional_v<IE>)
+	{
+		return check_arity(func, ie, ie.count());
+	}
+	else
+	{
+		return detail::check_arity(func, ie, ie.count());
+	}
 }
 
 // user-provided functor to etract field count
@@ -122,14 +119,16 @@ template <class T>
 constexpr bool has_count_v = has_count<T>::value;
 
 template <class FIELD>
-constexpr auto field_count(FIELD const& field) -> std::enable_if_t<!has_count_v<FIELD>, std::size_t>
+constexpr std::size_t field_count(FIELD const& field)
 {
-	return field.is_set() ? 1 : 0;
-}
-template <class FIELD>
-constexpr auto field_count(FIELD const& field) -> std::enable_if_t<has_count_v<FIELD>, std::size_t>
-{
-	return field.count();
+	if constexpr (has_count_v<FIELD>)
+	{
+		return field.count();
+	}
+	else
+	{
+		return field.is_set() ? 1 : 0;
+	}
 }
 
 } //namespace med

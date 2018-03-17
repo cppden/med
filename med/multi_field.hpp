@@ -196,14 +196,6 @@ template <class, class Enable = void>
 struct is_multi_field : std::false_type { };
 template <class T>
 struct is_multi_field<T, std::void_t<typename T::field_value>> : std::true_type { };
-//template <class T>
-//struct is_multi_field<T,
-//        std::enable_if_t<
-//                std::is_same<
-//                        typename T::iterator::reference, decltype(*std::declval<T>().begin())
-//                >::value
-//        >
-//> : std::true_type { };
 template <class T>
 constexpr bool is_multi_field_v = is_multi_field<T>::value;
 

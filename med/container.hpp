@@ -40,61 +40,74 @@ namespace sl {
 
 //-----------------------------------------------------------------------
 template <class IE>
-std::enable_if_t<!is_multi_field_v<IE>, std::size_t>
-constexpr field_arity()                     { return 1; }
-template <class IE>
-std::enable_if_t<is_multi_field_v<IE>, std::size_t>
-constexpr field_arity()                     { return IE::max; }
+constexpr std::size_t field_arity()
+{
+	if constexpr (is_multi_field_v<IE>)
+	{
+		return IE::max;
+	}
+	else
+	{
+		return 1;
+	}
+}
 
 //-----------------------------------------------------------------------
 template <class IE>
-std::enable_if_t<!is_multi_field_v<IE>, bool>
-inline is_field_set(IE const& ie)           { return ie.ref_field().is_set(); }
-template <class IE>
-std::enable_if_t<is_multi_field_v<IE>, bool>
-inline is_field_set(IE const& ie)           { return ie.is_set(); }
+inline bool is_field_set(IE const& ie)
+{
+	if constexpr (is_multi_field_v<IE>)
+	{
+		return ie.is_set();
+	}
+	else
+	{
+		return ie.ref_field().is_set();
+	}
+}
 
 //NOTE! check stops at 1st mandatory since it's optimal and more flexible
-template <class Enable, class... IES>
-struct seq_is_set_imp;
-
 template <class... IES>
-using seq_is_set = seq_is_set_imp<void, IES...>;
+struct seq_is_set;
 
-template <class IE, class... IES> //optional or mandatory field w/ setter => can be set implicitly
-struct seq_is_set_imp<std::enable_if_t<is_optional_v<IE> || has_setter_type_v<IE>>, IE, IES...>
+template <class IE, class... IES>
+struct seq_is_set<IE, IES...>
 {
 	template <class TO>
-	static inline bool is_set(TO const& to) { return is_field_set<IE>(to) || seq_is_set<IES...>::is_set(to); }
-};
-
-template <class IE, class... IES> //mandatory field w/o setter => s.b. set explicitly
-struct seq_is_set_imp<std::enable_if_t<!is_optional_v<IE> && !has_setter_type_v<IE>>, IE, IES...>
-{
-	template <class TO>
-	static inline bool is_set(TO const& to) { return is_field_set<IE>(to); }
+	static constexpr bool is_set(TO const& to)
+	{
+		//optional or mandatory field w/ setter => can be set implicitly
+		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
+		{
+			return is_field_set<IE>(to) || seq_is_set<IES...>::is_set(to);
+		}
+		//mandatory field w/o setter => s.b. set explicitly
+		else //if constexpr (!is_optional_v<IE> && !has_setter_type_v<IE>)
+		{
+			return is_field_set<IE>(to);
+		}
+	}
 };
 
 template <>
-struct seq_is_set_imp<void>
+struct seq_is_set<void>
 {
 	template <class TO>
-	static inline bool is_set(TO const&)    { return false; }
+	static constexpr bool is_set(TO const&)    { return false; }
 };
 
 //-----------------------------------------------------------------------
 template <class IE>
-std::enable_if_t<!is_multi_field_v<IE>>
-inline field_clear(IE& ie)
+inline void field_clear(IE& ie)
 {
-	ie.ref_field().clear();
-}
-
-template <class IE>
-std::enable_if_t<is_multi_field_v<IE>>
-inline field_clear(IE& ie)
-{
-	ie.clear();
+	if constexpr (is_multi_field_v<IE>)
+	{
+		ie.clear();
+	}
+	else
+	{
+		ie.ref_field().clear();
+	}
 }
 
 template <class... IES>
@@ -116,29 +129,28 @@ struct seq_clear<>
 
 //-----------------------------------------------------------------------
 template <class IE, class ...ARGS>
-std::enable_if_t<!is_multi_field_v<IE>, MED_RESULT>
-inline field_copy(IE& to, IE const& from, ARGS&&... args)
+inline MED_RESULT field_copy(IE& to, IE const& from, ARGS&&... args)
 {
-	return to.ref_field().copy(from.ref_field(), std::forward<ARGS>(args)...);
-}
-
-template <class IE, class ...ARGS>
-std::enable_if_t<is_multi_field_v<IE>, MED_RESULT>
-inline field_copy(IE& to, IE const& from, ARGS&&... args)
-{
-	to.clear();
-	for (auto const& rhs : from)
+	if constexpr (is_multi_field_v<IE>)
 	{
-		if (auto* p = to.push_back(std::forward<ARGS>(args)...))
+		to.clear();
+		for (auto const& rhs : from)
 		{
-			MED_CHECK_FAIL(p->copy(rhs, std::forward<ARGS>(args)...));
+			if (auto* p = to.push_back(std::forward<ARGS>(args)...))
+			{
+				MED_CHECK_FAIL(p->copy(rhs, std::forward<ARGS>(args)...));
+			}
+			else
+			{
+				MED_RETURN_FAILURE;
+			}
 		}
-		else
-		{
-			MED_RETURN_FAILURE;
-		}
+		MED_RETURN_SUCCESS;
 	}
-	MED_RETURN_SUCCESS;
+	else
+	{
+		return to.ref_field().copy(from.ref_field(), std::forward<ARGS>(args)...);
+	}
 }
 
 template <class... IES>
@@ -166,40 +178,34 @@ struct seq_copy<>
 };
 
 //-----------------------------------------------------------------------
-template <class Enable, class... IES>
-struct container_for_imp;
-
 template <class... IES>
-using container_for = container_for_imp<void, IES...>;
+struct container_for;
 
 template <class IE, class... IES>
-struct container_for_imp<std::enable_if_t<!is_multi_field_v<IE>>, IE, IES...>
+struct container_for<IE, IES...>
 {
 	template <class TO>
-	static inline std::size_t calc_length(TO const& to)
+	static constexpr std::size_t calc_length(TO const& to)
 	{
-		IE const& ie = to;
-		return (has_setter_type_v<IE> || ie.ref_field().is_set() ? get_length<IE>(ie.ref_field()) : 0)
-			+ container_for<IES...>::calc_length(to);
-	}
-};
-
-template <class IE, class... IES>
-struct container_for_imp<std::enable_if_t<is_multi_field_v<IE>>, IE, IES...>
-{
-	template <class TO>
-	static inline std::size_t calc_length(TO const& to)
-	{
-		IE const& ie = to;
-		CODEC_TRACE("calc_length[%s]*", name<IE>());
-		std::size_t len = 0;
-		for (auto& v : ie) { len += get_length<IE>(v); }
-		return len + container_for<IES...>::calc_length(to);
+		if constexpr (is_multi_field_v<IE>)
+		{
+			IE const& ie = to;
+			CODEC_TRACE("calc_length[%s]*", name<IE>());
+			std::size_t len = 0;
+			for (auto& v : ie) { len += get_length<IE>(v); }
+			return len + container_for<IES...>::calc_length(to);
+		}
+		else
+		{
+			IE const& ie = to;
+			return (has_setter_type_v<IE> || ie.ref_field().is_set() ? get_length<IE>(ie.ref_field()) : 0)
+				+ container_for<IES...>::calc_length(to);
+		}
 	}
 };
 
 template <>
-struct container_for_imp<void>
+struct container_for<>
 {
 	template <class TO>
 	static constexpr std::size_t calc_length(TO const&)
@@ -281,6 +287,12 @@ public:
 	MED_RESULT copy(container_t const& from, ARGS&&... args)
 	{
 		return sl::seq_copy<IES...>::copy(this->m_ies, from.m_ies, std::forward<ARGS>(args)...);
+	}
+
+	template <class... ARGS>
+	MED_RESULT copy_to(container_t& to, ARGS&&... args) const
+	{
+		return sl::seq_copy<IES...>::copy(to.m_ies, this->m_ies, std::forward<ARGS>(args)...);
 	}
 
 protected:

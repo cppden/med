@@ -37,12 +37,9 @@ template <class T>
 constexpr bool is_length_v = is_length<T>::value;
 
 namespace detail {
-
-template <class WRAPPER, typename Enable = void>
+template <class WRAPPER>
 struct length_getter;
-
 }
-
 
 template <class FIELD>
 constexpr std::size_t get_length(FIELD const& field)
@@ -57,6 +54,13 @@ constexpr std::size_t get_length(FIELD const& field)
 
 namespace detail {
 
+template <class, typename Enable = void>
+struct has_get_length : std::false_type { };
+
+template <class T>
+struct has_get_length<T, std::void_t<decltype(std::declval<T>().get_length())>> : std::true_type { };
+
+
 template <class WRAPPER, class FIELD>
 constexpr std::size_t calc_length(FIELD const&, IE_NULL const&)
 {
@@ -70,27 +74,20 @@ constexpr std::size_t calc_length(FIELD const& field, CONTAINER const&)
 	return field.calc_length();
 }
 
-template <class, typename Enable = void>
-struct has_get_length : std::false_type { };
-
-template <class T>
-struct has_get_length<T, std::void_t<decltype(std::declval<T>().get_length())>> : std::true_type { };
-
 template <class WRAPPER, class FIELD>
-std::enable_if_t<!has_get_length<FIELD>::value, std::size_t>
-constexpr calc_length(FIELD const&, PRIMITIVE const&)
+constexpr std::size_t calc_length(FIELD const& field, PRIMITIVE const&)
 {
-	//TODO: assuming length in bytes if IE is not customized
-	CODEC_TRACE("length(%s) = %zu", name<FIELD>(), bits_to_bytes(FIELD::traits::bits));
-	return bits_to_bytes(FIELD::traits::bits);
-}
-
-template <class WRAPPER, class FIELD>
-std::enable_if_t<has_get_length<FIELD>::value, std::size_t>
-inline calc_length(FIELD const& field, PRIMITIVE const&)
-{
-	CODEC_TRACE("length(%s) = %zu", name<FIELD>(), field.get_length());
-	return field.get_length();
+	if constexpr (has_get_length<FIELD>::value)
+	{
+		CODEC_TRACE("length(%s) = %zu", name<FIELD>(), field.get_length());
+		return field.get_length();
+	}
+	else
+	{
+		//TODO: assuming length in bytes if IE is not customized
+		CODEC_TRACE("length(%s) = %zu", name<FIELD>(), bits_to_bytes(FIELD::traits::bits));
+		return bits_to_bytes(FIELD::traits::bits);
+	}
 }
 
 template <class WRAPPER, class FIELD>
@@ -109,24 +106,6 @@ constexpr std::size_t calc_length(FIELD const& field, IE_LV const&)
 	return get_length(len_t{}) + get_length<FIELD>(ref_field(field));
 }
 
-
-template <class WRAPPER>
-struct length_getter<WRAPPER, std::enable_if_t<!is_peek_v<WRAPPER>>>
-{
-	template <class FIELD>
-	static std::size_t get(FIELD const& field)
-	{
-		return detail::calc_length<WRAPPER>(field, typename WRAPPER::ie_type{});
-	}
-};
-
-template <class WRAPPER>
-struct length_getter<WRAPPER, std::enable_if_t<is_peek_v<WRAPPER>>>
-{
-	template <class FIELD>
-	static constexpr std::size_t get(FIELD const&)  { return 0; }
-};
-
 //---------------------------------
 
 template<class T>
@@ -138,62 +117,77 @@ static auto test_value_to_length(int, std::size_t val = 0) ->
 template<class>
 static auto test_value_to_length(long) -> std::false_type;
 
-}	//end: namespace detail
+template <class WRAPPER>
+struct length_getter
+{
+	template <class FIELD>
+	static constexpr std::size_t get(FIELD const& field)
+	{
+		if constexpr (is_peek_v<WRAPPER>)
+		{
+			return 0;
+		}
+		else
+		{
+			return calc_length<WRAPPER>(field, typename WRAPPER::ie_type{});
+		}
+	}
+};
 
 template <class T>
 using has_length_converters = decltype(detail::test_value_to_length<T>(0));
 
+}	//end: namespace detail
+
 
 template <class FUNC, class FIELD>
-std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
-inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
+constexpr MED_RESULT length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
-#if (MED_EXCEPTIONS)
-	if (!FIELD::length_to_value(len) || !set_value(field, len))
+	if constexpr (detail::has_length_converters<FIELD>::value)
 	{
-		func(error::INCORRECT_VALUE, name<FIELD>(), len);
-	}
+#if (MED_EXCEPTIONS)
+		if (!FIELD::length_to_value(len) || !set_value(field, len))
+		{
+			func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		}
 #else
-	return (FIELD::length_to_value(len) && set_value(field, len))
-		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		return (FIELD::length_to_value(len) && set_value(field, len))
+			|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
 #endif
-}
-
-template <class FUNC, class FIELD>
-std::enable_if_t<!has_length_converters<FIELD>::value, MED_RESULT>
-inline length_to_value(FUNC& func, FIELD& field, std::size_t len)
-{
-#if (MED_EXCEPTIONS)
-	if (!set_value(field, len))
-	{
-		func(error::INCORRECT_VALUE, name<FIELD>(), len);
 	}
-#else
-	return set_value(field, len)
-		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
-#endif //MED_EXCEPTIONS
-}
-
-template <class FUNC, class FIELD>
-std::enable_if_t<has_length_converters<FIELD>::value, MED_RESULT>
-inline value_to_length(FUNC& func, FIELD const&, std::size_t& len)
-{
-#if (MED_EXCEPTIONS)
-	if (!FIELD::value_to_length(len))
+	else
 	{
-		func(error::INCORRECT_VALUE, name<FIELD>(), len);
-	}
+#if (MED_EXCEPTIONS)
+		if (!set_value(field, len))
+		{
+			func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		}
 #else
-	return FIELD::value_to_length(len)
-		|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		return set_value(field, len)
+			|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
 #endif //MED_EXCEPTIONS
+	}
 }
 
 template <class FUNC, class FIELD>
-std::enable_if_t<!has_length_converters<FIELD>::value, MED_RESULT>
-constexpr value_to_length(FUNC&, FIELD const&, std::size_t&)
+constexpr MED_RESULT value_to_length(FUNC& func, FIELD const&, std::size_t& len)
 {
-	MED_RETURN_SUCCESS;
+	if constexpr (detail::has_length_converters<FIELD>::value)
+	{
+#if (MED_EXCEPTIONS)
+		if (!FIELD::value_to_length(len))
+		{
+			func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		}
+#else
+		return FIELD::value_to_length(len)
+			|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
+#endif //MED_EXCEPTIONS
+	}
+	else
+	{
+		MED_RETURN_SUCCESS;
+	}
 }
 
 }	//end: namespace med

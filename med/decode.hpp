@@ -37,40 +37,6 @@ struct default_handler
 	}
 };
 
-
-template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<is_peek_v<IE>, MED_RESULT>
-inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
-{
-#if (MED_EXCEPTIONS)
-	if (func(PUSH_STATE{}))
-	{
-		func(ie, ie_type);
-		func(POP_STATE{});
-	}
-#else
-	return func(PUSH_STATE{})
-		&& func(ie, ie_type)
-		&& func(POP_STATE{});
-#endif //MED_EXCEPTIONS
-}
-
-template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<is_skip_v<IE>, MED_RESULT>
-inline decode_primitive(FUNC& func, IE&, IE_TYPE const&)
-{
-	//TODO: need to support fixed octet_string here?
-	return func.advance(IE::traits::bits);
-}
-
-template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<!is_peek_v<IE> && !is_skip_v<IE>, MED_RESULT>
-inline decode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
-{
-	return func(ie, ie_type);
-}
-
-
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 constexpr MED_RESULT decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
 {
@@ -80,10 +46,32 @@ constexpr MED_RESULT decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
 }
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
+constexpr MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 {
 	CODEC_TRACE("PRIMITIVE %s", name<IE>());
-	return decode_primitive(func, ie, typename WRAPPER::ie_type{});
+	if constexpr (is_peek_v<IE>)
+	{
+#if (MED_EXCEPTIONS)
+		if (func(PUSH_STATE{}))
+		{
+			func(ie, typename WRAPPER::ie_type{});
+			func(POP_STATE{});
+		}
+#else
+		return func(PUSH_STATE{})
+			&& func(ie, typename WRAPPER::ie_type{})
+			&& func(POP_STATE{});
+#endif //MED_EXCEPTIONS
+	}
+	else if constexpr (is_skip_v<IE>)
+	{
+		//TODO: need to support fixed octet_string here?
+		return func.advance(IE::traits::bits);
+	}
+	else
+	{
+		return func(ie, typename WRAPPER::ie_type{});
+	}
 }
 
 //Tag-Value
@@ -123,22 +111,13 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 	MED_RETURN_SUCCESS;
 }
 
-
-template <class WRAPPER, class FUNC, class IE, class UNEXP>
-std::enable_if_t<!has_length_type<IE>::value, MED_RESULT>
-inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
-{
-	CODEC_TRACE("%s w/o length...:", name<IE>());
-	return ie.decode(func, unexp);
-}
-
 template <class FUNC, class IE, class UNEXP>
 struct length_decoder
 {
 	using state_type = typename FUNC::state_type;
 	using size_state = typename FUNC::size_state;
 	using allocator_type = typename FUNC::allocator_type;
-	enum : std::size_t { granularity = FUNC::granularity };
+	static constexpr std::size_t granularity = FUNC::granularity;
 
 	using length_type = typename IE::length_type;
 
@@ -149,6 +128,11 @@ struct length_decoder
 		, m_unexp{ unexp }
 	{
 		CODEC_TRACE("start %s with length...:", name<IE>());
+	}
+
+	void restore_length()
+	{
+		m_size_state.restore_end();
 	}
 
 #ifdef CODEC_TRACE_ENABLE
@@ -190,60 +174,61 @@ struct length_decoder
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-std::enable_if_t<has_length_type<IE>::value, MED_RESULT>
-inline decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
+inline MED_RESULT decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
-	if constexpr (has_padding<IE>::value)
+	if constexpr (has_length_type<IE>::value)
 	{
-		using pad_t = padder<IE, FUNC>;
-		pad_t pad{func};
-		if constexpr (pad_t::pad_traits::inclusive)
+		if constexpr (has_padding<IE>::value)
 		{
+			using pad_t = padder<IE, FUNC>;
+			pad_t pad{func};
 			length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
 			MED_CHECK_FAIL(ie.decode(ld, unexp));
 			//special case for empty elements w/o length placeholder
 			pad.enable(static_cast<bool>(ld));
 			CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", pad.size(), ld.size());
-			return pad.add();
+			if constexpr (pad_t::pad_traits::inclusive)
+			{
+				MED_CHECK_FAIL(pad.add());
+				ld.restore_length();
+			}
+			else
+			{
+				ld.restore_length();
+				return pad.add();
+			}
+			//TODO: may treat this case as warning? happens only in case of last IE with padding ended prematuraly
+			//if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
+			// return func(error::OVERFLOW, name<IE>(), left * FUNC::granularity);
 		}
 		else
 		{
-			//scope length_encoder dtor to be called before optionally adding a padding
-			{
-				length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
-				MED_CHECK_FAIL(ie.decode(ld, unexp));
-				//special case for empty elements w/o length placeholder
-				pad.enable(static_cast<bool>(ld));
-				CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", pad.size(), ld.size());
-			}
-			return pad.add();
-			//TODO: may treat this case as warning? happens only in case of last IE with padding ended prematuraly
-//		if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
-//			return func(error::OVERFLOW, name<IE>(), left * FUNC::granularity);
+			length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
+			MED_CHECK_FAIL(ie.decode(ld, unexp));
+			ld.restore_length();
+			MED_RETURN_SUCCESS;
 		}
 	}
 	else
 	{
-		length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
-		MED_CHECK_FAIL(ie.decode(ld, unexp));
-		MED_RETURN_SUCCESS;
+		CODEC_TRACE("%s w/o length...:", name<IE>());
+		return ie.decode(func, unexp);
 	}
 }
 
 }	//end: namespace sl
 
 template <class FUNC, class IE, class UNEXP = sl::default_handler>
-std::enable_if_t<has_ie_type<IE>::value, MED_RESULT>
-inline decode(FUNC&& func, IE& ie, UNEXP&& unexp = sl::default_handler{})
+constexpr MED_RESULT decode(FUNC&& func, IE& ie, UNEXP&& unexp = sl::default_handler{})
 {
-	return sl::decode_ie<IE>(func, ie, typename IE::ie_type{}, unexp);
-}
-
-template <class FUNC, class IE, class UNEXP>
-std::enable_if_t<!has_ie_type<IE>::value, MED_RESULT>
-inline decode(FUNC& func, IE& ie, UNEXP&)
-{
-	return func(ie);
+	if constexpr (has_ie_type<IE>::value)
+	{
+		return sl::decode_ie<IE>(func, ie, typename IE::ie_type{}, unexp);
+	}
+	else
+	{
+		return func(ie);
+	}
 }
 
 }	//end: namespace med

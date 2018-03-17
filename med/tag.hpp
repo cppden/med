@@ -71,41 +71,40 @@ struct tag_type<IE, std::enable_if_t<!has_tag_type<IE>::value && has_tag_type<ty
 template <class T>
 using tag_type_t = typename tag_type<T>::type;
 
-
 template <class T>
-constexpr auto get_tag(T const& header) -> decltype(std::declval<T>().get_tag())
+constexpr auto get_tag(T const& header)
 {
-	return header.get_tag();
-}
-
-template <class T>
-constexpr auto get_tag(T const& header, std::enable_if_t<!has_get_tag<T>::value>* = nullptr)
-{
-	return header.get_encoded();
+	if constexpr (has_get_tag<T>::value)
+	{
+		return header.get_tag();
+	}
+	else
+	{
+		return header.get_encoded();
+	}
 }
 
 template <class T, class TV>
-std::enable_if_t<has_get_tag<T>::value, bool>
-inline set_tag(T& header, TV&& tag)
+inline bool set_tag(T& header, TV&& tag)
 {
-	if (header.is_set() && header.get_tag() == tag)
+	if constexpr (has_get_tag<T>::value)
 	{
-		return false;
+		if (header.is_set() && header.get_tag() == tag)
+		{
+			return false;
+		}
+		header.set_tag(tag);
 	}
-	header.set_tag(tag);
+	else
+	{
+		if (header.is_set() && header.get_encoded() == tag)
+		{
+			return false;
+		}
+		header.set_encoded(tag);
+	}
 	return true;
 }
 
-template <class T, class TV>
-std::enable_if_t<!has_get_tag<T>::value, bool>
-inline set_tag(T& header, TV&& tag)
-{
-	if (header.is_set() && header.get_encoded() == tag)
-	{
-		return false;
-	}
-	header.set_encoded(tag);
-	return true;
-}
 
 }	//end: namespace med

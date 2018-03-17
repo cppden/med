@@ -65,12 +65,14 @@ public:
 			return *this;
 		}
 
-		~size_state()
+		~size_state()                           { restore_end(); }
+		void restore_end()
 		{
 			if (m_end)
 			{
 				m_buf->m_end = m_end;
 				CODEC_TRACE("restored end to %p: %s", (void*)m_end, m_buf->toString());
+				m_end = nullptr;
 			}
 		}
 
@@ -98,9 +100,7 @@ public:
 		}
 
 		size_state(size_state const&) = delete;
-		size_state(size_state&) = delete;
 		size_state& operator= (size_state const&) = delete;
-		size_state& operator= (size_state&) = delete;
 
 		buffer* m_buf;
 		PTR     m_end;

@@ -20,16 +20,12 @@ namespace med {
 struct with_snapshot {};
 
 template <class FUNC, class IE>
-std::enable_if_t<std::is_base_of<with_snapshot, IE>::value>
-inline snapshot(FUNC& func, IE& ie)
+constexpr void snapshot(FUNC& func, IE& ie)
 {
-	func(SNAPSHOT{snapshot_id<IE>, get_length(ie)});
-}
-
-template <class FUNC, class IE>
-std::enable_if_t<!std::is_base_of<with_snapshot, IE>::value>
-constexpr snapshot(FUNC&, IE&)
-{
+	if constexpr (std::is_base_of<with_snapshot, IE>::value)
+	{
+		func(SNAPSHOT{snapshot_id<IE>, get_length(ie)});
+	}
 }
 
 }

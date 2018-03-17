@@ -248,16 +248,17 @@ struct value< T, std::enable_if_t<!std::is_void<typename T::value_type>::value> 
 
 
 template <class IE, typename VALUE>
-constexpr auto set_value(IE& ie, VALUE v) -> std::enable_if_t<std::is_same<bool, decltype(ie.set_encoded(v))>::value, bool>
+constexpr bool set_value(IE& ie, VALUE v)
 {
-	return ie.set_encoded(v);
-}
-
-template <class IE, typename VALUE>
-constexpr auto set_value(IE& ie, VALUE v) -> std::enable_if_t<std::is_same<void, decltype(ie.set_encoded(v))>::value, bool>
-{
-	ie.set_encoded(v);
-	return true;
+	if constexpr (std::is_same<bool, decltype(ie.set_encoded(v))>::value)
+	{
+		return ie.set_encoded(v);
+	}
+	else
+	{
+		ie.set_encoded(v);
+		return true;
+	}
 }
 
 } //namespace med

@@ -60,17 +60,16 @@ constexpr bool has_name_v = has_name<T>::value;
 
 
 template <class IE>
-constexpr std::enable_if_t<has_name_v<IE>, char const*>
-name()
+constexpr char const* name()
 {
-	return IE::name();
-}
-
-template <class IE>
-constexpr std::enable_if_t<!has_name_v<IE>, char const*>
-name()
-{
-	return class_name<IE>();
+	if constexpr (has_name_v<IE>)
+	{
+		return IE::name();
+	}
+	else
+	{
+		return class_name<IE>();
+	}
 }
 
 }

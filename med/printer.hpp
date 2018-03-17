@@ -63,17 +63,12 @@ public:
 	struct null_encoder
 	{
 		template <class IE>
-		constexpr std::enable_if_t<!has_name_v<IE>, MED_RESULT>
-		operator()(printer&, IE const&)
+		constexpr MED_RESULT operator()(printer& me, IE const& ie)
 		{
-			MED_RETURN_SUCCESS;
-		}
-
-		template <class IE>
-		std::enable_if_t<has_name_v<IE>, MED_RESULT>
-		operator()(printer& me, IE const& ie)
-		{
-			me.print_named(ie, typename has_print<IE>::type{});
+			if constexpr (has_name_v<IE>)
+			{
+				me.print_named(ie, typename has_print<IE>::type{});
+			}
 			MED_RETURN_SUCCESS;
 		}
 	};
@@ -81,19 +76,18 @@ public:
 	class container_encoder
 	{
 	public:
-		//treat un-named container as logical group -> depth not changing
 		template <class IE>
-		std::enable_if_t<!has_name_v<IE>, MED_RESULT>
-		operator()(printer& me, IE const& ie)
+		MED_RESULT operator()(printer& me, IE const& ie)
 		{
-			return ie.encode(me);
-		}
-
-		template <class IE>
-		std::enable_if_t<has_name_v<IE>, MED_RESULT>
-		operator()(printer& me, IE const& ie)
-		{
-			return print_named(me, ie, typename has_print<IE>::type{});
+			if constexpr (has_name_v<IE>)
+			{
+				return print_named(me, ie, typename has_print<IE>::type{});
+			}
+			else
+			{
+				//treat un-named container as logical group -> depth not changing
+				return ie.encode(me);
+			}
 		}
 
 	private:
@@ -138,17 +132,14 @@ public:
 	{
 	}
 
-	//unnamed primitive
+	//primitive
 	template <class IE, class IE_TYPE>
-	constexpr std::enable_if_t<!has_name_v<IE>, MED_RESULT>
-	operator() (IE const&, IE_TYPE const&) { MED_RETURN_SUCCESS; }
-
-	//named primitive
-	template <class IE, class IE_TYPE>
-	constexpr std::enable_if_t<has_name_v<IE>, MED_RESULT>
-	operator() (IE const& ie, IE_TYPE const&)
+	constexpr MED_RESULT operator() (IE const& ie, IE_TYPE const&)
 	{
-		print_named(ie, typename has_print<IE>::type{});
+		if constexpr (has_name_v<IE>)
+		{
+			print_named(ie, typename has_print<IE>::type{});
+		}
 		MED_RETURN_SUCCESS;
 	}
 

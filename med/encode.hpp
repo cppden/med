@@ -47,28 +47,12 @@ struct null_encoder<T, std::void_t<typename T::null_encoder>>
 	}
 };
 
-
-template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<is_peek_v<IE>, MED_RESULT>
-constexpr encode_primitive(FUNC&, IE&, IE_TYPE const&)
-{
-	MED_RETURN_SUCCESS; //do nothing
-}
-
-template <class FUNC, class IE, class IE_TYPE>
-std::enable_if_t<!is_peek_v<IE>, MED_RESULT>
-inline encode_primitive(FUNC& func, IE& ie, IE_TYPE const& ie_type)
-{
-	snapshot(func, ie);
-	return func(ie, ie_type);
-}
-
 template <class FUNC, class LEN>
 struct length_encoder
 {
 	using state_type = typename FUNC::state_type;
 	using length_type = LEN;
-	enum : std::size_t { granularity = FUNC::granularity };
+	static constexpr std::size_t granularity = FUNC::granularity;
 
 	explicit length_encoder(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
@@ -76,9 +60,10 @@ struct length_encoder
 	{
 	}
 
-	~length_encoder()
+	//~length_encoder()                  { set_length_ie(); }
+	//update the length with final value
+	void set_length_ie()
 	{
-		//update the length with final value
 		if (m_lenpos)
 		{
 			state_type const end = m_encoder(GET_STATE{});
@@ -129,50 +114,45 @@ template <class T, typename Enable = void>
 struct container_encoder
 {
 	template <class FUNC, class IE>
-	std::enable_if_t<!has_length_type<IE>::value, MED_RESULT>
-	static encode(FUNC& func, IE& ie)
+	static constexpr MED_RESULT encode(FUNC& func, IE& ie)
 	{
-		CODEC_TRACE("%s...:", name<IE>());
-		return ie.encode(func);
-	}
-
-	template <class FUNC, class IE>
-	std::enable_if_t<has_length_type<IE>::value, MED_RESULT>
-	static encode(FUNC& func, IE& ie)
-	{
-		CODEC_TRACE("start %s with length...:", name<IE>());
-		if constexpr (has_padding<IE>::value)
+		if constexpr (has_length_type<IE>::value)
 		{
-			using pad_t = padder<IE, FUNC>;
-			pad_t pad{func};
-			if constexpr (pad_t::pad_traits::inclusive)
+			CODEC_TRACE("start %s with length...:", name<IE>());
+			if constexpr (has_padding<IE>::value)
 			{
+				using pad_t = padder<IE, FUNC>;
+				pad_t pad{func};
 				length_encoder<FUNC, typename IE::length_type> le{ func };
 				MED_CHECK_FAIL(ie.encode(le));
 				CODEC_TRACE("finish %s with length...:", name<IE>());
 				//special case for empty elements w/o length placeholder
 				pad.enable(static_cast<bool>(le));
-				return pad.add();
+				if constexpr (pad_t::pad_traits::inclusive)
+				{
+					MED_CHECK_FAIL(pad.add());
+					le.set_length_ie();
+					MED_RETURN_SUCCESS;
+				}
+				else
+				{
+					le.set_length_ie();
+					return pad.add();
+				}
 			}
 			else
 			{
-				//scope length_encoder dtor to be called before optionally adding a padding
-				{
-					length_encoder<FUNC, typename IE::length_type> le{ func };
-					MED_CHECK_FAIL(ie.encode(le));
-					CODEC_TRACE("finish %s with length...:", name<IE>());
-					//special case for empty elements w/o length placeholder
-					pad.enable(static_cast<bool>(le));
-				}
-				return pad.add();
+				length_encoder<FUNC, typename IE::length_type> le{ func };
+				MED_CHECK_FAIL(ie.encode(le));
+				le.set_length_ie();
+				CODEC_TRACE("finish %s with length...:", name<IE>());
+				MED_RETURN_SUCCESS;
 			}
 		}
 		else
 		{
-			length_encoder<FUNC, typename IE::length_type> le{ func };
-			MED_CHECK_FAIL(ie.encode(le));
-			CODEC_TRACE("finish %s with length...:", name<IE>());
-			MED_RETURN_SUCCESS;
+			CODEC_TRACE("%s...:", name<IE>());
+			return ie.encode(func);
 		}
 	}
 };
@@ -201,11 +181,18 @@ inline MED_RESULT encode_ie(FUNC& func, IE& ie, CONTAINER const&)
 	return container_encoder<FUNC>::encode(func, ie);
 }
 
-
 template <class WRAPPER, class FUNC, class IE>
 inline MED_RESULT encode_ie(FUNC& func, IE& ie, PRIMITIVE const&)
 {
-	return encode_primitive(func, ie, typename WRAPPER::ie_type{});
+	if constexpr (is_peek_v<IE>)
+	{
+		MED_RETURN_SUCCESS; //do nothing
+	}
+	else
+	{
+		snapshot(func, ie);
+		return func(ie, typename WRAPPER::ie_type{});
+	}
 }
 
 template <class WRAPPER, class FUNC, class IE>
@@ -231,18 +218,16 @@ inline MED_RESULT encode_ie(FUNC& func, IE& ie, IE_TV const&)
 }	//end: namespace sl
 
 template <class FUNC, class IE>
-std::enable_if_t<has_ie_type_v<IE>, MED_RESULT>
-inline encode(FUNC&& func, IE& ie)
+constexpr MED_RESULT encode(FUNC&& func, IE& ie)
 {
-	return sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
+	if constexpr (has_ie_type_v<IE>)
+	{
+		return sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
+	}
+	else
+	{
+		return func(ie);
+	}
 }
-
-template <class FUNC, class IE>
-std::enable_if_t<!has_ie_type_v<IE>, MED_RESULT>
-inline encode(FUNC&& func, IE& ie)
-{
-	return func(ie);
-}
-
 
 }	//end: namespace med
