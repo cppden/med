@@ -76,8 +76,8 @@ constexpr MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 
 //Tag-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
-inline decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
+//std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
+inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 {
 	CODEC_TRACE("TV %s", name<IE>());
 	//convert const to writable

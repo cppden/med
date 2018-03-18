@@ -382,43 +382,63 @@ struct seq_encoder<IE, IES...>
 					MED_AND seq_encoder<IES...>::encode(to, func);
 			}
 		}
-		else
+		else //single-instance field
 		{
-			if constexpr (is_optional_v<IE>)
+			if constexpr (is_optional_v<IE>) //optional field
 			{
-				IE const& ie = to;
-				CODEC_TRACE("%c[%s]", ie.ref_field().is_set()?'+':'-', name<IE>());
-				if (ie.ref_field().is_set() || has_default_value_v<IE>)
+				if constexpr (has_setter_type_v<IE>) //with setter
 				{
-					return med::encode(func, ie) MED_AND seq_encoder<IES...>::encode(to, func);
+					CODEC_TRACE("[%s] with setter", name<IE>());
+					IE ie;
+					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
+					typename IE::setter_type{}(ie, to);
+					if (ie.ref_field().is_set())
+					{
+						MED_CHECK_FAIL(med::encode(func, ie));
+					}
+				}
+				else //w/o setter
+				{
+					IE const& ie = to;
+					CODEC_TRACE("%c[%s]", ie.ref_field().is_set()?'+':'-', name<IE>());
+					if (ie.ref_field().is_set() || has_default_value_v<IE>)
+					{
+						MED_CHECK_FAIL(med::encode(func, ie));
+					}
 				}
 				return seq_encoder<IES...>::encode(to, func);
 			}
-			else
+			else //mandatory field
 			{
-				//single-instance mandatory field w/ setter
-				if constexpr (has_setter_type_v<IE>)
+				if constexpr (has_setter_type_v<IE>) //with setter
 				{
 					CODEC_TRACE("{%s} with setter", name<IE>());
-					typename IE::setter_type{}(const_cast<TO&>(to)); //TODO: copy of IE to not const_cast?
-					IE const& ie = to;
+					IE ie;
+					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
+					typename IE::setter_type{}(ie, to);
 					if (ie.ref_field().is_set())
 					{
-						return med::encode(func, ie) MED_AND seq_encoder<IES...>::encode(to, func);
+						MED_CHECK_FAIL(med::encode(func, ie));
 					}
-					return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+					else
+					{
+						return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+					}
 				}
-				//single-instance mandatory field w/o setter
-				else
+				else //w/o setter
 				{
 					IE const& ie = to;
 					CODEC_TRACE("%c{%s}", ie.ref_field().is_set()?'+':'-', class_name<IE>());
 					if (ie.ref_field().is_set())
 					{
-						return med::encode(func, ie) MED_AND seq_encoder<IES...>::encode(to, func);
+						MED_CHECK_FAIL(med::encode(func, ie));
 					}
-					return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+					else
+					{
+						return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+					}
 				}
+				return seq_encoder<IES...>::encode(to, func);
 			}
 		}
 	}

@@ -31,7 +31,7 @@ template <class T, typename Enable = void>
 struct null_encoder
 {
 	template <class FUNC, class IE>
-	static constexpr MED_RESULT encode(FUNC&, IE&)
+	static constexpr MED_RESULT encode(FUNC&, IE const&)
 	{
 		MED_RETURN_SUCCESS; //do nothing
 	}
@@ -41,7 +41,7 @@ template <class T>
 struct null_encoder<T, std::void_t<typename T::null_encoder>>
 {
 	template <class FUNC, class IE>
-	static MED_RESULT encode(FUNC& func, IE& ie)
+	static MED_RESULT encode(FUNC& func, IE const& ie)
 	{
 		return typename T::null_encoder{}(func, ie);
 	}
@@ -60,7 +60,6 @@ struct length_encoder
 	{
 	}
 
-	//~length_encoder()                  { set_length_ie(); }
 	//update the length with final value
 	void set_length_ie()
 	{
@@ -114,7 +113,7 @@ template <class T, typename Enable = void>
 struct container_encoder
 {
 	template <class FUNC, class IE>
-	static constexpr MED_RESULT encode(FUNC& func, IE& ie)
+	static constexpr MED_RESULT encode(FUNC& func, IE const& ie)
 	{
 		if constexpr (has_length_type<IE>::value)
 		{
@@ -125,18 +124,19 @@ struct container_encoder
 				pad_t pad{func};
 				length_encoder<FUNC, typename IE::length_type> le{ func };
 				MED_CHECK_FAIL(ie.encode(le));
-				CODEC_TRACE("finish %s with length...:", name<IE>());
 				//special case for empty elements w/o length placeholder
 				pad.enable(static_cast<bool>(le));
 				if constexpr (pad_t::pad_traits::inclusive)
 				{
 					MED_CHECK_FAIL(pad.add());
 					le.set_length_ie();
+					CODEC_TRACE("finish %s with length...:", name<IE>());
 					MED_RETURN_SUCCESS;
 				}
 				else
 				{
 					le.set_length_ie();
+					CODEC_TRACE("finish %s with length...:", name<IE>());
 					return pad.add();
 				}
 			}
@@ -161,7 +161,7 @@ template <class T>
 struct container_encoder<T, std::void_t<typename T::container_encoder>>
 {
 	template <class FUNC, class IE>
-	static MED_RESULT encode(FUNC& func, IE& ie)
+	static MED_RESULT encode(FUNC& func, IE const& ie)
 	{
 		return typename T::container_encoder{}(func, ie);
 	}
@@ -170,19 +170,19 @@ struct container_encoder<T, std::void_t<typename T::container_encoder>>
 
 //IE_NULL
 template <class WRAPPER, class FUNC, class IE>
-constexpr MED_RESULT encode_ie(FUNC& func, IE& ie, IE_NULL const&)
+constexpr MED_RESULT encode_ie(FUNC& func, IE const& ie, IE_NULL const&)
 {
 	return null_encoder<FUNC>::encode(func, ie);
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline MED_RESULT encode_ie(FUNC& func, IE& ie, CONTAINER const&)
+inline MED_RESULT encode_ie(FUNC& func, IE const& ie, CONTAINER const&)
 {
 	return container_encoder<FUNC>::encode(func, ie);
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline MED_RESULT encode_ie(FUNC& func, IE& ie, PRIMITIVE const&)
+inline MED_RESULT encode_ie(FUNC& func, IE const& ie, PRIMITIVE const&)
 {
 	if constexpr (is_peek_v<IE>)
 	{
@@ -196,7 +196,7 @@ inline MED_RESULT encode_ie(FUNC& func, IE& ie, PRIMITIVE const&)
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline MED_RESULT encode_ie(FUNC& func, IE& ie, IE_LV const&)
+inline MED_RESULT encode_ie(FUNC& func, IE const& ie, IE_LV const&)
 {
 	typename WRAPPER::length_type len_ie{};
 	std::size_t len_value = get_length(ref_field(ie));
@@ -207,7 +207,7 @@ inline MED_RESULT encode_ie(FUNC& func, IE& ie, IE_LV const&)
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline MED_RESULT encode_ie(FUNC& func, IE& ie, IE_TV const&)
+inline MED_RESULT encode_ie(FUNC& func, IE const& ie, IE_TV const&)
 {
 	typename WRAPPER::tag_type const tag_ie{};
 	CODEC_TRACE("T%zx<%s>{%s}", std::size_t(tag_ie.get()), name<WRAPPER>(), name<IE>());
@@ -218,7 +218,7 @@ inline MED_RESULT encode_ie(FUNC& func, IE& ie, IE_TV const&)
 }	//end: namespace sl
 
 template <class FUNC, class IE>
-constexpr MED_RESULT encode(FUNC&& func, IE& ie)
+constexpr MED_RESULT encode(FUNC&& func, IE const& ie)
 {
 	if constexpr (has_ie_type_v<IE>)
 	{

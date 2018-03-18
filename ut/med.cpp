@@ -296,7 +296,20 @@ struct FLD_QTY : med::value<uint8_t>
 		template <class T>
 		std::size_t operator()(T const& ies) const
 		{
-			return static_cast<FLD_QTY const&>(ies).get();
+			return ies.template as<FLD_QTY>().get();
+		}
+	};
+
+	struct setter
+	{
+		template <class T>
+		void operator()(FLD_QTY& num_ips, T const& ies) const
+		{
+			if (std::size_t const qty = med::field_count(ies.template as<FLD_IP>()))
+			{
+				CODEC_TRACE("*********** qty = %zu", qty);
+				num_ips.set(qty);
+			}
 		}
 	};
 };
@@ -319,7 +332,10 @@ struct FLD_FLAGS : med::value<uint8_t>
 	template <value_type BITS>
 	struct has_bits
 	{
-		template <class T> bool operator()(T const& ies) const  { return static_cast<FLD_FLAGS const&>(ies).get() & BITS; }
+		template <class T> bool operator()(T const& ies) const
+		{
+			return ies.template as<FLD_FLAGS>().get() & BITS;
+		}
 	};
 
 	template <value_type QTY, int DELTA = 0>
@@ -328,37 +344,36 @@ struct FLD_FLAGS : med::value<uint8_t>
 		template <class T>
 		std::size_t operator()(T const& ies) const
 		{
-			return std::size_t(((static_cast<FLD_FLAGS const&>(ies).get() >> QTY) & QTY_MASK) + DELTA);
+			return std::size_t(((ies.template as<FLD_FLAGS>().get() >> QTY) & QTY_MASK) + DELTA);
 		}
 	};
 
 	struct setter
 	{
 		template <class T>
-		void operator()(T& ies) const
+		void operator()(FLD_FLAGS& flags, T const& ies) const
 		{
+			//hdr.template as<version_flags>
 			value_type bits =
-				(static_cast<FLD_U16&>(ies).is_set() ? U16 : 0 ) |
-				(static_cast<FLD_U24&>(ies).is_set() ? U24 : 0 );
+				(ies.template as<FLD_U16>().is_set() ? U16 : 0 ) |
+				(ies.template as<FLD_U24>().is_set() ? U24 : 0 );
 
 			auto const uc_qty = med::field_count(ies.template as<FLD_UC>());
 			auto const u8_qty = med::field_count(ies.template as<FLD_U8>());
 
-
 			CODEC_TRACE("*********** bits=%02X uc=%zu u8=%zu", bits, uc_qty, u8_qty);
 
-			if (std::size_t const u32_qty = med::field_count(ies.template as<FLD_IP>()))
+			if (ies.template as<FLD_IP>().is_set())
 			{
-				CODEC_TRACE("*********** u32_qty = %zu", u32_qty);
 				bits |= QTY;
-				static_cast<FLD_QTY&>(ies).set(u32_qty);
 			}
 
 			bits |= (uc_qty-1) << UC_QTY;
 			bits |= u8_qty << U8_QTY;
 			CODEC_TRACE("*********** setting bits = %02X", bits);
 
-			static_cast<FLD_FLAGS&>(ies).set(bits);
+			flags.set(bits);
+			//ies.template as<FLD_FLAGS>().set(bits);
 		}
 	};
 };
@@ -367,7 +382,7 @@ struct FLD_FLAGS : med::value<uint8_t>
 struct MSG_FUNC : med::sequence<
 	M< FLD_FLAGS, FLD_FLAGS::setter >,
 	M< FLD_UC, med::min<2>, med::max<4>, FLD_FLAGS::counter<FLD_FLAGS::UC_QTY, 1> >,
-	O< FLD_QTY, FLD_FLAGS::has_bits<FLD_FLAGS::QTY> >, //note: this field is also set in FLD_FLAGS::setter
+	O< FLD_QTY, FLD_QTY::setter, FLD_FLAGS::has_bits<FLD_FLAGS::QTY> >,
 	O< FLD_U8, med::max<2>, FLD_FLAGS::counter<FLD_FLAGS::U8_QTY> >,
 	O< FLD_U16, FLD_FLAGS::has_bits<FLD_FLAGS::U16> >,
 	O< FLD_U24, FLD_FLAGS::has_bits<FLD_FLAGS::U24> >,
@@ -2296,9 +2311,8 @@ struct version_flags : med::value<uint8_t>
 	struct setter
 	{
 		template <class HDR>
-		void operator()(HDR& hdr) const
+		void operator()(version_flags& flags, HDR const& hdr) const
 		{
-			auto& flags = hdr.template as<version_flags>();
 			auto bits = flags.get();
 			if (hdr.template as<message_priority>().is_set()) { bits |= MP; } else { bits &= ~MP; }
 			flags.set(bits);
@@ -2310,7 +2324,7 @@ struct version_flags : med::value<uint8_t>
 		template <class HDR>
 		bool operator()(HDR const& hdr) const
 		{
-			return (static_cast<version_flags const&>(hdr).get() & version_flags::MP);
+			return hdr.template as<version_flags>().get() & version_flags::MP;
 		}
 	};
 };
@@ -2580,7 +2594,10 @@ struct vendor : med::value<uint32_t>
 struct has_vendor
 {
 	template <class HDR>
-	bool operator()(HDR const& hdr) const { return static_cast<avp_flags const&>(hdr).get() & avp_flags::V; }
+	bool operator()(HDR const& hdr) const
+	{
+		return hdr.template as<avp_flags>().get() & avp_flags::V;
+	}
 };
 
 template <class BODY, class BASE, typename Enable = void>
@@ -3314,10 +3331,10 @@ struct SHDR : med::value<uint8_t>
 	struct setter
 	{
 		template <class T>
-		void operator()(T& ies) const
+		void operator()(SHDR& shdr, T const& ies) const
 		{
 			auto const qty = med::field_count(ies.template as<FLD>());
-			static_cast<SHDR&>(ies).set(qty);
+			shdr.set(qty);
 		}
 	};
 

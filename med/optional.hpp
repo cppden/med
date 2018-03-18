@@ -84,6 +84,21 @@ struct optional<
 	using condition = CONDITION;
 };
 
+//single-instance conditional field w/ setter
+template <class FIELD, class SETTER, class CONDITION>
+struct optional<
+	FIELD,
+	SETTER,
+	CONDITION,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_setter_v<FIELD, SETTER> && is_condition_v<CONDITION>>
+> : field_t<FIELD>, optional_t
+{
+	using setter_type = SETTER;
+	using condition = CONDITION;
+};
+
 //multi-instance conditional field
 template <class FIELD, std::size_t MAX, class CONDITION>
 struct optional<

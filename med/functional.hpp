@@ -72,24 +72,15 @@ struct has_condition<T, std::void_t<typename T::condition>> : std::true_type { }
 template <class T>
 constexpr bool has_condition_v = has_condition<T>::value;
 
+template<class, class, class Enable = void>
+struct is_setter : std::false_type {};
+template<class IE, class FUNC>
+struct is_setter<IE, FUNC, std::void_t<decltype(
+	std::declval<FUNC>()(std::declval<IE&>(), std::false_type{})
+)>> : std::true_type {};
 
-namespace detail {
-
-template<class T>
-static auto test_setter(int, std::false_type val = std::false_type{}) ->
-	std::enable_if_t<
-		std::is_same< void, decltype( std::declval<T>()(val) ) >::value, std::true_type
-	>;
-
-template<class>
-static auto test_setter(long) -> std::false_type;
-
-}	//end: namespace detail
-
-template <class T>
-struct is_setter : decltype(detail::test_setter<T>(0)) { };
-template <class T>
-constexpr bool is_setter_v = is_setter<T>::value;
+template <class IE, class FUNC>
+constexpr bool is_setter_v = is_setter<IE, FUNC>::value;
 
 template <class, class Enable = void >
 struct has_setter_type : std::false_type { };
