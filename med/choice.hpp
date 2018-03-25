@@ -28,7 +28,11 @@ template <class IE, class... IEs>
 struct cases<IE, IEs...>
 {
 	template <typename FIELD>
-	using at = std::conditional_t<std::is_same<typename IE::case_type, FIELD>::value, IE, typename cases<IEs...>::template at<FIELD> >;
+	using at = std::conditional_t<
+		std::is_same_v<typename IE::case_type, FIELD>,
+		IE,
+		typename cases<IEs...>::template at<FIELD>
+	>;
 };
 
 template<>
@@ -98,6 +102,21 @@ struct choice_for<IE, IEs...>
 		}
 	}
 
+	template <class TO, class FROM, class... ARGS>
+	static inline MED_RESULT copy(TO& to, FROM const& from, ARGS&&... args)
+	{
+		if (IE::tag_type::match(get_tag(from.header())))
+		{
+			using value_type = typename IE::case_type;
+			void const* store_p = &from.m_storage;
+			MED_CHECK_FAIL(to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p), std::forward<ARGS>(args)...));
+			return to.header().copy(from.header());
+		}
+		else
+		{
+			return choice_for<IEs...>::copy(to, from, std::forward<ARGS>(args)...);
+		}
+	}
 };
 
 template <>
@@ -118,10 +137,17 @@ struct choice_for<>
 	}
 
 	template <class TO>
-	static std::size_t calc_length(TO const&)
+	static constexpr std::size_t calc_length(TO const&)
 	{
 		return 0;
 	}
+
+	template <class TO, class FROM, class... ARGS>
+	static constexpr MED_RESULT copy(TO&, FROM const&, ARGS&&...)
+	{
+		MED_RETURN_FAILURE;
+	}
+
 };
 
 }	//end: namespace sl
@@ -181,6 +207,15 @@ public:
 	}
 
 	template <class CASE>
+	CASE const* get() const
+	{
+		using IE = typename cases<CASES...>::template at<CASE>;
+		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
+		void const* store_p = &m_storage;
+		return IE::tag_type::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
+	}
+
+	template <class CASE>
 	CASE& clear()
 	{
 		using IE = typename cases<CASES...>::template at<CASE>;
@@ -189,14 +224,26 @@ public:
 		return *(new (&m_storage) CASE{});
 	}
 
-	template <class CASE>
-	CASE const* get() const
+	template <class FROM, class... ARGS>
+	MED_RESULT copy(FROM const& from, ARGS&&... args)
 	{
-		using IE = typename cases<CASES...>::template at<CASE>;
-		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
-		void const* store_p = &m_storage;
-		return IE::tag_type::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
+		if (from.is_set())
+		{
+			return sl::choice_for<CASES...>::copy(*this, from, std::forward<ARGS>(args)...);
+		}
+		MED_RETURN_SUCCESS;
 	}
+
+	template <class DST, class... ARGS>
+	MED_RESULT copy_to(DST& to, ARGS&&... args) const
+	{
+		if (this->is_set())
+		{
+			return sl::choice_for<CASES...>::copy(to, *this, std::forward<ARGS>(args)...);
+		}
+		MED_RETURN_SUCCESS;
+	}
+
 
 	template <class ENCODER>
 	MED_RESULT encode(ENCODER&& encoder) const

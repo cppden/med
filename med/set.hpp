@@ -48,10 +48,8 @@ struct set_decoder<IE, IES...>
 				auto* field = ie.push_back(func);
 				return MED_EXPR_AND(field) med::decode(func, *field, unexp);
 			}
-			return set_decoder<IES...>::decode(to, func, unexp, header);
 		}
-		//single-instance field
-		else
+		else //single-instance field
 		{
 			if (tag_type_t<IE>::match( get_tag(header) ))
 			{
@@ -63,11 +61,8 @@ struct set_decoder<IE, IES...>
 				}
 				return func(error::EXTRA_IE, name<typename IE::field_type>(), 1);
 			}
-			else
-			{
-				return set_decoder<IES...>::decode(to, func, unexp, header);
-			}
 		}
+		return set_decoder<IES...>::decode(to, func, unexp, header);
 	}
 
 	template <class TO, class FUNC>
@@ -76,19 +71,17 @@ struct set_decoder<IE, IES...>
 		if constexpr (is_multi_field<IE>::value)
 		{
 			IE const& ie = static_cast<IE const&>(to);
-			return check_arity(func, ie)
-				MED_AND set_decoder<IES...>::check(to, func);
+			MED_CHECK_FAIL(check_arity(func, ie));
 		}
-		//single-instance field
-		else
+		else //single-instance field
 		{
 			IE const& ie = static_cast<IE const&>(to);
-			if (is_optional_v<IE> || ie.ref_field().is_set())
+			if (!is_optional_v<IE> && !ie.ref_field().is_set())
 			{
-				return set_decoder<IES...>::check(to, func);
+				return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 			}
-			return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 		}
+		return set_decoder<IES...>::check(to, func);
 	}
 };
 
@@ -120,22 +113,10 @@ constexpr MED_RESULT encode_header(FUNC& func)
 		header.set_encoded(tag_type_t<IE>::get_encoded());
 		return encode(func, header);
 	}
-	else if constexpr (std::is_base_of<CONTAINER, typename HEADER::ie_type>::value)
-	{
-		MED_RETURN_SUCCESS;
-	}
-}
-
-template <class TO, class FUNC, class HEADER, class IE, class... IES>
-inline MED_RESULT continue_encode(TO const& to, FUNC& func)
-{
-	if constexpr (is_optional_v<IE>)
-	{
-		return set_encoder<IES...>::template encode<HEADER>(to, func);
-	}
 	else
 	{
-		return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+		static_assert(std::is_base_of<CONTAINER, typename HEADER::ie_type>::value, "unexpected aggregate?");
+		MED_RETURN_SUCCESS;
 	}
 }
 
@@ -154,26 +135,32 @@ struct set_encoder<IE, IES...>
 			for (auto& field : ie)
 			{
 				//TODO: actually this field was pushed but not set... do we need a new error?
-				if (!field.is_set())
+				if (field.is_set())
+				{
+					MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
+					MED_CHECK_FAIL(med::encode(func, field));
+				}
+				else
 				{
 					return func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count()-1);
 				}
-				MED_CHECK_FAIL((encode_header<HEADER, IE>(func)) MED_AND med::encode(func, field));
 			}
-			return set_encoder<IES...>::template encode<HEADER>(to, func);
 		}
-		//single-instance field
-		else
+		else //single-instance field
 		{
 			IE const& ie = static_cast<IE const&>(to);
 			if (ie.ref_field().is_set())
 			{
 				CODEC_TRACE("[%s]", name<IE>());
-				return encode_header<HEADER, IE>(func) MED_AND med::encode(func, ie.ref_field())
-					MED_AND set_encoder<IES...>::template encode<HEADER>(to, func);
+				MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
+				MED_CHECK_FAIL(med::encode(func, ie.ref_field()));
 			}
-			return continue_encode<TO, FUNC, HEADER, IE, IES...>(to, func);
+			else if constexpr (!is_optional_v<IE>)
+			{
+				return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+			}
 		}
+		return set_encoder<IES...>::template encode<HEADER>(to, func);
 	}
 };
 

@@ -11,7 +11,7 @@ Distributed under the MIT License
 
 #include "debug.hpp"
 #include "accessor.hpp"
-#include "multi_field.hpp"
+#include "sl/field_copy.hpp"
 
 namespace med {
 
@@ -23,7 +23,7 @@ struct ies<IE, IES...>
 {
 	template <typename FIELD>
 	using at = std::conditional_t<
-		std::is_same<get_field_type_t<IE>, FIELD>::value,
+		std::is_same_v<get_field_type_t<IE>, FIELD>,
 		IE,
 		typename ies<IES...>::template at<FIELD>
 	>;
@@ -53,137 +53,33 @@ constexpr std::size_t field_arity()
 }
 
 //-----------------------------------------------------------------------
-template <class IE>
-inline bool is_field_set(IE const& ie)
-{
-	if constexpr (is_multi_field_v<IE>)
-	{
-		return ie.is_set();
-	}
-	else
-	{
-		return ie.ref_field().is_set();
-	}
-}
-
-//NOTE! check stops at 1st mandatory since it's optimal and more flexible
-template <class... IES>
-struct seq_is_set;
-
-template <class IE, class... IES>
-struct seq_is_set<IE, IES...>
-{
-	template <class TO>
-	static constexpr bool is_set(TO const& to)
-	{
-		//optional or mandatory field w/ setter => can be set implicitly
-		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
-		{
-			return is_field_set<IE>(to) || seq_is_set<IES...>::is_set(to);
-		}
-		//mandatory field w/o setter => s.b. set explicitly
-		else //if constexpr (!is_optional_v<IE> && !has_setter_type_v<IE>)
-		{
-			return is_field_set<IE>(to);
-		}
-	}
-};
-
-template <>
-struct seq_is_set<void>
-{
-	template <class TO>
-	static constexpr bool is_set(TO const&)    { return false; }
-};
-
-//-----------------------------------------------------------------------
-template <class IE>
-inline void field_clear(IE& ie)
-{
-	if constexpr (is_multi_field_v<IE>)
-	{
-		ie.clear();
-	}
-	else
-	{
-		ie.ref_field().clear();
-	}
-}
-
-template <class... IES>
-struct seq_clear;
-
-template <class IE, class... IES>
-struct seq_clear<IE, IES...>
-{
-	template <class TO>
-	static inline void clear(TO& to) { field_clear<IE>(to); seq_clear<IES...>::clear(to); }
-};
-
-template <>
-struct seq_clear<>
-{
-	template <class TO>
-	static constexpr void clear(TO&)    { }
-};
-
-//-----------------------------------------------------------------------
-template <class IE, class ...ARGS>
-inline MED_RESULT field_copy(IE& to, IE const& from, ARGS&&... args)
-{
-	if constexpr (is_multi_field_v<IE>)
-	{
-		to.clear();
-		for (auto const& rhs : from)
-		{
-			if (auto* p = to.push_back(std::forward<ARGS>(args)...))
-			{
-				MED_CHECK_FAIL(p->copy(rhs, std::forward<ARGS>(args)...));
-			}
-			else
-			{
-				MED_RETURN_FAILURE;
-			}
-		}
-		MED_RETURN_SUCCESS;
-	}
-	else
-	{
-		return to.ref_field().copy(from.ref_field(), std::forward<ARGS>(args)...);
-	}
-}
-
-template <class... IES>
-struct seq_copy;
-
-template <class IE, class... IES>
-struct seq_copy<IE, IES...>
-{
-	template <class FIELDS, class... ARGS>
-	static inline MED_RESULT copy(FIELDS& to, FIELDS const& from, ARGS&&... args)
-	{
-		return field_copy<IE>(to, from, std::forward<ARGS>(args)...)
-			MED_AND seq_copy<IES...>::copy(to, from, std::forward<ARGS>(args)...);
-	}
-};
-
-template <>
-struct seq_copy<>
-{
-	template <class FIELDS, class... ARGS>
-	static constexpr MED_RESULT copy(FIELDS&, FIELDS const&, ARGS&&...)
-	{
-		MED_RETURN_SUCCESS;
-	}
-};
-
-//-----------------------------------------------------------------------
 template <class... IES>
 struct container_for;
 
 template <class IE, class... IES>
 struct container_for<IE, IES...>
 {
+	template <class TO>
+	static inline void clear(TO& to)
+	{
+		static_cast<IE&>(to).clear();
+		container_for<IES...>::clear(to);
+	}
+
+	template <class TO>
+	static constexpr bool is_set(TO const& to)
+	{
+		//optional or mandatory field w/ setter => can be set implicitly
+		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
+		{
+			return static_cast<IE const&>(to).is_set() || container_for<IES...>::is_set(to);
+		}
+		else //mandatory field w/o setter => s.b. set explicitly
+		{
+			return static_cast<IE const&>(to).is_set();
+		}
+	}
+
 	template <class TO>
 	static constexpr std::size_t calc_length(TO const& to)
 	{
@@ -202,21 +98,59 @@ struct container_for<IE, IES...>
 				+ container_for<IES...>::calc_length(to);
 		}
 	}
+
+	template <class TO, class FROM, class... ARGS>
+	static inline MED_RESULT copy(TO& to, FROM const& from, ARGS&&... args)
+	{
+		using field_type = get_field_type_t<IE>;
+		auto const& from_field = from.m_ies.template as<field_type>();
+		if (from_field.is_set())
+		{
+			auto& to_field = to.m_ies.template as<field_type>();
+			if constexpr (is_multi_field_v<IE>)
+			{
+				to_field.clear();
+				for (auto const& rhs : from_field)
+				{
+					if (auto* p = to_field.push_back(std::forward<ARGS>(args)...))
+					{
+						MED_CHECK_FAIL(p->copy(rhs, std::forward<ARGS>(args)...));
+					}
+					else
+					{
+						MED_RETURN_FAILURE;
+					}
+				}
+			}
+			else
+			{
+				MED_CHECK_FAIL(to_field.copy(from_field, std::forward<ARGS>(args)...));
+			}
+		}
+		//MED_CHECK_FAIL( field_copy<IE>(to, from, std::forward<ARGS>(args)...) );
+		return container_for<IES...>::copy(to, from, std::forward<ARGS>(args)...);
+	}
 };
 
 template <>
 struct container_for<>
 {
 	template <class TO>
-	static constexpr std::size_t calc_length(TO const&)
-	{
-		return 0;
-	}
+	static constexpr void clear(TO&)                                { }
+
+	template <class TO>
+	static constexpr bool is_set(TO const&)                         { return false; }
+
+	template <class TO>
+	static constexpr std::size_t calc_length(TO const&)             { return 0; }
+
+	template <class TO, class FROM, class... ARGS>
+	static constexpr MED_RESULT copy(TO&, FROM const&, ARGS&&...)   { MED_RETURN_SUCCESS; }
 };
 
 }	//end: namespace sl
 
-template <class ...IES>
+template <class... IES>
 class container : public IE<CONTAINER>
 {
 public:
@@ -279,23 +213,27 @@ public:
 
 	template <class FIELD>
 	void clear()                            { m_ies.template as<FIELD>().clear(); }
-	void clear()                            { sl::seq_clear<IES...>::clear(this->m_ies); }
-	bool is_set() const                     { return sl::seq_is_set<IES...>::is_set(this->m_ies); }
+	void clear()                            { sl::container_for<IES...>::clear(this->m_ies); }
+	//NOTE! check stops at 1st mandatory since it's optimal and more flexible
+	bool is_set() const                     { return sl::container_for<IES...>::is_set(this->m_ies); }
 	std::size_t calc_length() const         { return sl::container_for<IES...>::calc_length(this->m_ies); }
 
-	template <class... ARGS>
-	MED_RESULT copy(container_t const& from, ARGS&&... args)
+	template <class FROM, class... ARGS>
+	MED_RESULT copy(FROM const& from, ARGS&&... args)
 	{
-		return sl::seq_copy<IES...>::copy(this->m_ies, from.m_ies, std::forward<ARGS>(args)...);
+		return sl::container_for<IES...>::copy(*this, from, std::forward<ARGS>(args)...);
 	}
 
-	template <class... ARGS>
-	MED_RESULT copy_to(container_t& to, ARGS&&... args) const
+	template <class TO, class... ARGS>
+	MED_RESULT copy_to(TO& to, ARGS&&... args) const
 	{
-		return sl::seq_copy<IES...>::copy(to.m_ies, this->m_ies, std::forward<ARGS>(args)...);
+		return sl::container_for<IES...>::copy(to, *this, std::forward<ARGS>(args)...);
 	}
 
 protected:
+	template <class...>
+	friend struct sl::container_for;
+
 	struct ies_t : IES...
 	{
 		template <class FIELD>

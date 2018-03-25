@@ -56,7 +56,7 @@ struct selectable : IE<IE_NULL>
 	bool is_set() const                     { return m_set; }
 	explicit operator bool() const          { return is_set(); }
 	template <class... ARGS>
-	MED_RESULT copy(selectable const& from, ARGS&&...) { m_set = from.m_set; MED_RETURN_SUCCESS; }
+	MED_RESULT copy(selectable const& from, ARGS&&...) { m_set = from.is_set(); MED_RETURN_SUCCESS; }
 
 private:
 	bool    m_set{false};

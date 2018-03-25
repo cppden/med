@@ -58,14 +58,8 @@ endif ()
 # Library path
 set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 
-set(UT_SRCS
-	ut/med.cpp
-	ut/octets.cpp
-)
-
-set(BM_SRCS
-	benchmark/bm.cpp
-)
+file(GLOB_RECURSE UT_SRCS ut/*.cpp)
+file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
 
 add_compile_options(
     -Werror 

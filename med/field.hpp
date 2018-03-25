@@ -16,7 +16,6 @@ Distributed under the MIT License
 
 namespace med {
 
-
 template <class FIELD>
 struct field_t : FIELD
 {

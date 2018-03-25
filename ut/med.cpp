@@ -3165,7 +3165,6 @@ struct MSEQ_OPEN : med::sequence<
 	M< T<0x42>, L, FLD_IP, med::inf >,             //<TLV>(fixed)*[1,*)
 	M< CNT, FLD_W, med::inf >,                     //C<V>*[1,*)
 	O< T<0x62>, L, FLD_DW, med::inf >,             //[TLV]*[0,*)
-	//O< T<0x80>, CNT, SEQOF_3<1>, med::inf >,     //T[CV]*[0,*)
 	O< L, VFLD1, med::inf >                        //[LV(var)]*[0,*) till EoF
 >
 {
@@ -3276,49 +3275,6 @@ TEST(decode, alloc_fail)
 		}();
 	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
 #endif
-}
-
-TEST(copy, mseq_open)
-{
-	uint8_t const encoded[] = {
-		  0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>
-		, 0x21, 0x35, 0xDA
-		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //<T=0x42, L, FLD_IP>
-		, 0,2, 0x76, 0x54,  0x98, 0x76    //<C16, FLD_W>
-		, 0x62, 4, 0x01, 0x02, 0x03, 0x04 //[T=0x51, L, FLD_DW]
-		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
-		, 7, 't', 'e', 's', 't', '.', 'i', 't'
-	};
-
-	MSEQ_OPEN src_msg;
-	MSEQ_OPEN dst_msg;
-
-	uint8_t dec_buf[1024];
-	{
-		med::decoder_context<> ctx{ encoded, dec_buf };
-#if (MED_EXCEPTIONS)
-		decode(make_octet_decoder(ctx), src_msg);
-		ASSERT_THROW(dst_msg.copy(src_msg), med::exception);
-		dst_msg.copy(src_msg, ctx);
-#else
-		if (!decode(make_octet_decoder(ctx), src_msg)) { FAIL() << toString(ctx.error_ctx()); }
-		ASSERT_FALSE(dst_msg.copy(src_msg));
-		ASSERT_TRUE(dst_msg.copy(src_msg, ctx));
-#endif
-	}
-
-	{
-		uint8_t buffer[1024];
-		med::encoder_context<> ctx{ buffer };
-
-#if (MED_EXCEPTIONS)
-		encode(make_octet_encoder(ctx), dst_msg);
-#else
-		if (!encode(make_octet_encoder(ctx), dst_msg)) { FAIL() << toString(ctx.error_ctx()); }
-#endif
-		EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-		EXPECT_TRUE(Matches(encoded, buffer));
-	}
 }
 
 #endif
