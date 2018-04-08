@@ -51,6 +51,20 @@ struct choice_for;
 template <class IE, class... IEs>
 struct choice_for<IE, IEs...>
 {
+	template <typename TAG>
+	static constexpr char const* name_tag(TAG const& tag)
+	{
+		if (IE::tag_type::match(tag))
+		{
+			using case_t = typename IE::case_type;
+			return name<case_t>();
+		}
+		else
+		{
+			return choice_for<IEs...>::name_tag(tag);
+		}
+	}
+
 	template <class ENCODER, class TO>
 	static MED_RESULT encode(ENCODER&& encoder, TO const& to)
 	{
@@ -122,6 +136,12 @@ struct choice_for<IE, IEs...>
 template <>
 struct choice_for<>
 {
+	template <typename TAG>
+	static constexpr char const* name_tag(TAG const&)
+	{
+		return nullptr;
+	}
+
 	template <class FUNC, class TO, class UNEXP>
 	static MED_RESULT decode(FUNC&& func, TO& to, UNEXP& unexp)
 	{
@@ -147,7 +167,6 @@ struct choice_for<>
 	{
 		MED_RETURN_FAILURE;
 	}
-
 };
 
 }	//end: namespace sl
@@ -181,6 +200,12 @@ private:
 
 public:
 	using header_type = HEADER;
+
+	template <typename TAG>
+	static constexpr char const* name_tag(TAG const& tag)
+	{
+		return sl::choice_for<CASES...>::name_tag(tag);
+	}
 
 	header_type const& header() const       { return m_header; }
 	header_type const& get_header() const   { return m_header; }

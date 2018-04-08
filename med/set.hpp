@@ -180,6 +180,36 @@ constexpr void pop_state(FUNC&& func)
 	}
 }
 
+template <class... IEs>
+struct set_for;
+
+template <class IE, class... IEs>
+struct set_for<IE, IEs...>
+{
+	template <typename TAG>
+	static constexpr char const* name_tag(TAG const& tag)
+	{
+		if (tag_type_t<IE>::match(tag))
+		{
+			return name<IE>();
+		}
+		else
+		{
+			return set_for<IEs...>::name_tag(tag);
+		}
+	}
+};
+
+template <>
+struct set_for<>
+{
+	template <typename TAG>
+	static constexpr char const* name_tag(TAG const&)
+	{
+		return nullptr;
+	}
+};
+
 }	//end: namespace sl
 
 
@@ -187,6 +217,12 @@ template <class HEADER, class ...IES>
 struct set : container<IES...>
 {
 	using header_type = HEADER;
+
+	template <typename TAG>
+	static constexpr char const* name_tag(TAG const& tag)
+	{
+		return sl::set_for<IES...>::name_tag(tag);
+	}
 
 	template <class ENCODER>
 	MED_RESULT encode(ENCODER& encoder) const

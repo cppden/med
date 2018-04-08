@@ -408,6 +408,16 @@ TEST(encode, seq_ok)
 {
 	PROTO proto;
 
+	static_assert(nullptr != PROTO::name_tag(1));
+	EXPECT_STREQ(med::name<MSG_SEQ>(), PROTO::name_tag(0x01));
+	static_assert(nullptr == PROTO::name_tag(0xAA));
+	EXPECT_EQ(nullptr, PROTO::name_tag(0x55));
+
+	static_assert(nullptr != MSG_SET::name_tag(0x0b));
+	EXPECT_STREQ(med::name<FLD_U16>(), MSG_SET::name_tag(0x21));
+	static_assert(nullptr == MSG_SET::name_tag(0xAA));
+	EXPECT_EQ(nullptr, MSG_SET::name_tag(0x55));
+
 	//mandatory only
 	MSG_SEQ& msg = proto.select();
 	msg.ref<FLD_UC>().set(37);
