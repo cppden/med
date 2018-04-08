@@ -55,12 +55,12 @@ struct octet_encoder
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{
 		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, ss.bits);
+		return ctx.error_ctx().set_error(error::OVERFLOW, "advance", ctx.buffer().size() * granularity, ss.bits);
 	}
 	MED_RESULT operator() (ADD_PADDING const& pad)
 	{
 		if (ctx.buffer().fill(pad.bits/granularity, pad.filler)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, pad.bits);
+		return ctx.error_ctx().set_error(error::OVERFLOW, "padding", ctx.buffer().size() * granularity, pad.bits);
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
@@ -83,7 +83,7 @@ struct octet_encoder
 			put_bytes(ie, out);
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
 	}
 
 	//IE_OCTET_STRING
@@ -96,7 +96,7 @@ struct octet_encoder
 			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.get_length(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
+		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
 	}
 
 private:

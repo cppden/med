@@ -45,13 +45,13 @@ struct octet_decoder
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{
 		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().spaceError("advance", ctx.buffer().size() * granularity, ss.bits);
+		return ctx.error_ctx().set_error(error::OVERFLOW, "advance", ctx.buffer().size() * granularity, ss.bits);
 	}
 	MED_RESULT operator() (ADD_PADDING const& pad)
 	{
 		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
 		if (ctx.buffer().advance(pad.bits/granularity)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().spaceError("padding", ctx.buffer().size() * granularity, pad.bits);
+		return ctx.error_ctx().set_error(error::OVERFLOW, "padding", ctx.buffer().size() * granularity, pad.bits);
 	}
 
 	//errors
@@ -76,9 +76,9 @@ struct octet_decoder
 				CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
 				MED_RETURN_SUCCESS;
 			}
-			return ctx.error_ctx().valueError(name<IE>(), val, ctx.buffer().get_offset());
+			return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), val, ctx.buffer().get_offset());
 		}
-		return ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
 	}
 
 	//IE_OCTET_STRING
@@ -90,9 +90,9 @@ struct octet_decoder
 		{
 			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.get_length()));
 			if (ctx.buffer().advance(ie.get_length())) MED_RETURN_SUCCESS;
-			return ctx.error_ctx().spaceError(name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
+			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
 		}
-		return ctx.error_ctx().valueError(name<IE>(), ie.get_length(), ctx.buffer().get_offset());
+		return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), ie.get_length(), ctx.buffer().get_offset());
 	}
 
 private:

@@ -89,6 +89,22 @@ struct has_setter_type<T, std::void_t<typename T::setter_type>> : std::true_type
 template <class T>
 constexpr bool has_setter_type_v = has_setter_type<T>::value;
 
+template <class IE, class IEs>
+constexpr bool call_setter(IE& ie, IEs const& ies)
+{
+	typename IE::setter_type setter;
+	if constexpr (std::is_same<bool, decltype(setter(ie, ies))>::value)
+	{
+		return setter(ie, ies);
+	}
+	else
+	{
+		setter(ie, ies);
+		return true;
+	}
+}
+
+
 template <class T, class Enable = void>
 struct has_default_value : std::false_type {};
 template <class T>

@@ -89,14 +89,6 @@ private:
 
 public:
 	//TODO: include buffer offset in all errors
-	MED_RESULT spaceError(char const* name, std::size_t bits_left, std::size_t requested)
-		{ return set_error(error::OVERFLOW, name, bits_left, requested); }
-
-	MED_RESULT valueError(char const* name, std::size_t got, std::size_t ofs)
-		{ return set_error(error::INCORRECT_VALUE, name, got, ofs); }
-
-	MED_RESULT allocError(char const* name, std::size_t requested)
-		{ return set_error(error::OUT_OF_MEMORY, name, requested); }
 };
 
 #if (MED_EXCEPTIONS)

@@ -3297,10 +3297,15 @@ struct SHDR : med::value<uint8_t>
 	struct setter
 	{
 		template <class T>
-		void operator()(SHDR& shdr, T const& ies) const
+		bool operator()(SHDR& shdr, T const& ies) const
 		{
-			auto const qty = med::field_count(ies.template as<FLD>());
-			shdr.set(qty);
+			if (auto const qty = med::field_count(ies.template as<FLD>()))
+			{
+				shdr.set(qty);
+				return true;
+			}
+
+			return false;
 		}
 	};
 

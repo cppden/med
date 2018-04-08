@@ -38,17 +38,17 @@ struct mandatory<
 {
 };
 
-template <class FIELD, class FUNC>
+template <class FIELD, class SETTER>
 struct mandatory<
 	FIELD,
-	FUNC,
+	SETTER,
 	void,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_field_v<FIELD> && is_setter_v<FIELD, FUNC>>
+	std::enable_if_t<is_field_v<FIELD> && is_setter_v<FIELD, SETTER>>
 > : field_t<FIELD>
 {
-	using setter_type = FUNC;
+	using setter_type = SETTER;
 };
 
 

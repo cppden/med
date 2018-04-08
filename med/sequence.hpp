@@ -371,10 +371,16 @@ struct seq_encoder<IE, IES...>
 					CODEC_TRACE("[%s] with setter", name<IE>());
 					IE ie;
 					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
-					typename IE::setter_type{}(ie, to);
-					if (ie.ref_field().is_set())
+					if (call_setter(ie, to))
 					{
-						MED_CHECK_FAIL(med::encode(func, ie));
+						if (ie.ref_field().is_set())
+						{
+							MED_CHECK_FAIL(med::encode(func, ie));
+						}
+					}
+					else
+					{
+						return func(error::INCORRECT_VALUE, name<IE>(), ie.get_encoded());
 					}
 				}
 				else //w/o setter
@@ -394,14 +400,20 @@ struct seq_encoder<IE, IES...>
 					CODEC_TRACE("{%s} with setter", name<IE>());
 					IE ie;
 					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
-					typename IE::setter_type{}(ie, to);
-					if (ie.ref_field().is_set())
+					if (call_setter(ie, to))
 					{
-						MED_CHECK_FAIL(med::encode(func, ie));
+						if (ie.ref_field().is_set())
+						{
+							MED_CHECK_FAIL(med::encode(func, ie));
+						}
+						else
+						{
+							return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+						}
 					}
 					else
 					{
-						return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+						return func(error::INCORRECT_VALUE, name<IE>(), ie.get_encoded());
 					}
 				}
 				else //w/o setter

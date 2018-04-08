@@ -244,4 +244,4 @@ BENCHMARK(BM_decode_fail);
 
 } //end: namespace
 
-BENCHMARK_MAIN()
+BENCHMARK_MAIN();

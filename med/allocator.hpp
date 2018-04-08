@@ -106,7 +106,7 @@ public:
 			this->begin(result + 1);
 			return result;
 		}
-		m_errCtx.allocError(name<T>(), sizeof(T));
+		m_errCtx.set_error(error::OUT_OF_MEMORY, name<T>(), sizeof(T));
 		return nullptr;
 	}
 
@@ -140,7 +140,7 @@ public:
 			m_buffer.end(static_cast<typename BUFFER::pointer>(p));
 			return result;
 		}
-		m_errCtx.allocError(name<T>(), sizeof(T));
+		m_errCtx.set_error(error::OUT_OF_MEMORY, name<T>(), sizeof(T));
 		return nullptr;
 	}
 
