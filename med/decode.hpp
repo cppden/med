@@ -206,8 +206,8 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 			length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
 			MED_CHECK_FAIL(ie.decode(ld, unexp));
 			ld.restore_length();
-			MED_RETURN_SUCCESS;
 		}
+		MED_RETURN_SUCCESS;
 	}
 	else
 	{

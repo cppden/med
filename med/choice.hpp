@@ -68,13 +68,13 @@ struct choice_for<IE, IEs...>
 	template <class ENCODER, class TO>
 	static MED_RESULT encode(ENCODER&& encoder, TO const& to)
 	{
-		if (IE::tag_type::match(get_tag(to.header())))
+		if (IE::tag_type::match(get_tag(to.get_header())))
 		{
 			using case_t = typename IE::case_type;
 			CODEC_TRACE("CASE[%s]", name<case_t>());
 			void const* store_p = &to.m_storage;
 
-			return med::encode(encoder, to.header())
+			return med::encode(encoder, to.get_header())
 				MED_AND med::encode(encoder, *static_cast<case_t const*>(store_p));
 		}
 		else
@@ -87,7 +87,7 @@ struct choice_for<IE, IEs...>
 	static MED_RESULT decode(DECODER&& decoder, TO& to, UNEXP& unexp)
 	{
 		using case_t = typename IE::case_type;
-		if (IE::tag_type::match( get_tag(to.header()) ))
+		if (IE::tag_type::match( get_tag(to.get_header()) ))
 		{
 			CODEC_TRACE("->CASE[%s]", name<case_t>());
 			case_t* case_p = new (&to.m_storage) case_t{};
@@ -95,7 +95,8 @@ struct choice_for<IE, IEs...>
 		}
 		else
 		{
-			CODEC_TRACE("!CASE[%s]=%zu not a match for %zu", name<case_t>(), std::size_t(IE::tag_type::traits::value), std::size_t(get_tag(to.header())));
+			CODEC_TRACE("!CASE[%s]=%zu not a match for %zu", name<case_t>()
+						, std::size_t(IE::tag_type::traits::value), std::size_t(get_tag(to.get_header())));
 			return choice_for<IEs...>::decode(decoder, to, unexp);
 		}
 	}
@@ -103,11 +104,11 @@ struct choice_for<IE, IEs...>
 	template <class TO>
 	static std::size_t calc_length(TO const& to)
 	{
-		if (IE::tag_type::match( get_tag(to.header()) ))
+		if (IE::tag_type::match( get_tag(to.get_header()) ))
 		{
 			using case_t = typename IE::case_type;
 			void const* store_p = &to.m_storage;
-			return med::get_length(to.header())
+			return med::get_length(to.get_header())
 				+ med::get_length(*static_cast<case_t const*>(store_p));
 		}
 		else
@@ -119,12 +120,12 @@ struct choice_for<IE, IEs...>
 	template <class TO, class FROM, class... ARGS>
 	static inline MED_RESULT copy(TO& to, FROM const& from, ARGS&&... args)
 	{
-		if (IE::tag_type::match(get_tag(from.header())))
+		if (IE::tag_type::match(get_tag(from.get_header())))
 		{
 			using value_type = typename IE::case_type;
 			void const* store_p = &from.m_storage;
 			MED_CHECK_FAIL(to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p), std::forward<ARGS>(args)...));
-			return to.header().copy(from.header());
+			return to.header().copy(from.get_header());
 		}
 		else
 		{
@@ -145,15 +146,15 @@ struct choice_for<>
 	template <class FUNC, class TO, class UNEXP>
 	static MED_RESULT decode(FUNC&& func, TO& to, UNEXP& unexp)
 	{
-		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.header())));
-		return unexp(func, to, to.header());
+		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
+		return unexp(func, to, to.get_header());
 	}
 
 	template <class FUNC, class TO>
 	static MED_RESULT encode(FUNC&& func, TO const& to)
 	{
-		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.header())));
-		return func(error::INCORRECT_TAG, name<TO>(), get_tag(to.header()));
+		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
+		return func(error::INCORRECT_TAG, name<TO>(), get_tag(to.get_header()));
 	}
 
 	template <class TO>

@@ -124,7 +124,7 @@ struct container_for<IE, IES...>
 			}
 			else
 			{
-				MED_CHECK_FAIL(to_field.copy(from_field, std::forward<ARGS>(args)...));
+				MED_CHECK_FAIL(to_field.ref_field().copy(from_field.ref_field(), std::forward<ARGS>(args)...));
 			}
 		}
 		//MED_CHECK_FAIL( field_copy<IE>(to, from, std::forward<ARGS>(args)...) );

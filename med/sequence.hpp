@@ -314,6 +314,22 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 	MED_RETURN_SUCCESS;
 }
 
+
+template <class IE, class IEs>
+constexpr bool call_setter(IE& ie, IEs const& ies)
+{
+	typename IE::setter_type setter;
+	if constexpr (std::is_same<bool, decltype(setter(ie, ies))>::value)
+	{
+		return setter(ie, ies);
+	}
+	else
+	{
+		setter(ie, ies);
+		return true;
+	}
+}
+
 template <class... IES>
 struct seq_encoder;
 
@@ -371,16 +387,22 @@ struct seq_encoder<IE, IES...>
 					CODEC_TRACE("[%s] with setter", name<IE>());
 					IE ie;
 					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
-					if (call_setter(ie, to))
+
+					typename IE::setter_type setter;
+					if constexpr (std::is_same_v<bool, decltype(setter(ie, to))>)
 					{
-						if (ie.ref_field().is_set())
+						if (!setter(ie, to))
 						{
-							MED_CHECK_FAIL(med::encode(func, ie));
+							return func(error::INCORRECT_VALUE, name<typename IE::field_type>(), ie.get());
 						}
 					}
 					else
 					{
-						return func(error::INCORRECT_VALUE, name<IE>(), ie.get_encoded());
+						setter(ie, to);
+					}
+					if (ie.ref_field().is_set())
+					{
+						MED_CHECK_FAIL(med::encode(func, ie));
 					}
 				}
 				else //w/o setter
@@ -400,20 +422,26 @@ struct seq_encoder<IE, IES...>
 					CODEC_TRACE("{%s} with setter", name<IE>());
 					IE ie;
 					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
-					if (call_setter(ie, to))
+
+					typename IE::setter_type setter;
+					if constexpr (std::is_same_v<bool, decltype(setter(ie, to))>)
 					{
-						if (ie.ref_field().is_set())
+						if (!setter(ie, to))
 						{
-							MED_CHECK_FAIL(med::encode(func, ie));
-						}
-						else
-						{
-							return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+							return func(error::INCORRECT_VALUE, name<typename IE::field_type>(), ie.get());
 						}
 					}
 					else
 					{
-						return func(error::INCORRECT_VALUE, name<IE>(), ie.get_encoded());
+						setter(ie, to);
+					}
+					if (ie.ref_field().is_set())
+					{
+						MED_CHECK_FAIL(med::encode(func, ie));
+					}
+					else
+					{
+						return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
 					}
 				}
 				else //w/o setter
