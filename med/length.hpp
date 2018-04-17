@@ -145,28 +145,24 @@ constexpr MED_RESULT length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
 	if constexpr (detail::has_length_converters<FIELD>::value)
 	{
-#if (MED_EXCEPTIONS)
-		if (!FIELD::length_to_value(len) || !set_value(field, len))
+		if (!FIELD::length_to_value(len))
 		{
-			func(error::INCORRECT_VALUE, name<FIELD>(), len);
+			return func(error::INCORRECT_VALUE, name<FIELD>(), len);
 		}
-#else
-		return (FIELD::length_to_value(len) && set_value(field, len))
-			|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
-#endif
+	}
+
+	if constexpr (std::is_same_v<bool, decltype(field.set_encoded(len))>)
+	{
+		if (!field.set_encoded(len))
+		{
+			return func(error::INCORRECT_VALUE, name<FIELD>(), len);
+		}
 	}
 	else
 	{
-#if (MED_EXCEPTIONS)
-		if (!set_value(field, len))
-		{
-			func(error::INCORRECT_VALUE, name<FIELD>(), len);
-		}
-#else
-		return set_value(field, len)
-			|| func(error::INCORRECT_VALUE, name<FIELD>(), len);
-#endif //MED_EXCEPTIONS
+		field.set_encoded(len);
 	}
+	MED_RETURN_SUCCESS;
 }
 
 template <class FUNC, class FIELD>

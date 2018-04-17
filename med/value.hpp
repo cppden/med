@@ -246,19 +246,4 @@ template <class T>
 struct value< T, std::enable_if_t<!std::is_void<typename T::value_type>::value> >
 	: integer_selector<T>::type {};
 
-
-template <class IE, typename VALUE>
-constexpr bool set_value(IE& ie, VALUE v)
-{
-	if constexpr (std::is_same<bool, decltype(ie.set_encoded(v))>::value)
-	{
-		return ie.set_encoded(v);
-	}
-	else
-	{
-		ie.set_encoded(v);
-		return true;
-	}
-}
-
 } //namespace med

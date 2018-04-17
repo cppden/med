@@ -71,14 +71,24 @@ struct octet_decoder
 		if (uint8_t const* pval = ctx.buffer().advance(IE::traits::bits / granularity))
 		{
 			auto const val = get_bytes<IE>(pval);
-			if (set_value(ie, val))
+			if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
 			{
-				CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
-				MED_RETURN_SUCCESS;
+				if (!ie.set_encoded(val))
+				{
+					return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), val, ctx.buffer().get_offset());
+				}
 			}
-			return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), val, ctx.buffer().get_offset());
+			else
+			{
+				ie.set_encoded(val);
+			}
+			CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
+			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+		else
+		{
+			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+		}
 	}
 
 	//IE_OCTET_STRING

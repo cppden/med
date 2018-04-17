@@ -315,21 +315,6 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 }
 
 
-template <class IE, class IEs>
-constexpr bool call_setter(IE& ie, IEs const& ies)
-{
-	typename IE::setter_type setter;
-	if constexpr (std::is_same<bool, decltype(setter(ie, ies))>::value)
-	{
-		return setter(ie, ies);
-	}
-	else
-	{
-		setter(ie, ies);
-		return true;
-	}
-}
-
 template <class... IES>
 struct seq_encoder;
 
