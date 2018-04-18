@@ -9,7 +9,7 @@ Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
-#include "multi_field.hpp"
+#include "../multi_field.hpp"
 
 namespace med::sl {
 

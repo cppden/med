@@ -403,20 +403,30 @@ struct PROTO : med::choice< HDR<8>
 {
 };
 
-#if 1
-TEST(encode, seq_ok)
+TEST(name, tag)
 {
 	PROTO proto;
 
 	static_assert(nullptr != PROTO::name_tag(1));
-	EXPECT_STREQ(med::name<MSG_SEQ>(), PROTO::name_tag(0x01));
+	auto atag = 1;
+	EXPECT_STREQ(med::name<MSG_SEQ>(), PROTO::name_tag(atag));
 	static_assert(nullptr == PROTO::name_tag(0xAA));
-	EXPECT_EQ(nullptr, PROTO::name_tag(0x55));
+	atag = 0x55;
+	EXPECT_EQ(nullptr, PROTO::name_tag(atag));
 
 	static_assert(nullptr != MSG_SET::name_tag(0x0b));
-	EXPECT_STREQ(med::name<FLD_U16>(), MSG_SET::name_tag(0x21));
+
+	atag = 0x21;
+	EXPECT_STREQ(med::name<FLD_U16>(), MSG_SET::name_tag(atag));
 	static_assert(nullptr == MSG_SET::name_tag(0xAA));
-	EXPECT_EQ(nullptr, MSG_SET::name_tag(0x55));
+	atag = 0x55;
+	EXPECT_EQ(nullptr, MSG_SET::name_tag(atag));
+}
+
+#if 1
+TEST(encode, seq_ok)
+{
+	PROTO proto;
 
 	//mandatory only
 	MSG_SEQ& msg = proto.select();

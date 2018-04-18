@@ -18,6 +18,7 @@ Distributed under the MIT License
 #include "length.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
+#include "util/unique.hpp"
 
 namespace med {
 
@@ -176,6 +177,8 @@ template <class HEADER, class ...CASES>
 class choice : public IE<CONTAINER>
 {
 private:
+	static_assert(util::are_unique(CASES::tag_type::get()...), "TAGS ARE NOT UNIQUE");
+
 	template <class T>
 	struct selector
 	{

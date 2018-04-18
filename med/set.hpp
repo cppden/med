@@ -18,6 +18,7 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "tag.hpp"
 #include "debug.hpp"
+#include "util/unique.hpp"
 
 namespace med {
 
@@ -185,6 +186,7 @@ struct set_for<>
 template <class HEADER, class ...IEs>
 struct set : container<IEs...>
 {
+	static_assert(util::are_unique(tag_type_t<IEs>::get()...), "TAGS ARE NOT UNIQUE");
 	using header_type = HEADER;
 
 	template <typename TAG>
