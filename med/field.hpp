@@ -42,7 +42,7 @@ template <class T, class Enable = void>
 struct is_field : std::false_type {};
 template <class T>
 struct is_field<T, std::enable_if_t<
-	std::is_same<bool, decltype(std::declval<T>().is_set())>::value
+	std::is_same_v<bool, decltype(std::declval<T>().is_set())>
 	>
 > : std::true_type {};
 template <class T>

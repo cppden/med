@@ -155,7 +155,7 @@ struct is_allocator : std::false_type { };
 template <class T>
 struct is_allocator<T,
 	std::enable_if_t<
-		std::is_same<int*, decltype(std::declval<T>().template allocate<int>()) >::value
+		std::is_same_v<int*, decltype(std::declval<T>().template allocate<int>())>
 	>
 > : std::true_type { };
 template <class T>
@@ -175,14 +175,14 @@ template <class T>
 inline auto get_allocator_ptr(T& t) -> std::add_pointer_t<decltype(t.get_allocator())>
 {
 	auto& allocator = t.get_allocator();
-	static_assert(is_allocator<decltype(allocator)>::value, "IS NOT ALLOCATOR!");
+	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");
 	return &allocator;
 }
 template <class T>
 inline auto get_allocator_ptr(T* pt) -> std::add_pointer_t<decltype(pt->get_allocator())>
 {
 	auto& allocator = pt->get_allocator();
-	static_assert(is_allocator<decltype(allocator)>::value, "IS NOT ALLOCATOR!");
+	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");
 	return &allocator;
 }
 

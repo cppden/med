@@ -111,7 +111,7 @@ constexpr std::size_t calc_length(FIELD const& field, IE_LV const&)
 template<class T>
 static auto test_value_to_length(int, std::size_t val = 0) ->
 	std::enable_if_t<
-		std::is_same<bool, decltype(T::value_to_length(val))>::value, std::true_type
+		std::is_same_v<bool, decltype(T::value_to_length(val))>, std::true_type
 	>;
 
 template<class>

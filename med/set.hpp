@@ -27,15 +27,22 @@ namespace sl {
 template <class HEADER, class IE, class FUNC>
 constexpr MED_RESULT encode_header(FUNC& func)
 {
-	if constexpr (std::is_base_of<PRIMITIVE, typename HEADER::ie_type>::value)
+	if constexpr (std::is_base_of_v<PRIMITIVE, typename HEADER::ie_type>)
 	{
-		HEADER header;
-		header.set_encoded(tag_type_t<IE>::get_encoded());
-		return encode(func, header);
+		if constexpr (tag_type_t<IE>::is_static)
+		{
+			HEADER header;
+			header.set_encoded(tag_type_t<IE>::get_encoded());
+			return encode(func, header);
+		}
+		else
+		{
+			MED_RETURN_SUCCESS;
+		}
 	}
 	else
 	{
-		static_assert(std::is_base_of<CONTAINER, typename HEADER::ie_type>::value, "unexpected aggregate?");
+		static_assert(std::is_base_of_v<CONTAINER, typename HEADER::ie_type>, "unexpected aggregate?");
 		MED_RETURN_SUCCESS;
 	}
 }
@@ -43,7 +50,7 @@ constexpr MED_RESULT encode_header(FUNC& func)
 template <class T, class FUNC>
 constexpr void pop_state(FUNC&& func)
 {
-	if constexpr (std::is_base_of<CONTAINER, typename T::ie_type>::value)
+	if constexpr (std::is_base_of_v<CONTAINER, typename T::ie_type>)
 	{
 		func(POP_STATE{});
 	}
@@ -115,6 +122,9 @@ struct set_for<IE, IEs...>
 		{
 			if (tag_type_t<IE>::match( get_tag(header) ))
 			{
+				//pop back the tag read since we have variable tag inside
+				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
+
 				IE& ie = static_cast<IE&>(to);
 				CODEC_TRACE("[%s]@%zu", name<typename IE::field_type>(), ie.count());
 				if (ie.count() >= IE::max)
@@ -129,6 +139,9 @@ struct set_for<IE, IEs...>
 		{
 			if (tag_type_t<IE>::match( get_tag(header) ))
 			{
+				//pop back the tag read since we have variable tag inside
+				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
+
 				IE& ie = static_cast<IE&>(to);
 				CODEC_TRACE("[%s] = %u", name<typename IE::field_type>(), ie.ref_field().is_set());
 				if (!ie.ref_field().is_set())
@@ -182,11 +195,10 @@ struct set_for<>
 
 }	//end: namespace sl
 
-
 template <class HEADER, class ...IEs>
 struct set : container<IEs...>
 {
-	static_assert(util::are_unique(tag_type_t<IEs>::get()...), "TAGS ARE NOT UNIQUE");
+	static_assert(util::are_unique(tag_value_get<IEs>::value...), "TAGS ARE NOT UNIQUE");
 	using header_type = HEADER;
 
 	template <typename TAG>

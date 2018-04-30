@@ -49,7 +49,7 @@ class printer
 
 		//check for: some_type IE::print()
 		template <class C, class P>
-		static std::enable_if_t<!std::is_same<void, decltype(std::declval<C>().print())>::value, int_t<1>>
+		static std::enable_if_t<!std::is_void_v<decltype(std::declval<C>().print())>, int_t<1>>
 		test(P* p);
 
 		template <class C, class P>

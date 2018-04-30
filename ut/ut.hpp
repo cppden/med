@@ -3,6 +3,10 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 
+#include <string_view>
+using namespace std::string_view_literals;
+
+
 #include "med.hpp"
 
 /*
@@ -15,9 +19,10 @@ inline testing::AssertionResult Matches(T const* expected, void const* actual, s
 	{
 		if (expected[i] != static_cast<T const*>(actual)[i])
 		{
-			return testing::AssertionFailure() << "mismatch at " << i
-				<< ": expected=" << (std::size_t)expected[i]
-				<< ", actual=" << (std::size_t)static_cast<T const*>(actual)[i];
+			char sz[256];
+			std::snprintf(sz, sizeof(sz), "mismatch at %zu[0x%zX]: expected=0x%X, actual=0x%X"
+					, i, i, expected[i], static_cast<T const*>(actual)[i]);
+			return testing::AssertionFailure() << sz;
 		}
 	}
 
@@ -51,25 +56,6 @@ char const* as_string(T const& buffer)
 	return sz;
 }
 
-/*
-char const* as_string(void const* p, std::size_t size)
-{
-	static char sz[1024];
-	auto* it = static_cast<uint8_t const*>(p);
-	auto* ite = it + size;
-
-	char* psz = sz;
-	char* end = psz + sizeof(sz);
-	*psz = '\0';
-	for (; it != ite; ++it)
-	{
-		psz += std::snprintf(psz, end - psz, "%02X ", *it);
-	}
-
-	return sz;
-}
-*/
-
 template <class FIELD, class MSG, class T>
 void check_seqof(MSG const& msg, std::initializer_list<T>&& values)
 {
@@ -102,15 +88,21 @@ void check_seqof(MSG const& msg, std::initializer_list<char const*>&& values)
 
 template <class T>
 inline auto get_string(T const& field) ->
-	std::enable_if_t<std::is_class<std::remove_reference_t<decltype(field.body())>>::value, decltype(field.body())>
+	std::enable_if_t<std::is_class_v<std::remove_reference_t<decltype(field.body())>>, decltype(field.body())>
 {
 	return field.body();
 }
 
 template <class T>
-inline auto get_string(T const& field) -> std::enable_if_t<std::is_pointer<decltype(field.data())>::value, T const&>
+inline auto get_string(T const& field) -> std::enable_if_t<std::is_pointer_v<decltype(field.data())>, T const&>
 {
 	return field;
+}
+
+template <class T>
+constexpr std::string_view as_sv(T const& val)
+{
+	return std::string_view{(char*)val.body().data(), val.body().size()};
 }
 
 

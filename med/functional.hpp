@@ -57,8 +57,9 @@ struct is_condition : std::false_type { };
 template<typename T>
 struct is_condition<T,
 	std::enable_if_t<
-		std::is_same<bool, decltype(std::declval<T>()(std::false_type{}))>::value>
-	> : std::true_type
+		std::is_same_v<bool, decltype(std::declval<T>()(std::false_type{}))>
+	>
+> : std::true_type
 {
 };
 template <class T>
@@ -93,11 +94,7 @@ constexpr bool has_setter_type_v = has_setter_type<T>::value;
 template <class T, class Enable = void>
 struct has_default_value : std::false_type {};
 template <class T>
-struct has_default_value<T,
-	std::enable_if_t<
-		!std::is_void<decltype(T::traits::default_value)>::value
-	>
-> : std::true_type {};
+struct has_default_value<T, std::void_t<decltype(T::traits::default_value)>> : std::true_type {};
 template <class T>
 constexpr bool has_default_value_v = has_default_value<T>::value;
 

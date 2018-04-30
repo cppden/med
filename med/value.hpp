@@ -20,6 +20,7 @@ Distributed under the MIT License
 namespace med {
 
 //traits representing a fixed value of particular size (in bits/bytes/int)
+//which is predefined during encode and decode
 template <std::size_t VAL, class T = std::size_t, class Enable = void>
 struct fixed
 {
@@ -43,7 +44,7 @@ struct fixed<VAL, bytes<BYTES>, void>
 };
 
 template <std::size_t VAL, typename T>
-struct fixed< VAL, T, std::enable_if_t<std::is_integral<T>::value> >
+struct fixed< VAL, T, std::enable_if_t<std::is_integral_v<T>> >
 	: integral_traits<T>
 {
 	static constexpr bool is_const = true;
@@ -72,12 +73,14 @@ struct defaults<VAL, bytes<BYTES>, void>
 };
 
 template <std::size_t VAL, typename T>
-struct defaults< VAL, T, std::enable_if_t<std::is_integral<T>::value> >
+struct defaults< VAL, T, std::enable_if_t<std::is_integral_v<T>> >
 	: integral_traits<T>
 {
 	static constexpr typename integral_traits<T>::value_type default_value = VAL;
 };
 
+//traits representing initialized value which is encoded with the fixed value
+//but can have any value when decoded
 template <std::size_t VAL, class T>
 struct init : fixed<VAL, T>
 {
@@ -96,9 +99,10 @@ struct integer : IE<IE_VALUE>
 	using base_t     = integer;
 
 	value_type get() const                      { return get_encoded(); }
-	void set(value_type v)                      { return set_encoded(v); }
+	auto set(value_type v)                      { return set_encoded(v); }
 
 	//NOTE: do not override!
+	static constexpr bool is_static = false;
 	value_type get_encoded() const              { return m_value; }
 	void set_encoded(value_type v)              { m_value = v; m_set = true; }
 	void clear()                                { m_set = false; }
@@ -135,6 +139,7 @@ struct const_integer : IE<const IE_VALUE>
 
 
 	//NOTE: do not override!
+	static constexpr bool is_static = true;
 	explicit operator bool() const                      { return is_set(); }
 	static constexpr value_type get_encoded()           { return traits::value; }
 	static constexpr bool set_encoded(value_type v)     { return traits::value == v; }
@@ -159,6 +164,7 @@ struct init_integer : IE<IE_VALUE>
 	static constexpr void clear()                       { }
 	explicit operator bool() const                      { return is_set(); }
 	//NOTE: do not override!
+	static constexpr bool is_static = true;
 	static constexpr value_type get_encoded()           { return traits::value; }
 	static constexpr void set_encoded(value_type)       { }
 	static constexpr bool is_set()                      { return true; }
@@ -213,7 +219,7 @@ struct integer_selector
 template <class T>
 struct integer_selector<T,
 	std::enable_if_t<
-		std::is_same<typename T::value_type, std::remove_const_t<decltype(T::value)>>::value
+		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::value)>>
 		&& T::is_const
 	>
 >
@@ -224,7 +230,7 @@ struct integer_selector<T,
 template <class T>
 struct integer_selector<T,
 	std::enable_if_t<
-		std::is_same<typename T::value_type, std::remove_const_t<decltype(T::value)>>::value
+		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::value)>>
 		&& !T::is_const
 	>
 >
@@ -235,7 +241,7 @@ struct integer_selector<T,
 template <class T>
 struct integer_selector<T,
 	std::enable_if_t<
-		std::is_same<typename T::value_type, std::remove_const_t<decltype(T::default_value)>>::value
+		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::default_value)>>
 	>
 >
 {

@@ -5,7 +5,6 @@
 #endif
 //#pragma clang diagnostic pop
 
-
 #include "encode.hpp"
 #include "decode.hpp"
 #include "update.hpp"
@@ -1948,8 +1947,6 @@ TEST(decode, mset_fail)
 {
 	PROTO proto;
 	med::decoder_context<> ctx;
-//	std::size_t alloc_buf[1024];
-//	ctx.get_allocator().reset(alloc_buf);
 
 	//arity underflow in mandatory field
 	uint8_t const mandatory_underflow[] = { 0x14
@@ -2408,9 +2405,6 @@ TEST(opt_defs, unset)
 	}
 	{
 		med::decoder_context<> ctx;
-		//std::size_t alloc_buf[1024];
-		//ctx.get_allocator().reset(alloc_buf);
-
 		gtpc::header header;
 		ctx.reset(encoded, sizeof(encoded));
 #if (MED_EXCEPTIONS)
@@ -2449,9 +2443,6 @@ TEST(opt_defs, set)
 	}
 	{
 		med::decoder_context<> ctx;
-		//std::size_t alloc_buf[1024];
-		//ctx.get_allocator().reset(alloc_buf);
-
 		gtpc::header header;
 		ctx.reset(encoded, sizeof(encoded));
 #if (MED_EXCEPTIONS)
@@ -2474,11 +2465,7 @@ TEST(opt_defs, set)
 namespace diameter {
 
 //to concat message code and request/answer bit
-enum msg_code_e : std::size_t
-{
-	REQUEST = 0x80000000,
-	ANSWER  = 0x00000000,
-};
+constexpr std::size_t REQUEST = 0x80000000;
 
 struct version : med::value<med::fixed<1, uint8_t>> {};
 struct length : med::value<med::bytes<3>> {};
@@ -2510,7 +2497,9 @@ struct cmd_flags : med::value<uint8_t>
 
 struct cmd_code : med::value<med::bytes<3>>
 {
-	static constexpr char const* name() { return "Cmd-Code"; }
+	static constexpr char const* name()     { return "Cmd-Code"; }
+	//non-fixed tag matching for ANY message example
+	static constexpr bool match(value_type) { return true; }
 };
 
 struct app_id : med::value<uint32_t>
@@ -2543,10 +2532,9 @@ struct end_to_end_id : med::value<uint32_t>
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  |  AVPs ...
  +-+-+-+-+-+-+-+-+-+-+-+-+- */
-
 struct header : med::sequence<
 	med::mandatory< version >,
-	med::placeholder::_length<0>,
+	med::placeholder::_length<>,
 	med::mandatory< cmd_flags >,
 	med::mandatory< cmd_code >,
 	med::mandatory< app_id >,
@@ -2554,7 +2542,7 @@ struct header : med::sequence<
 	med::mandatory< end_to_end_id >
 >
 {
-	std::size_t get_tag() const                 { return get<cmd_code>().get() + (flags().request() ? REQUEST : ANSWER); }
+	std::size_t get_tag() const                 { return get<cmd_code>().get() + (flags().request() ? REQUEST : 0); }
 	void set_tag(std::size_t tag)               { ref<cmd_code>().set(tag & 0xFFFFFF); flags().request(tag & REQUEST); }
 
 	cmd_flags const& flags() const              { return get<cmd_flags>(); }
@@ -2572,21 +2560,15 @@ struct header : med::sequence<
 	static constexpr char const* name()         { return "Header"; }
 };
 
-template <class MSG>
-using request = med::tag<med::value<med::fixed<REQUEST + MSG::code>>, MSG>;
-
-template <class MSG>
-using answer = med::tag<med::value<med::fixed<ANSWER + MSG::code>>, MSG>;
-
 struct avp_code : med::value<uint32_t>
 {
-	static constexpr char const* name() { return "AVP-Code"; }
+	static constexpr char const* name()     { return "AVP-Code"; }
+	//non-fixed tag matching for any_avp
+	static constexpr bool match(value_type) { return true; }
 };
 
 template <avp_code::value_type CODE>
-struct avp_code_fixed : med::value<med::fixed<CODE, uint32_t>>
-{
-};
+struct avp_code_fixed : med::value<med::fixed<CODE, uint32_t>> {};
 
 struct avp_flags : med::value<uint8_t>
 {
@@ -2609,27 +2591,15 @@ struct avp_flags : med::value<uint8_t>
 struct vendor : med::value<uint32_t>
 {
 	static constexpr char const* name()   { return "Vendor"; }
-};
 
-struct has_vendor
-{
-	template <class HDR>
-	bool operator()(HDR const& hdr) const
+	struct has
 	{
-		return hdr.template as<avp_flags>().get() & avp_flags::V;
-	}
-};
-
-template <class BODY, class BASE, typename Enable = void>
-struct with_length : med::length_t<med::value<med::bytes<3>>> {};
-
-template <class BODY, class BASE>
-struct with_length<BODY, BASE, std::enable_if_t<med::is_empty_v<BODY>> >
-{
-	//to optionally skip unknown AVPs
-	auto get_length() const               { return static_cast<BASE const*>(this)->template get<length>().get(); }
-	std::size_t get_tag() const           { return static_cast<BASE const*>(this)->template get<avp_code>().get(); }
-	void set_tag(std::size_t val)         { static_cast<BASE const*>(this)->template ref<avp_code>().set(val); }
+		template <class HDR>
+		bool operator()(HDR const& hdr) const
+		{
+			return hdr.template as<avp_flags>().get() & avp_flags::V;
+		}
+	};
 };
 
 /*0                   1                   2                   3
@@ -2643,68 +2613,43 @@ struct with_length<BODY, BASE, std::enable_if_t<med::is_empty_v<BODY>> >
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  |    Data ...
  +-+-+-+-+-+-+-+-+                                                 */
-template <class BODY = med::empty, avp_code::value_type CODE = 0>
-struct avp_header : med::sequence<
-	M< std::conditional_t<(0 != CODE), avp_code_fixed<CODE>, avp_code> >,
-	M< avp_flags >,
-	std::conditional_t<med::is_empty_v<BODY>, M< length >, med::placeholder::_length<0> >,
-	O< vendor, has_vendor >,
-	M< BODY >
-	>
-	, with_length<BODY, avp_header<BODY,CODE>>
+template <class BODY, avp_code::value_type CODE, uint8_t FLAGS = 0, vendor::value_type VENDOR = 0>
+struct avp :
+		med::sequence<
+			M< avp_flags >,
+			med::placeholder::_length<-4>, //include AVP Code
+			O< vendor, vendor::has >,
+			M< BODY >
+		>,
+		med::tag_t<med::value<med::fixed<CODE>>>
 {
-	auto const& flags() const             { return this->template get<avp_flags>(); }
-	auto& flags()                         { return this->template ref<avp_flags>(); }
-	vendor const* get_vendor() const      { return this->template get<vendor>(); }
+	using length_type = med::value<med::bytes<3>>;
+	using padding = med::padding<uint32_t, false>;
 
-	static constexpr char const* name()   { return "AVP-Header"; }
-};
+	auto const& flags() const                   { return this->template get<avp_flags>(); }
+	auto& flags()                               { return this->template ref<avp_flags>(); }
+	vendor const* get_vendor() const            { return this->template get<vendor>(); }
 
-template <class T, typename Enable = void>
-struct with_padding
-{
-};
-
-template <class T>
-struct with_padding<T, std::enable_if_t<std::is_same<typename T::ie_type, med::IE_OCTET_STRING>::value>>
-{
-	using padding = med::padding<uint32_t>;
-};
-
-template <class AVP, avp_code::value_type CODE, uint8_t FLAGS = 0, vendor::value_type VENDOR = 0>
-struct avp : avp_header<AVP,CODE>, med::tag<med::value<med::fixed<CODE>>>, with_padding<AVP>
-{
-	enum : avp_code::value_type { id = CODE };
-
-	AVP const& body() const                     { return this->template get<AVP>(); }
-	AVP& body()                                 { return this->template ref<AVP>(); }
+	BODY const& body() const                    { return this->template get<BODY>(); }
+	BODY& body()                                { return this->template ref<BODY>(); }
 	bool is_set() const                         { return body().is_set(); }
 
-	using avp_header<AVP,CODE>::get;
-	decltype(auto) get() const                  { return body().get(); }
+//	decltype(auto) get() const                  { return body().get(); }
 	template <typename... ARGS>
 	auto set(ARGS&&... args)                    { return body().set(std::forward<ARGS>(args)...); }
 
 	avp()
 	{
-		if (VENDOR)
+		if constexpr (VENDOR)
 		{
 			this->template ref<vendor>().set(VENDOR);
 			this->template ref<avp_flags>().set(FLAGS | avp_flags::V);
 		}
-		else
+		else if constexpr (FLAGS)
 		{
 			this->template ref<avp_flags>().set(FLAGS & ~avp_flags::V);
 		}
 	}
-};
-
-struct any_avp : avp_header<med::octet_string<>>
-{
-	using AVP = med::octet_string<>;
-	AVP const& body() const                     { return this->template get<AVP>(); }
-	AVP& body()                                 { return this->template ref<AVP>(); }
-	bool is_set() const                         { return body().is_set(); }
 };
 
 struct unsigned32 : med::value<uint32_t>
@@ -2737,10 +2682,27 @@ struct error_message : avp<med::ascii_string<>, 281>
 	static constexpr char const* name() { return "Error-Message"; }
 };
 
-struct failed_avp : avp<any_avp, 279, avp_flags::M>
+struct failed_avp : avp<med::octet_string<>, 279, avp_flags::M>
 {
 	using length_type = length;
 	static constexpr char const* name() { return "Failed-AVP"; }
+};
+
+struct any_avp :
+		med::sequence<
+			M< avp_code >,
+			M< avp_flags >,
+			med::placeholder::_length<>,
+			O< vendor, vendor::has >,
+			M< med::octet_string<> >
+		>,
+		med::tag_t<avp_code>
+{
+	using length_type = med::value<med::bytes<3>>;
+	using padding = med::padding<uint32_t, false>;
+
+	auto& body() const                  { return get<med::octet_string<>>(); }
+	bool is_set() const                 { return body().is_set(); }
 };
 
 /*
@@ -2749,13 +2711,14 @@ struct failed_avp : avp<any_avp, 279, avp_flags::M>
 		 { Origin-Realm }
 		 { Disconnect-Cause }
 */
-struct DPR : med::set< avp_header<>
-	, med::mandatory< origin_host >
-	, med::mandatory< origin_realm >
-	, med::mandatory< disconnect_cause >
+struct DPR : med::set< avp_code
+	, M< origin_host >
+	, M< origin_realm >
+	, M< disconnect_cause >
+	, O< any_avp, med::inf >
 >
 {
-	enum : std::size_t { code = 282 };
+	static constexpr std::size_t code = 282;
 	static constexpr char const* name() { return "Disconnect-Peer-Request"; }
 };
 
@@ -2767,22 +2730,39 @@ struct DPR : med::set< avp_header<>
 		 [ Error-Message ]
 	   * [ Failed-AVP ]
 */
-struct DPA : med::set< avp_header<>
-	, med::mandatory< result_code >
-	, med::mandatory< origin_host >
-	, med::mandatory< origin_realm >
-	, med::optional< error_message >
-	, med::optional< failed_avp, med::inf >
+struct DPA : med::set< avp_code
+	, M< result_code >
+	, M< origin_host >
+	, M< origin_realm >
+	, O< error_message >
+	, O< failed_avp, med::inf >
+	, O< any_avp, med::inf >
 >
 {
-	enum : std::size_t { code = 282 };
+	static constexpr std::size_t code = 282;
 	static constexpr char const* name() { return "Disconnect-Peer-Answer"; }
 };
 
+//example how to decode ANY message extracting only few AVPs of interest
+struct ANY : med::set< avp_code
+	, O< result_code >
+	, O< origin_host >
+	, O< origin_realm >
+	, O< any_avp, med::inf >
+>
+{
+};
+
+template <class MSG>
+using request = med::tag<med::value<med::fixed<REQUEST | MSG::code>>, MSG>;
+template <class MSG>
+using answer = med::tag<med::value<med::fixed<MSG::code>>, MSG>;
+
 //couple of messages from base protocol for testing
-struct BASE : med::choice< header
+struct base : med::choice< header
 	, request<DPR>
 	, answer<DPA>
+	, med::tag<cmd_code, ANY>
 >
 {
 	using length_type = length;
@@ -2813,81 +2793,23 @@ uint8_t const dpr[] = {
 	0x00, 0x00, 0x00, 0x02, //cause = 2
 };
 
-uint8_t const dpa[] = {
-	0x01, 0x00, 0x00, 76+12+20, //VER(1), LEN(3)
-	0x00, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
-	0x00, 0x00, 0x00, 0x00, //APP-ID
-	0x22, 0x22, 0x22, 0x22, //H2H-ID
-	0x55, 0x55, 0x55, 0x55, //E2E-ID
-
-	0x00, 0x00, 0x01, 0x0C, //AVP = 268 Result Code
-	0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
-	0x00, 0x00, 0x0B, 0xBC, //result = 3004
-
-	0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
-	0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17 + padding
-	'O', 'r', 'i', 'g',
-	'.', 'H', 'o', 's',
-	't',   0,   0,   0,
-
-	//NOTE: this AVP is not expected in DWA
-	0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
-	0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
-	0x01, 0x00, 0x00, 0x16, //id = Gx
-
-	0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
-	0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
-	'o', 'r', 'i', 'g',
-	'.', 'r', 'e', 'a',
-	'l', 'm', '.', 'n',
-	'e', 't',   0,   0,
-
-	0x00, 0x00, 0x01, 0x17, //AVP-CODE = 279 Failed-AVP (grouped)
-	0x40, 0x00, 0x00, 20, //V.M.P(1), LEN(3)
-	0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
-	0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
-	0x01, 0x00, 0x00, 0x23, //id = S6a
-
-};
-
-struct unexp_handler
-{
-	//unexpected message
-	template <class FUNC, class IE>
-	auto operator()(FUNC& func, IE const&, diameter::header const& header) const
-	{
-		return func(med::error::INCORRECT_TAG, med::name<IE>(), med::get_tag(header));
-	}
-
-	//unexpected AVP
-	template <class FUNC, class IE>
-	auto operator()(FUNC& func, IE const&, diameter::avp_header<> const& header) const
-	{
-		int const skip = 4 * ((header.get_length() + 3)/4);
-		std::printf("UNEXPECTED AVP code = %zu, skipping %d bytes\n", med::get_tag(header), skip);
-		return func(med::ADVANCE_STATE{8 * skip});
-	}
-};
-
 } //end: namespace diameter
 
-TEST(encode, dpr_padding)
+TEST(diameter, padding_encode)
 {
-	diameter::BASE base;
-
+	diameter::base base;
 	diameter::DPR& msg = base.select();
 
 	base.header().ap_id(0);
 	base.header().hop_id(0x22222222);
 	base.header().end_id(0x55555555);
 
-	uint8_t buffer[1024] = {};
-	med::encoder_context<> ctx{ buffer };
-
 	msg.ref<diameter::origin_host>().set("Orig.Host");
 	msg.ref<diameter::origin_realm>().set("orig.realm.net");
 	msg.ref<diameter::disconnect_cause>().set(2);
 
+	uint8_t buffer[1024] = {};
+	med::encoder_context<> ctx{ buffer };
 #if (MED_EXCEPTIONS)
 	encode(med::make_octet_encoder(ctx), base);
 #else
@@ -2898,11 +2820,10 @@ TEST(encode, dpr_padding)
 	ASSERT_TRUE(Matches(diameter::dpr, buffer));
 }
 
-TEST(decode, dpr_padding)
+TEST(diameter, padding_decode)
 {
-	diameter::BASE base;
-
 	med::decoder_context<> ctx{ diameter::dpr };
+	diameter::base base;
 #if (MED_EXCEPTIONS)
 	decode(med::make_octet_decoder(ctx), base);
 #else
@@ -2918,13 +2839,11 @@ TEST(decode, dpr_padding)
 
 	EQ_STRING_M(diameter::origin_host, "Orig.Host");
 	EQ_STRING_M(diameter::origin_realm, "orig.realm.net");
-	ASSERT_EQ(2, msg->get<diameter::disconnect_cause>().get());
+	ASSERT_EQ(2, msg->get<diameter::disconnect_cause>().body().get());
 }
 
-TEST(decode, bad_padding)
+TEST(diameter, padding_bad)
 {
-	diameter::BASE base;
-
 	uint8_t const dpr[] = {
 			0x01, 0x00, 0x00, 76-3, //VER(1), LEN(3)
 			0x80, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
@@ -2949,9 +2868,9 @@ TEST(decode, bad_padding)
 			'.', 'H', 'o', 's',
 			't',   //0,   0,   0,
 	};
-
 	med::decoder_context<> ctx{ dpr };
 
+	diameter::base base;
 #if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::make_octet_decoder(ctx), base), med::exception);
 #else
@@ -2959,16 +2878,90 @@ TEST(decode, bad_padding)
 	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error());
 #endif
 }
-TEST(decode, dpa_unexp)
-{
-	diameter::BASE base;
 
-	med::decoder_context<> ctx{ diameter::dpa };
-	diameter::unexp_handler uh{};
+TEST(diameter, any_avp)
+{
+	uint8_t const dpa[] = {
+		0x01, 0x00, 0x00, 76+12+20, //VER(1), LEN(3)
+		0x00, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
+		0x00, 0x00, 0x00, 0x00, //APP-ID
+		0x22, 0x22, 0x22, 0x22, //H2H-ID
+		0x55, 0x55, 0x55, 0x55, //E2E-ID
+
+		0x00, 0x00, 0x01, 0x0C, //AVP = 268 Result Code
+		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x00, 0x00, 0x0B, 0xBC, //result = 3004
+
+		0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
+		0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17 + padding
+		'O', 'r', 'i', 'g',
+		'.', 'H', 'o', 's',
+		't',   0,   0,   0,
+
+		//NOTE: this AVP is not expected in DPA
+		0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
+		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0xA5, 0x5A, 0xBC, 0xCB, //id
+
+		0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
+		0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
+		'o', 'r', 'i', 'g',
+		'.', 'r', 'e', 'a',
+		'l', 'm', '.', 'n',
+		'e', 't',   0,   0,
+
+		0x00, 0x00, 0x01, 0x17, //AVP-CODE = 279 Failed-AVP (grouped)
+		0x40, 0x00, 0x00, 20, //V.M.P(1), LEN(3)
+		0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
+		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x01, 0x00, 0x00, 0x23, //id = S6a
+	};
+
+	//encoding is done according message description thus need to reorder
+	uint8_t const dpa_enc[] = {
+		0x01, 0x00, 0x00, 76+12+20, //VER(1), LEN(3)
+		0x00, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
+		0x00, 0x00, 0x00, 0x00, //APP-ID
+		0x22, 0x22, 0x22, 0x22, //H2H-ID
+		0x55, 0x55, 0x55, 0x55, //E2E-ID
+
+		0x00, 0x00, 0x01, 0x0C, //AVP = 268 Result Code
+		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x00, 0x00, 0x0B, 0xBC, //result = 3004
+
+		0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
+		0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17 + padding
+		'O', 'r', 'i', 'g',
+		'.', 'H', 'o', 's',
+		't',   0,   0,   0,
+
+		0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
+		0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
+		'o', 'r', 'i', 'g',
+		'.', 'r', 'e', 'a',
+		'l', 'm', '.', 'n',
+		'e', 't',   0,   0,
+
+		0x00, 0x00, 0x01, 0x17, //AVP-CODE = 279 Failed-AVP (grouped)
+		0x40, 0x00, 0x00, 20, //V.M.P(1), LEN(3)
+		0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
+		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x01, 0x00, 0x00, 0x23, //id = S6a
+
+		//NOTE: this AVP is not expected in DPA
+		0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
+		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0xA5, 0x5A, 0xBC, 0xCB, //id
+	};
+
+	static_assert(sizeof(dpa) == sizeof(dpa_enc));
+
+	med::decoder_context<> dctx{ dpa };
+	diameter::base base;
 #if (MED_EXCEPTIONS)
-	decode(med::make_octet_decoder(ctx), base, uh);
+	decode(med::make_octet_decoder(dctx), base);
 #else
-	if (!decode(med::make_octet_decoder(ctx), base, uh)) { FAIL() << toString(ctx.error_ctx()); }
+	if (!decode(med::make_octet_decoder(dctx), base)) { FAIL() << toString(dctx.error_ctx()); }
 #endif
 
 	ASSERT_EQ(0, base.header().ap_id());
@@ -2978,11 +2971,101 @@ TEST(decode, dpa_unexp)
 	diameter::DPA const* msg = base.cselect();
 	ASSERT_NE(nullptr, msg);
 
-	ASSERT_EQ(3004, msg->get<diameter::result_code>().get());
+	ASSERT_EQ(3004, msg->get<diameter::result_code>().body().get());
 	EQ_STRING_M(diameter::origin_host, "Orig.Host");
 	EQ_STRING_M(diameter::origin_realm, "orig.realm.net");
 
 	EXPECT_EQ(1, msg->count<diameter::failed_avp>());
+	EXPECT_EQ(1, msg->count<diameter::any_avp>());
+	for (auto& any : msg->get<diameter::any_avp>())
+	{
+		EXPECT_EQ(0x102, any.get<diameter::avp_code>().get());
+	}
+
+	//encode
+	uint8_t buffer[1024] = {};
+	med::encoder_context<> ectx{ buffer };
+#if (MED_EXCEPTIONS)
+	encode(med::make_octet_encoder(ectx), base);
+#else
+	if (!encode(med::make_octet_encoder(ectx), base)) { FAIL() << toString(ectx.error_ctx()); }
+#endif
+
+	ASSERT_EQ(sizeof(dpa_enc), ectx.buffer().get_offset());
+	ASSERT_TRUE(Matches(dpa_enc, buffer));
+}
+
+TEST(diameter, any_msg)
+{
+	uint8_t const dwa[] = {
+		0x01, 0x00, 0x00, 0x4C, //VER(1), LEN(3)
+		0x00, 0x00, 0x01, 0x18, //R.P.E.T(1), CMD(3) = 280
+		0x00, 0x00, 0x00, 0x00, //APP-ID
+		0x22, 0x22, 0x22, 0x22, //H2H-ID
+		0x55, 0x55, 0x55, 0x55, //E2E-ID
+
+		0x00, 0x00, 0x01, 0x0C, //AVP = 268 Result Code
+		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x00, 0x00, 0x0B, 0xBC, //result = 3004
+
+		0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
+		0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17 + padding
+		'O', 'r', 'i', 'g',
+		'.', 'H', 'o', 's',
+		't',   0,   0,   0,
+
+		0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
+		0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
+		'o', 'r', 'i', 'g',
+		'.', 'r', 'e', 'a',
+		'l', 'm', '.', 'n',
+		'e', 't',   0,   0,
+	};
+
+	med::decoder_context<> dctx{ dwa };
+//	std::size_t alloc_buf[1024];
+//	dctx.get_allocator().reset(alloc_buf);
+
+	diameter::base base;
+#if (MED_EXCEPTIONS)
+	decode(med::make_octet_decoder(dctx), base);
+#else
+	if (!decode(med::make_octet_decoder(dctx), base)) { FAIL() << toString(dctx.error_ctx()); }
+#endif
+
+	ASSERT_EQ(0, base.header().ap_id());
+	ASSERT_EQ(0x22222222, base.header().hop_id());
+	ASSERT_EQ(0x55555555, base.header().end_id());
+
+	diameter::ANY const* msg = base.cselect();
+	ASSERT_NE(nullptr, msg);
+
+	auto* rc = msg->get<diameter::result_code>();
+	ASSERT_NE(nullptr, rc);
+	EXPECT_EQ(3004, rc->body().get());
+
+	{
+		auto* host = msg->get<diameter::origin_host>();
+		ASSERT_NE(nullptr, host);
+		EXPECT_EQ("Orig.Host"sv, as_sv(*host));
+	}
+	{
+		auto* realm = msg->get<diameter::origin_realm>();
+		ASSERT_NE(nullptr, realm);
+		EXPECT_EQ("orig.realm.net"sv, as_sv(*realm));
+	}
+
+	//encode
+	uint8_t buffer[1024] = {};
+	med::encoder_context<> ectx{ buffer };
+#if (MED_EXCEPTIONS)
+	encode(med::make_octet_encoder(ectx), base);
+#else
+	if (!encode(med::make_octet_encoder(ectx), base)) { FAIL() << toString(ectx.error_ctx()); }
+#endif
+
+	ASSERT_EQ(sizeof(dwa), ectx.buffer().get_offset());
+	ASSERT_TRUE(Matches(dwa, buffer));
 }
 
 #endif
@@ -3484,7 +3567,7 @@ TEST(print, container)
 	std::size_t const cont_num[6] = { 21,  1,  9, 15, 19, 21 };
 	std::size_t const cust_num[6] = { 10,  0,  2,  4,  6,  8 };
 
-	for (std::size_t level = 0; level < std::extent<decltype(cont_num)>::value; ++level)
+	for (std::size_t level = 0; level < std::extent_v<decltype(cont_num)>; ++level)
 	{
 		dummy_sink d{0};
 

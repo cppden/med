@@ -33,9 +33,6 @@ struct IE
 	using ie_type = IE_TYPE;
 };
 
-template <class IE>
-constexpr bool is_const_ie_v = std::is_const<typename IE::ie_type>::value;
-
 //always-set empty IE as a message w/o body
 struct empty : IE<IE_NULL>
 {

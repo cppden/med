@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 
 #include "allocator.hpp"
+#include "snapshot.hpp"
 #include "buffer.hpp"
 #include "error_context.hpp"
 #include "debug.hpp"

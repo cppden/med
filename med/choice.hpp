@@ -173,11 +173,12 @@ struct choice_for<>
 
 }	//end: namespace sl
 
+
 template <class HEADER, class ...CASES>
 class choice : public IE<CONTAINER>
 {
 private:
-	static_assert(util::are_unique(CASES::tag_type::get()...), "TAGS ARE NOT UNIQUE");
+	static_assert(util::are_unique(tag_value_get<CASES>::value...), "TAGS ARE NOT UNIQUE");
 
 	template <class T>
 	struct selector

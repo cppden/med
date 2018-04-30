@@ -82,8 +82,8 @@ private:
 		using iterator_category = std::forward_iterator_tag;
 		using value_type = T;
 		using difference_type = std::ptrdiff_t;
-		using pointer = std::conditional_t<std::is_const<T>::value, field_type const*, field_type*>;
-		using reference = std::conditional_t<std::is_const<T>::value, field_type const&, field_type&>;
+		using pointer = std::conditional_t<std::is_const_v<T>, field_type const*, field_type*>;
+		using reference = std::conditional_t<std::is_const_v<T>, field_type const&, field_type&>;
 
 		explicit iter_type(value_type* p = nullptr) : m_curr{p} { }
 		iter_type& operator++()                     { m_curr = m_curr ? m_curr->next : nullptr; return *this; }
