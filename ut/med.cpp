@@ -434,6 +434,9 @@ TEST(encode, seq_ok)
 	msg.ref<FLD_U24>().set(0xDABEEF);
 	msg.ref<FLD_IP>().set(0xFee1ABBA);
 
+	//re-selection of current choice doesn't destroy contents
+	proto.ref<MSG_SEQ>();
+
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
@@ -441,6 +444,7 @@ TEST(encode, seq_ok)
 	encode(make_octet_encoder(ctx), proto);
 #else
 	if (!encode(make_octet_encoder(ctx), proto)) { FAIL() << toString(ctx.error_ctx()); }
+	EXPECT_EQ(nullptr, toString(ctx.error_ctx()));
 #endif
 	uint8_t const encoded1[] = { 1
 		, 37
@@ -2640,12 +2644,12 @@ struct avp :
 
 	avp()
 	{
-		if constexpr (VENDOR)
+		if constexpr (0 != VENDOR)
 		{
 			this->template ref<vendor>().set(VENDOR);
 			this->template ref<avp_flags>().set(FLAGS | avp_flags::V);
 		}
-		else if constexpr (FLAGS)
+		else if constexpr (0 != FLAGS)
 		{
 			this->template ref<avp_flags>().set(FLAGS & ~avp_flags::V);
 		}

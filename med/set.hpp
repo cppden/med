@@ -122,7 +122,7 @@ struct set_for<IE, IEs...>
 		{
 			if (tag_type_t<IE>::match( get_tag(header) ))
 			{
-				//pop back the tag read since we have variable tag inside
+				//pop back the tag read since we have non-fixed tag inside
 				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
 
 				IE& ie = static_cast<IE&>(to);
@@ -139,7 +139,7 @@ struct set_for<IE, IEs...>
 		{
 			if (tag_type_t<IE>::match( get_tag(header) ))
 			{
-				//pop back the tag read since we have variable tag inside
+				//pop back the tag read since we have non-fixed tag inside
 				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
 
 				IE& ie = static_cast<IE&>(to);
