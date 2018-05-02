@@ -56,7 +56,10 @@ public:
 	explicit operator bool() const          { return static_cast<bool>(error_ctx()); }
 	allocator_type& get_allocator()         { return m_allocator; }
 
-	void reset(void* data, std::size_t size)
+	template <typename T, std::size_t SIZE>
+	void reset(T (&data)[SIZE]) noexcept   { reset(data, SIZE * sizeof(T)); }
+
+	void reset(void* data, std::size_t size) noexcept
 	{
 		get_allocator().reset(static_cast<uint8_t*>(data), size);
 		m_buffer.reset(static_cast<typename buffer_type::pointer>(data), size);

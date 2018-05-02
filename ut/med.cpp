@@ -2215,8 +2215,6 @@ TEST(placeholder, length)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 	med::decoder_context<> dctx;
-	std::size_t alloc_buf[1024];
-	dctx.get_allocator().reset(alloc_buf);
 
 	PL_SEQ msg;
 
@@ -2688,7 +2686,6 @@ struct error_message : avp<med::ascii_string<>, 281>
 
 struct failed_avp : avp<med::octet_string<>, 279, avp_flags::M>
 {
-	using length_type = length;
 	static constexpr char const* name() { return "Failed-AVP"; }
 };
 
@@ -3027,8 +3024,6 @@ TEST(diameter, any_msg)
 	};
 
 	med::decoder_context<> dctx{ dwa };
-//	std::size_t alloc_buf[1024];
-//	dctx.get_allocator().reset(alloc_buf);
 
 	diameter::base base;
 #if (MED_EXCEPTIONS)
