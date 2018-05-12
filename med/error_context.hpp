@@ -36,24 +36,24 @@ public:
 			case error::OVERFLOW:
 				if (val1)
 				{
-					throw exception(err, "%zu bits left, '%s' needs %zu", val0, name, val1);
+					throw overflow("%zu bits left, '%.32s' needs %zu", val0, name, val1);
 				}
-				throw exception(err, "%zu bits left after '%s'", val0, name);
+				throw overflow("%zu bits left after '%.32s'", val0, name);
 
 			case error::INCORRECT_VALUE:
-				throw exception(err, "Invalid value of '%s' at %zu: 0x%zX", name, val1, val0);
+				throw invalid_value("invalid value of '%.32s' at %zu: 0x%zX", name, val1, val0);
 
 			case error::INCORRECT_TAG:
-				throw exception(err, "Wrong tag of '%s': %zu", name, val0);
+				throw invalid_tag("wrong tag of '%.32s': %zu", name, val0);
 
 			case error::MISSING_IE:
-				throw exception(err, "Missing IE '%s': at least %zu expected, got %zu", name, val0, val1);
+				throw missing_ie("missing IE '%.32s': at least %zu expected, got %zu", name, val0, val1);
 
 			case error::EXTRA_IE:
-				throw exception(err, "Excessive IE '%s': no more than %zu expected, got %zu", name, val0, val1);
+				throw extra_ie("excessive IE '%.32s': no more than %zu expected, got %zu", name, val0, val1);
 
 			case error::OUT_OF_MEMORY:
-				throw exception(err, "No space to allocate IE '%s': %zu bytes", name, val0);
+				throw out_of_memory("no space to allocate IE '%.32s': %zu bytes", name, val0);
 
 			default:
 				break;

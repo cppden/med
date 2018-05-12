@@ -151,6 +151,29 @@ public:
 	std::size_t size() const               { return end() - begin(); }
 	bool empty() const                     { return begin() >= end(); }
 
+	template <int DELTA>
+	pointer advance()
+	{
+		pointer p = nullptr;
+		if constexpr (DELTA > 0)
+		{
+			if (size() >= std::size_t(DELTA))
+			{
+				p = begin();
+				m_state.cursor += DELTA;
+			}
+		}
+		else if constexpr (DELTA < 0)
+		{
+			if (begin() + DELTA >= get_start())
+			{
+				m_state.cursor += DELTA;
+				p = begin();
+			}
+		}
+		return p;
+	}
+
 	pointer advance(int delta)
 	{
 		pointer p = nullptr;

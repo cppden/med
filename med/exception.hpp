@@ -14,7 +14,6 @@ Distributed under the MIT License
 #if (MED_EXCEPTIONS)
 
 #include <cstdio>
-#include <cstdarg>
 #include <exception>
 
 #include "error.hpp"
@@ -32,40 +31,76 @@ namespace med {
 class exception : public std::exception
 {
 public:
-	//exception(exception const&) = delete;
 	exception& operator=(exception const&) = delete;
 
-	exception(med::error err, char const* fmt, ...) noexcept
-		: m_error{ err }
-	{
-		va_list p;
-		va_start(p, fmt);
-		vformat(p, fmt);
-		va_end(p);
-	}
-
-	virtual ~exception() noexcept                        { }
+	virtual ~exception() noexcept = default;
 
 	virtual const char* what() const noexcept override   { return m_what; }
-	med::error error() const noexcept                    { return m_error; }
 
 protected:
-	void format(char const* fmt, ...) noexcept
+	//only derived can be created
+	exception() = default;
+//	template <typename... ARGS>
+//	exception(char const* fmt, ARGS&&... args) noexcept { format(fmt, std::forward<ARGS>(args)...); }
+
+	template <typename... ARGS>
+	void format(char const* fmt, ARGS&&... args) noexcept
 	{
-		va_list p;
-		va_start(p, fmt);
-		vformat(p, fmt);
-		va_end(p);
+		std::snprintf(m_what, sizeof(m_what), fmt, std::forward<ARGS>(args)...);
 	}
 
-	void vformat(va_list pArg, char const* fmt) noexcept
-	{
-		std::vsnprintf(m_what, sizeof(m_what), fmt, pArg);
-	}
-
-	med::error m_error;
+private:
 	char       m_what[128];
+};
 
+//OVERFLOW
+struct overflow : exception
+{
+//	using exception::exception;
+	template <typename... ARGS>
+	overflow(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+};
+
+//INCORRECT_VALUE,
+//INCORRECT_TAG
+struct value_exception : public exception {};
+
+struct invalid_value : public value_exception
+{
+//	using value_exception::value_exception;
+	template <typename... ARGS>
+	invalid_value(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+};
+struct invalid_tag : public value_exception
+{
+//	using value_exception::value_exception;
+	template <typename... ARGS>
+	invalid_tag(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+};
+
+//MISSING_IE
+//EXTRA_IE
+struct ie_exception : public exception {};
+
+struct missing_ie : public ie_exception
+{
+//	using ie_exception::ie_exception;
+	template <typename... ARGS>
+	missing_ie(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+};
+struct extra_ie : public ie_exception
+{
+//	using ie_exception::ie_exception;
+	template <typename... ARGS>
+	extra_ie(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+};
+
+//OUT_OF_MEMORY
+struct out_of_memory : public exception
+{
+//	using exception::exception;
+	template <typename... ARGS>
+	out_of_memory(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
 };
 
 }	//end: namespace med

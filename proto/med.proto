@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+message plain {
+
+    enum Enum {
+	    ZERO = 0;
+		ONE  = 1;
+		TWO  = 2;
+	}
+	//VARINT=0
+	int32    int_32  = 1;
+	int64    int_64  = 2;
+	uint32   uint_32 = 3;
+	uint64   uint_64 = 4;
+	sint32   sint_32 = 5;
+	sint64   sint_64 = 6;
+	bool     bool_1  = 7;
+	Enum     enum_1  = 8;
+
+    //BITS_64=1
+	fixed64  fix_64  = 10;
+	sfixed64 sfix_64 = 11;
+	double   dreal   = 12;
+
+    //BITS_32=5
+	fixed32  fix_32  = 50;
+	sfixed32 sfix_32 = 51;
+	float    real    = 52;
+
+    //LEN_DELIM = 2
+//	string   str     = 20;
+//	bytes    octets  = 21;
+}
+

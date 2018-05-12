@@ -17,10 +17,10 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "ie_type.hpp"
 
-namespace med {
+namespace med::protobuf {
 
 template <class DEC_CTX>
-struct octet_decoder
+struct decoder
 {
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
@@ -29,8 +29,8 @@ struct octet_decoder
 
 	DEC_CTX& ctx;
 
-	explicit octet_decoder(DEC_CTX& ctx_)
-		: ctx(ctx_)
+	explicit decoder(DEC_CTX& ctx_)
+		: ctx{ctx_}
 	{
 	}
 
@@ -63,14 +63,42 @@ struct octet_decoder
 	}
 
 	//IE_VALUE
+	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
 	template <class IE>
 	MED_RESULT operator() (IE& ie, IE_VALUE const&)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
-		if (uint8_t const* pval = ctx.buffer().template advance<IE::traits::bits / granularity>())
+		if (uint8_t const* input = ctx.buffer().template advance<1>())
 		{
-			auto const val = get_bytes<IE>(pval);
+			typename IE::value_type val = *input;
+			if (val & 0x80)
+			{
+				val &= 0x7F;
+				std::size_t count = 0;
+				for (;;)
+				{
+					input = ctx.buffer().template advance<1>();
+					if (input)
+					{
+						if (++count < MAX_VARINT_BYTES)
+						{
+							auto const byte = *input;
+							val |= static_cast<typename IE::value_type>(byte & 0x7F) << (7 * count);
+							if (0 == (byte & 0x80)) { break; }
+						}
+						else
+						{
+							return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), val, ctx.buffer().get_offset());
+						}
+					}
+					else
+					{
+						return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+					}
+				};
+			}
+
 			if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
 			{
 				if (!ie.set_encoded(val))
@@ -106,33 +134,9 @@ struct octet_decoder
 	}
 
 private:
-	template <typename VALUE>
-	static constexpr void get_byte(uint8_t const*, VALUE&) { }
-
-	template <typename VALUE, std::size_t OFS, std::size_t... Is>
-	static void get_byte(uint8_t const* input, VALUE& value)
-	{
-		value = (value << granularity) | *input;
-		get_byte<VALUE, Is...>(++input, value);
-	}
-
-	template<typename VALUE, std::size_t... Is>
-	static void get_bytes_impl(uint8_t const* input, VALUE& value, std::index_sequence<Is...>)
-	{
-		get_byte<VALUE, Is...>(input, value);
-	}
-
-	template <class IE>
-	static auto get_bytes(uint8_t const* input)
-	{
-		constexpr std::size_t NUM_BYTES = IE::traits::bits / granularity;
-		typename IE::value_type value{};
-		get_bytes_impl(input, value, std::make_index_sequence<NUM_BYTES>{});
-		return value;
-	}
 };
 
-template <class ENC_CTX>
-auto make_octet_decoder(ENC_CTX& ctx) { return octet_decoder<ENC_CTX>{ctx}; }
+template <class CTX>
+auto make_decoder(CTX& ctx) { return decoder<CTX>{ctx}; }
 
-}	//end: namespace med
+}	//end: namespace med::protobuf

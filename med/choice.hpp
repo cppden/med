@@ -96,8 +96,7 @@ struct choice_for<IE, IEs...>
 		}
 		else
 		{
-			CODEC_TRACE("!CASE[%s]=%zu not a match for %zu", name<case_t>()
-						, std::size_t(IE::tag_type::traits::value), std::size_t(get_tag(to.get_header())));
+			CODEC_TRACE("!CASE[%s] doesn't match %zu", name<case_t>(), std::size_t(get_tag(to.get_header())));
 			return choice_for<IEs...>::decode(decoder, to, unexp);
 		}
 	}

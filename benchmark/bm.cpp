@@ -124,9 +124,9 @@ void BM_encode_ok(benchmark::State& state)
 	{
 		ctx.reset();
 #if (MED_EXCEPTIONS)
-		encode(med::make_octet_encoder(ctx), proto);
+		encode(med::octet_encoder{ctx}, proto);
 #else
-		if (!encode(med::make_octet_encoder(ctx), proto))
+		if (!encode(med::octet_encoder{ctx}, proto))
 		{
 			std::abort();
 		}
@@ -151,18 +151,14 @@ void BM_encode_fail(benchmark::State& state)
 #if (MED_EXCEPTIONS)
 		try
 		{
-			encode(med::make_octet_encoder(ctx), proto);
+			encode(med::octet_encoder{ctx}, proto);
 			std::abort();
 		}
-		catch (med::exception const& ex)
+		catch (med::missing_ie const& ex)
 		{
-			if (med::error::MISSING_IE != ex.error())
-			{
-				std::abort();
-			}
 		}
 #else
-		if (encode(med::make_octet_encoder(ctx), proto)
+		if (encode(med::octet_encoder{ctx}, proto)
 		|| med::error::MISSING_IE != ctx.error_ctx().get_error())
 		{
 			std::abort();
@@ -190,9 +186,9 @@ void BM_decode_ok(benchmark::State& state)
 	{
 		ctx.reset(encoded, sizeof(encoded));
 #if (MED_EXCEPTIONS)
-		decode(med::make_octet_decoder(ctx), proto);
+		decode(med::octet_decoder{ctx}, proto);
 #else
-		if (!decode(med::make_octet_decoder(ctx), proto))
+		if (!decode(med::octet_decoder{ctx}, proto))
 		{
 			std::abort();
 		}
@@ -221,18 +217,14 @@ void BM_decode_fail(benchmark::State& state)
 #if (MED_EXCEPTIONS)
 		try
 		{
-			decode(med::make_octet_decoder(ctx), proto);
+			decode(med::octet_decoder{ctx}, proto);
 			std::abort();
 		}
-		catch (med::exception const& ex)
+		catch (med::invalid_value const& ex)
 		{
-			if (med::error::INCORRECT_VALUE != ex.error())
-			{
-				std::abort();
-			}
 		}
 #else
-		if (decode(med::make_octet_decoder(ctx), proto)
+		if (decode(med::octet_decoder{ctx}, proto)
 		|| med::error::INCORRECT_VALUE != ctx.error_ctx().get_error())
 		{
 			std::abort();

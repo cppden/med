@@ -66,7 +66,7 @@ constexpr MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 	else if constexpr (is_skip_v<IE>)
 	{
 		//TODO: need to support fixed octet_string here?
-		return func.advance(IE::traits::bits);
+		return func.template advance<IE::traits::bits>();
 	}
 	else
 	{

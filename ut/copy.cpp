@@ -62,13 +62,13 @@ TEST(copy, seq_same)
 	{
 		med::decoder_context<> ctx{ encoded, dec_buf };
 #if (MED_EXCEPTIONS)
-		decode(make_octet_decoder(ctx), src_msg);
+		decode(med::octet_decoder{ctx}, src_msg);
 		//fails when need allocator but not provided one
 		ASSERT_THROW(dst_msg.copy(src_msg), med::exception);
 		//succeed with allocator
 		dst_msg.copy(src_msg, ctx);
 #else
-		if (!decode(make_octet_decoder(ctx), src_msg)) { FAIL() << toString(ctx.error_ctx()); }
+		if (!decode(med::octet_decoder{ctx}, src_msg)) { FAIL() << toString(ctx.error_ctx()); }
 		ASSERT_FALSE(dst_msg.copy(src_msg));
 		ASSERT_TRUE(dst_msg.copy(src_msg, ctx));
 #endif
@@ -79,9 +79,9 @@ TEST(copy, seq_same)
 		med::encoder_context<> ctx{ buffer };
 
 #if (MED_EXCEPTIONS)
-		encode(make_octet_encoder(ctx), dst_msg);
+		encode(med::octet_encoder{ctx}, dst_msg);
 #else
-		if (!encode(make_octet_encoder(ctx), dst_msg)) { FAIL() << toString(ctx.error_ctx()); }
+		if (!encode(med::octet_encoder{ctx}, dst_msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 		EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 		EXPECT_TRUE(Matches(encoded, buffer));
@@ -107,10 +107,10 @@ TEST(copy, seq_diff)
 
 		med::decoder_context<> ctx{ encoded, dec_buf };
 #if (MED_EXCEPTIONS)
-		decode(make_octet_decoder(ctx), src_msg);
+		decode(med::octet_decoder{ctx}, src_msg);
 		dst_msg.copy(src_msg, ctx);
 #else
-		if (!decode(make_octet_decoder(ctx), src_msg)) { FAIL() << toString(ctx.error_ctx()); }
+		if (!decode(med::octet_decoder{ctx}, src_msg)) { FAIL() << toString(ctx.error_ctx()); }
 		ASSERT_TRUE(dst_msg.copy(src_msg, ctx));
 #endif
 	}
@@ -132,9 +132,9 @@ TEST(copy, seq_diff)
 		med::encoder_context<> ctx{ buffer };
 
 #if (MED_EXCEPTIONS)
-		encode(make_octet_encoder(ctx), dst_msg);
+		encode(med::octet_encoder{ctx}, dst_msg);
 #else
-		if (!encode(make_octet_encoder(ctx), dst_msg)) { FAIL() << toString(ctx.error_ctx()); }
+		if (!encode(med::octet_encoder{ctx}, dst_msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
 		EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 		EXPECT_TRUE(Matches(encoded, buffer));

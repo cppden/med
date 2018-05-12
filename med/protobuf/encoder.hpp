@@ -1,8 +1,8 @@
 /**
 @file
-octet encoder definition
+Google Protobuf encoder definition
 
-@copyright Denis Priyomov 2016-2017
+@copyright Denis Priyomov 2018
 Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
@@ -13,10 +13,10 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "octet_string.hpp"
 
-namespace med {
+namespace med::protobuf {
 
 template <class ENC_CTX>
-struct octet_encoder
+struct encoder
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
@@ -24,7 +24,7 @@ struct octet_encoder
 
 	ENC_CTX& ctx;
 
-	explicit octet_encoder(ENC_CTX& ctx_) : ctx{ ctx_ } { }
+	explicit encoder(ENC_CTX& ctx_) : ctx{ ctx_ } { }
 
 	//state
 	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
@@ -73,17 +73,37 @@ struct octet_encoder
 	}
 
 	//IE_VALUE
+	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
 	template <class IE>
 	MED_RESULT operator() (IE const& ie, IE_VALUE const&)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
-		CODEC_TRACE("VAL[%s]=%#zx %zu bits: %s", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits, ctx.buffer().toString());
-		if (uint8_t* out = ctx.buffer().template advance<IE::traits::bits / granularity>())
+		auto value = ie.get_encoded();
+		CODEC_TRACE("VAL[%s]=%#zx(%zu) %zu bits: %s", name<IE>(), std::size_t(value), std::size_t(value), IE::traits::bits, ctx.buffer().toString());
+		//TODO: estimate exact size needed? will it be faster?
+		while (value >= 0x80)
 		{
-			put_bytes(ie, out);
+			if (uint8_t* const output = ctx.buffer().template advance<1>())
+			{
+				*output = static_cast<uint8_t>(value | 0x80);
+			}
+			else
+			{
+				return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+			}
+			CODEC_TRACE("\twrote %#02x, value=%#zx", uint8_t(value|0x80), std::size_t(value >> 7));
+			value >>= 7;
+		}
+		if (uint8_t* const output = ctx.buffer().template advance<1>())
+		{
+			*output = static_cast<uint8_t>(value);
+			CODEC_TRACE("\twrote value %02X", uint8_t(value));
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+		else
+		{
+			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+		}
 	}
 
 	//IE_OCTET_STRING
@@ -100,31 +120,9 @@ struct octet_encoder
 	}
 
 private:
-	template <std::size_t NUM_BYTES, typename VALUE>
-	static constexpr void put_byte(uint8_t*, VALUE const) { }
-
-	template <std::size_t NUM_BYTES, typename VALUE, std::size_t OFS, std::size_t... Is>
-	static void put_byte(uint8_t* output, VALUE const value)
-	{
-		output[OFS] = static_cast<uint8_t>(value >> ((NUM_BYTES - OFS - 1) << 3));
-		put_byte<NUM_BYTES, VALUE, Is...>(output, value);
-	}
-
-	template<std::size_t NUM_BYTES, typename VALUE, std::size_t... Is>
-	static void put_bytes_impl(uint8_t* output, VALUE const value, std::index_sequence<Is...>)
-	{
-		put_byte<NUM_BYTES, VALUE, Is...>(output, value);
-	}
-
-	template <class IE>
-	static void put_bytes(IE const& ie, uint8_t* output)
-	{
-		constexpr std::size_t NUM_BYTES = IE::traits::bits / granularity;
-		put_bytes_impl<NUM_BYTES>(output, ie.get_encoded(), std::make_index_sequence<NUM_BYTES>{});
-	}
 };
 
-template <class ENC_CTX>
-auto make_octet_encoder(ENC_CTX& ctx) { return octet_encoder<ENC_CTX>{ctx}; }
+template <class CTX>
+auto make_encoder(CTX& ctx) { return encoder<CTX>{ctx}; }
 
-}	//end: namespace med
+}	//end: namespace med::protobuf
