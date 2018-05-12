@@ -74,7 +74,7 @@ TEST(protobuf, decode_plain)
 	pb::plain msg;
 
 #if (MED_EXCEPTIONS)
-	encode(med::protobuf::decoder{ctx}, msg);
+	decode(med::protobuf::decoder{ctx}, msg);
 #else
 	if (!decode(med::protobuf::decoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
 #endif
