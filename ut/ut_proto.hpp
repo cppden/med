@@ -84,13 +84,12 @@ struct MSG_SEQ : med::sequence<
 	static constexpr char const* name() { return "Msg-Seq"; }
 };
 
-struct FLD_CHO : med::choice< HDR<8>
+struct FLD_CHO : med::choice< med::value<uint8_t>
 	, med::tag<C<0x00>, FLD_U8>
 	, med::tag<C<0x02>, FLD_U16>
 	, med::tag<C<0x04>, FLD_IP>
 >
-{
-};
+{};
 
 struct SEQOF_1 : med::sequence<
 	M< FLD_W, med::max<3> >
@@ -239,7 +238,6 @@ struct MSG_MSEQ : med::sequence<
 	O< T<0x61>, L, SEQOF_1>,
 	O< T<0x62>, L, SEQOF_2, med::max<2>>,
 	O< T<0x70>, L, FLD_NSCHO >,
-//	O< T<0x80>, CNT, SEQOF_3<1>, med::max<3>>, //T[CV]*[0,3]
 	O< L, VFLD1, med::max<3> >           //[LV(var)]*[0,3] till EoF
 >
 {
@@ -247,7 +245,7 @@ struct MSG_MSEQ : med::sequence<
 };
 
 
-struct MSG_SET : med::set< HDR<16>,
+struct MSG_SET : med::set< med::value<uint16_t>,
 	M< T<0x0b>,    FLD_UC >, //<TV>
 	M< T<0x21>, L, FLD_U16 >, //<TLV>
 	//M< FLD_TN >,
@@ -259,7 +257,7 @@ struct MSG_SET : med::set< HDR<16>,
 	static constexpr char const* name() { return "Msg-Set"; }
 };
 
-struct MSG_MSET : med::set< HDR<16>,
+struct MSG_MSET : med::set< med::value<uint16_t>,
 	M< T<0x0b>,    FLD_UC, med::arity<2> >, //<TV>*2
 	M< T<0x0c>,    FLD_U8, med::max<2> >, //<TV>*[1,2]
 	M< T<0x21>, L, FLD_U16, med::max<3> >, //<TLV>*[1,3]
@@ -375,7 +373,7 @@ struct MSG_FUNC : med::sequence<
 };
 
 
-struct PROTO : med::choice< HDR<8>
+struct PROTO : med::choice< med::value<uint8_t>
 	, med::tag<C<0x01>, MSG_SEQ>
 	, med::tag<C<0x11>, MSG_MSEQ>
 	, med::tag<C<0x04>, MSG_SET>

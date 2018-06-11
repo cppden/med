@@ -26,6 +26,7 @@ struct mandatory
 	static_assert(std::is_void<TAG_FLD_LEN>(), "MALFORMED MANDATORY");
 };
 
+//M<FIELD>
 template <class FIELD>
 struct mandatory<
 	FIELD,
@@ -38,6 +39,7 @@ struct mandatory<
 {
 };
 
+//M<FIELD, SETTER>
 template <class FIELD, class SETTER>
 struct mandatory<
 	FIELD,
@@ -52,6 +54,7 @@ struct mandatory<
 };
 
 
+//M<FIELD, arity<NUM>>
 template <class FIELD, std::size_t NUM>
 struct mandatory<
 	FIELD,
@@ -65,37 +68,39 @@ struct mandatory<
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-//mandatory multi-instance field as a part of compound
-template <class FIELD, std::size_t MIN, std::size_t MAX, class COUNTER>
+//M<FIELD, min<MIN>, max<MAX>, CNT_GETTER>
+template <class FIELD, std::size_t MIN, std::size_t MAX, class COUNT_GETTER>
 struct mandatory<
 	FIELD,
 	min<MIN>,
 	max<MAX>,
-	COUNTER,
+	COUNT_GETTER,
 	max<1>,
-	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
+	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNT_GETTER>>
 > : multi_field<FIELD, MIN, max<MAX>>
 {
-	using count_getter = COUNTER;
+	using count_getter = COUNT_GETTER;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
-template <class FIELD, std::size_t MIN, std::size_t MAX, class COUNTER>
+//M<FIELD, min<MIN>, Pmax<MAX>, CNT_GETTER>
+template <class FIELD, std::size_t MIN, std::size_t MAX, class COUNT_GETTER>
 struct mandatory<
 	FIELD,
 	min<MIN>,
 	pmax<MAX>,
-	COUNTER,
+	COUNT_GETTER,
 	max<1>,
-	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
+	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNT_GETTER>>
 > : multi_field<FIELD, MIN, pmax<MAX>>
 {
-	using count_getter = COUNTER;
+	using count_getter = COUNT_GETTER;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<CNT, FIELD, min<MIN>, max<MAX>>
 template <class COUNTER, class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	COUNTER,
@@ -110,6 +115,7 @@ struct mandatory<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<CNT, FIELD, min<MIN>, Pmax<MAX>>
 template <class COUNTER, class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	COUNTER,
@@ -124,6 +130,7 @@ struct mandatory<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<FIELD, min<MIN>, max<MAX>>
 template <class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	FIELD,
@@ -138,6 +145,7 @@ struct mandatory<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<FIELD, min<MIN>, Pmax<MAX>>
 template <class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	FIELD,
@@ -152,6 +160,7 @@ struct mandatory<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<FIELD, max<MAX>>
 template <class FIELD, std::size_t MAX>
 struct mandatory<
 	FIELD,
@@ -165,6 +174,7 @@ struct mandatory<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+//M<FIELD, Pmax<MAX>>
 template <class FIELD, std::size_t MAX>
 struct mandatory<
 	FIELD,
@@ -178,34 +188,37 @@ struct mandatory<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <class FIELD, std::size_t MAX, class COUNTER>
+//M<FIELD, max<MAX>, COUNT_GETTER>
+template <class FIELD, std::size_t MAX, class COUNT_GETTER>
 struct mandatory<
 	FIELD,
 	max<MAX>,
-	COUNTER,
+	COUNT_GETTER,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
+	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNT_GETTER>>
 > : multi_field<FIELD, 1, max<MAX>>
 {
-	using count_getter = COUNTER;
+	using count_getter = COUNT_GETTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <class FIELD, std::size_t MAX, class COUNTER>
+//M<FIELD, Pmax<MAX>, COUNT_GETTER>
+template <class FIELD, std::size_t MAX, class COUNT_GETTER>
 struct mandatory<
 	FIELD,
 	pmax<MAX>,
-	COUNTER,
+	COUNT_GETTER,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNTER>>
+	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNT_GETTER>>
 > : multi_field<FIELD, 1, pmax<MAX>>
 {
-	using count_getter = COUNTER;
+	using count_getter = COUNT_GETTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+//M<CNT, FIELD, max<MAX>>
 template <class COUNTER, class FIELD, std::size_t MAX>
 struct mandatory<
 	COUNTER,
@@ -218,6 +231,8 @@ struct mandatory<
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
+
+//M<CNT, FIELD, Pmax<MAX>>
 template <class COUNTER, class FIELD, std::size_t MAX>
 struct mandatory<
 	COUNTER,
@@ -231,6 +246,7 @@ struct mandatory<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+//M<TAG, FIELD>
 template <class TAG, class FIELD>
 struct mandatory<
 	TAG,
@@ -243,6 +259,7 @@ struct mandatory<
 {
 };
 
+//M<TAG, FIELD, arity<NUM>
 template <class TAG, class FIELD, std::size_t NUM>
 struct mandatory<
 	TAG,
@@ -256,6 +273,7 @@ struct mandatory<
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+//M<TAG, FIELD, max<MAX>>
 template <class TAG, class FIELD, std::size_t MAX>
 struct mandatory<
 	TAG,
@@ -269,6 +287,7 @@ struct mandatory<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+//M<TAG, FIELD, Pmax<MAX>>
 template <class TAG, class FIELD, std::size_t MAX>
 struct mandatory<
 	TAG,
@@ -282,6 +301,7 @@ struct mandatory<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+//M<TAG, FIELD, min<MIN>, max<MAX>>
 template <class TAG, class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	TAG,
@@ -296,6 +316,7 @@ struct mandatory<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<TAG, FIELD, min<MIN>, Pmax<MAX>>
 template <class TAG, class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	TAG,
@@ -310,6 +331,7 @@ struct mandatory<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<LEN, FIELD>
 template <class LEN, class FIELD>
 struct mandatory<
 	LEN,
@@ -322,6 +344,7 @@ struct mandatory<
 {
 };
 
+//M<LEN, FIELD, arity<NUM>>
 template <class LEN, class FIELD, std::size_t NUM>
 struct mandatory<
 	LEN,
@@ -335,32 +358,7 @@ struct mandatory<
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <class LEN, class FIELD, std::size_t MAX>
-struct mandatory<
-	LEN,
-	FIELD,
-	max<MAX>,
-	min<1>,
-	max<1>,
-	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
-> : multi_length_value<LEN, FIELD, 1, max<MAX>>
-{
-	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
-};
-template <class LEN, class FIELD, std::size_t MAX>
-struct mandatory<
-	LEN,
-	FIELD,
-	pmax<MAX>,
-	min<1>,
-	max<1>,
-	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
-> : multi_length_value<LEN, FIELD, 1, pmax<MAX>>
-{
-	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
-};
-
-
+//M<TAG, LEN, FIELD>
 template <class TAG, class LEN, class FIELD>
 struct mandatory<
 	TAG,
@@ -373,6 +371,7 @@ struct mandatory<
 {
 };
 
+//M<TAG, LEN, FIELD, arity<NUM>>
 template <class TAG, class LEN, class FIELD, std::size_t NUM>
 struct mandatory<
 	TAG,
@@ -386,6 +385,35 @@ struct mandatory<
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
+//M<LEN, FIELD, max<MAX>>
+template <class LEN, class FIELD, std::size_t MAX>
+struct mandatory<
+	LEN,
+	FIELD,
+	max<MAX>,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
+> : multi_length_value<LEN, FIELD, 1, max<MAX>>
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+//M<LEN, FIELD, Pmax<MAX>>
+template <class LEN, class FIELD, std::size_t MAX>
+struct mandatory<
+	LEN,
+	FIELD,
+	pmax<MAX>,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
+> : multi_length_value<LEN, FIELD, 1, pmax<MAX>>
+{
+	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+};
+
+//M<TAG, LEN, FIELD, max<MAX>>
 template <class TAG, class LEN, class FIELD, std::size_t MAX>
 struct mandatory<
 	TAG,
@@ -398,6 +426,8 @@ struct mandatory<
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
+
+//M<TAG, LEN, FIELD, Pmax<MAX>>
 template <class TAG, class LEN, class FIELD, std::size_t MAX>
 struct mandatory<
 	TAG,
@@ -411,7 +441,7 @@ struct mandatory<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-
+//M<TAG, LEN, FIELD, min<MIN>, max<MAX>>
 template <class TAG, class LEN, class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	TAG,
@@ -426,6 +456,7 @@ struct mandatory<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
+//M<TAG, LEN, FIELD, min<MIN>, Pmax<MAX>>
 template <class TAG, class LEN, class FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	TAG,

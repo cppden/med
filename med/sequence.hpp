@@ -85,69 +85,69 @@ struct seq_decoder<IE, IES...>
 			else if constexpr (has_tag_type_v<IE>)
 			{
 				//multi-instance optional or mandatory field w/ tag w/o counter
-				if constexpr (!has_count_getter_v<IE> && !is_counter_v<IE> && !has_condition_v<IE>)
+				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !has_condition_v<IE>, "TO IMPLEMENT!");
+
+				IE& ie = to;
+				if (!vtag && func(PUSH_STATE{}))
 				{
-					IE& ie = to;
-					if (!vtag && func(PUSH_STATE{}))
+					//convert const to writable
+					using TAG_IE = typename IE::tag_type::writable;
+					TAG_IE tag;
+					MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
+					vtag.set_encoded(tag.get_encoded());
+					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+				}
+
+				while (IE::tag_type::match(vtag.get_encoded()))
+				{
+					CODEC_TRACE("->T=%zx[%s]*", vtag.get_encoded(), name<IE>());
+					auto* field = ie.push_back(func);
+					MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
+
+					if (func(PUSH_STATE{})) //not at the end
 					{
 						//convert const to writable
 						using TAG_IE = typename IE::tag_type::writable;
 						TAG_IE tag;
-						MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
-						vtag.set_encoded(tag.get_encoded());
-						CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-					}
-
-					while (IE::tag_type::match(vtag.get_encoded()))
-					{
-						CODEC_TRACE("T=%zx[%s]*", vtag.get_encoded(), name<IE>());
-						auto* field = ie.push_back(func);
-						MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
-
-						if (func(PUSH_STATE{}))
+#if (MED_EXCEPTIONS)
+						//TODO: avoid try/catch
+						try
 						{
-							//convert const to writable
-							using TAG_IE = typename IE::tag_type::writable;
-							TAG_IE tag;
-	#if (MED_EXCEPTIONS)
-							//TODO: avoid try/catch
-							try
-							{
-								func(tag, typename TAG_IE::ie_type{});
-								vtag.set_encoded(tag.get_encoded());
-								CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-							}
-							catch (med::exception const& ex)
-							{
-								vtag.clear();
-							}
-	#else
-							if (func(tag, typename TAG_IE::ie_type{}))
-							{
-								vtag.set_encoded(tag.get_encoded());
-								CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-							}
-							else
-							{
-								vtag.clear();
-							}
-	#endif //MED_EXCEPTIONS
+							func(tag, typename TAG_IE::ie_type{});
+							vtag.set_encoded(tag.get_encoded());
+							CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+						}
+						catch (med::overflow const& ex)
+						{
+							vtag.clear();
+						}
+#else
+						if (func(tag, typename TAG_IE::ie_type{}))
+						{
+							vtag.set_encoded(tag.get_encoded());
+							CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 						}
 						else
 						{
 							vtag.clear();
-							break;
 						}
+#endif //MED_EXCEPTIONS
 					}
-
-					if (!vtag)
+					else //end is reached
 					{
-						func(POP_STATE{}); //restore state
-						func(error::SUCCESS); //clear error
+						CODEC_TRACE("<-T=%zx[%s]*", vtag.get_encoded(), name<IE>());
+						vtag.clear();
+						break;
 					}
-					MED_CHECK_FAIL(check_arity(func, ie));
-					return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 				}
+
+				if (!vtag)
+				{
+					func(POP_STATE{}); //restore state
+					func(error::SUCCESS); //clear error
+				}
+				MED_CHECK_FAIL(check_arity(func, ie));
+				return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 			}
 			else //w/o tag
 			{
@@ -196,8 +196,16 @@ struct seq_decoder<IE, IES...>
 					std::size_t count = 0;
 					while (func(CHECK_STATE{}) && count < IE::max)
 					{
-						auto* field = ie.push_back(func);
-						MED_CHECK_FAIL(MED_EXPR_AND(field) sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp));
+						if (auto* field = ie.push_back(func))
+						{
+							MED_CHECK_FAIL(sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp));
+						}
+#if (!MED_EXCEPTIONS)
+						else
+						{
+							return func(error::OUT_OF_MEMORY, name<IE>());
+						}
+#endif
 						++count;
 					}
 
@@ -220,7 +228,7 @@ struct seq_decoder<IE, IES...>
 
 						CODEC_TRACE("C[%s]", name<IE>());
 						IE& ie = to;
-						MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
+						MED_CHECK_FAIL(med::decode(func, ie, unexp));
 						if constexpr (has_default_value_v<IE>)
 						{
 							if (!was_set) { ie.ref_field().clear(); } //discard since it's a default
@@ -308,7 +316,7 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 		}
 		else
 		{
-			return func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count() - 1);
+			return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count() - 1);
 		}
 	}
 	MED_RETURN_SUCCESS;
@@ -378,7 +386,7 @@ struct seq_encoder<IE, IES...>
 					{
 						if (!setter(ie, to))
 						{
-							return func(error::INCORRECT_VALUE, name<typename IE::field_type>(), ie.get());
+							return func(error::INCORRECT_VALUE, name<IE>(), ie.get());
 						}
 					}
 					else
@@ -413,7 +421,7 @@ struct seq_encoder<IE, IES...>
 					{
 						if (!setter(ie, to))
 						{
-							return func(error::INCORRECT_VALUE, name<typename IE::field_type>(), ie.get());
+							return func(error::INCORRECT_VALUE, name<IE>(), ie.get());
 						}
 					}
 					else
@@ -426,7 +434,7 @@ struct seq_encoder<IE, IES...>
 					}
 					else
 					{
-						return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+						return func(error::MISSING_IE, name<IE>(), 1, 0);
 					}
 				}
 				else //w/o setter
@@ -439,7 +447,7 @@ struct seq_encoder<IE, IES...>
 					}
 					else
 					{
-						return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+						return func(error::MISSING_IE, name<IE>(), 1, 0);
 					}
 				}
 			}

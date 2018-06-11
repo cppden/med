@@ -875,7 +875,7 @@ TEST(decode, seq_fail)
 		, 0x21, 0x35, 0xD9
 		, 3, 0xDA, 0xBE, 0xEF
 		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
-		, 0x12, 3, 't', 'e', 's'
+		, 0x12, 1, 't','e','s','t'
 	};
 	ctx.reset(bad_var_len_lo, sizeof(bad_var_len_lo));
 #if (MED_EXCEPTIONS)
@@ -898,7 +898,7 @@ TEST(decode, seq_fail)
 #if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::invalid_value);
 #else
-	if (decode(med::octet_decoder{ctx}, proto)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_FALSE(decode(med::octet_decoder{ctx}, proto));
 	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
 #endif

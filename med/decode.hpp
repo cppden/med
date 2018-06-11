@@ -86,12 +86,12 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 	MED_CHECK_FAIL(func(tag, typename TAG::ie_type{}));
 	if (WRAPPER::tag_type::match(tag.get_encoded()))
 	{
-		CODEC_TRACE("TV[%zu : %s]", std::size_t(tag.get()), name<typename WRAPPER::field_type>());
+		CODEC_TRACE("TV[%zu : %s]", std::size_t(tag.get()), name<WRAPPER>());
 		return decode(func, ref_field(ie), unexp);
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
 	CODEC_TRACE("ERROR tag=%zu", std::size_t(tag.get_encoded()));
-	return func(error::INCORRECT_TAG, name<typename WRAPPER::field_type>(), tag.get_encoded());
+	return func(error::INCORRECT_TAG, name<WRAPPER>(), tag.get_encoded());
 }
 
 //Length-Value
@@ -99,16 +99,24 @@ template <class WRAPPER, class FUNC, class IE, class UNEXP>
 inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 {
 	typename WRAPPER::length_type len_ie;
-	CODEC_TRACE("LV[%s]", name<IE>());
+	CODEC_TRACE("LV[%s]", name<WRAPPER>());
 	MED_CHECK_FAIL((decode(func, len_ie, unexp)));
 	std::size_t len_value = len_ie.get_encoded();
+	CODEC_TRACE("raw len=%zu", len_value);
 	MED_CHECK_FAIL((value_to_length(func, len_ie, len_value)));
-	//CODEC_TRACE("LV[%zu] : %s", len, name<IE>());
-	auto end = func(PUSH_SIZE{len_value});
-	MED_CHECK_FAIL((decode(func, ref_field(ie), unexp)));
-	//TODO: ??? as warning not error
-	if (0 != end.size()) return func(error::OVERFLOW, name<typename WRAPPER::field_type>(), end.size() * FUNC::granularity);
-	MED_RETURN_SUCCESS;
+	if (auto end = func(PUSH_SIZE{len_value}))
+	{
+		MED_CHECK_FAIL((decode(func, ref_field(ie), unexp)));
+		//TODO: ??? as warning not error
+		if (0 != end.size())
+		{
+			CODEC_TRACE("%s: end-size=%zu", name<IE>(), end.size());
+			return func(error::OVERFLOW, name<WRAPPER>(), end.size() * FUNC::granularity);
+		}
+		MED_RETURN_SUCCESS;
+	}
+	//TODO: something more informative: tried to set length beyond data end
+	return func(error::OVERFLOW, name<WRAPPER>(), 0);
 }
 
 template <class FUNC, class IE, class UNEXP>
@@ -149,6 +157,7 @@ struct length_decoder
 		MED_CHECK_FAIL(decode(m_decoder, len_ie, m_unexp));
 		//reduced size of the input buffer for current length and elements from the start of IE
 		std::size_t len_value = len_ie.get_encoded();
+		CODEC_TRACE("raw len=%zu", len_value);
 		MED_CHECK_FAIL(value_to_length(m_decoder, len_ie, len_value));
 		typename length_type::value_type const size = (len_value + DELTA) - (m_decoder(GET_STATE{}) - m_start);
 		CODEC_TRACE("size(%zu)=length(%zu) + %d - %ld", std::size_t(size), len_value, DELTA, (m_decoder(GET_STATE{}) - m_start));

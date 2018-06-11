@@ -30,6 +30,8 @@ template <class, class Enable = void>
 struct has_field_type : std::false_type { };
 template <class T>
 struct has_field_type<T, std::void_t<typename T::field_type>> : std::true_type { };
+template <class T>
+constexpr bool has_field_type_v = has_field_type<T>::value;
 
 
 template <class T, typename Enable = void>

@@ -21,8 +21,6 @@ template <std::size_t TAG>
 using T = med::value<med::fixed<TAG, uint8_t>>;
 template <std::size_t TAG>
 using C = med::value<med::fixed<TAG>>;
-template <uint8_t BITS>
-using HDR = med::value<med::bits<BITS>>;
 
 struct FLD_UC : med::value<uint8_t>
 {
@@ -97,7 +95,7 @@ struct MSG_SEQ : med::sequence<
 };
 
 
-struct PROTO : med::choice< HDR<8>
+struct PROTO : med::choice< med::value<uint8_t>
 	, med::tag<C<0x01>, MSG_SEQ>
 >
 {
@@ -120,9 +118,12 @@ void BM_encode_ok(benchmark::State& state)
 	msg.ref<FLD_DW>().set(0x01020304);
 	msg.ref<VFLD1>().set("test.this!");
 
+	std::uint8_t dummy = 0;
 	while (state.KeepRunning())
 	{
 		ctx.reset();
+		dummy += buffer[0];
+		msg.ref<FLD_UC>().set(dummy);
 #if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, proto);
 #else
@@ -131,6 +132,7 @@ void BM_encode_ok(benchmark::State& state)
 			std::abort();
 		}
 #endif
+		benchmark::DoNotOptimize(dummy);
 	}
 }
 BENCHMARK(BM_encode_ok);
@@ -182,6 +184,7 @@ void BM_decode_ok(benchmark::State& state)
 		, 0x12, 4, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's', '!'
 	};
 
+	std::size_t dummy = 0;
 	while (state.KeepRunning())
 	{
 		ctx.reset(encoded, sizeof(encoded));
@@ -193,7 +196,11 @@ void BM_decode_ok(benchmark::State& state)
 			std::abort();
 		}
 #endif
+		dummy += proto.get<MSG_SEQ>()->get<FLD_UC>().get();
+		benchmark::DoNotOptimize(dummy);
 	}
+
+	//std::printf("dummy=%zu\n", dummy);
 }
 BENCHMARK(BM_decode_ok);
 

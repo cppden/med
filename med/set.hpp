@@ -81,7 +81,7 @@ struct set_for<IE, IEs...>
 		if constexpr (is_multi_field<IE>::value)
 		{
 			IE const& ie = static_cast<IE const&>(to);
-			CODEC_TRACE("[%s]*%zu", name<typename IE::field_type>(), ie.count());
+			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
 
 			MED_CHECK_FAIL(check_arity(func, ie));
 			for (auto& field : ie)
@@ -94,7 +94,7 @@ struct set_for<IE, IEs...>
 				}
 				else
 				{
-					return func(error::MISSING_IE, name<typename IE::field_type>(), ie.count(), ie.count()-1);
+					return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count()-1);
 				}
 			}
 		}
@@ -109,7 +109,7 @@ struct set_for<IE, IEs...>
 			}
 			else if constexpr (!is_optional_v<IE>)
 			{
-				return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+				return func(error::MISSING_IE, name<IE>(), 1, 0);
 			}
 		}
 		return set_for<IEs...>::template encode<HEADER>(to, func);
@@ -126,10 +126,10 @@ struct set_for<IE, IEs...>
 				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
 
 				IE& ie = static_cast<IE&>(to);
-				CODEC_TRACE("[%s]@%zu", name<typename IE::field_type>(), ie.count());
+				CODEC_TRACE("[%s]@%zu", name<IE>(), ie.count());
 				if (ie.count() >= IE::max)
 				{
-					return func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, ie.count());
+					return func(error::EXTRA_IE, name<IE>(), IE::max, ie.count());
 				}
 				auto* field = ie.push_back(func);
 				return MED_EXPR_AND(field) med::decode(func, *field, unexp);
@@ -143,12 +143,12 @@ struct set_for<IE, IEs...>
 				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
 
 				IE& ie = static_cast<IE&>(to);
-				CODEC_TRACE("[%s] = %u", name<typename IE::field_type>(), ie.ref_field().is_set());
+				CODEC_TRACE("[%s] = %u", name<IE>(), ie.ref_field().is_set());
 				if (!ie.ref_field().is_set())
 				{
 					return med::decode(func, ie.ref_field(), unexp);
 				}
-				return func(error::EXTRA_IE, name<typename IE::field_type>(), 1);
+				return func(error::EXTRA_IE, name<IE>(), 1);
 			}
 		}
 		return set_for<IEs...>::decode(to, func, unexp, header);
@@ -167,7 +167,7 @@ struct set_for<IE, IEs...>
 			IE const& ie = static_cast<IE const&>(to);
 			if (!is_optional_v<IE> && !ie.ref_field().is_set())
 			{
-				return func(error::MISSING_IE, name<typename IE::field_type>(), 1, 0);
+				return func(error::MISSING_IE, name<IE>(), 1, 0);
 			}
 		}
 		return set_for<IEs...>::check(to, func);
@@ -225,7 +225,7 @@ struct set : container<IEs...>
 			{
 				med::decode(decoder, header, unexp);
 			}
-			catch (med::exception const& ex)
+			catch (med::overflow const& ex)
 			{
 				decoder(POP_STATE{});
 				decoder(error::SUCCESS);

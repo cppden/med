@@ -189,8 +189,18 @@ public:
 	{
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE WRITTEN VIA REF");
+		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE WRITTEN VIA ref");
 		return ie.push_back(std::forward<ARGS>(args)...);
+	}
+
+	//TODO: would be nice to recover space from allocator if possible
+	template <class FIELD>
+	void pop_back()
+	{
+		auto& ie = m_ies.template as<FIELD>();
+		using IE = remove_cref_t<decltype(ie)>;
+		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE REMOVED VIA clear");
+		ie.pop_back();
 	}
 
 	auto field()                            { return make_accessor(*this); }

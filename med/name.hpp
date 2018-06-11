@@ -58,13 +58,16 @@ struct has_name<T, std::void_t<decltype(T::name())>> : std::true_type { };
 template <class T>
 constexpr bool has_name_v = has_name<T>::value;
 
-
 template <class IE>
 constexpr char const* name()
 {
 	if constexpr (has_name_v<IE>)
 	{
 		return IE::name();
+	}
+	else if constexpr (has_field_type_v<IE>)
+	{
+		return name<typename IE::field_type>();
 	}
 	else
 	{

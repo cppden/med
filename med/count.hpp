@@ -49,12 +49,12 @@ inline MED_RESULT check_arity(FUNC& func, IE const&, std::size_t count)
 		}
 		else
 		{
-			return func(error::EXTRA_IE, name<typename IE::field_type>(), IE::max, count);
+			return func(error::EXTRA_IE, name<IE>(), IE::max, count);
 		}
 	}
 	else
 	{
-		return func(error::MISSING_IE, name<typename IE::field_type>(), IE::min, count);
+		return func(error::MISSING_IE, name<IE>(), IE::min, count);
 	}
 }
 

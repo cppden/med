@@ -111,12 +111,12 @@ public:
 	bool empty() const                                      { return 0 == m_count; }
 	//NOTE: clear won't return items allocated from external storage, use reset there
 	void clear()                                            { m_count = 0; }
-	bool is_set() const                                     { return m_count > 0 && m_fields[0].value.is_set(); }
+	bool is_set() const                                     { return not empty() && m_fields[0].value.is_set(); }
 
 	field_type const* first() const                         { return empty() ? nullptr : &m_fields[0].value; }
 	field_type const* last() const                          { return empty() ? nullptr : &m_tail->value; }
 
-	//ineffective read-only access
+	//inefficient read-only access
 	field_type const* at(std::size_t index) const
 	{
 		if (index >= count()) return nullptr;
@@ -131,15 +131,15 @@ public:
 	{
 		if (count() < inplace)
 		{
-			CODEC_TRACE("inplace multi-%s", name<field_type>());
 			auto* piv = m_fields + count();
+			CODEC_TRACE("%s: inplace %s[%zu]=%p", __FUNCTION__, name<field_type>(), count(), (void*)piv);
 			if (m_count++) { m_tail->next = piv; }
 			piv->next = nullptr;
 			m_tail = piv;
 			return &m_tail->value;
 		}
 #if (MED_EXCEPTIONS)
-		throw out_of_memory("No space for in-place '%.32s': %zu bytes", name<field_type>(), sizeof(field_type));
+		throw out_of_memory("No space for in-place '%.64s': %zu bytes", name<field_type>(), sizeof(field_type));
 #else
 		return nullptr;
 #endif
@@ -157,7 +157,6 @@ public:
 		}
 		else
 		{
-			CODEC_TRACE("allocating multi-%s", name<field_type>());
 			if (auto* piv = get_allocator_ptr(ctx)->template allocate<field_value>())
 			{
 				++m_count;
@@ -167,7 +166,30 @@ public:
 				return &m_tail->value;
 			}
 		}
+#if (MED_EXCEPTIONS)
+		throw out_of_memory("No allocator for '%.64s': %zu bytes", name<field_type>(), sizeof(field_type));
+#else
 		return nullptr;
+#endif
+	}
+
+	//won't recover space if external storage was used
+	void pop_back()
+	{
+		if (auto const num = count())
+		{
+			//clear the last
+			m_tail->value.clear();
+			//locate previous before last
+			auto* prev = m_fields;
+			for (std::size_t i = 2; i < num; ++i)
+			{
+				prev = prev->next;
+			}
+			CODEC_TRACE("%s: %s[%zu]=%p", __FUNCTION__, name<field_type>(), num-1, (void*)prev->next);
+			prev->next = nullptr;
+			m_tail = (--m_count) ? prev : nullptr;
+		}
 	}
 
 private:

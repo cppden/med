@@ -36,24 +36,24 @@ public:
 			case error::OVERFLOW:
 				if (val1)
 				{
-					throw overflow("%zu bits left, '%.32s' needs %zu", val0, name, val1);
+					throw overflow("%zu bits left, '%.64s' needs %zu", val0, name, val1);
 				}
-				throw overflow("%zu bits left after '%.32s'", val0, name);
+				throw overflow("%zu bits left after '%.64s'", val0, name);
 
 			case error::INCORRECT_VALUE:
-				throw invalid_value("invalid value of '%.32s' at %zu: 0x%zX", name, val1, val0);
+				throw invalid_value("invalid value of '%.64s' at %zu: 0x%zX", name, val1, val0);
 
 			case error::INCORRECT_TAG:
-				throw invalid_tag("wrong tag of '%.32s': %zu", name, val0);
+				throw invalid_tag("wrong tag of '%.64s': %zu", name, val0);
 
 			case error::MISSING_IE:
-				throw missing_ie("missing IE '%.32s': at least %zu expected, got %zu", name, val0, val1);
+				throw missing_ie("missing IE '%.64s': at least %zu expected, got %zu", name, val0, val1);
 
 			case error::EXTRA_IE:
-				throw extra_ie("excessive IE '%.32s': no more than %zu expected, got %zu", name, val0, val1);
+				throw extra_ie("excessive IE '%.64s': no more than %zu expected, got %zu", name, val0, val1);
 
 			case error::OUT_OF_MEMORY:
-				throw out_of_memory("no space to allocate IE '%.32s': %zu bytes", name, val0);
+				throw out_of_memory("no space to allocate IE '%.64s': %zu bytes", name, val0);
 
 			default:
 				break;
@@ -96,7 +96,7 @@ public:
 //TODO: add offsets for all errors
 inline char const* toString(error_context const& ec)
 {
-	static char sz[80];
+	static char sz[128];
 
 	switch (ec.m_error)
 	{
@@ -106,32 +106,32 @@ inline char const* toString(error_context const& ec)
 	case error::OVERFLOW:
 		if (ec.m_param[1])
 		{
-			std::snprintf(sz, sizeof(sz), "%zu bits left, '%s' needs %zu", ec.m_param[0], ec.m_name, ec.m_param[1]);
+			std::snprintf(sz, sizeof(sz), "%zu bits left, '%.64s' needs %zu", ec.m_param[0], ec.m_name, ec.m_param[1]);
 		}
 		else
 		{
-			std::snprintf(sz, sizeof(sz), "%zu bits left after '%s'", ec.m_param[0], ec.m_name);
+			std::snprintf(sz, sizeof(sz), "%zu bits left after '%.64s'", ec.m_param[0], ec.m_name);
 		}
 		break;
 
 	case error::INCORRECT_VALUE:
-		std::snprintf(sz, sizeof(sz), "Invalid value of '%s' at %zu: 0x%zX", ec.m_name, ec.m_param[1], ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "Invalid value of '%.64s' at %zu: 0x%zX", ec.m_name, ec.m_param[1], ec.m_param[0]);
 		break;
 
 	case error::INCORRECT_TAG:
-		std::snprintf(sz, sizeof(sz), "Wrong tag of '%s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "Wrong tag of '%.64s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
 		break;
 
 	case error::MISSING_IE:
-		std::snprintf(sz, sizeof(sz), "Missing IE '%s': at least %zu expected, got %zu", ec.m_name, ec.m_param[0], ec.m_param[1]);
+		std::snprintf(sz, sizeof(sz), "Missing IE '%.64s': at least %zu expected, got %zu", ec.m_name, ec.m_param[0], ec.m_param[1]);
 		break;
 
 	case error::EXTRA_IE:
-		std::snprintf(sz, sizeof(sz), "Excessive IE '%s': no more than %zu expected, got %zu", ec.m_name, ec.m_param[0], ec.m_param[1]);
+		std::snprintf(sz, sizeof(sz), "Excessive IE '%.64s': no more than %zu expected, got %zu", ec.m_name, ec.m_param[0], ec.m_param[1]);
 		break;
 
 	case error::OUT_OF_MEMORY:
-		std::snprintf(sz, sizeof(sz), "No space to allocate IE '%s': %zu bytes", ec.m_name, ec.m_param[0]);
+		std::snprintf(sz, sizeof(sz), "No space to allocate IE '%.64s': %zu bytes", ec.m_name, ec.m_param[0]);
 		break;
 	}
 

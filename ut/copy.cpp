@@ -32,8 +32,8 @@ struct cho : med::choice< byte
 >{};
 
 struct seq : med::sequence<
-	M< T<0xF1>, byte, med::min<2>, med::inf >,    //<TV>*[2,*)
-	M< T<0xF2>, L, word, med::inf >,              //<TLV>(fixed)*[1,*)
+	M< T<0xF1>, byte, med::min<2>, med::inf >, //<TV>*[2,*)
+	M< T<0xF2>, L, word, med::inf >,           //<TLV>(fixed))
 	M< med::counter_t<byte>, dword, med::inf > //C<V>*[1,*)
 >{};
 
