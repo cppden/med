@@ -139,7 +139,7 @@ public:
 			return &m_tail->value;
 		}
 #if (MED_EXCEPTIONS)
-		throw out_of_memory("No space for in-place '%.64s': %zu bytes", name<field_type>(), sizeof(field_type));
+		throw out_of_memory("No space for in-place '%.32s': %zu bytes", name<field_type>(), sizeof(field_type));
 #else
 		return nullptr;
 #endif
@@ -167,7 +167,7 @@ public:
 			}
 		}
 #if (MED_EXCEPTIONS)
-		throw out_of_memory("No allocator for '%.64s': %zu bytes", name<field_type>(), sizeof(field_type));
+		throw out_of_memory("No allocator for '%.32s': %zu bytes", name<field_type>(), sizeof(field_type));
 #else
 		return nullptr;
 #endif
