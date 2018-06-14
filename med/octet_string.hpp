@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include <utility>
+#include <string_view>
 
 #include "multi_field.hpp"
 
@@ -214,6 +215,12 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 
 	bool set(std::size_t len, void const* data)     { return set_encoded(len, data); }
 	bool set()                                      { return set_encoded(0, nullptr); }
+	template <class ARR>
+	auto set(ARR const& s) -> std::enable_if_t<
+		std::is_integral_v<decltype(s.size())> && std::is_pointer_v<decltype(s.data())>, bool>
+	{
+		return this->set(s.size(), s.data());
+	}
 
 	//NOTE: do not override!
 	bool set_encoded(std::size_t len, void const* data)
@@ -247,7 +254,9 @@ struct ascii_string : octet_string<T...>
 	using base_t = octet_string<T...>;
 	using base_t::set;
 
+	std::string_view get() const            { return std::string_view{(char const*)this->data(), this->size()}; }
 	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
+
 	template <std::size_t N>
 	void print(char (&sz)[N]) const
 	{

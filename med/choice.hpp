@@ -154,7 +154,7 @@ struct choice_for<>
 	static MED_RESULT encode(FUNC&& func, TO const& to)
 	{
 		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
-		return func(error::INCORRECT_TAG, name<TO>(), get_tag(to.get_header()));
+		return func(error::UNKNOWN_TAG, name<TO>(), get_tag(to.get_header()));
 	}
 
 	template <class TO>
@@ -221,6 +221,13 @@ public:
 	auto select()                           { return make_selector(this); }
 	auto select() const                     { return make_selector(this); }
 	auto cselect() const                    { return make_selector(this); }
+
+	template <class CASE>
+	static constexpr bool has()
+	{
+		using IE = typename cases<CASES...>::template at<CASE>;
+		return not std::is_same_v<void, IE>;
+	}
 
 	template <class CASE>
 	CASE& ref()

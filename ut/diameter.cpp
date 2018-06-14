@@ -365,7 +365,7 @@ TEST(diameter, padding_encode)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, base);
 #else
-	if (!encode(med::octet_encoder{ctx}, base)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, base)) << toString(ctx.error_ctx());
 #endif
 
 	ASSERT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
@@ -379,7 +379,7 @@ TEST(diameter, padding_decode)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, base);
 #else
-	if (!decode(med::octet_decoder{ctx}, base)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{ctx}, base)) << toString(ctx.error_ctx());
 #endif
 
 	ASSERT_EQ(0, base.header().ap_id());
@@ -513,7 +513,7 @@ TEST(diameter, any_avp)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, base);
 #else
-	if (!decode(med::octet_decoder{dctx}, base)) { FAIL() << toString(dctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, base)) << toString(dctx.error_ctx());
 #endif
 
 	ASSERT_EQ(0, base.header().ap_id());
@@ -540,7 +540,7 @@ TEST(diameter, any_avp)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ectx}, base);
 #else
-	if (!encode(med::octet_encoder{ectx}, base)) { FAIL() << toString(ectx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ectx}, base)) << toString(ectx.error_ctx());
 #endif
 
 	ASSERT_EQ(sizeof(dpa_enc), ectx.buffer().get_offset());
@@ -580,7 +580,7 @@ TEST(diameter, any_msg)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, base);
 #else
-	if (!decode(med::octet_decoder{dctx}, base)) { FAIL() << toString(dctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, base)) << toString(dctx.error_ctx());
 #endif
 
 	ASSERT_EQ(0, base.header().ap_id());
@@ -611,7 +611,7 @@ TEST(diameter, any_msg)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ectx}, base);
 #else
-	if (!encode(med::octet_encoder{ectx}, base)) { FAIL() << toString(ectx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ectx}, base)) << toString(ectx.error_ctx());
 #endif
 
 	ASSERT_EQ(sizeof(dwa), ectx.buffer().get_offset());

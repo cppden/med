@@ -61,8 +61,8 @@ struct overflow : exception
 	overflow(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
 };
 
-//INCORRECT_VALUE,
-//INCORRECT_TAG
+//INVALID_VALUE,
+//UNKNOWN_TAG
 struct value_exception : public exception {};
 
 struct invalid_value : public value_exception
@@ -71,11 +71,11 @@ struct invalid_value : public value_exception
 	template <typename... ARGS>
 	invalid_value(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
 };
-struct invalid_tag : public value_exception
+struct unknown_tag : public value_exception
 {
 //	using value_exception::value_exception;
 	template <typename... ARGS>
-	invalid_tag(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+	unknown_tag(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
 };
 
 //MISSING_IE

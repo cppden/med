@@ -61,7 +61,7 @@ TEST(protobuf, encode_plain)
 #if (MED_EXCEPTIONS)
 	encode(med::protobuf::encoder{ctx}, msg);
 #else
-	if (!encode(med::protobuf::encoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::protobuf::encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	EXPECT_EQ(sizeof(pb::plain_encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(pb::plain_encoded, buffer));
@@ -76,7 +76,7 @@ TEST(protobuf, decode_plain)
 #if (MED_EXCEPTIONS)
 	decode(med::protobuf::decoder{ctx}, msg);
 #else
-	if (!decode(med::protobuf::decoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::protobuf::decoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 
 	pb::plain const& cmsg = msg;

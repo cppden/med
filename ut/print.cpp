@@ -104,7 +104,7 @@ TEST(print, container)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, msg);
 #else
-	if (!decode(med::octet_decoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 
 	std::size_t const cont_num[6] = { 21,  1,  9, 15, 19, 21 };
@@ -144,7 +144,7 @@ TEST(print_all, container)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, msg);
 #else
-	if (!decode(med::octet_decoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 
 	dummy_sink d{0};
@@ -186,20 +186,15 @@ TEST_P(PrintUt, levels)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{m_ctx}, m_proto);
 #else
-	if (!decode(med::octet_decoder{m_ctx}, m_proto)) { FAIL() << toString(m_ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{m_ctx}, m_proto)) << toString(m_ctx.error_ctx());
 #endif
 
 	dummy_sink d{0};
 	med::print(d, m_proto, 1);
 
 	std::size_t const num_prints[2][3] = {
-#ifdef CODEC_TRACE_ENABLE
-		{1, 0, 1},
-		{2, 1, 2},
-#else
 		{1, 0, 0},
 		{2, 1, 1},
-#endif
 	};
 
 	EXPECT_EQ(num_prints[0][0], d.num_on_container);
@@ -220,7 +215,7 @@ TEST_P(PrintUt, incomplete)
 #if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{m_ctx}, m_proto), med::exception);
 #else
-	if (decode(med::octet_decoder{m_ctx}, m_proto)) { FAIL() << toString(m_ctx.error_ctx()); }
+	ASSERT_FALSE(decode(med::octet_decoder{m_ctx}, m_proto));
 #endif
 
 	dummy_sink d{0};

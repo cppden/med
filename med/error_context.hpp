@@ -40,11 +40,11 @@ public:
 				}
 				throw overflow("%zu bits left after '%.32s'", val0, name);
 
-			case error::INCORRECT_VALUE:
+			case error::INVALID_VALUE:
 				throw invalid_value("invalid value of '%.32s' at %zu: 0x%zX", name, val1, val0);
 
-			case error::INCORRECT_TAG:
-				throw invalid_tag("wrong tag of '%.32s': %zu", name, val0);
+			case error::UNKNOWN_TAG:
+				throw unknown_tag("unknown tag of '%.32s': %zu", name, val0);
 
 			case error::MISSING_IE:
 				throw missing_ie("missing IE '%.32s': at least %zu expected, got %zu", name, val0, val1);
@@ -114,12 +114,12 @@ inline char const* toString(error_context const& ec)
 		}
 		break;
 
-	case error::INCORRECT_VALUE:
+	case error::INVALID_VALUE:
 		std::snprintf(sz, sizeof(sz), "Invalid value of '%.32s' at %zu: 0x%zX", ec.m_name, ec.m_param[1], ec.m_param[0]);
 		break;
 
-	case error::INCORRECT_TAG:
-		std::snprintf(sz, sizeof(sz), "Wrong tag of '%.32s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
+	case error::UNKNOWN_TAG:
+		std::snprintf(sz, sizeof(sz), "Unknown tag of '%.32s': %zu (0x%zX)", ec.m_name, ec.m_param[0], ec.m_param[0]);
 		break;
 
 	case error::MISSING_IE:

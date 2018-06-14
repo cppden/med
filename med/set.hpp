@@ -144,7 +144,7 @@ struct set_for<IE, IEs...>
 
 				IE& ie = static_cast<IE&>(to);
 				CODEC_TRACE("[%s] = %u", name<IE>(), ie.ref_field().is_set());
-				if (!ie.ref_field().is_set())
+				if (not ie.ref_field().is_set())
 				{
 					return med::decode(func, ie.ref_field(), unexp);
 				}
@@ -165,7 +165,7 @@ struct set_for<IE, IEs...>
 		else //single-instance field
 		{
 			IE const& ie = static_cast<IE const&>(to);
-			if (!is_optional_v<IE> && !ie.ref_field().is_set())
+			if (not (is_optional_v<IE> || ie.ref_field().is_set()))
 			{
 				return func(error::MISSING_IE, name<IE>(), 1, 0);
 			}

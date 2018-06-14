@@ -18,8 +18,8 @@ enum class error : uint8_t
 {
 	SUCCESS,
 	OVERFLOW,   //insufficient input or output buffer
-	INCORRECT_VALUE,
-	INCORRECT_TAG,
+	INVALID_VALUE,
+	UNKNOWN_TAG,
 	MISSING_IE, //missing required (mandatory) IE
 	EXTRA_IE,   //excessive number of IE
 	OUT_OF_MEMORY,   //no space to allocate

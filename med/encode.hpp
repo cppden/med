@@ -47,67 +47,127 @@ struct null_encoder<T, std::void_t<typename T::null_encoder>>
 	}
 };
 
+template <bool BY_IE, class FUNC, class LEN>
+struct length_encoder;
+
 template <class FUNC, class LEN>
-struct length_encoder
+struct len_enc_impl
 {
 	using state_type = typename FUNC::state_type;
 	using length_type = LEN;
 	static constexpr std::size_t granularity = FUNC::granularity;
 
-	explicit length_encoder(FUNC& encoder) noexcept
+	explicit len_enc_impl(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
 		, m_start{ m_encoder(GET_STATE{}) }
 	{
 	}
 
-	//update the length with final value
-	void set_length_ie()
+#ifdef CODEC_TRACE_ENABLE
+	~len_enc_impl() noexcept
 	{
-		if (m_lenpos)
-		{
-			state_type const end = m_encoder(GET_STATE{});
-
-			std::size_t len_value = end - m_start - m_delta;
-			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
-
-			length_type len_ie;
-#if (MED_EXCEPTIONS)
-			length_to_value(m_encoder, len_ie, len_value);
-			CODEC_TRACE("L=%zx[%s]:", std::size_t(len_ie.get()), name<length_type>());
-			m_encoder(SET_STATE{}, m_lenpos);
-			encode(m_encoder, len_ie);
-			m_encoder(SET_STATE{}, end);
-#else
-			if (length_to_value(m_encoder, len_ie, len_value))
-			{
-				CODEC_TRACE("L=%zx[%s]:", std::size_t(len_ie.get()), name<length_type>());
-				m_encoder(SET_STATE{}, m_lenpos);
-				encode(m_encoder, len_ie);
-				m_encoder(SET_STATE{}, end);
-			}
-#endif //MED_EXCEPTIONS
-		}
+		CODEC_TRACE("finish len_type=%s...:", name<length_type>());
 	}
-
-	template <int DELTA>
-	MED_RESULT operator() (placeholder::_length<DELTA> const&)
-	{
-		m_delta = DELTA;
-		m_lenpos = m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
-		return m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
-	}
+#endif
 
 	//check if placeholder was visited
 	explicit operator bool() const                       { return static_cast<bool>(m_lenpos); }
 
+	//forward regular types to encoder
 	template <class ...T>
-	auto operator() (T&&... args)                        { return m_encoder(std::forward<T>(args)...); }
+	auto operator() (T&&... args)
+	{
+		//CODEC_TRACE("%s", __PRETTY_FUNCTION__);
+		return m_encoder(std::forward<T>(args)...);
+	}
 
+protected:
 	FUNC&            m_encoder;
-	int              m_delta {0};
 	state_type const m_start;
 	state_type       m_lenpos { };
 };
+
+
+//by placeholder
+template <class FUNC, class LEN>
+struct length_encoder<false, FUNC, LEN> : len_enc_impl<FUNC, LEN>
+{
+	using length_type = LEN;
+	using len_enc_impl<FUNC, LEN>::len_enc_impl;
+	using len_enc_impl<FUNC, LEN>::operator();
+
+	//length position by placeholder
+	template <int DELTA>
+	auto operator() (placeholder::_length<DELTA> const&)
+	{
+		CODEC_TRACE("len_enc[%s] %+d by placeholder", name<length_type>(), DELTA);
+		m_delta = DELTA;
+		//save position in encoded buffer to update with correct length
+		this->m_lenpos = this->m_encoder(GET_STATE{});
+		return this->m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
+	}
+
+	//update the length with final value
+	MED_RESULT set_length_ie()
+	{
+		if (this->m_lenpos)
+		{
+			auto const end = this->m_encoder(GET_STATE{});
+			std::size_t len_value = end - this->m_start - m_delta;
+			//CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
+			length_type len_ie;
+			MED_CHECK_FAIL(length_to_value(this->m_encoder, len_ie, len_value));
+			this->m_encoder(SET_STATE{}, this->m_lenpos);
+			MED_CHECK_FAIL(encode(this->m_encoder, len_ie));
+			this->m_encoder(SET_STATE{}, end);
+		}
+		MED_RETURN_SUCCESS;
+	}
+
+private:
+	int m_delta {0};
+};
+
+//by exact length type
+template <class FUNC, class LEN>
+struct length_encoder<true, FUNC, LEN> : len_enc_impl<FUNC, LEN>
+{
+	using length_type = LEN;
+	using len_enc_impl<FUNC, LEN>::len_enc_impl;
+	using len_enc_impl<FUNC, LEN>::operator();
+
+
+	//length position by exact type match
+	template <class T, class ...ARGS>
+	auto operator () (T const& len_ie, ARGS&&...) ->
+		std::enable_if_t<std::is_same_v<typename T::field_type, length_type>, MED_RESULT>
+	{
+		CODEC_TRACE("len_enc[%s] by IE", name<length_type>());
+		this->m_lenpos = this->m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
+		//TODO: trigger setters if any?
+		m_len_ie.copy(len_ie.ref_field());
+		return this->m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
+	}
+
+	//update the length with final value
+	MED_RESULT set_length_ie()
+	{
+		if (this->m_lenpos)
+		{
+			auto const end = this->m_encoder(GET_STATE{});
+			std::size_t const len_value = end - this->m_start - 1;
+			MED_CHECK_FAIL(length_to_value(this->m_encoder, m_len_ie, len_value));
+			this->m_encoder(SET_STATE{}, this->m_lenpos);
+			MED_CHECK_FAIL(encode(this->m_encoder, m_len_ie));
+			this->m_encoder(SET_STATE{}, end);
+		}
+		MED_RETURN_SUCCESS;
+	}
+
+private:
+	length_type m_len_ie;
+};
+
 
 template <class T, typename Enable = void>
 struct container_encoder
@@ -115,38 +175,36 @@ struct container_encoder
 	template <class FUNC, class IE>
 	static constexpr MED_RESULT encode(FUNC& func, IE const& ie)
 	{
-		if constexpr (has_length_type<IE>::value)
+		if constexpr (is_length_v<IE>)
 		{
-			CODEC_TRACE("start %s with length...:", name<IE>());
+			using length_type = typename IE::length_type;
+
 			if constexpr (has_padding<IE>::value)
 			{
+				CODEC_TRACE("start %s with padded len_type=%s...:", name<IE>(), name<length_type>());
 				using pad_t = padder<IE, FUNC>;
 				pad_t pad{func};
-				length_encoder<FUNC, typename IE::length_type> le{ func };
+				length_encoder<IE::template has<length_type>(), FUNC, length_type> le{ func };
 				MED_CHECK_FAIL(ie.encode(le));
 				//special case for empty elements w/o length placeholder
 				pad.enable(static_cast<bool>(le));
 				if constexpr (pad_t::pad_traits::inclusive)
 				{
 					MED_CHECK_FAIL(pad.add());
-					le.set_length_ie();
-					CODEC_TRACE("finish %s with length...:", name<IE>());
-					MED_RETURN_SUCCESS;
+					return le.set_length_ie();
 				}
 				else
 				{
-					le.set_length_ie();
-					CODEC_TRACE("finish %s with length...:", name<IE>());
+					MED_CHECK_FAIL(le.set_length_ie());
 					return pad.add();
 				}
 			}
 			else
 			{
-				length_encoder<FUNC, typename IE::length_type> le{ func };
+				CODEC_TRACE("start %s with len_type=%s...:", name<IE>(), name<length_type>());
+				length_encoder<IE::template has<length_type>(), FUNC, length_type> le{ func };
 				MED_CHECK_FAIL(ie.encode(le));
-				le.set_length_ie();
-				CODEC_TRACE("finish %s with length...:", name<IE>());
-				MED_RETURN_SUCCESS;
+				return le.set_length_ie();
 			}
 		}
 		else

@@ -7,6 +7,8 @@
 
 #include "ut.hpp"
 
+using namespace std::string_view_literals;
+
 namespace len {
 
 struct L : med::length_t<med::value<uint8_t>>{};
@@ -14,10 +16,22 @@ struct L : med::length_t<med::value<uint8_t>>{};
 template <std::size_t TAG>
 using T = med::value<med::fixed<TAG, uint8_t>>;
 
-struct U8  : med::value<uint8_t> {};
-struct U16 : med::value<uint16_t> {};
-struct U24 : med::value<med::bytes<3>> {};
-struct U32 : med::value<uint32_t> {};
+struct U8  : med::value<uint8_t>
+{
+	bool set_encoded(value_type v) { return (v < 0xF0) ? base_t::set_encoded(v), true : false; }
+};
+struct U16 : med::value<uint16_t>
+{
+	bool set_encoded(value_type v) { return (v < 0xF000) ? base_t::set_encoded(v), true : false; }
+};
+struct U24 : med::value<med::bytes<3>>
+{
+	bool set_encoded(value_type v) { return (v < 0xF00000) ? base_t::set_encoded(v), true : false; }
+};
+struct U32 : med::value<uint32_t>
+{
+	bool set_encoded(value_type v) { return (v < 0xF0000000) ? base_t::set_encoded(v), true : false; }
+};
 
 struct CHOICE : med::choice< med::value<uint8_t>
 	, med::tag<T<1>, U8>
@@ -30,12 +44,12 @@ struct SEQ2 : med::sequence<
 	O< T<1>, L, CHOICE >
 >{};
 
-struct VAR : med::ascii_string<med::min<3>, med::max<10>> {};
+struct VAR : med::ascii_string<med::min<3>, med::max<15>> {};
 
 struct MSG : med::sequence<
 	M< T<1>, L, U8, med::max<2>>,
-	O< T<2>, U16>,
-	O< T<3>, U24>,
+	O< T<2>, U16, med::max<2>>,
+	O< T<3>, U24, med::max<2>>,
 	O< T<4>, L, U32, med::max<2>>
 >{};
 
@@ -65,6 +79,32 @@ struct true_cond
 struct C_LV : med::sequence<
 	O<L, VAR, true_cond>
 >{};
+
+//value with length
+struct VL : med::value<uint8_t>
+{
+	//value part
+	value_type get() const          { return get_encoded() & 0xF; }
+	void set(value_type v)          { set_encoded(v & 0xF); }
+	//length part
+	value_type get_length() const   { return get_encoded() >> 4; }
+	bool set_length(value_type v)   { return (v < 0x10) ? set_encoded((v << 4)|get()), true : false; }
+};
+
+struct VLVAR : med::sequence<
+	M<VL>,
+	M<VAR>
+>
+{
+	using length_type = VL;
+};
+
+struct VMSG : med::sequence<
+	M< T<1>, VLVAR, med::max<2>>,
+	O< T<2>, U16, med::max<2>>,
+	O< T<4>, L, U32, med::max<2>>
+>{};
+
 
 } //namespace len
 
@@ -155,34 +195,104 @@ TEST(length, c_lv)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
 #else
 	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
-	EXPECT_EQ(med::error::INCORRECT_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+	EXPECT_EQ(med::error::INVALID_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 #endif
 }
 
-#if 0
-TEST(length, seq)
+TEST(length, vlvar)
 {
-	uint8_t const encoded[] = {
-		4, //total len
-		1, 2, 3, 4, //U8=3, U8=4
-	};
+	uint8_t buffer[32];
+	med::encoder_context<> ctx{ buffer };
 
-	med::decoder_context<> ctx{encoded};
-	len::SEQ seq;
+	len::VMSG msg;
+	std::string_view const data[] = {"123"sv, "123456"sv};
+
+	for (std::size_t i = 0; i < std::size(data); ++i)
+	{
+		auto* vlvar = msg.push_back<len::VLVAR>();
+		ASSERT_NE(nullptr, vlvar);
+		vlvar->ref<len::VL>().set(i + 1);
+		vlvar->ref<len::VAR>().set(data[i]);
+	}
+
 #if (MED_EXCEPTIONS)
-	decode(med::octet_decoder{ctx}, seq);
+	encode(med::octet_encoder{ctx}, msg);
 #else
-	if (!decode(med::octet_decoder{ctx}, seq)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 
-	len::MSG const& msg = seq.cfield();
-	auto& u8s = msg.get<len::U8>();
-	ASSERT_EQ(2, u8s.count());
-	uint8_t const u8_exp[] = {3,4};
-	auto* p = u8_exp;
-	for (auto const& u : msg.get<len::U8>())
+	uint8_t encoded[] = {
+		1, 0x31, //len=3, val=1
+		'1','2','3',
+		1, 0x62, //len=6, val=2
+		'1','2','3','4','5','6',
+	};
+	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	ASSERT_TRUE(Matches(encoded, buffer));
+
+	//check decode
+	med::decoder_context<> dctx{encoded};
+	msg.clear();
+
+#if (MED_EXCEPTIONS)
+	decode(med::octet_decoder{dctx}, msg);
+#else
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, msg)) << toString(dctx.error_ctx());
+#endif
+
+	std::size_t index = 1;
+	for (auto const& v : msg.get<len::VLVAR>())
 	{
-		EXPECT_EQ(*p++, u.get());
+		EXPECT_EQ(index, v.get<len::VL>().get());
+		EXPECT_EQ(index*3, v.get<len::VL>().get_length());
+		EXPECT_EQ(data[index-1], v.get<len::VAR>().get());
+		++index;
 	}
+}
+
+#if 1
+TEST(length, seq)
+{
+	med::decoder_context<> ctx;
+	len::SEQ msg;
+
+	uint8_t const ok[] = {
+		6, //total len
+		1, 1, 1, //U8
+		2, 1,2, //U16
+	};
+	msg.clear(); ctx.reset(ok);
+#if (MED_EXCEPTIONS)
+	decode(med::octet_decoder{ctx}, msg);
+#else
+	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
+#endif
+
+	uint8_t const short_total_len[] = {
+		5, //total len
+		1, 1, 1, //U8
+		2, 1,2, //U16
+	};
+	msg.clear(); ctx.reset(short_total_len);
+#if (MED_EXCEPTIONS)
+	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::overflow);
+#else
+	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
+	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+#endif
+
+	uint8_t const inv_value[] = {
+		5, //total len
+		1, 1, 0xF1, //U8
+		2, 1,2, //U16
+	};
+	msg.clear(); ctx.reset(inv_value);
+#if (MED_EXCEPTIONS)
+	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
+#else
+	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
+	EXPECT_EQ(med::error::INVALID_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
+#endif
+
 }
 #endif

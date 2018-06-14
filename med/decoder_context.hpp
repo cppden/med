@@ -59,15 +59,15 @@ public:
 	{
 	}
 
-	template <std::size_t SIZE>
-	explicit decoder_context(uint8_t const (&data)[SIZE])
-		: decoder_context(data, SIZE, nullptr, 0)
+	template <typename T, std::size_t SIZE>
+	explicit decoder_context(T const (&data)[SIZE])
+		: decoder_context(data, sizeof(data), nullptr, 0)
 	{
 	}
 
-	template <std::size_t SIZE, typename T, std::size_t ALLOC_SIZE>
-	decoder_context(uint8_t const (&data)[SIZE], T (&alloc_data)[ALLOC_SIZE])
-		: decoder_context(data, SIZE, alloc_data, sizeof(alloc_data))
+	template <typename T1, std::size_t SIZE, typename T2, std::size_t ALLOC_SIZE>
+	decoder_context(T1 const (&data)[SIZE], T2 (&alloc_data)[ALLOC_SIZE])
+		: decoder_context(data, sizeof(data), alloc_data, sizeof(alloc_data))
 	{
 	}
 
@@ -83,6 +83,8 @@ public:
 		buffer().reset(static_cast<typename buffer_type::pointer>(data), size);
 		error_ctx().reset();
 	}
+	template <typename T, std::size_t SIZE>
+	void reset(T const (&data)[SIZE])       { reset(data, sizeof(data)); }
 
 	void reset()
 	{

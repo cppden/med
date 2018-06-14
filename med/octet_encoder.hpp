@@ -41,7 +41,7 @@ struct octet_encoder
 			}
 			else
 			{
-				return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), 0);
+				return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), 0);
 			}
 		}
 		else

@@ -33,7 +33,7 @@ struct default_handler
 	constexpr MED_RESULT operator()(FUNC& func, IE const&, HEADER const& header) const
 	{
 		CODEC_TRACE("ERROR tag=%zu", std::size_t(get_tag(header)));
-		return func(error::INCORRECT_TAG, name<IE>(), get_tag(header));
+		return func(error::UNKNOWN_TAG, name<IE>(), get_tag(header));
 	}
 };
 
@@ -76,7 +76,6 @@ constexpr MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 
 //Tag-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-//std::enable_if_t<!is_optional_v<IE>, MED_RESULT>
 inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 {
 	CODEC_TRACE("TV %s", name<IE>());
@@ -91,7 +90,7 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
 	CODEC_TRACE("ERROR tag=%zu", std::size_t(tag.get_encoded()));
-	return func(error::INCORRECT_TAG, name<WRAPPER>(), tag.get_encoded());
+	return func(error::UNKNOWN_TAG, name<WRAPPER>(), tag.get_encoded());
 }
 
 //Length-Value
@@ -119,8 +118,11 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 	return func(error::OVERFLOW, name<WRAPPER>(), 0);
 }
 
+template <bool BY_IE, class FUNC, class IE, class UNEXP>
+struct length_decoder;
+
 template <class FUNC, class IE, class UNEXP>
-struct length_decoder
+struct len_dec_impl
 {
 	using state_type = typename FUNC::state_type;
 	using size_state = typename FUNC::size_state;
@@ -129,42 +131,23 @@ struct length_decoder
 
 	using length_type = typename IE::length_type;
 
-	length_decoder(FUNC& decoder, IE& ie, UNEXP& unexp) noexcept
+	len_dec_impl(FUNC& decoder, IE& ie, UNEXP& unexp) noexcept
 		: m_decoder{ decoder }
 		, m_ie{ ie }
 		, m_start{ m_decoder(GET_STATE{}) }
 		, m_unexp{ unexp }
 	{
-		CODEC_TRACE("start %s with length...:", name<IE>());
+		CODEC_TRACE("start %s with len=%s...:", name<IE>(), name<length_type>());
 	}
 
-	void restore_length()
-	{
-		m_size_state.restore_end();
-	}
+	void restore_end()                                { m_size_state.restore_end(); }
 
 #ifdef CODEC_TRACE_ENABLE
-	~length_decoder()
+	~len_dec_impl() noexcept
 	{
-		CODEC_TRACE("finish %s with length...:", name<IE>());
+		CODEC_TRACE("finish %s with len=%s...:", name<IE>(), name<length_type>());
 	}
 #endif
-
-	template <int DELTA>
-	MED_RESULT operator() (placeholder::_length<DELTA>&)
-	{
-		length_type len_ie;
-		MED_CHECK_FAIL(decode(m_decoder, len_ie, m_unexp));
-		//reduced size of the input buffer for current length and elements from the start of IE
-		std::size_t len_value = len_ie.get_encoded();
-		CODEC_TRACE("raw len=%zu", len_value);
-		MED_CHECK_FAIL(value_to_length(m_decoder, len_ie, len_value));
-		typename length_type::value_type const size = (len_value + DELTA) - (m_decoder(GET_STATE{}) - m_start);
-		CODEC_TRACE("size(%zu)=length(%zu) + %d - %ld", std::size_t(size), len_value, DELTA, (m_decoder(GET_STATE{}) - m_start));
-		m_size_state = m_decoder(PUSH_SIZE{size});
-		if (!m_size_state) return m_decoder(error::OVERFLOW, name<get_field_type_t<IE>>(), m_size_state.size() * FUNC::granularity, size * FUNC::granularity);
-		MED_RETURN_SUCCESS;
-	}
 
 	//check if placeholder was visited
 	explicit operator bool() const                     { return static_cast<bool>(m_size_state); }
@@ -175,6 +158,50 @@ struct length_decoder
 
 	allocator_type& get_allocator()                    { return m_decoder.get_allocator(); }
 
+protected:
+	//reduce size of the buffer for current length and elements from the start of IE
+	template <int DELTA>
+	bool calc_buf_len(std::size_t& len_value) const
+	{
+		if constexpr (DELTA < 0)
+		{
+			if (len_value < std::size_t(-DELTA))
+			{
+				CODEC_TRACE("len=%zu less than delta=%+d", len_value, DELTA);
+				return false;
+			}
+		}
+		len_value += DELTA;
+		auto const state_delta = std::size_t(m_decoder(GET_STATE{}) - m_start);
+		CODEC_TRACE("len=%zu state-delta=%zu", len_value, state_delta);
+		if (state_delta > len_value)
+		{
+			CODEC_TRACE("len=%zu less than buffer has been advanced=%zu", len_value, state_delta);
+			return false;
+		}
+		len_value -= state_delta;
+		return true;
+	}
+
+	template <int DELTA>
+	MED_RESULT decode_len_ie(length_type& len_ie)
+	{
+		MED_CHECK_FAIL(decode(m_decoder, len_ie, m_unexp));
+		std::size_t len_value = 0;
+		MED_CHECK_FAIL(value_to_length(m_decoder, len_ie, len_value));
+		if (not calc_buf_len<DELTA>(len_value))
+		{
+			return m_decoder(error::INVALID_VALUE, name<IE>(), len_value);
+		}
+		m_size_state = m_decoder(PUSH_SIZE{len_value});
+		if (not m_size_state)
+		{
+			return m_decoder(error::OVERFLOW, name<IE>(), m_size_state.size() * FUNC::granularity, len_value * FUNC::granularity);
+		}
+		MED_RETURN_SUCCESS;
+	}
+
+
 	FUNC&            m_decoder;
 	IE&              m_ie;
 	state_type const m_start;
@@ -182,16 +209,50 @@ struct length_decoder
 	UNEXP&           m_unexp;
 };
 
+template <class FUNC, class IE, class UNEXP>
+struct length_decoder<false, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
+{
+	using length_type = typename IE::length_type;
+	using len_dec_impl<FUNC, IE, UNEXP>::len_dec_impl;
+	using len_dec_impl<FUNC, IE, UNEXP>::operator();
+
+	template <int DELTA>
+	MED_RESULT operator() (placeholder::_length<DELTA>&)
+	{
+		CODEC_TRACE("len_dec[%s] %+d by placeholder", name<length_type>(), DELTA);
+		length_type len_ie;
+		return this->template decode_len_ie<DELTA>(len_ie);
+	}
+};
+
+template <class FUNC, class IE, class UNEXP>
+struct length_decoder<true, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
+{
+	using length_type = typename IE::length_type;
+	using len_dec_impl<FUNC, IE, UNEXP>::len_dec_impl;
+	using len_dec_impl<FUNC, IE, UNEXP>::operator();
+
+	//length position by exact type match
+	template <class T, class ...ARGS>
+	auto operator () (T& len_ie, ARGS&&...) ->
+		std::enable_if_t<std::is_same_v<typename T::field_type, length_type>, MED_RESULT>
+	{
+		CODEC_TRACE("len_dec[%s] by IE", name<length_type>());
+		//don't count the size of length IE itself just like with regular LV
+		return this->template decode_len_ie<length_type::traits::bits/FUNC::granularity>(len_ie.ref_field());
+	}
+};
+
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 inline MED_RESULT decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
-	if constexpr (has_length_type<IE>::value)
+	if constexpr (is_length_v<IE>)
 	{
 		if constexpr (has_padding<IE>::value)
 		{
 			using pad_t = padder<IE, FUNC>;
 			pad_t pad{func};
-			length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
+			length_decoder<IE::template has<typename IE::length_type>(), FUNC, IE, UNEXP> ld{ func, ie, unexp };
 			MED_CHECK_FAIL(ie.decode(ld, unexp));
 			//special case for empty elements w/o length placeholder
 			pad.enable(static_cast<bool>(ld));
@@ -199,22 +260,22 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 			if constexpr (pad_t::pad_traits::inclusive)
 			{
 				MED_CHECK_FAIL(pad.add());
-				ld.restore_length();
+				ld.restore_end();
 			}
 			else
 			{
-				ld.restore_length();
+				ld.restore_end();
 				return pad.add();
 			}
-			//TODO: may treat this case as warning? happens only in case of last IE with padding ended prematuraly
+			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
 			//if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
 			// return func(error::OVERFLOW, name<IE>(), left * FUNC::granularity);
 		}
 		else
 		{
-			length_decoder<FUNC, IE, UNEXP> ld{ func, ie, unexp };
+			length_decoder<IE::template has<typename IE::length_type>(), FUNC, IE, UNEXP> ld{ func, ie, unexp };
 			MED_CHECK_FAIL(ie.decode(ld, unexp));
-			ld.restore_length();
+			ld.restore_end();
 		}
 		MED_RETURN_SUCCESS;
 	}

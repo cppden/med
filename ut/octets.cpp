@@ -32,7 +32,7 @@ TEST(octets, var_intern)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
 #else
-	if (!encode(med::octet_encoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded[] = {1,5,1,2,3,4,5};
 	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
@@ -43,7 +43,7 @@ TEST(octets, var_intern)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, dmsg);
 #else
-	if (!decode(med::octet_decoder{dctx}, dmsg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
 #endif
 	var_intern const* p = msg.cfield();
 	ASSERT_NE(nullptr, p);
@@ -62,7 +62,7 @@ TEST(octets, var_intern_zero)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
 #else
-	if (!encode(med::octet_encoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded[] = {1,0};
 	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
@@ -73,7 +73,7 @@ TEST(octets, var_intern_zero)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, dmsg);
 #else
-	if (!decode(med::octet_decoder{dctx}, dmsg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
 #endif
 	var_intern const* p = msg.cfield();
 	ASSERT_NE(nullptr, p);
@@ -92,7 +92,7 @@ TEST(octets, var_extern)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
 #else
-	if (!encode(med::octet_encoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded[] = {2,5,1,2,3,4,5};
 	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
@@ -103,7 +103,7 @@ TEST(octets, var_extern)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, dmsg);
 #else
-	if (!decode(med::octet_decoder{dctx}, dmsg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
 #endif
 	var_extern const* p = msg.cfield();
 	ASSERT_NE(nullptr, p);
@@ -122,7 +122,7 @@ TEST(octets, var_extern_zero)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
 #else
-	if (!encode(med::octet_encoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded[] = {2,0};
 	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
@@ -133,7 +133,7 @@ TEST(octets, var_extern_zero)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, dmsg);
 #else
-	if (!decode(med::octet_decoder{dctx}, dmsg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
 #endif
 	var_extern const* p = msg.cfield();
 	ASSERT_NE(nullptr, p);
@@ -153,7 +153,7 @@ TEST(octets, fix_intern)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
 #else
-	if (!encode(med::octet_encoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded[] = {3,8,1,2,3,4,5,6,7,8};
 	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
@@ -164,7 +164,7 @@ TEST(octets, fix_intern)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, dmsg);
 #else
-	if (!decode(med::octet_decoder{dctx}, dmsg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
 #endif
 	fix_intern const* p = msg.cfield();
 	ASSERT_NE(nullptr, p);
@@ -184,7 +184,7 @@ TEST(octets, fix_extern)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
 #else
-	if (!encode(med::octet_encoder{ctx}, msg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded[] = {4,8,1,2,3,4,5,6,7,8};
 	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
@@ -195,7 +195,7 @@ TEST(octets, fix_extern)
 #if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, dmsg);
 #else
-	if (!decode(med::octet_decoder{dctx}, dmsg)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
 #endif
 	fix_extern const* p = msg.cfield();
 	ASSERT_NE(nullptr, p);

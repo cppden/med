@@ -100,7 +100,7 @@ struct seq_decoder<IE, IES...>
 
 				while (IE::tag_type::match(vtag.get_encoded()))
 				{
-					CODEC_TRACE("->T=%zx[%s]*", vtag.get_encoded(), name<IE>());
+					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count());
 					auto* field = ie.push_back(func);
 					MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 
@@ -111,16 +111,16 @@ struct seq_decoder<IE, IES...>
 						TAG_IE tag;
 #if (MED_EXCEPTIONS)
 						//TODO: avoid try/catch
-						try
-						{
+//						try
+//						{
 							func(tag, typename TAG_IE::ie_type{});
 							vtag.set_encoded(tag.get_encoded());
 							CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-						}
-						catch (med::overflow const& ex)
-						{
-							vtag.clear();
-						}
+//						}
+//						catch (med::overflow const& ex)
+//						{
+//							vtag.clear();
+//						}
 #else
 						if (func(tag, typename TAG_IE::ie_type{}))
 						{
@@ -231,7 +231,7 @@ struct seq_decoder<IE, IES...>
 						MED_CHECK_FAIL(med::decode(func, ie, unexp));
 						if constexpr (has_default_value_v<IE>)
 						{
-							if (!was_set) { ie.ref_field().clear(); } //discard since it's a default
+							if (not was_set) { ie.ref_field().clear(); } //discard since it's a default
 						}
 					}
 					else
@@ -246,7 +246,7 @@ struct seq_decoder<IE, IES...>
 					if (!vtag)
 					{
 						//save state before decoding a tag
-						if (!func(PUSH_STATE{}))
+						if (not func(PUSH_STATE{}))
 						{
 							CODEC_TRACE("EoF at %s", name<IE>());
 							MED_RETURN_SUCCESS; //end of buffer
@@ -274,7 +274,7 @@ struct seq_decoder<IE, IES...>
 					CODEC_TRACE("[%s]...", name<IE>());
 					discard(func, vtag);
 
-					if (!func(CHECK_STATE{}))
+					if (not func(CHECK_STATE{}))
 					{
 						CODEC_TRACE("EOF at [%s]", name<IE>());
 						MED_RETURN_SUCCESS; //end of buffer
@@ -384,9 +384,9 @@ struct seq_encoder<IE, IES...>
 					typename IE::setter_type setter;
 					if constexpr (std::is_same_v<bool, decltype(setter(ie, to))>)
 					{
-						if (!setter(ie, to))
+						if (not setter(ie, to))
 						{
-							return func(error::INCORRECT_VALUE, name<IE>(), ie.get());
+							return func(error::INVALID_VALUE, name<IE>(), ie.get());
 						}
 					}
 					else
@@ -419,9 +419,9 @@ struct seq_encoder<IE, IES...>
 					typename IE::setter_type setter;
 					if constexpr (std::is_same_v<bool, decltype(setter(ie, to))>)
 					{
-						if (!setter(ie, to))
+						if (not setter(ie, to))
 						{
-							return func(error::INCORRECT_VALUE, name<IE>(), ie.get());
+							return func(error::INVALID_VALUE, name<IE>(), ie.get());
 						}
 					}
 					else

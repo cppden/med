@@ -127,7 +127,7 @@ TEST(opt_defs, unset)
 #if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, header);
 #else
-		if (!encode(med::octet_encoder{ctx}, header)) { FAIL() << toString(ctx.error_ctx()); }
+		ASSERT_TRUE(encode(med::octet_encoder{ctx}, header)) << toString(ctx.error_ctx());
 #endif
 		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 		ASSERT_TRUE(Matches(encoded, buffer));
@@ -139,7 +139,7 @@ TEST(opt_defs, unset)
 #if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, header);
 #else
-		if (!decode(med::octet_decoder{ctx}, header)) { FAIL() << toString(ctx.error_ctx()); }
+		ASSERT_TRUE(decode(med::octet_decoder{ctx}, header)) << toString(ctx.error_ctx());
 #endif
 		gtpc::message_priority const* prio = header.field();
 		EXPECT_EQ(nullptr, prio);
@@ -165,7 +165,7 @@ TEST(opt_defs, set)
 #if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, header);
 #else
-		if (!encode(med::octet_encoder{ctx}, header)) { FAIL() << toString(ctx.error_ctx()); }
+		ASSERT_TRUE(encode(med::octet_encoder{ctx}, header)) << toString(ctx.error_ctx());
 #endif
 		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 		ASSERT_TRUE(Matches(encoded, buffer));
@@ -177,7 +177,7 @@ TEST(opt_defs, set)
 #if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, header);
 #else
-		if (!decode(med::octet_decoder{ctx}, header)) { FAIL() << toString(ctx.error_ctx()); }
+		ASSERT_TRUE(decode(med::octet_decoder{ctx}, header)) << toString(ctx.error_ctx());
 #endif
 		gtpc::message_priority const* prio = header.cfield();
 		ASSERT_NE(nullptr, prio);

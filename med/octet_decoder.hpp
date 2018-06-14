@@ -73,9 +73,9 @@ struct octet_decoder
 			auto const val = get_bytes<IE>(pval);
 			if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
 			{
-				if (!ie.set_encoded(val))
+				if (not ie.set_encoded(val))
 				{
-					return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), val, ctx.buffer().get_offset());
+					return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), val, ctx.buffer().get_offset());
 				}
 			}
 			else
@@ -102,7 +102,7 @@ struct octet_decoder
 			if (ctx.buffer().advance(ie.get_length())) MED_RETURN_SUCCESS;
 			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
 		}
-		return ctx.error_ctx().set_error(error::INCORRECT_VALUE, name<IE>(), ie.get_length(), ctx.buffer().get_offset());
+		return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), ie.get_length(), ctx.buffer().get_offset());
 	}
 
 private:

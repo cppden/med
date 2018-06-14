@@ -109,7 +109,7 @@ TEST(padding, exclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_1[] = { 1, 3, 0x12, 0 };
 	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
@@ -121,7 +121,7 @@ TEST(padding, exclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_2[] = { 2, 4, 0x12, 0x34 };
 	EXPECT_EQ(sizeof(encoded_2), ctx.buffer().get_offset());
@@ -133,7 +133,7 @@ TEST(padding, exclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_3[] = { 3, 5, 0x12, 0x34, 0x56, 0, 0, 0 };
 	EXPECT_EQ(sizeof(encoded_3), ctx.buffer().get_offset());
@@ -145,7 +145,7 @@ TEST(padding, exclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_4[] = { 4, 6, 0x12, 0x34, 0x56, 0x78, 0, 0 };
 	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());
@@ -165,7 +165,7 @@ TEST(padding, inclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_1[] = { 1, 4, 0x12, 0 };
 	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
@@ -177,7 +177,7 @@ TEST(padding, inclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_2[] = { 2, 4, 0x12, 0x34 };
 	EXPECT_EQ(sizeof(encoded_2), ctx.buffer().get_offset());
@@ -189,7 +189,7 @@ TEST(padding, inclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_3[] = { 3, 8, 0x12, 0x34, 0x56, 0, 0, 0 };
 	EXPECT_EQ(sizeof(encoded_3), ctx.buffer().get_offset());
@@ -201,7 +201,7 @@ TEST(padding, inclusive)
 #if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, hdr);
 #else
-	if (!encode(med::octet_encoder{ctx}, hdr)) { FAIL() << toString(ctx.error_ctx()); }
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, hdr)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded_4[] = { 4, 8, 0x12, 0x34, 0x56, 0x78, 0, 0 };
 	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());

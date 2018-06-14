@@ -127,7 +127,7 @@ void BM_encode_ok(benchmark::State& state)
 #if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, proto);
 #else
-		if (!encode(med::octet_encoder{ctx}, proto))
+		if (not encode(med::octet_encoder{ctx}, proto))
 		{
 			std::abort();
 		}
@@ -191,7 +191,7 @@ void BM_decode_ok(benchmark::State& state)
 #if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, proto);
 #else
-		if (!decode(med::octet_decoder{ctx}, proto))
+		if (not decode(med::octet_decoder{ctx}, proto))
 		{
 			std::abort();
 		}
@@ -232,7 +232,7 @@ void BM_decode_fail(benchmark::State& state)
 		}
 #else
 		if (decode(med::octet_decoder{ctx}, proto)
-		|| med::error::INCORRECT_VALUE != ctx.error_ctx().get_error())
+		|| med::error::INVALID_VALUE != ctx.error_ctx().get_error())
 		{
 			std::abort();
 		}

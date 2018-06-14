@@ -157,6 +157,13 @@ public:
 	using container_t = container<IES...>;
 
 	template <class FIELD>
+	static constexpr bool has()
+	{
+		using IE = typename ies<IES...>::template at<FIELD>;
+		return not std::is_same_v<void, IE>;
+	}
+
+	template <class FIELD>
 	FIELD& ref()
 	{
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");

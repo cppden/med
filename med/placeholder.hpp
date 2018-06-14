@@ -29,7 +29,7 @@ struct _length
 		static constexpr MED_RESULT copy(field_t const&, ARGS&&...) { MED_RETURN_SUCCESS; }
 	};
 	static constexpr field_t ref_field()    { return field_t{}; }
-	static constexpr bool is_set()			{ return true; }
+	static constexpr bool is_set()          { return true; }
 };
 
 }	//end: namespace placeholder
