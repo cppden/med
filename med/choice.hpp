@@ -22,6 +22,12 @@ Distributed under the MIT License
 
 namespace med {
 
+enum class choice_type
+{
+	dynamic,
+	fixed,
+};
+
 template <class... IEs>
 struct cases;
 

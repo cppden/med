@@ -103,8 +103,103 @@ struct VMSG : med::sequence<
 	O< T<4>, L, U32, med::max<2>>
 >{};
 
+//placeholder::_length
+struct PL_HDR : med::sequence<
+	M< U16 >,
+	med::placeholder::_length<6>, //don't count U16+U8 (2+1 bytes) and length encoded as U24 (3 bytes)
+	M< U8 >
+>
+{
+	static constexpr char const* name()         { return "PL-Header"; }
+};
+
+struct PL_SEQ : med::sequence<
+	M< PL_HDR >,
+	O< T<0x62>, U32, med::max<2> >
+>
+{
+	using length_type = U24;
+	static constexpr char const* name()         { return "PL-Sequence"; }
+};
 
 } //namespace len
+
+TEST(length, placeholder)
+{
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+	med::decoder_context<> dctx;
+	using namespace len;
+
+	PL_SEQ msg;
+
+	{
+		PL_HDR& hdr = msg.ref<PL_HDR>();
+		hdr.ref<U16>().set(0x1661);
+		hdr.ref<U8>().set(0x37);
+
+#if (MED_EXCEPTIONS)
+		encode(med::octet_encoder{ctx}, msg);
+#else
+		ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
+#endif
+		uint8_t const encoded[] = {
+			0x16, 0x61
+			, 0, 0, 0    //length 3 bytes
+			, 0x37
+		};
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		PL_SEQ dmsg;
+#if (MED_EXCEPTIONS)
+		decode(med::octet_decoder{dctx}, dmsg);
+#else
+		ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
+#endif
+		PL_HDR& dhdr = dmsg.ref<PL_HDR>();
+		EXPECT_EQ(hdr.get<U16>().get(), dhdr.get<U16>().get());
+		EXPECT_EQ(hdr.get<U8>().get(), dhdr.get<U8>().get());
+	}
+
+	ctx.reset();
+	{
+		static_assert(msg.arity<U32>() == 2, "");
+		msg.push_back<U32>(ctx)->set(0x01020304);
+		msg.push_back<U32>(ctx)->set(0x05060708);
+
+#if (MED_EXCEPTIONS)
+		encode(med::octet_encoder{ctx}, msg);
+#else
+		ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
+#endif
+		uint8_t const encoded[] = {
+			0x16, 0x61
+			, 0, 0, 16    //length 3 bytes
+			, 0x37
+			,0,0,0,0x62, 1,2,3,4
+			,0,0,0,0x62, 5,6,7,8
+		};
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		PL_SEQ dmsg;
+#if (MED_EXCEPTIONS)
+		decode(med::octet_decoder{dctx}, dmsg);
+#else
+		ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(dctx.error_ctx());
+#endif
+		ASSERT_EQ(msg.count<U32>(), dmsg.count<U32>());
+		auto it = dmsg.get<U32>().begin();
+		for (auto const& v : msg.get<U32>())
+		{
+			EXPECT_EQ(v.get(), it->get());
+			it++;
+		}
+	}
+}
 
 TEST(length, m_lmv)
 {
