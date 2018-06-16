@@ -215,6 +215,7 @@ public:
 	header_type const& get_header() const   { return m_header; }
 	header_type& header()                   { return m_header; }
 
+	void clear()                            { header().clear(); }
 	bool is_set() const                     { return header().is_set(); }
 	std::size_t calc_length() const         { return sl::choice_for<CASES...>::calc_length(*this); }
 
@@ -249,15 +250,6 @@ public:
 		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
 		void const* store_p = &m_storage;
 		return IE::tag_type::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
-	}
-
-	template <class CASE>
-	CASE& clear()
-	{
-		using IE = typename cases<CASES...>::template at<CASE>;
-		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
-		set_tag(header(), IE::tag_type::get());
-		return *(new (&m_storage) CASE{});
 	}
 
 	template <class FROM, class... ARGS>

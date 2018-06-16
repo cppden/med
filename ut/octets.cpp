@@ -1,12 +1,5 @@
 #include "ut.hpp"
 
-#include "encode.hpp"
-#include "decode.hpp"
-#include "encoder_context.hpp"
-#include "decoder_context.hpp"
-#include "octet_encoder.hpp"
-#include "octet_decoder.hpp"
-
 
 struct var_intern : med::octet_string<med::octets_var_intern<8>, med::min<0>> {};
 struct var_extern : med::octet_string<med::octets_var_extern, med::min<0>, med::max<8>> {};

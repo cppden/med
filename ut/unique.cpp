@@ -6,21 +6,6 @@
 
 #include "util/unique.hpp"
 
-#if 0
-namespace uq {
-
-struct byte : med::value<uint8_t> {};
-struct word : med::value<uint16_t> {};
-struct dword : med::value<uint32_t> {};
-
-struct cho : med::choice< byte
-	, med::tag<C<1>, byte>
-	, med::tag<C<2>, word>
-	, med::tag<C<1>, dword>
->{};
-
-} //end: namespace uq
-#endif
 
 TEST(unique, static_odd)
 {

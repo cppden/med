@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
 
 #include <cstdio>
 #include <gtest/gtest.h>
@@ -8,6 +12,12 @@ using namespace std::string_view_literals;
 
 
 #include "med.hpp"
+#include "encode.hpp"
+#include "decode.hpp"
+#include "encoder_context.hpp"
+#include "decoder_context.hpp"
+#include "octet_encoder.hpp"
+#include "octet_decoder.hpp"
 
 /*
  * EXPECT_TRUE(Matches(buff, out_buff, size));

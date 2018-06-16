@@ -1,17 +1,3 @@
-
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#endif
-//#pragma clang diagnostic pop
-
-#include "encode.hpp"
-#include "decode.hpp"
-#include "encoder_context.hpp"
-#include "decoder_context.hpp"
-#include "octet_encoder.hpp"
-#include "octet_decoder.hpp"
-
 #include "ut.hpp"
 
 
