@@ -13,6 +13,7 @@ Distributed under the MIT License
 #include <cstring>
 #include <cxxabi.h>
 
+#include "functional.hpp"
 
 namespace med {
 
