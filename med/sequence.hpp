@@ -287,6 +287,7 @@ struct seq_decoder<IE, IES...>
 			else
 			{
 				CODEC_TRACE("{%s}...", name<IE>());
+				discard(func, vtag);
 				IE& ie = to;
 				MED_CHECK_FAIL(med::decode(func, ie, unexp));
 			}

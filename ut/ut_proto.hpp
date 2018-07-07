@@ -84,6 +84,14 @@ struct MSG_SEQ : med::sequence<
 	static constexpr char const* name() { return "Msg-Seq"; }
 };
 
+struct OOO_SEQ : med::sequence<
+	M<T<1>, FLD_U8>,
+	O<T<2>, FLD_U16>,
+	M<T<3>, FLD_U24>,
+	O<T<4>, FLD_IP>
+>
+{};
+
 struct FLD_CHO : med::choice< med::value<uint8_t>
 	, med::tag<C<0x00>, FLD_U8>
 	, med::tag<C<0x02>, FLD_U16>

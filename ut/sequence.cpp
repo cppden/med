@@ -1,6 +1,37 @@
 #include "ut.hpp"
 #include "ut_proto.hpp"
 
+TEST(ooo, seq) //out-of-order
+{
+	OOO_SEQ msg;
+	msg.ref<FLD_U8>().set(1);
+	msg.ref<FLD_U24>().set(3);
+
+	uint8_t buffer[32];
+	med::encoder_context<> ctx{ buffer };
+                                                 #if (MED_EXCEPTIONS)
+	encode(med::octet_encoder{ctx}, msg);
+#else
+	ASSERT_TRUE(encode(med::octet_encoder{ctx
+}, msg)) << toString(ctx.error_ctx());
+#endif
+	uint8_t const encoded1[] = {1,1, 3,0,0,3 };
+
+	EXPECT_EQ(sizeof(encoded1), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded1, buffer));
+
+
+	msg.clear();
+	med::decoder_context<> dctx;
+	dctx.reset(encoded1, sizeof(encoded1));
+#if (MED_EXCEPTIONS)
+	decode(med::octet_decoder{dctx}, msg);
+#else
+	ASSERT_TRUE(decode(med::octet_decoder{dctx}, msg)) << toString(dctx.error_ctx());
+#endif
+	EXPECT_EQ(1, msg.get<FLD_U8>().get());
+	EXPECT_EQ(3, msg.get<FLD_U24>().get());
+}
 
 TEST(encode, seq_ok)
 {
