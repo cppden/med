@@ -46,48 +46,43 @@ inline void discard(FUNC& func, TAG& vtag)
 	}
 }
 
+template <class FUNC, class IE>
+inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
+{
+	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
+	for (auto& field : ie)
+	{
+		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
+		if (field.is_set())
+		{
+			MED_CHECK_FAIL(sl::encode_ie<IE>(func, field, typename IE::ie_type{}));
+		}
+		else
+		{
+			return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count() - 1);
+		}
+	}
+	MED_RETURN_SUCCESS;
+}
+
 
 template <class... IES>
-struct seq_decoder;
+struct seq_for;
 
 template <class IE, class... IES>
-struct seq_decoder<IE, IES...>
+struct seq_for<IE, IES...>
 {
-	template <class TO, class FUNC, class UNEXP, class TAG>
+	template <class PREV_IE, class TO, class FUNC, class UNEXP, class TAG>
 	static inline MED_RESULT decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
 	{
+		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
 		{
-			//multi-instance conditional field
-			if constexpr (is_optional_v<IE> && has_condition_v<IE>)
-			{
-				if (typename IE::condition{}(to))
-				{
-					discard(func, vtag);
-					IE& ie = to;
-					do
-					{
-						CODEC_TRACE("C[%s]#%zu", name<IE>(), ie.count());
-						auto* field = ie.push_back(func);
-						MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
-					}
-					while (typename IE::condition{}(to));
-
-					MED_CHECK_FAIL(check_arity(func, ie));
-				}
-				else
-				{
-					CODEC_TRACE("skipped C[%s]", name<IE>());
-				}
-				return seq_decoder<IES...>::decode(to, func, unexp, vtag);
-			}
-			//with tag
-			else if constexpr (has_tag_type_v<IE>)
+			if constexpr (has_tag_type_v<IE>) //mulit-field with tag
 			{
 				//multi-instance optional or mandatory field w/ tag w/o counter
 				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !has_condition_v<IE>, "TO IMPLEMENT!");
 
-				IE& ie = to;
 				if (!vtag && func(PUSH_STATE{}))
 				{
 					//convert const to writable
@@ -147,15 +142,16 @@ struct seq_decoder<IE, IES...>
 					func(error::SUCCESS); //clear error
 				}
 				MED_CHECK_FAIL(check_arity(func, ie));
-				return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 			}
-			else //w/o tag
+			else //multi-field w/o tag
 			{
-				//multi-instance field w/o tag w/ count-getter
-				if constexpr (has_count_getter_v<IE>)
+				if constexpr (has_tag_type_v<PREV_IE>)
 				{
 					discard(func, vtag);
-					IE& ie = to;
+				}
+
+				if constexpr (has_count_getter_v<IE>) //multi-field w/ count-getter
+				{
 					std::size_t count = typename IE::count_getter{}(to);
 					CODEC_TRACE("[%s]*%zu", name<IE>(), count);
 					MED_CHECK_FAIL(check_arity(func, ie, count));
@@ -164,14 +160,9 @@ struct seq_decoder<IE, IES...>
 						auto* field = ie.push_back(func);
 						MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 					}
-
-					return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 				}
-				//multi-instance field w/o tag w/ counter
-				else if constexpr (is_counter_v<IE>)
+				else if constexpr (is_counter_v<IE>) //multi-field w/ counter
 				{
-					discard(func, vtag);
-					IE& ie = to;
 					typename IE::counter_type counter_ie;
 					MED_CHECK_FAIL(med::decode(func, counter_ie));
 					auto count = counter_ie.get_encoded();
@@ -183,15 +174,28 @@ struct seq_decoder<IE, IES...>
 						CODEC_TRACE("#%zu = %p", std::size_t(count), (void*)field);
 						MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 					}
-
-					return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 				}
-				//multi-instance field w/o tag, counter or count-getter
-				if constexpr (!has_condition_v<IE>)
+				else if constexpr (has_condition_v<IE>) //conditional multi-field
 				{
-					discard(func, vtag);
+					if (typename IE::condition{}(to))
+					{
+						do
+						{
+							CODEC_TRACE("C[%s]#%zu", name<IE>(), ie.count());
+							auto* field = ie.push_back(func);
+							MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
+						}
+						while (typename IE::condition{}(to));
 
-					IE& ie = to;
+						MED_CHECK_FAIL(check_arity(func, ie));
+					}
+					else
+					{
+						CODEC_TRACE("skipped C[%s]", name<IE>());
+					}
+				}
+				else
+				{
 					CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
 					std::size_t count = 0;
 					while (func(CHECK_STATE{}) && count < IE::max)
@@ -210,39 +214,16 @@ struct seq_decoder<IE, IES...>
 					}
 
 					MED_CHECK_FAIL(check_arity(func, ie, count));
-					return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 				}
 			}
 		}
-		else //single-instance fields
+		else //single-instance field
 		{
 			if constexpr (is_optional_v<IE>)
 			{
-				//single-instance conditional field
-				if constexpr (has_condition_v<IE>)
+				if constexpr (has_tag_type_v<IE>) //optional field with tag
 				{
-					bool const was_set = typename IE::condition{}(to);
-					if (was_set || has_default_value_v<IE>)
-					{
-						discard(func, vtag);
-
-						CODEC_TRACE("C[%s]", name<IE>());
-						IE& ie = to;
-						MED_CHECK_FAIL(med::decode(func, ie, unexp));
-						if constexpr (has_default_value_v<IE>)
-						{
-							if (not was_set) { ie.ref_field().clear(); } //discard since it's a default
-						}
-					}
-					else
-					{
-						CODEC_TRACE("skipped C[%s]", name<IE>());
-					}
-				}
-				//single-instance optional field w/ tag
-				else if constexpr (has_tag_type_v<IE>)
-				{
-					//CODEC_TRACE("[%s]...", name<IE>());
+					//read a tag or use the tag read before
 					if (!vtag)
 					{
 						//save state before decoding a tag
@@ -264,72 +245,62 @@ struct seq_decoder<IE, IES...>
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(func, vtag); //clear current tag as decoded
-						IE& ie = to;
 						MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
 					}
 				}
-				//single-instance optional field w/o tag (optional by end of data)
-				else
+				else //optional w/o tag
 				{
-					CODEC_TRACE("[%s]...", name<IE>());
-					discard(func, vtag);
-
-					if (not func(CHECK_STATE{}))
+					//discard tag if needed
+					if constexpr (is_optional_v<PREV_IE> and has_tag_type_v<PREV_IE>)
 					{
-						CODEC_TRACE("EOF at [%s]", name<IE>());
-						MED_RETURN_SUCCESS; //end of buffer
+						discard(func, vtag);
 					}
-					IE& ie = to;
-					MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
+
+					if constexpr (has_condition_v<IE>) //conditional field
+					{
+						bool const was_set = typename IE::condition{}(to);
+						if (was_set || has_default_value_v<IE>)
+						{
+							CODEC_TRACE("C[%s]", name<IE>());
+							MED_CHECK_FAIL(med::decode(func, ie, unexp));
+							if constexpr (has_default_value_v<IE>)
+							{
+								if (not was_set) { ie.ref_field().clear(); } //discard since it's a default
+							}
+						}
+						else
+						{
+							CODEC_TRACE("skipped C[%s]", name<IE>());
+						}
+					}
+					else //optional field w/o tag (optional by end of data)
+					{
+						CODEC_TRACE("[%s]...", name<IE>());
+
+						if (not func(CHECK_STATE{}))
+						{
+							CODEC_TRACE("EOF at [%s]", name<IE>());
+							MED_RETURN_SUCCESS; //end of buffer
+						}
+						MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
+					}
 				}
 			}
-			//single-instance mandatory field
-			else
+			else //mandatory field
 			{
 				CODEC_TRACE("{%s}...", name<IE>());
-				discard(func, vtag);
-				IE& ie = to;
+
+				//if switched from optional with tag then discard it since mandatory is read as whole
+				if constexpr (is_optional_v<PREV_IE> and has_tag_type_v<PREV_IE>)
+				{
+					discard(func, vtag);
+				}
 				MED_CHECK_FAIL(med::decode(func, ie, unexp));
 			}
-			return seq_decoder<IES...>::decode(to, func, unexp, vtag);
 		}
+		return seq_for<IES...>::template decode<IE>(to, func, unexp, vtag);
 	}
-};
 
-template <>
-struct seq_decoder<>
-{
-	template <class TO, class FUNC, class UNEXP, class TAG>
-	static constexpr MED_RESULT decode(TO&, FUNC&&, UNEXP&, TAG&)  { MED_RETURN_SUCCESS; }
-};
-
-
-template <class FUNC, class IE>
-inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
-{
-	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
-	for (auto& field : ie)
-	{
-		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
-		if (field.is_set())
-		{
-			MED_CHECK_FAIL(sl::encode_ie<IE>(func, field, typename IE::ie_type{}));
-		}
-		else
-		{
-			return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count() - 1);
-		}
-	}
-	MED_RETURN_SUCCESS;
-}
-
-
-template <class... IES>
-struct seq_encoder;
-
-template <class IE, class... IES>
-struct seq_encoder<IE, IES...>
-{
 	template <class TO, class FUNC>
 	static inline MED_RESULT encode(TO const& to, FUNC&& func)
 	{
@@ -453,13 +424,19 @@ struct seq_encoder<IE, IES...>
 				}
 			}
 		}
-		return seq_encoder<IES...>::encode(to, func);
+		return seq_for<IES...>::encode(to, func);
 	}
 };
 
 template <>
-struct seq_encoder<>
+struct seq_for<>
 {
+	template <class PREV_IE, class TO, class FUNC, class UNEXP, class TAG>
+	static constexpr MED_RESULT decode(TO&, FUNC&&, UNEXP&, TAG&)
+	{
+		MED_RETURN_SUCCESS;
+	}
+
 	template <class TO, class FUNC>
 	static constexpr MED_RESULT encode(TO&, FUNC&&)
 	{
@@ -475,14 +452,14 @@ struct sequence : container<IES...>
 	template <class ENCODER>
 	MED_RESULT encode(ENCODER&& encoder) const
 	{
-		return sl::seq_encoder<IES...>::encode(this->m_ies, encoder);
+		return sl::seq_for<IES...>::encode(this->m_ies, encoder);
 	}
 
 	template <class DECODER, class UNEXP>
 	MED_RESULT decode(DECODER&& decoder, UNEXP& unexp)
 	{
 		value<std::size_t> vtag; //TODO: any clue from sequence?
-		return sl::seq_decoder<IES...>::decode(this->m_ies, decoder, unexp, vtag);
+		return sl::seq_for<IES...>::template decode<void>(this->m_ies, decoder, unexp, vtag);
 	}
 };
 

@@ -88,7 +88,7 @@ struct OOO_SEQ : med::sequence<
 	M<T<1>, FLD_U8>,
 	O<T<2>, FLD_U16>,
 	M<T<3>, FLD_U24>,
-	O<T<4>, FLD_IP>
+	O<T<4>, FLD_DW>
 >
 {};
 

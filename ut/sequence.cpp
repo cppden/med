@@ -9,11 +9,10 @@ TEST(ooo, seq) //out-of-order
 
 	uint8_t buffer[32];
 	med::encoder_context<> ctx{ buffer };
-                                                 #if (MED_EXCEPTIONS)
+#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
 #else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx
-}, msg)) << toString(ctx.error_ctx());
+	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
 #endif
 	uint8_t const encoded1[] = {1,1, 3,0,0,3 };
 
@@ -514,6 +513,61 @@ TEST(decode, seq_ok)
 		r.clear();
 		ASSERT_FALSE(r.is_set());
 	}
+}
+
+struct OPT_FLAGS : med::value<uint8_t>
+{
+	template <value_type BITS>
+	struct has_bits
+	{
+		template <class T> bool operator()(T const& ies) const
+		{
+			return ies.template as<OPT_FLAGS>().get() & BITS;
+		}
+	};
+};
+
+struct SEQ_OPT : med::sequence<
+	M<OPT_FLAGS>,
+	O<T<1>, FLD_DW>,
+	O<FLD_U8, OPT_FLAGS::has_bits<1> >,
+	O<FLD_U16> //can't have 1 as MSB due to tag above
+>
+{};
+
+TEST(decode, seq_opt)
+{
+	SEQ_OPT msg;
+
+	uint8_t const encoded1[] = {0, 1, 0x11, 0x22, 0x33, 0x44};
+	med::decoder_context<> ctx;
+
+	ctx.reset(encoded1, sizeof(encoded1));
+#if (MED_EXCEPTIONS)
+	decode(med::octet_decoder{ctx}, msg);
+#else
+	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
+#endif
+
+	FLD_DW const* p1 = msg.cfield();
+	ASSERT_NE(nullptr, p1);
+	EXPECT_EQ(0x11223344, p1->get());
+	FLD_U16 const* p2 = msg.cfield();
+	EXPECT_EQ(nullptr, p2);
+
+	msg.clear();
+	uint8_t const encoded2[] = {0, 0x11, 0x22};
+	ctx.reset(encoded2, sizeof(encoded2));
+#if (MED_EXCEPTIONS)
+	decode(med::octet_decoder{ctx}, msg);
+#else
+	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
+#endif
+	p1 = msg.cfield();
+	EXPECT_EQ(nullptr, p1);
+	p2 = msg.cfield();
+	ASSERT_NE(nullptr, p2);
+	EXPECT_EQ(0x1122, p2->get());
 }
 
 TEST(decode, seq_fail)
