@@ -56,6 +56,7 @@ struct len_enc_impl
 	using state_type = typename FUNC::state_type;
 	using length_type = LEN;
 	static constexpr std::size_t granularity = FUNC::granularity;
+	static constexpr auto encoder_type = FUNC::encoder_type;
 
 	explicit len_enc_impl(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
@@ -210,7 +211,17 @@ struct container_encoder
 		else
 		{
 			CODEC_TRACE("%s...:", name<IE>());
-			return ie.encode(func);
+			if constexpr (codec_type::CONTAINER == FUNC::encoder_type)
+			{
+				MED_CHECK_FAIL(func(ie, ENTRY_CONTAINER{}));
+				MED_CHECK_FAIL(ie.encode(func));
+				MED_CHECK_FAIL(func(ie, EXIT_CONTAINER{}));
+				MED_RETURN_SUCCESS;
+			}
+			else
+			{
+				return ie.encode(func);
+			}
 		}
 	}
 };

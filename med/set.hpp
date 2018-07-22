@@ -29,22 +29,19 @@ constexpr MED_RESULT encode_header(FUNC& func)
 {
 	if constexpr (std::is_base_of_v<PRIMITIVE, typename HEADER::ie_type>)
 	{
-		if constexpr (tag_type_t<IE>::is_static)
+		using tag_type = tag_type_t<IE>;
+		//static_assert(HEADER::traits::bits == tag_type::traits::bits);
+		if constexpr (tag_type::is_const) //encode only if tag fixed
 		{
-			HEADER header;
-			header.set_encoded(tag_type_t<IE>::get_encoded());
-			return encode(func, header);
-		}
-		else
-		{
-			MED_RETURN_SUCCESS;
+			return encode(func, tag_type{});
 		}
 	}
 	else
 	{
 		static_assert(std::is_base_of_v<CONTAINER, typename HEADER::ie_type>, "unexpected aggregate?");
-		MED_RETURN_SUCCESS;
 	}
+	
+	MED_RETURN_SUCCESS;
 }
 
 template <class T, class FUNC>
@@ -75,9 +72,13 @@ struct set_for<IE, IEs...>
 		}
 	}
 
-	template <class HEADER, class TO, class FUNC>
+	template <class PREV_IE, class HEADER, class TO, class FUNC>
 	static inline MED_RESULT encode(TO const& to, FUNC& func)
 	{
+		if constexpr (FUNC::encoder_type == codec_type::CONTAINER && not std::is_void_v<PREV_IE>)
+		{
+			MED_CHECK_FAIL(func(to, NEXT_CONTAINER_ELEMENT{}));
+		}
 		if constexpr (is_multi_field<IE>::value)
 		{
 			IE const& ie = static_cast<IE const&>(to);
@@ -112,7 +113,7 @@ struct set_for<IE, IEs...>
 				return func(error::MISSING_IE, name<IE>(), 1, 0);
 			}
 		}
-		return set_for<IEs...>::template encode<HEADER>(to, func);
+		return set_for<IEs...>::template encode<IE, HEADER>(to, func);
 	}
 
 	template <class TO, class FUNC, class UNEXP, class HEADER>
@@ -123,7 +124,7 @@ struct set_for<IE, IEs...>
 			if (tag_type_t<IE>::match( get_tag(header) ))
 			{
 				//pop back the tag read since we have non-fixed tag inside
-				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
+				if constexpr (not tag_type_t<IE>::is_const) { func(POP_STATE{}); }
 
 				IE& ie = static_cast<IE&>(to);
 				CODEC_TRACE("[%s]@%zu", name<IE>(), ie.count());
@@ -140,7 +141,7 @@ struct set_for<IE, IEs...>
 			if (tag_type_t<IE>::match( get_tag(header) ))
 			{
 				//pop back the tag read since we have non-fixed tag inside
-				if constexpr (not tag_type_t<IE>::is_static) { func(POP_STATE{}); }
+				if constexpr (not tag_type_t<IE>::is_const) { func(POP_STATE{}); }
 
 				IE& ie = static_cast<IE&>(to);
 				CODEC_TRACE("[%s] = %u", name<IE>(), ie.ref_field().is_set());
@@ -180,7 +181,7 @@ struct set_for<>
 	template <typename TAG>
 	static constexpr char const* name_tag(TAG const&)    { return nullptr; }
 
-	template <class HEADER, class TO, class FUNC>
+	template <class PREV_IE, class HEADER, class TO, class FUNC>
 	static constexpr MED_RESULT encode(TO&, FUNC&)       { MED_RETURN_SUCCESS; }
 
 	template <class TO, class FUNC, class UNEXP, class HEADER>
@@ -210,7 +211,7 @@ struct set : container<IEs...>
 	template <class ENCODER>
 	MED_RESULT encode(ENCODER& encoder) const
 	{
-		return sl::set_for<IEs...>::template encode<header_type>(this->m_ies, encoder);
+		return sl::set_for<IEs...>::template encode<void, header_type>(this->m_ies, encoder);
 	}
 
 	template <class DECODER, class UNEXP>

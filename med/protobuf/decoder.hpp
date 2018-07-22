@@ -25,7 +25,8 @@ struct decoder
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
-	enum : std::size_t { granularity = 8 };
+	static constexpr std::size_t granularity = 8;
+	static constexpr auto decoder_type = codec_type::PLAIN;
 
 	DEC_CTX& ctx;
 
@@ -126,11 +127,11 @@ struct decoder
 		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
 		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))
 		{
-			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.get_length()));
-			if (ctx.buffer().advance(ie.get_length())) MED_RETURN_SUCCESS;
-			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
+			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.size()));
+			if (ctx.buffer().advance(ie.size())) MED_RETURN_SUCCESS;
+			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.size() * granularity);
 		}
-		return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), ie.get_length(), ctx.buffer().get_offset());
+		return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), ie.size(), ctx.buffer().get_offset());
 	}
 
 private:

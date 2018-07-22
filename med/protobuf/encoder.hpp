@@ -20,7 +20,8 @@ struct encoder
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
-	enum : std::size_t { granularity = 8 };
+	static constexpr std::size_t granularity = 8;
+	static constexpr auto encoder_type = codec_type::PLAIN;
 
 	ENC_CTX& ctx;
 
@@ -110,13 +111,13 @@ struct encoder
 	template <class IE>
 	MED_RESULT operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		if ( uint8_t* out = ctx.buffer().advance(ie.get_length()) )
+		if ( uint8_t* out = ctx.buffer().advance(ie.size()) )
 		{
-			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.get_length());
-			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.get_length(), ctx.buffer().toString());
+			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
+			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.get_length() * granularity);
+		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.size() * granularity);
 	}
 
 private:

@@ -1044,21 +1044,8 @@ TEST(decode, alloc_fail)
 	ASSERT_THROW(decode(med::octet_decoder{ctx}, msg), med::out_of_memory);
 #else
 	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
-	EXPECT_EQ(med::error::OUT_OF_MEMORY, ctx.error_ctx().get_error()) <<
-		[&]()
-		{
-//			dummy_sink d{2};
-//			med::print(d, msg);
-			if (auto* err = toString(ctx.error_ctx()))
-			{
-				return err;
-			}
-			else
-			{
-				return "NO ERRORS";
-			}
-		}();
 	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
+	ASSERT_EQ(med::error::OUT_OF_MEMORY, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
 #endif
 }
 

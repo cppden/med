@@ -19,7 +19,8 @@ namespace med {
 template <std::size_t MIN, std::size_t MAX>
 struct octets
 {
-	static void copy(uint8_t* out, uint8_t const* in, std::size_t size)
+	template <typename TO, typename FROM, class Enable = std::enable_if_t<sizeof(TO) == sizeof(FROM)>>
+	static void copy(TO* out, FROM const* in, std::size_t size)
 	{
 		if constexpr (MIN != MAX) //varying string
 		{
@@ -33,20 +34,20 @@ struct octets
 	}
 
 private:
-	template <typename T>
-	static constexpr void copy_octet(T*, T const*) { }
+	template <typename TO, typename FROM>
+	static constexpr void copy_octet(TO*, FROM const*) { }
 
-	template <typename T, std::size_t OFS, std::size_t... Is>
-	static void copy_octet(T* out, T const* in)
+	template <typename TO, typename FROM, std::size_t OFS, std::size_t... Is>
+	static void copy_octet(TO* out, FROM const* in)
 	{
 		out[OFS] = in[OFS];
-		copy_octet<T, Is...>(out, in);
+		copy_octet<TO, FROM, Is...>(out, in);
 	}
 
-	template <typename T, std::size_t... Is>
-	static void copy_impl(T* out, T const* in, std::index_sequence<Is...>)
+	template <typename TO, typename FROM, std::size_t... Is>
+	static void copy_impl(TO* out, FROM const* in, std::index_sequence<Is...>)
 	{
-		copy_octet<T, Is...>(out, in);
+		copy_octet<TO, FROM, Is...>(out, in);
 	}
 };
 
@@ -60,7 +61,12 @@ public:
 	uint8_t const* data() const                         { return m_data; }
 
 	void clear()                                        { m_data = nullptr; m_size = 0; m_is_set = false; }
-	void assign(uint8_t const* b_, uint8_t const* e_)   { m_data = b_; m_size = e_ - b_; m_is_set = true; }
+	void assign(void const* b_, void const* e_)
+	{
+		m_data = static_cast<uint8_t const*>(b_);
+		m_size = std::size_t(static_cast<uint8_t const*>(e_) - m_data);
+		m_is_set = true;
+	}
 
 private:
 	uint8_t const* m_data;

@@ -254,24 +254,24 @@ struct MSG_MSEQ : med::sequence<
 
 
 struct MSG_SET : med::set< med::value<uint16_t>,
-	M< T<0x0b>,    FLD_UC >, //<TV>
-	M< T<0x21>, L, FLD_U16 >, //<TLV>
+	M< T16<0x0b>,    FLD_UC >, //<TV>
+	M< T16<0x21>, L, FLD_U16 >, //<TLV>
 	//M< FLD_TN >,
-	O< T<0x49>, L, FLD_U24 >, //[TLV]
-	O< T<0x89>,    FLD_IP >, //[TV]
-	O< T<0x22>, L, VFLD1 >   //[TLV(var)]
+	O< T16<0x49>, L, FLD_U24 >, //[TLV]
+	O< T16<0x89>,    FLD_IP >, //[TV]
+	O< T16<0x22>, L, VFLD1 >   //[TLV(var)]
 >
 {
 	static constexpr char const* name() { return "Msg-Set"; }
 };
 
 struct MSG_MSET : med::set< med::value<uint16_t>,
-	M< T<0x0b>,    FLD_UC, med::arity<2> >, //<TV>*2
-	M< T<0x0c>,    FLD_U8, med::max<2> >, //<TV>*[1,2]
-	M< T<0x21>, L, FLD_U16, med::max<3> >, //<TLV>*[1,3]
-	O< T<0x49>, L, FLD_U24, med::arity<2> >, //[TLV]*2
-	O< T<0x89>,    FLD_IP, med::arity<2> >, //[TV]*2
-	O< T<0x22>, L, VFLD1, med::max<3> > //[TLV(var)]*[1,3]
+	M< T16<0x0b>,    FLD_UC, med::arity<2> >, //<TV>*2
+	M< T16<0x0c>,    FLD_U8, med::max<2> >, //<TV>*[1,2]
+	M< T16<0x21>, L, FLD_U16, med::max<3> >, //<TLV>*[1,3]
+	O< T16<0x49>, L, FLD_U24, med::arity<2> >, //[TLV]*2
+	O< T16<0x89>,    FLD_IP, med::arity<2> >, //[TV]*2
+	O< T16<0x22>, L, VFLD1, med::max<3> > //[TLV(var)]*[1,3]
 >
 {
 	static constexpr char const* name() { return "Msg-Multi-Set"; }

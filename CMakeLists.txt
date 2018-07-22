@@ -58,6 +58,7 @@ endif ()
 # Library path
 set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 
+file(GLOB_RECURSE MED_SRCS med/*.hpp)
 file(GLOB_RECURSE UT_SRCS ut/*.cpp)
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
 
@@ -75,7 +76,7 @@ add_compile_options(
 
 #set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -Wno-gnu-zero-variadic-macro-arguments")
 
-add_executable(gtest_med ${UT_SRCS})
+add_executable(gtest_med ${UT_SRCS} ${MED_SRCS})
 
 if (WITH_BM)
 	add_executable(bm_med ${BM_SRCS})

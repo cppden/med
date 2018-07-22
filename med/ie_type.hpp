@@ -82,4 +82,19 @@ struct skip : T, skip_t {};
 template <class T>
 constexpr bool is_skip_v = std::is_base_of<skip_t, T>::value;
 
+//TODO: implicitly guess? length_enc/dec forwarding func operator prevents signature detection...
+//template<class, class Enable = void>
+//struct container_aware : std::false_type {};
+//template<class FUNC>
+//struct container_aware<FUNC, std::void_t<decltype(std::declval<FUNC>()(true, CONTAINER{}))>> : std::true_type {};
+enum class codec_type
+{
+	PLAIN, //don't care of any data structure
+	CONTAINER, //noify on containers structure (e.g. JSON-codec)
+};
+
+struct ENTRY_CONTAINER{};
+struct EXIT_CONTAINER{};
+struct NEXT_CONTAINER_ELEMENT{}; //NOTE: not issued for the 1st element
+
 }	//end: namespace med

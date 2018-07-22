@@ -37,7 +37,7 @@ struct hdr<0, med::empty> :
 
 
 template <code::value_type CODE, class BODY, class DERIVED>
-struct avp : hdr<CODE, BODY>, med::tag<med::value<med::fixed<CODE>>, DERIVED>
+struct avp : hdr<CODE, BODY>, med::tag<med::value<med::fixed<CODE, code::value_type>>, DERIVED>
 {
 	using length_type = length;
 	static constexpr auto choice_type = med::choice_type::fixed;

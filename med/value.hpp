@@ -21,7 +21,7 @@ namespace med {
 
 //traits representing a fixed value of particular size (in bits/bytes/int)
 //which is predefined during encode and decode
-template <std::size_t VAL, class T = std::size_t, class Enable = void>
+template <std::size_t VAL, class T, class Enable = void>
 struct fixed
 {
 	static_assert(std::is_void<T>(), "MALFORMED FIXED");
@@ -52,7 +52,7 @@ struct fixed< VAL, T, std::enable_if_t<std::is_integral_v<T>> >
 };
 
 //traits representing a fixed value with default
-template <std::size_t VAL, class T = std::size_t, class Enable = void>
+template <std::size_t VAL, class T, class Enable = void>
 struct defaults
 {
 	static_assert(std::is_void<T>(), "MALFORMED DEFAULTS");
@@ -102,7 +102,7 @@ struct integer : IE<IE_VALUE>
 	auto set(value_type v)                      { return set_encoded(v); }
 
 	//NOTE: do not override!
-	static constexpr bool is_static = false;
+	static constexpr bool is_const = false;
 	value_type get_encoded() const              { return m_value; }
 	void set_encoded(value_type v)              { m_value = v; m_set = true; }
 	void clear()                                { m_set = false; }
@@ -139,7 +139,7 @@ struct const_integer : IE<const IE_VALUE>
 
 
 	//NOTE: do not override!
-	static constexpr bool is_static = true;
+	static constexpr bool is_const = true;
 	explicit operator bool() const                      { return is_set(); }
 	static constexpr value_type get_encoded()           { return traits::value; }
 	static constexpr bool set_encoded(value_type v)     { return traits::value == v; }
@@ -164,7 +164,7 @@ struct init_integer : IE<IE_VALUE>
 	static constexpr void clear()                       { }
 	explicit operator bool() const                      { return is_set(); }
 	//NOTE: do not override!
-	static constexpr bool is_static = true;
+	static constexpr bool is_const = true;
 	static constexpr value_type get_encoded()           { return traits::value; }
 	static constexpr void set_encoded(value_type)       { }
 	static constexpr bool is_set()                      { return true; }

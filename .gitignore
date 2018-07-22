@@ -40,4 +40,5 @@ build/
 *.creator*
 *.includes
 *.files
+*.user
 

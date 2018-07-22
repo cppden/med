@@ -231,4 +231,6 @@ using CNT = med::counter_t<med::value<uint16_t>>;
 template <std::size_t TAG>
 using T = med::value<med::fixed<TAG, uint8_t>>;
 template <std::size_t TAG>
-using C = med::value<med::fixed<TAG>>;
+using T16 = med::value<med::fixed<TAG, uint16_t>>;
+template <std::size_t TAG>
+using C = med::value<med::fixed<TAG, uint8_t>>;

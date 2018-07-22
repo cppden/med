@@ -160,7 +160,7 @@ struct avp :
 			O< vendor, vendor::has >,
 			M< BODY >
 		>,
-		med::tag_t<med::value<med::fixed<CODE>>>
+		med::tag_t<med::value<med::fixed<CODE, avp_code::value_type>>>
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;
@@ -292,9 +292,9 @@ struct ANY : med::set< avp_code
 };
 
 template <class MSG>
-using request = med::tag<med::value<med::fixed<REQUEST | MSG::code>>, MSG>;
+using request = med::tag<med::value<med::fixed<REQUEST | MSG::code, uint32_t>>, MSG>;
 template <class MSG>
-using answer = med::tag<med::value<med::fixed<MSG::code>>, MSG>;
+using answer = med::tag<med::value<med::fixed<MSG::code, uint32_t>>, MSG>;
 
 //couple of messages from base protocol for testing
 struct base : med::choice< header

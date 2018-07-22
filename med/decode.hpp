@@ -128,6 +128,7 @@ struct len_dec_impl
 	using size_state = typename FUNC::size_state;
 	using allocator_type = typename FUNC::allocator_type;
 	static constexpr std::size_t granularity = FUNC::granularity;
+	static constexpr auto decoder_type = codec_type::PLAIN;
 
 	using length_type = typename IE::length_type;
 

@@ -11,6 +11,9 @@ Distributed under the MIT License
 
 #include <cstdint>
 
+#include "../value.hpp"
+
+
 namespace med::protobuf {
 
 enum class wire_type : uint8_t
