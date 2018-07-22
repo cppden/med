@@ -134,7 +134,7 @@ struct encoder
 	template <class IE>
 	MED_RESULT operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		std::size_t constexpr added = []() //+2 is for "quotes" or +3 for "quotes":
+		constexpr std::size_t added = []() //+2 is for "quotes" or +3 for "quotes":
 		{
 			if constexpr (med::is_tag_v<IE>) { return 3; }
 			else { return 2; }

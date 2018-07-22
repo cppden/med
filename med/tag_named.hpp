@@ -24,7 +24,9 @@ namespace detail {
 
 constexpr std::size_t const_hash_impl(char const* end, std::size_t count)
 {
-	return count ? std::size_t(end[0]) + 33 * const_hash_impl(end - 1, count - 1) : init;
+	return count > 0
+			? std::size_t(end[0]) + 33 * const_hash_impl(end - (count > 1 ? 1 : 0), count - 1)
+			: init;
 }
 
 } //end: namespace detail
