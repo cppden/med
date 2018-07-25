@@ -134,19 +134,19 @@ struct encoder
 	template <class IE>
 	MED_RESULT operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		constexpr std::size_t added = []() //+2 is for "quotes" or +3 for "quotes":
+		constexpr auto added = []() //+2 is for "quotes" or +3 for "quotes":
 		{
 			if constexpr (med::is_tag_v<IE>) { return 3; }
 			else { return 2; }
-		}();
+		};
 
-		if (auto* out = (char*)ctx.buffer().advance(ie.size() + added))
+		if (auto* out = (char*)ctx.buffer().advance(ie.size() + added()))
 		{
 			*out++ = '"';
 			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
 			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 			out[ie.size()] = '"';
-			if constexpr (added == 3)
+			if constexpr (added() == 3)
 			{
 				out[ie.size() + 1] = ':';
 			}

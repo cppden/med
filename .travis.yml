@@ -19,10 +19,6 @@ before_install:
   # what a nice bug wasted 3 hours of my life...
   - (mkdir -p /tmp/gtest && cd /tmp/gtest && cmake -DCMAKE_BUILD_TYPE=RELEASE /usr/src/gtest && make && sudo mv libg* /usr/lib/)
 
-install:
-  - export CXX="$COMPILER"
-  - export CC=`echo $COMPILER | sed -e 's/^g++/gcc/' -e 's/^clang++/clang/'`
-
 matrix:
   include:
     - compiler: gcc
@@ -31,23 +27,39 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-7']
       env:
-        - COMPILER=g++-7
+        - CXX=g++-7
 
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-8']
+        env:
+          - CXX=g++-8
+	  
     - compiler: clang
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
           packages: ['g++-7', 'clang-5.0']
       env:
-        - COMPILER=clang++-5.0
+        - CXX=clang++-5.0
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+          packages: ['g++-8', 'clang-6.0']
+      env:
+        - CXX=clang++-6.0
 
     - compiler: gcc
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7']
+          packages: ['g++-8']
       env:
-        - COMPILER=g++-7
+        - CXX=g++-8
         - BUILD_FLAGS="-g -O0"
         - CXXFLAGS="--coverage"
       before_install:
