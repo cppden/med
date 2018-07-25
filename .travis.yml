@@ -1,5 +1,4 @@
-
-language: cpp
+language: generic
 os: linux
 dist: trusty
 
@@ -34,8 +33,8 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-8']
-        env:
-          - CXX=g++-8
+      env:
+        - CXX=g++-8
 
     - compiler: clang
       addons:
