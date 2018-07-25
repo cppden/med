@@ -48,9 +48,9 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-8']
+          packages: ['g++-7']
       env:
-        - CXX=g++-8
+        - CXX=g++-7
         - BUILD_FLAGS="-g -O0"
         - CXXFLAGS="--coverage"
       before_install:
@@ -61,7 +61,7 @@ matrix:
       script:
         - cmake . && make VERBOSE=1 -j check
       after_success:
-        - coveralls --verbose --exclude-pattern '.*/CMakeFiles/.*' --gcov gcov-8 --gcov-options '\-lp'
+        - coveralls --verbose --exclude-pattern '.*/CMakeFiles/.*' --gcov gcov-7 --gcov-options '\-lp'
 
 notifications:
   email: false
