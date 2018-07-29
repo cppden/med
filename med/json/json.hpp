@@ -13,18 +13,28 @@ Distributed under the MIT License
 
 #include "../value.hpp"
 #include "../octet_string.hpp"
+#include "../set.hpp"
+#include "../sequence.hpp"
+#include "../buffer.hpp"
+#include "../encoder_context.hpp"
 
 namespace med::json {
 
 using boolean = med::value<bool>;
 using integer = med::value<int>;
-//using longint = med::value<long long int>;
-//using unsignedint = med::value<int>;
-//using unsignedlong = med::value<long long int>;
-//using number  = med::value<double>;
+using longint = med::value<long long int>;
+using unsignedint = med::value<unsigned int>;
+using unsignedlong = med::value<unsigned long long int>;
+using number  = med::value<double>;
 //using null = med::value<void>;
 using string  = med::ascii_string<>;
-//using uint64 = med::value<uint64_t>;
 
+template <class ...IEs>
+struct object : set<value<std::size_t>, IEs...>{};
+
+template <class ...IEs>
+struct array : sequence<IEs...>{};
+
+using encoder_context = med::encoder_context<buffer<char*>>;
 
 } //end: namespace med::json

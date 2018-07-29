@@ -19,77 +19,79 @@ Distributed under the MIT License
 
 namespace med {
 
+struct default_extension_traits {};
+
 //traits representing a fixed value of particular size (in bits/bytes/int)
 //which is predefined during encode and decode
-template <std::size_t VAL, class T, class Enable = void>
+template <std::size_t VAL, class T, class EXT_TRAITS = default_extension_traits, class Enable = void>
 struct fixed
 {
 	static_assert(std::is_void<T>(), "MALFORMED FIXED");
 };
 
-template <std::size_t VAL, uint8_t BITS>
-struct fixed<VAL, bits<BITS>, void>
-	: value_traits<BITS>
+template <std::size_t VAL, uint8_t BITS, class EXT_TRAITS>
+struct fixed<VAL, bits<BITS>, EXT_TRAITS, void>
+	: value_traits<EXT_TRAITS, BITS>
 {
 	static constexpr bool is_const = true;
-	static constexpr typename value_traits<BITS>::value_type value = VAL;
+	static constexpr typename value_traits<EXT_TRAITS, BITS>::value_type value = VAL;
 };
 
-template <std::size_t VAL, uint8_t BYTES>
-struct fixed<VAL, bytes<BYTES>, void>
-	: value_traits<BYTES*8>
+template <std::size_t VAL, uint8_t BYTES, class EXT_TRAITS>
+struct fixed<VAL, bytes<BYTES>, EXT_TRAITS, void>
+	: value_traits<EXT_TRAITS, BYTES*8>
 {
 	static constexpr bool is_const = true;
-	static constexpr typename value_traits<BYTES*8>::value_type value = VAL;
+	static constexpr typename value_traits<EXT_TRAITS, BYTES*8>::value_type value = VAL;
 };
 
-template <std::size_t VAL, typename T>
-struct fixed< VAL, T, std::enable_if_t<std::is_integral_v<T>> >
-	: integral_traits<T>
+template <std::size_t VAL, typename T, class EXT_TRAITS>
+struct fixed< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
+	: integral_traits<EXT_TRAITS, T>
 {
 	static constexpr bool is_const = true;
-	static constexpr typename integral_traits<T>::value_type value = VAL;
+	static constexpr typename integral_traits<EXT_TRAITS, T>::value_type value = VAL;
 };
 
 //traits representing a fixed value with default
-template <std::size_t VAL, class T, class Enable = void>
+template <std::size_t VAL, class T, class EXT_TRAITS = default_extension_traits, class Enable = void>
 struct defaults
 {
 	static_assert(std::is_void<T>(), "MALFORMED DEFAULTS");
 };
 
-template <std::size_t VAL, uint8_t BITS>
-struct defaults<VAL, bits<BITS>, void>
-	: value_traits<BITS>
+template <std::size_t VAL, uint8_t BITS, class EXT_TRAITS>
+struct defaults<VAL, bits<BITS>, EXT_TRAITS, void>
+	: value_traits<EXT_TRAITS, BITS>
 {
-	static constexpr typename value_traits<BITS>::value_type default_value = VAL;
+	static constexpr typename value_traits<EXT_TRAITS, BITS>::value_type default_value = VAL;
 };
 
-template <std::size_t VAL, uint8_t BYTES>
-struct defaults<VAL, bytes<BYTES>, void>
-	: value_traits<BYTES*8>
+template <std::size_t VAL, uint8_t BYTES, class EXT_TRAITS>
+struct defaults<VAL, bytes<BYTES>, EXT_TRAITS, void>
+	: value_traits<EXT_TRAITS, BYTES*8>
 {
-	static constexpr typename value_traits<BYTES*8>::value_type default_value = VAL;
+	static constexpr typename value_traits<EXT_TRAITS, BYTES*8>::value_type default_value = VAL;
 };
 
-template <std::size_t VAL, typename T>
-struct defaults< VAL, T, std::enable_if_t<std::is_integral_v<T>> >
-	: integral_traits<T>
+template <std::size_t VAL, typename T, class EXT_TRAITS>
+struct defaults< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
+	: integral_traits<EXT_TRAITS, T>
 {
-	static constexpr typename integral_traits<T>::value_type default_value = VAL;
+	static constexpr typename integral_traits<EXT_TRAITS, T>::value_type default_value = VAL;
 };
 
 //traits representing initialized value which is encoded with the fixed value
 //but can have any value when decoded
-template <std::size_t VAL, class T>
-struct init : fixed<VAL, T>
+template <std::size_t VAL, class T, class EXT_TRAITS = default_extension_traits>
+struct init : fixed<VAL, T, EXT_TRAITS>
 {
 	static constexpr bool is_const = false;
 };
 
 
 /**
- * plain integral value
+ * plain numeric value (TODO: rename to numeric_value?)
  */
 template <class TRAITS>
 struct integer : IE<IE_VALUE>
@@ -194,20 +196,21 @@ struct def_integer : integer<TRAITS>
 /**
  * generic value - a facade for integers above
  */
-template <class T, class Enable = void>
+template <class T, class EXT_TRAITS = default_extension_traits, class Enable = void>
 struct value;
 
-template <uint8_t BITS>
-struct value<bits<BITS>, void>
-	: integer<value_traits<BITS>> {};
 
-template <uint8_t BYTES>
-struct value<bytes<BYTES>, void>
-	: integer<value_traits<BYTES*8>> {};
+template <uint8_t BITS, class EXT_TRAITS>
+struct value<bits<BITS>, EXT_TRAITS, void>
+	: integer<value_traits<EXT_TRAITS, BITS>> {};
 
-template <typename VAL>
-struct value< VAL, std::enable_if_t<std::is_integral<VAL>::value> >
-	: integer<integral_traits<VAL>> {};
+template <uint8_t BYTES, class EXT_TRAITS>
+struct value<bytes<BYTES>, EXT_TRAITS, void>
+	: integer<value_traits<EXT_TRAITS, BYTES*8>> {};
+
+template <typename VAL, class EXT_TRAITS>
+struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_integral_v<VAL>> >
+	: integer<integral_traits<EXT_TRAITS, VAL>> {};
 
 //meta-function to select proper int
 template <class T, typename Enable = void>
@@ -248,8 +251,14 @@ struct integer_selector<T,
 	using type = def_integer<T>;
 };
 
-template <class T>
-struct value< T, std::enable_if_t<!std::is_void<typename T::value_type>::value> >
+template <class T, class EXT_TRAITS>
+struct value< T, EXT_TRAITS, std::enable_if_t<not std::is_void_v<typename T::value_type>> >
 	: integer_selector<T>::type {};
+
+//TODO: support in octet codecs? rename integer to more generic name?
+template <typename VAL, class EXT_TRAITS>
+struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_floating_point_v<VAL>> >
+	: integer<floating_point_traits<EXT_TRAITS, VAL>> {};
+
 
 } //namespace med

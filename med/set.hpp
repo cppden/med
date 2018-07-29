@@ -199,7 +199,8 @@ struct set_for<>
 template <class HEADER, class ...IEs>
 struct set : container<IEs...>
 {
-	static_assert(util::are_unique(tag_value_get<IEs>::value...), "TAGS ARE NOT UNIQUE");
+	static constexpr bool ordered = false; //used only in JSON, smth more useful?
+
 	using header_type = HEADER;
 
 	template <typename TAG>
@@ -217,6 +218,8 @@ struct set : container<IEs...>
 	template <class DECODER, class UNEXP>
 	MED_RESULT decode(DECODER& decoder, UNEXP& unexp)
 	{
+		static_assert(util::are_unique(tag_value_get<IEs>::value...), "TAGS ARE NOT UNIQUE");
+
 		while (decoder(PUSH_STATE{}))
 		{
 			header_type header;

@@ -48,10 +48,16 @@ struct encoder
 	template <class IE>
 	MED_RESULT operator() (IE const&, ENTRY_CONTAINER const&)
 	{
-		CODEC_TRACE("CONTAINER+[%s]: %s", name<IE>(), ctx.buffer().toString());
-		if (uint8_t* out = ctx.buffer().template advance<1>())
+		constexpr auto open_brace = []()
 		{
-			out[0] = '{';
+			if constexpr (IE::ordered) return '[';
+			else return '{';
+		};
+
+		CODEC_TRACE("%c.CONTAINER[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
+		if (auto* out = ctx.buffer().template advance<1>())
+		{
+			out[0] = open_brace();
 			MED_RETURN_SUCCESS;
 		}
 		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
@@ -59,10 +65,16 @@ struct encoder
 	template <class IE>
 	MED_RESULT operator() (IE const&, EXIT_CONTAINER const&)
 	{
-		CODEC_TRACE("CONTAINER-[%s]: %s", name<IE>(), ctx.buffer().toString());
-		if (uint8_t* out = ctx.buffer().template advance<1>())
+		constexpr auto closing_brace = []()
 		{
-			out[0] = '}';
+			if constexpr (IE::ordered) return ']';
+			else return '}';
+		};
+
+		CODEC_TRACE("%c.CONTAINER[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+		if (auto* out = ctx.buffer().template advance<1>())
+		{
+			out[0] = closing_brace();
 			MED_RETURN_SUCCESS;
 		}
 		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
@@ -71,7 +83,7 @@ struct encoder
 	MED_RESULT operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
 	{
 		CODEC_TRACE("CONTAINER,[%s]: %s", name<IE>(), ctx.buffer().toString());
-		if (uint8_t* out = ctx.buffer().template advance<1>())
+		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = ',';
 			MED_RETURN_SUCCESS;
@@ -95,7 +107,7 @@ struct encoder
 		}();
 
 		CODEC_TRACE("VAL[%s]: value_len=%zu %s", name<IE>(), len, ctx.buffer().toString());
-		if (auto* out = (char*)ctx.buffer().template advance<len>())
+		if (auto* out = ctx.buffer().template advance<len>())
 		{
 			if constexpr (std::is_same_v<bool, typename IE::value_type>)
 			{
@@ -116,18 +128,18 @@ struct encoder
 			}
 			else if constexpr (std::is_signed_v<typename IE::value_type>)
 			{
-				int const written = std::snprintf(out, len, "%lld", (long long)ie.get());
+				int const written = std::snprintf(out, len, "%lld", static_cast<long long>(ie.get()));
 				ctx.buffer().template advance(written - len);
 			}
 			else if constexpr (std::is_unsigned_v<typename IE::value_type>)
 			{
-				int const written = std::snprintf(out, len, "%llu", (unsigned long long)ie.get());
+				int const written = std::snprintf(out, len, "%llu", static_cast<unsigned long long>(ie.get()));
 				ctx.buffer().template advance(written - len);
 			}
 
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), IE::traits::bits);
+		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size());
 	}
 
 	//IE_OCTET_STRING
@@ -140,7 +152,7 @@ struct encoder
 			else { return 2; }
 		};
 
-		if (auto* out = (char*)ctx.buffer().advance(ie.size() + added()))
+		if (auto* out = ctx.buffer().advance(ie.size() + added()))
 		{
 			*out++ = '"';
 			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());

@@ -218,7 +218,7 @@ public:
 	char const* toString() const
 	{
 		static char sz[64];
-		uint8_t const* p = begin();
+		auto const* p = begin();
 		snprintf(sz, sizeof(sz), "%p@%zu+%zu: %02x %02x [%02x] %02x %02x", (void*)p, get_offset(), size()
 			, p[-2], p[-1], p[0], p[1], p[2]);
 		return sz;

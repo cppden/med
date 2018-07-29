@@ -12,7 +12,6 @@ Distributed under the MIT License
 #include <memory>
 
 #include "name.hpp"
-#include "error_context.hpp"
 
 namespace med {
 
@@ -81,15 +80,17 @@ private:
 
 } //end: namespace
 
-template <bool FORWARD, class BUFFER>
+template <bool FORWARD, class BUFFER, class ERR_CTX>
 class allocator;
 
-template <class BUFFER>
-class allocator<true, BUFFER> : public internal::base_allocator
+template <class BUFFER, class ERR_CTX>
+class allocator<true, BUFFER, ERR_CTX> : public internal::base_allocator
 {
 public:
-	explicit allocator(error_context& err) noexcept
-		: m_errCtx(err)
+	using error_ctx_type = ERR_CTX;
+
+	explicit allocator(ERR_CTX& err) noexcept
+		: m_errCtx{err}
 	{}
 
 	/**
@@ -111,15 +112,17 @@ public:
 	}
 
 private:
-	error_context&  m_errCtx;
+	ERR_CTX&    m_errCtx;
 };
 
-template <class BUFFER>
-class allocator<false, BUFFER> : public internal::base_allocator
+template <class BUFFER, class ERR_CTX>
+class allocator<false, BUFFER, ERR_CTX> : public internal::base_allocator
 {
 public:
+	using error_ctx_type = ERR_CTX;
+
 	//TODO: anything better than depending on buffer? pointer to end doesn't look better though...
-	explicit allocator(error_context& err, BUFFER& buf) noexcept
+	explicit allocator(ERR_CTX& err, BUFFER& buf) noexcept
 		: m_buffer{ buf }
 		, m_errCtx{ err }
 	{}
@@ -145,8 +148,8 @@ public:
 	}
 
 private:
-	BUFFER&         m_buffer;
-	error_context&  m_errCtx;
+	BUFFER&     m_buffer;
+	ERR_CTX&    m_errCtx;
 };
 
 

@@ -56,6 +56,13 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 		if (field.is_set())
 		{
 			MED_CHECK_FAIL(sl::encode_ie<IE>(func, field, typename IE::ie_type{}));
+			if constexpr (FUNC::encoder_type == codec_type::CONTAINER)
+			{
+				if (ie.last() != &field)
+				{
+					MED_CHECK_FAIL(func(ie, NEXT_CONTAINER_ELEMENT{}));
+				}
+			}
 		}
 		else
 		{
@@ -301,9 +308,14 @@ struct seq_for<IE, IES...>
 		return seq_for<IES...>::template decode<IE>(to, func, unexp, vtag);
 	}
 
-	template <class TO, class FUNC>
-	static inline MED_RESULT encode(TO const& to, FUNC&& func)
+	template <class PREV_IE, class TO, class FUNC>
+	static inline MED_RESULT encode(TO const& to, FUNC& func)
 	{
+//		if constexpr (FUNC::encoder_type == codec_type::CONTAINER && not std::is_void_v<PREV_IE>)
+//		{
+//			MED_CHECK_FAIL(func(to, NEXT_CONTAINER_ELEMENT{}));
+//		}
+
 		if constexpr (is_multi_field_v<IE>)
 		{
 			if constexpr (is_counter_v<IE>)
@@ -424,7 +436,7 @@ struct seq_for<IE, IES...>
 				}
 			}
 		}
-		return seq_for<IES...>::encode(to, func);
+		return seq_for<IES...>::template encode<IE>(to, func);
 	}
 };
 
@@ -437,7 +449,7 @@ struct seq_for<>
 		MED_RETURN_SUCCESS;
 	}
 
-	template <class TO, class FUNC>
+	template <class PREV_IE, class TO, class FUNC>
 	static constexpr MED_RESULT encode(TO&, FUNC&&)
 	{
 		MED_RETURN_SUCCESS;
@@ -449,10 +461,12 @@ struct seq_for<>
 template <class ...IES>
 struct sequence : container<IES...>
 {
+	static constexpr bool ordered = true; //used only in JSON, smth more useful?
+
 	template <class ENCODER>
 	MED_RESULT encode(ENCODER&& encoder) const
 	{
-		return sl::seq_for<IES...>::encode(this->m_ies, encoder);
+		return sl::seq_for<IES...>::template encode<void>(this->m_ies, encoder);
 	}
 
 	template <class DECODER, class UNEXP>

@@ -18,7 +18,7 @@ Distributed under the MIT License
 
 namespace med{
 
-namespace {
+namespace debug {
 
 inline char const* filename(char const* fname)
 {
@@ -35,7 +35,7 @@ inline char const* filename(char const* fname)
 } //end: namespace
 } //end: namespace med
 
-#define CODEC_TRACE(FMT, ...) std::printf("%s[%u]:" FMT "\n", med::filename(__FILE__), __LINE__, __VA_ARGS__)
+#define CODEC_TRACE(FMT, ...) std::printf("%s[%u]:" FMT "\n", med::debug::filename(__FILE__), __LINE__, __VA_ARGS__)
 
 #else
 #define CODEC_TRACE(...)

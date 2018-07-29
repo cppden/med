@@ -183,8 +183,6 @@ template <class HEADER, class ...CASES>
 class choice : public IE<CONTAINER>
 {
 private:
-	static_assert(util::are_unique(tag_value_get<CASES>::value...), "TAGS ARE NOT UNIQUE");
-
 	template <class T>
 	struct selector
 	{
@@ -288,6 +286,8 @@ public:
 	template <class DECODER, class UNEXP>
 	MED_RESULT decode(DECODER&& decoder, UNEXP& unexp)
 	{
+		static_assert(util::are_unique(tag_value_get<CASES>::value...), "TAGS ARE NOT UNIQUE");
+
 		return med::decode(decoder, header(), unexp)
 			MED_AND sl::choice_for<CASES...>::decode(decoder, *this, unexp);
 	}
