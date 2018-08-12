@@ -51,7 +51,7 @@ struct octet_encoder
 		}
 	}
 
-	MED_RESULT operator() (PUSH_STATE const&)           { return ctx.buffer().push_state(); }
+	bool operator() (PUSH_STATE const&)                 { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{

@@ -32,7 +32,7 @@ struct encoder
 	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
 	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
 
-	MED_RESULT operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
+	bool operator() (PUSH_STATE const&)                      { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE const&)                       { ctx.buffer().pop_state(); }
 	// MED_RESULT operator() (ADVANCE_STATE const& ss)
 	// {
@@ -54,7 +54,7 @@ struct encoder
 			else return '{';
 		};
 
-		CODEC_TRACE("%c.CONTAINER[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = open_brace();
@@ -82,7 +82,7 @@ struct encoder
 			else return '}';
 		};
 
-		CODEC_TRACE("%c.CONTAINER[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = closing_brace();

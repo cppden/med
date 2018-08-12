@@ -124,7 +124,7 @@ public:
 
 	bool push_state()
 	{
-		if (size() > 0)
+		if (not empty())
 		{
 			m_store = m_state;
 			CODEC_TRACE("push_state: %s", toString());
@@ -153,7 +153,7 @@ public:
 	std::size_t get_offset() const         { return begin() - get_start(); }
 	std::size_t size() const               { return end() - begin(); }
 	bool empty() const                     { return begin() >= end(); }
-	explicit bool operator() const         { return !empty(); }
+	explicit operator bool() const         { return !empty(); }
 
 	template <int DELTA>
 	pointer advance()

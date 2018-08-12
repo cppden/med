@@ -62,10 +62,9 @@ using string  = med::ascii_string<>;
 
 template <class ...IEs>
 struct object : set<hash_string<>, IEs...>{};
-//struct object : set<med::value<std::size_t>, IEs...>{};
 
-template <class ...IEs>
-struct array : sequence<IEs...>{};
+template <class ...T>
+struct array : sequence<med::optional<T...>>{};
 
 using encoder_context = med::encoder_context<buffer<char*>>;
 using decoder_context = med::decoder_context<buffer<char const*>>;

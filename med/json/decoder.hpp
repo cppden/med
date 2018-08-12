@@ -22,6 +22,20 @@ constexpr bool is_whitespace(C const c)
 	return c == C(' ') || c == C('\n') || c == C('\r') || c == C('\t');
 }
 
+//returns last non-ws value or 0 for EoF
+template <typename BUFFER>
+inline int skip_ws(BUFFER& buffer)
+{
+	auto p = buffer.begin(), pe = buffer.end();
+	while (p != pe && is_whitespace(*p)) ++p;
+	if (p != pe)
+	{
+		buffer.advance(p - buffer.begin());
+		return int(*p);
+	}
+	return 0;
+}
+
 template <typename BUFFER>
 inline bool skip_ws_after(BUFFER& buffer, int expected)
 {
@@ -62,7 +76,23 @@ struct decoder
 	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
 	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
 	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
-	bool operator() (CHECK_STATE const&)               { return !ctx.buffer().empty(); }
+	template <class IE>
+	bool operator() (CHECK_STATE const&, IE const&)
+	{
+		constexpr auto closing_brace = []()
+		{
+			if constexpr (is_multi_field_v<IE>) return ']';
+			else return '}';
+		};
+
+		if (skip_ws(ctx.buffer()) == closing_brace())
+		{
+			CODEC_TRACE("CHECK_STATE-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+			return false;
+		}
+
+		return !ctx.buffer().empty();
+	}
 //	MED_RESULT operator() (ADVANCE_STATE const& ss)
 //	{
 //		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
@@ -85,7 +115,7 @@ struct decoder
 
 		if (skip_ws_after(ctx.buffer(), open_brace()))
 		{
-			CODEC_TRACE("CONTAINER%c[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
+			CODEC_TRACE("ENTRY_CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
 		return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), open_brace());
@@ -95,7 +125,7 @@ struct decoder
 	{
 		if (skip_ws_after(ctx.buffer(), ':'))
 		{
-			CODEC_TRACE("CONTAINER:[%s]: %s", name<IE>(), ctx.buffer().toString());
+			CODEC_TRACE("CONTAINER-:-[%s]: %s", name<IE>(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
 		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ':');
@@ -111,10 +141,14 @@ struct decoder
 
 		if (skip_ws_after(ctx.buffer(), closing_brace()))
 		{
-			CODEC_TRACE("CONTAINER%c[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+			CODEC_TRACE("EXIT_CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
-		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), closing_brace(), ctx.buffer().get_offset());
+		else
+		{
+			CODEC_TRACE("EXIT_CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+			MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), closing_brace(), ctx.buffer().get_offset());
+		}
 	}
 
 	template <class IE>
@@ -122,12 +156,9 @@ struct decoder
 	{
 		if (skip_ws_after(ctx.buffer(), ','))
 		{
-			CODEC_TRACE("CONTAINER,[%s]: %s", name<IE>(), ctx.buffer().toString());
+			CODEC_TRACE("CONTAINER-,-[%s]: %s", name<IE>(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
-		if (ctx.buffer())
-		{
-			&& ']' == *ctx.buffer().begin())
 		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ',', ctx.buffer().get_offset());
 	}
 

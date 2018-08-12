@@ -87,7 +87,6 @@ struct set_for<IE, IEs...>
 			MED_CHECK_FAIL(check_arity(func, ie));
 			for (auto& field : ie)
 			{
-				//TODO: actually this field was pushed but not set... do we need a new error?
 				if (field.is_set())
 				{
 					MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
@@ -99,6 +98,7 @@ struct set_for<IE, IEs...>
 				}
 				else
 				{
+					//TODO: actually this field was pushed but not set... do we need a new error?
 					return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count()-1);
 				}
 			}

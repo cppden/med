@@ -41,7 +41,8 @@ struct decoder
 	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
 	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
 	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
-	bool operator() (CHECK_STATE const&)               { return !ctx.buffer().empty(); }
+	template <class IE>
+	bool operator() (CHECK_STATE const&, IE const&)    { return !ctx.buffer().empty(); }
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{
 		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;

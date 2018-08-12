@@ -205,7 +205,7 @@ struct seq_for<IE, IES...>
 				{
 					CODEC_TRACE("[%s]*[%zu..%zu]: %s", name<IE>(), IE::min, IE::max, class_name<FUNC>());
 					std::size_t count = 0;
-					while (func(CHECK_STATE{}) && count < IE::max)
+					while (func(CHECK_STATE{}, ie) && count < IE::max)
 					{
 						if (auto* field = ie.push_back(func))
 						{
@@ -291,7 +291,7 @@ struct seq_for<IE, IES...>
 					{
 						CODEC_TRACE("[%s]...", name<IE>());
 
-						if (not func(CHECK_STATE{}))
+						if (not func(CHECK_STATE{}, ie))
 						{
 							CODEC_TRACE("EOF at [%s]", name<IE>());
 							MED_RETURN_SUCCESS; //end of buffer

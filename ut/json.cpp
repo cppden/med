@@ -19,9 +19,7 @@ struct UINT : med::json::unsignedint{};
 struct NUM : med::json::number{};
 struct STR : med::json::string{};
 
-struct ARR : med::json::array<
-	O< STR, med::max<10> >
->{};
+struct ARR : med::json::array<STR, med::max<10>>{};
 
 struct MSG : med::json::object<
 	M< T<decltype("bool_field"_name)>, BOOL >,
@@ -48,7 +46,7 @@ TEST(json, hash)
 	ASSERT_EQ(chash, hval);
 }
 
-#if 1
+#if 0
 TEST(json, encode)
 {
 	js::MSG msg;
