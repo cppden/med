@@ -192,7 +192,7 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	const_iterator cbegin() const           { return begin(); }
 	const_iterator cend() const             { return end(); }
 
-	uint8_t* data()                         { return m_value.data(); }
+	auto* data()                            { return m_value.data(); }
 	using iterator = uint8_t const*;
 	iterator begin()                        { return data(); }
 	iterator end()                          { return begin() + size(); }
@@ -266,8 +266,8 @@ struct ascii_string : octet_string<T...>
 	template <std::size_t N>
 	void print(char (&sz)[N]) const
 	{
-		int const n = int(this->size());
-		std::snprintf(sz, sizeof(sz), "%*.*s", n, n, (char const*)(this->data()));
+		auto const s = this->get();
+		std::snprintf(sz, sizeof(sz), "%.*s", int(s.size()), s.data());
 	}
 };
 

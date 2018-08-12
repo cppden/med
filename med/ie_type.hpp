@@ -87,14 +87,29 @@ constexpr bool is_skip_v = std::is_base_of<skip_t, T>::value;
 //struct container_aware : std::false_type {};
 //template<class FUNC>
 //struct container_aware<FUNC, std::void_t<decltype(std::declval<FUNC>()(true, CONTAINER{}))>> : std::true_type {};
-enum class codec_type
+enum class codec_e
 {
 	PLAIN, //don't care of any data structure
-	CONTAINER, //noify on containers structure (e.g. JSON-codec)
+	STRUCTURED, //noify on containers structure (e.g. JSON-codec)
 };
 
+//for structured codecs
 struct ENTRY_CONTAINER{};
+struct HEADER_CONTAINER{};
 struct EXIT_CONTAINER{};
 struct NEXT_CONTAINER_ELEMENT{}; //NOTE: not issued for the 1st element
+
+template <class T, class Enable = void>
+struct get_codec_kind
+{
+	static constexpr auto value = codec_e::PLAIN;
+};
+template <class T>
+struct get_codec_kind<T, std::void_t<decltype(std::remove_reference_t<T>::codec_kind)>>
+{
+	static constexpr auto value = T::codec_kind;
+};
+template <class T>
+constexpr codec_e get_codec_kind_v = get_codec_kind<T>::value;
 
 }	//end: namespace med

@@ -22,7 +22,7 @@ struct encoder
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
 	enum : std::size_t { granularity = 1 };
-	static constexpr auto encoder_type = codec_type::CONTAINER;
+	static constexpr auto codec_kind = codec_e::STRUCTURED;
 
 	ENC_CTX& ctx;
 
@@ -58,6 +58,17 @@ struct encoder
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = open_brace();
+			MED_RETURN_SUCCESS;
+		}
+		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
+	}
+	template <class IE>
+	MED_RESULT operator() (IE const&, HEADER_CONTAINER const&)
+	{
+		CODEC_TRACE(":CONTAINER[%s]: %s", name<IE>(), ctx.buffer().toString());
+		if (auto* out = ctx.buffer().template advance<1>())
+		{
+			out[0] = ':';
 			MED_RETURN_SUCCESS;
 		}
 		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
@@ -146,22 +157,12 @@ struct encoder
 	template <class IE>
 	MED_RESULT operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		constexpr auto added = []() //+2 is for "quotes" or +3 for "quotes":
-		{
-			if constexpr (med::is_tag_v<IE>) { return 3; }
-			else { return 2; }
-		};
-
-		if (auto* out = ctx.buffer().advance(ie.size() + added()))
+		if (auto* out = ctx.buffer().advance(ie.size() + 2)) //2 quotes
 		{
 			*out++ = '"';
 			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
 			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 			out[ie.size()] = '"';
-			if constexpr (added() == 3)
-			{
-				out[ie.size() + 1] = ':';
-			}
 			MED_RETURN_SUCCESS;
 		}
 		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), ie.size());

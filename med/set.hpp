@@ -75,7 +75,7 @@ struct set_for<IE, IEs...>
 	template <class PREV_IE, class HEADER, class TO, class FUNC>
 	static inline MED_RESULT encode(TO const& to, FUNC& func)
 	{
-		if constexpr (FUNC::encoder_type == codec_type::CONTAINER && not std::is_void_v<PREV_IE>)
+		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC> && not std::is_void_v<PREV_IE>)
 		{
 			MED_CHECK_FAIL(func(to, NEXT_CONTAINER_ELEMENT{}));
 		}
@@ -91,6 +91,10 @@ struct set_for<IE, IEs...>
 				if (field.is_set())
 				{
 					MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
+					if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+					{
+						MED_CHECK_FAIL(func(to, HEADER_CONTAINER{}));
+					}
 					MED_CHECK_FAIL(med::encode(func, field));
 				}
 				else
@@ -106,6 +110,10 @@ struct set_for<IE, IEs...>
 			{
 				CODEC_TRACE("[%s]", name<IE>());
 				MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
+				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+				{
+					MED_CHECK_FAIL(func(to, HEADER_CONTAINER{}));
+				}
 				MED_CHECK_FAIL(med::encode(func, ie.ref_field()));
 			}
 			else if constexpr (!is_optional_v<IE>)
@@ -150,6 +158,10 @@ struct set_for<IE, IEs...>
 					return med::decode(func, ie.ref_field(), unexp);
 				}
 				return func(error::EXTRA_IE, name<IE>(), 1);
+			}
+			else
+			{
+				CODEC_TRACE("not [%s] = %#zx", name<IE>(), std::size_t(tag_type_t<IE>::get()));
 			}
 		}
 		return set_for<IEs...>::decode(to, func, unexp, header);
@@ -215,13 +227,22 @@ struct set : container<IEs...>
 		return sl::set_for<IEs...>::template encode<void, header_type>(this->m_ies, encoder);
 	}
 
-	template <class DECODER, class UNEXP>
-	MED_RESULT decode(DECODER& decoder, UNEXP& unexp)
+	template <class FUNC, class UNEXP>
+	MED_RESULT decode(FUNC& decoder, UNEXP& unexp)
 	{
 		static_assert(util::are_unique(tag_value_get<IEs>::value...), "TAGS ARE NOT UNIQUE");
 
+		bool first = true;
 		while (decoder(PUSH_STATE{}))
 		{
+			if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+			{
+				if (not first)
+				{
+					MED_CHECK_FAIL(decoder(*this, NEXT_CONTAINER_ELEMENT{}));
+				}
+			}
+
 			header_type header;
 #if (MED_EXCEPTIONS)
 			//TODO: avoid try/catch
@@ -243,6 +264,10 @@ struct set : container<IEs...>
 			{
 				sl::pop_state<header_type>(decoder);
 				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+				{
+					MED_CHECK_FAIL(decoder(*this, HEADER_CONTAINER{}));
+				}
 				MED_CHECK_FAIL(sl::set_for<IEs...>::decode(this->m_ies, decoder, unexp, header));
 			}
 			else
@@ -251,9 +276,10 @@ struct set : container<IEs...>
 				decoder(error::SUCCESS);
 				break;
 			}
-#endif //MED_EXCEPTIONS
-		}
 
+#endif //MED_EXCEPTIONS
+			first = false;
+		}
 		return sl::set_for<IEs...>::check(this->m_ies, decoder);
 	}
 };

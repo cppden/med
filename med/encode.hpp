@@ -56,7 +56,7 @@ struct len_enc_impl
 	using state_type = typename FUNC::state_type;
 	using length_type = LEN;
 	static constexpr std::size_t granularity = FUNC::granularity;
-	static constexpr auto encoder_type = FUNC::encoder_type;
+	static constexpr auto codec_kind = get_codec_kind_v<FUNC>;
 
 	explicit len_enc_impl(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
@@ -211,17 +211,7 @@ struct container_encoder
 		else
 		{
 			CODEC_TRACE("%s...:", name<IE>());
-			if constexpr (codec_type::CONTAINER == FUNC::encoder_type)
-			{
-				MED_CHECK_FAIL(func(ie, ENTRY_CONTAINER{}));
-				MED_CHECK_FAIL(ie.encode(func));
-				MED_CHECK_FAIL(func(ie, EXIT_CONTAINER{}));
-				MED_RETURN_SUCCESS;
-			}
-			else
-			{
-				return ie.encode(func);
-			}
+			return ie.encode(func);
 		}
 	}
 };
@@ -247,7 +237,16 @@ constexpr MED_RESULT encode_ie(FUNC& func, IE const& ie, IE_NULL const&)
 template <class WRAPPER, class FUNC, class IE>
 inline MED_RESULT encode_ie(FUNC& func, IE const& ie, CONTAINER const&)
 {
-	return container_encoder<FUNC>::encode(func, ie);
+	if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+	{
+		MED_CHECK_FAIL(func(ie, ENTRY_CONTAINER{}));
+		MED_CHECK_FAIL(container_encoder<FUNC>::encode(func, ie));
+		return func(ie, EXIT_CONTAINER{});
+	}
+	else
+	{
+		return container_encoder<FUNC>::encode(func, ie);
+	}
 }
 
 template <class WRAPPER, class FUNC, class IE>

@@ -8,47 +8,13 @@ Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/ctstring)
 */
 
-#include <cstdint>
 #include <utility>
 #include <type_traits>
-#include <string_view>
 
+#include "ie_type.hpp"
+#include "hash.hpp"
 
 namespace med {
-
-namespace hash {
-
-constexpr std::size_t init = 5381;
-
-namespace detail {
-
-constexpr std::size_t const_hash_impl(char const* end, std::size_t count)
-{
-	return count > 0
-			? std::size_t(end[0]) + 33 * const_hash_impl(end - (count > 1 ? 1 : 0), count - 1)
-			: init;
-}
-
-} //end: namespace detail
-
-constexpr std::size_t compute(std::string_view const& sv)
-{
-	return detail::const_hash_impl(sv.data() + sv.size() - 1, sv.size());
-}
-
-constexpr std::size_t update(char const c, std::size_t hval)
-{
-	return ((hval << 5) + hval) + std::size_t(c); //33*hash + c
-}
-
-//Fowler–Noll–Vo : http://isthe.com/chongo/tech/comp/fnv/
-// constexpr unsigned hash(int n=0, unsigned h=2166136261)
-// {
-// 	return n == size ? h : hash(n+1,(h * 16777619) ^ (sv[n]));
-// }
-
-} //end: namespace hash
-
 
 constexpr char to_upper(char const c)
 {
@@ -110,7 +76,7 @@ struct tag_named
 	using tag_type = tag_named<NAME>;
 
 	static constexpr name_type   name_value{ NAME::data(), NAME::size() };
-	static constexpr value_type get()          { return hash::compute(name_value); }
+	static constexpr value_type get()          { return hash<value_type>::compute(name_value); }
 	static constexpr value_type get_encoded()  { return get(); }
 
 	//tag prereqs

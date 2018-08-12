@@ -149,7 +149,7 @@ constexpr MED_RESULT length_to_value(FUNC& func, FIELD& field, std::size_t len)
 	{
 		if (not FIELD::length_to_value(len))
 		{
-			return func(error::INVALID_VALUE, name<FIELD>(), len);
+			MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
 		}
 	}
 
@@ -162,7 +162,7 @@ constexpr MED_RESULT length_to_value(FUNC& func, FIELD& field, std::size_t len)
 		{
 			if (not field.set_length(len))
 			{
-				return func(error::INVALID_VALUE, name<FIELD>(), len);
+				MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
 			}
 		}
 		else
@@ -174,7 +174,7 @@ constexpr MED_RESULT length_to_value(FUNC& func, FIELD& field, std::size_t len)
 	{
 		if (not field.set_encoded(len))
 		{
-			return func(error::INVALID_VALUE, name<FIELD>(), len);
+			MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
 		}
 	}
 	else
@@ -204,7 +204,7 @@ constexpr MED_RESULT value_to_length(FUNC& func, FIELD& field, std::size_t& len)
 	{
 		if (not FIELD::value_to_length(len))
 		{
-			return func(error::INVALID_VALUE, name<FIELD>(), len);
+			MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
 		}
 	}
 	MED_RETURN_SUCCESS;

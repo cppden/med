@@ -22,7 +22,6 @@ struct octet_encoder
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
 	static constexpr std::size_t granularity = 8;
-	static constexpr auto encoder_type = codec_type::PLAIN;
 
 	ENC_CTX& ctx;
 
@@ -43,7 +42,7 @@ struct octet_encoder
 			}
 			else
 			{
-				return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), 0);
+				MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), 0);
 			}
 		}
 		else

@@ -17,8 +17,39 @@ Distributed under the MIT License
 #include "../sequence.hpp"
 #include "../buffer.hpp"
 #include "../encoder_context.hpp"
+#include "../decoder_context.hpp"
 
 namespace med::json {
+
+//string with hash
+template <class ...T>
+struct hash_string : octet_string<T...>
+{
+	using base_t = octet_string<T...>;
+//	using base_t::set;
+	using hash_type = uint64_t;
+
+//	std::string_view get() const            { return std::string_view{(char const*)this->data(), this->size()}; }
+//	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
+
+	hash_type get_tag() const                   { return get_hash(); }
+//	auto set(hash_type v)                       { return set_encoded(v); }
+
+	//static constexpr bool is_const = false;
+	hash_type get_hash() const                  { return m_hash; }
+	void set_hash(hash_type v)                  { m_hash = v; }
+
+private:
+	hash_type  m_hash{};
+};
+
+template <class, class Enable = void>
+struct has_hash_type : std::false_type { };
+template <class T>
+struct has_hash_type<T, std::void_t<typename T::hash_type>> : std::true_type { };
+template <class T>
+constexpr bool has_hash_type_v = has_hash_type<T>::value;
+
 
 using boolean = med::value<bool>;
 using integer = med::value<int>;
@@ -30,11 +61,13 @@ using number  = med::value<double>;
 using string  = med::ascii_string<>;
 
 template <class ...IEs>
-struct object : set<value<std::size_t>, IEs...>{};
+struct object : set<hash_string<>, IEs...>{};
+//struct object : set<med::value<std::size_t>, IEs...>{};
 
 template <class ...IEs>
 struct array : sequence<IEs...>{};
 
 using encoder_context = med::encoder_context<buffer<char*>>;
+using decoder_context = med::decoder_context<buffer<char const*>>;
 
 } //end: namespace med::json

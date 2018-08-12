@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
 
 #include "debug.hpp"
 
@@ -22,6 +23,8 @@ class buffer
 {
 public:
 	using pointer = PTR;
+	using value_type = std::remove_const_t<std::remove_pointer_t<pointer>>;
+	//static constexpr bool is_const = std::is_const_v<std::remove_pointer_t<pointer>>;
 
 	class state_type
 	{
@@ -150,6 +153,7 @@ public:
 	std::size_t get_offset() const         { return begin() - get_start(); }
 	std::size_t size() const               { return end() - begin(); }
 	bool empty() const                     { return begin() >= end(); }
+	explicit bool operator() const         { return !empty(); }
 
 	template <int DELTA>
 	pointer advance()
@@ -190,6 +194,9 @@ public:
 		return p;
 	}
 
+	/// similar to advance but no bounds check
+	void offset(int delta)                 { m_state.cursor += delta; }
+
 	bool fill(std::size_t count, uint8_t value)
 	{
 		CODEC_TRACE("padding %zu bytes=%u", count, value);
@@ -210,7 +217,6 @@ public:
 	 * @param p new end of buffer
 	 */
 	void end(pointer p)                    { m_end = p > begin() ? p : begin(); }
-//	void end(void* p)                      { m_end = p > begin() ? static_cast<pointer>(p) : begin(); }
 
 	auto push_size(std::size_t size)       { return size_state{this, size}; }
 
@@ -219,8 +225,17 @@ public:
 	{
 		static char sz[64];
 		auto const* p = begin();
-		snprintf(sz, sizeof(sz), "%p@%zu+%zu: %02x %02x [%02x] %02x %02x", (void*)p, get_offset(), size()
-			, p[-2], p[-1], p[0], p[1], p[2]);
+		//int()
+		if constexpr (std::is_same_v<char, value_type>)
+		{
+			std::snprintf(sz, sizeof(sz), "%p@%zu+%zu: %.*s", (void*)p, get_offset(), size()
+				, int(std::min(size(), std::size_t(32))), p);
+		}
+		else
+		{
+			std::snprintf(sz, sizeof(sz), "%p@%zu+%zu: %02x %02x [%02x] %02x %02x", (void*)p, get_offset(), size()
+				, p[-2], p[-1], p[0], p[1], p[2]);
+		}
 		return sz;
 	}
 #endif

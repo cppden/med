@@ -150,8 +150,6 @@ public:
 	//length encoder
 	template <int DELTA> constexpr MED_RESULT operator() (placeholder::_length<DELTA> const&) { MED_RETURN_SUCCESS; }
 
-	static constexpr auto encoder_type = codec_type::PLAIN;
-
 private:
 	friend class container_encoder;
 	friend struct null_encoder;

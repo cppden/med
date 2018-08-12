@@ -11,7 +11,7 @@ Distributed under the MIT License
 #include <cstdio>
 #include <cstring>
 
-//#define CODEC_TRACE_ENABLE
+#define CODEC_TRACE_ENABLE
 
 
 #ifdef CODEC_TRACE_ENABLE
@@ -40,3 +40,6 @@ inline char const* filename(char const* fname)
 #else
 #define CODEC_TRACE(...)
 #endif
+
+#define MED_RETURN_ERROR(err, func, ...) \
+	{ CODEC_TRACE("%s", #err); return func(err, __VA_ARGS__); }

@@ -56,7 +56,7 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 		if (field.is_set())
 		{
 			MED_CHECK_FAIL(sl::encode_ie<IE>(func, field, typename IE::ie_type{}));
-			if constexpr (FUNC::encoder_type == codec_type::CONTAINER)
+			if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 			{
 				if (ie.last() != &field)
 				{
@@ -80,7 +80,7 @@ template <class IE, class... IES>
 struct seq_for<IE, IES...>
 {
 	template <class PREV_IE, class TO, class FUNC, class UNEXP, class TAG>
-	static inline MED_RESULT decode(TO& to, FUNC&& func, UNEXP& unexp, TAG& vtag)
+	static inline MED_RESULT decode(TO& to, FUNC& func, UNEXP& unexp, TAG& vtag)
 	{
 		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
@@ -203,12 +203,19 @@ struct seq_for<IE, IES...>
 				}
 				else
 				{
-					CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
+					CODEC_TRACE("[%s]*[%zu..%zu]: %s", name<IE>(), IE::min, IE::max, class_name<FUNC>());
 					std::size_t count = 0;
 					while (func(CHECK_STATE{}) && count < IE::max)
 					{
 						if (auto* field = ie.push_back(func))
 						{
+							if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+							{
+								if (count > 0)
+								{
+									MED_CHECK_FAIL(func(ie, NEXT_CONTAINER_ELEMENT{}));
+								}
+							}
 							MED_CHECK_FAIL(sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp));
 						}
 #if (!MED_EXCEPTIONS)
@@ -311,11 +318,6 @@ struct seq_for<IE, IES...>
 	template <class PREV_IE, class TO, class FUNC>
 	static inline MED_RESULT encode(TO const& to, FUNC& func)
 	{
-//		if constexpr (FUNC::encoder_type == codec_type::CONTAINER && not std::is_void_v<PREV_IE>)
-//		{
-//			MED_CHECK_FAIL(func(to, NEXT_CONTAINER_ELEMENT{}));
-//		}
-
 		if constexpr (is_multi_field_v<IE>)
 		{
 			if constexpr (is_counter_v<IE>)
@@ -370,7 +372,7 @@ struct seq_for<IE, IES...>
 					{
 						if (not setter(ie, to))
 						{
-							return func(error::INVALID_VALUE, name<IE>(), ie.get());
+							MED_RETURN_ERROR(error::INVALID_VALUE, func, name<IE>(), ie.get());
 						}
 					}
 					else
@@ -405,7 +407,7 @@ struct seq_for<IE, IES...>
 					{
 						if (not setter(ie, to))
 						{
-							return func(error::INVALID_VALUE, name<IE>(), ie.get());
+							MED_RETURN_ERROR(error::INVALID_VALUE, func, name<IE>(), ie.get());
 						}
 					}
 					else

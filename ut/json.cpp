@@ -2,6 +2,9 @@
 #include "tag_named.hpp"
 #include "json/json.hpp"
 #include "json/encoder.hpp"
+#include "json/decoder.hpp"
+
+using namespace std::string_view_literals;
 
 namespace js {
 
@@ -32,8 +35,20 @@ struct MSG : med::json::object<
 
 } //end: namespace js
 
-#if 1
+TEST(json, hash)
+{
+	using namespace med::literals;
+	using sample = decltype("Sample"_name);
+	constexpr std::string_view sv{sample::data(), sample::size()};
+	using hash = med::hash<uint64_t>;
+	constexpr uint64_t chash = hash::compute(sv);
 
+	uint64_t hval = hash::init;
+	for (char const c : sv) { hval = hash::update(c, hval); }
+	ASSERT_EQ(chash, hval);
+}
+
+#if 1
 TEST(json, encode)
 {
 	js::MSG msg;
@@ -59,3 +74,63 @@ TEST(json, encode)
 }
 #endif
 
+#if 1
+TEST(json, decode)
+{
+	std::string const encoded{R"(
+		{
+			"bool_field"   : true,
+			"int_field"    : -10,
+			"uint_field"   : 137,
+			"double_field" : 3.14159,
+			"array_field"  : [ "one", "two", "three" ]
+		}
+	)"};
+
+	med::json::decoder_context ctx{ encoded.data(), encoded.size() };
+
+	js::MSG msg;
+#if (MED_EXCEPTIONS)
+	decode(med::json::decoder{ctx}, msg);
+#else
+	ASSERT_TRUE(decode(med::json::decoder{ctx}, msg)) << ctx.error_ctx();
+#endif
+
+	auto const& cmsg = msg;
+	EXPECT_EQ(true, cmsg.get<js::BOOL>().get());
+	{
+		js::INT const* pf = cmsg.field();
+		ASSERT_NE(nullptr, pf);
+		EXPECT_EQ(-10, pf->get());
+	}
+	{
+		js::UINT const* pf = cmsg.field();
+		ASSERT_NE(nullptr, pf);
+		EXPECT_EQ(137, pf->get());
+	}
+	{
+		js::NUM const* pf = cmsg.field();
+		ASSERT_NE(nullptr, pf);
+		EXPECT_EQ(3.14159, pf->get());
+	}
+	{
+		js::ARR const* pf = cmsg.field();
+		ASSERT_NE(nullptr, pf);
+		std::string_view const casv[] = {"one"sv,"two"sv};
+		ASSERT_EQ(std::size(casv), pf->count<js::STR>());
+		auto* i = casv;
+		for (auto& s : pf->get<js::STR>())
+		{
+			EXPECT_EQ(*i, s.get());
+			++i;
+		}
+	}
+	auto& arr = msg.ref<js::ARR>();
+	arr.push_back<js::STR>()->set("one");
+	arr.push_back<js::STR>()->set("two");
+
+//	std::string const got{buffer, ctx.buffer().get_offset()};
+//	EXPECT_EQ(exp, got);
+}
+
+#endif

@@ -26,7 +26,6 @@ struct decoder
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
 	static constexpr std::size_t granularity = 8;
-	static constexpr auto decoder_type = codec_type::PLAIN;
 
 	DEC_CTX& ctx;
 
@@ -90,7 +89,7 @@ struct decoder
 						}
 						else
 						{
-							return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), val, ctx.buffer().get_offset());
+							MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), val, ctx.buffer().get_offset());
 						}
 					}
 					else
@@ -104,7 +103,7 @@ struct decoder
 			{
 				if (not ie.set_encoded(val))
 				{
-					return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), val, ctx.buffer().get_offset());
+					MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), val, ctx.buffer().get_offset());
 				}
 			}
 			else
@@ -131,7 +130,7 @@ struct decoder
 			if (ctx.buffer().advance(ie.size())) MED_RETURN_SUCCESS;
 			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.size() * granularity);
 		}
-		return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), ie.size(), ctx.buffer().get_offset());
+		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ie.size(), ctx.buffer().get_offset());
 	}
 
 private:

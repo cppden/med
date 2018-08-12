@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
+#include <iostream>
 
 #include "exception.hpp"
 #include "error.hpp"
@@ -41,7 +42,7 @@ public:
 	{
 		if (error::SUCCESS != err)
 		{
-			CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
+			//CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
 
 			switch (err)
 			{
@@ -78,7 +79,7 @@ public:
 	void reset()                           { m_error = error::SUCCESS; }
 	bool set_error(error err, char const* name = nullptr, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
-		CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
+		//CODEC_TRACE("ERROR[%s]=%d %zu %zu", name, static_cast<int>(err), val0, val1);
 		m_name     = name;
 		m_param[0] = val0;
 		m_param[1] = val1;
@@ -139,6 +140,13 @@ inline char const* toString(error_context<TRAITS> const& ec)
 	}
 
 	return sz;
+}
+
+template <class TRAITS>
+inline std::ostream& operator << (std::ostream& out, error_context<TRAITS> const& ec)
+{
+	auto* psz = toString(ec);
+	return out << (psz ? psz : "");
 }
 #endif //MED_EXCEPTIONS
 

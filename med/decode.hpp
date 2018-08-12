@@ -32,7 +32,7 @@ struct default_handler
 	template <class FUNC, class IE, class HEADER>
 	constexpr MED_RESULT operator()(FUNC& func, IE const&, HEADER const& header) const
 	{
-		CODEC_TRACE("ERROR tag=%zu", std::size_t(get_tag(header)));
+		CODEC_TRACE("ERROR tag=%#zx", std::size_t(get_tag(header)));
 		return func(error::UNKNOWN_TAG, name<IE>(), get_tag(header));
 	}
 };
@@ -128,7 +128,7 @@ struct len_dec_impl
 	using size_state = typename FUNC::size_state;
 	using allocator_type = typename FUNC::allocator_type;
 	static constexpr std::size_t granularity = FUNC::granularity;
-	static constexpr auto decoder_type = codec_type::PLAIN;
+	static constexpr auto codec_kind = get_codec_kind_v<FUNC>;
 
 	using length_type = typename IE::length_type;
 
@@ -192,12 +192,12 @@ protected:
 		MED_CHECK_FAIL(value_to_length(m_decoder, len_ie, len_value));
 		if (not calc_buf_len<DELTA>(len_value))
 		{
-			return m_decoder(error::INVALID_VALUE, name<IE>(), len_value);
+			MED_RETURN_ERROR(error::INVALID_VALUE, m_decoder, name<IE>(), len_value);
 		}
 		m_size_state = m_decoder(PUSH_SIZE{len_value});
 		if (not m_size_state)
 		{
-			return m_decoder(error::OVERFLOW, name<IE>(), m_size_state.size() * FUNC::granularity, len_value * FUNC::granularity);
+			MED_RETURN_ERROR(error::OVERFLOW, m_decoder, name<IE>(), m_size_state.size() * FUNC::granularity, len_value * FUNC::granularity);
 		}
 		MED_RETURN_SUCCESS;
 	}
@@ -247,6 +247,11 @@ struct length_decoder<true, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
 inline MED_RESULT decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 {
+	if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+	{
+		MED_CHECK_FAIL(func(ie, ENTRY_CONTAINER{}));
+	}
+
 	if constexpr (is_length_v<IE>)
 	{
 		if constexpr (has_padding<IE>::value)
@@ -278,12 +283,29 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 			MED_CHECK_FAIL(ie.decode(ld, unexp));
 			ld.restore_end();
 		}
-		MED_RETURN_SUCCESS;
+
+		//TODO: refactor to cover all branches the same way as in encoder
+		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+		{
+			return func(ie, EXIT_CONTAINER{});
+		}
+		else
+		{
+			MED_RETURN_SUCCESS;
+		}
 	}
 	else
 	{
 		CODEC_TRACE("%s w/o length...:", name<IE>());
-		return ie.decode(func, unexp);
+		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+		{
+			MED_CHECK_FAIL(ie.decode(func, unexp));
+			return func(ie, EXIT_CONTAINER{});
+		}
+		else
+		{
+			return ie.decode(func, unexp);
+		}
 	}
 }
 
