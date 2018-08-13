@@ -90,7 +90,7 @@ struct seq_for<IE, IES...>
 				//multi-instance optional or mandatory field w/ tag w/o counter
 				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !has_condition_v<IE>, "TO IMPLEMENT!");
 
-				if (!vtag && func(PUSH_STATE{}))
+				if (!vtag && func(PUSH_STATE{}, ie))
 				{
 					//convert const to writable
 					using TAG_IE = typename IE::tag_type::writable;
@@ -106,34 +106,14 @@ struct seq_for<IE, IES...>
 					auto* field = ie.push_back(func);
 					MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
 
-					if (func(PUSH_STATE{})) //not at the end
+					if (func(PUSH_STATE{}, ie)) //not at the end
 					{
 						//convert const to writable
 						using TAG_IE = typename IE::tag_type::writable;
 						TAG_IE tag;
-#if (MED_EXCEPTIONS)
-						//TODO: avoid try/catch
-//						try
-//						{
-							func(tag, typename TAG_IE::ie_type{});
-							vtag.set_encoded(tag.get_encoded());
-							CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-//						}
-//						catch (med::overflow const& ex)
-//						{
-//							vtag.clear();
-//						}
-#else
-						if (func(tag, typename TAG_IE::ie_type{}))
-						{
-							vtag.set_encoded(tag.get_encoded());
-							CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
-						}
-						else
-						{
-							vtag.clear();
-						}
-#endif //MED_EXCEPTIONS
+						MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
+						vtag.set_encoded(tag.get_encoded());
+						CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 					}
 					else //end is reached
 					{
@@ -241,7 +221,7 @@ struct seq_for<IE, IES...>
 					if (!vtag)
 					{
 						//save state before decoding a tag
-						if (not func(PUSH_STATE{}))
+						if (not func(PUSH_STATE{}, ie))
 						{
 							CODEC_TRACE("EoF at %s", name<IE>());
 							MED_RETURN_SUCCESS; //end of buffer
@@ -463,8 +443,6 @@ struct seq_for<>
 template <class ...IES>
 struct sequence : container<IES...>
 {
-	static constexpr bool ordered = true; //used only in JSON, smth more useful?
-
 	template <class ENCODER>
 	MED_RESULT encode(ENCODER&& encoder) const
 	{

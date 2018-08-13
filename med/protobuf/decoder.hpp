@@ -34,15 +34,16 @@ struct decoder
 	{
 	}
 
-	allocator_type& get_allocator()                    { return ctx.get_allocator(); }
+	allocator_type& get_allocator()                     { return ctx.get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
-	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
-	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
+	auto operator() (PUSH_SIZE const& ps)               { return ctx.buffer().push_size(ps.size); }
 	template <class IE>
-	bool operator() (CHECK_STATE const&, IE const&)    { return !ctx.buffer().empty(); }
+	bool operator() (PUSH_STATE const&, IE const&)      { return ctx.buffer().push_state(); }
+	bool operator() (POP_STATE const&)                  { return ctx.buffer().pop_state(); }
+	auto operator() (GET_STATE const&)                  { return ctx.buffer().get_state(); }
+	template <class IE>
+	bool operator() (CHECK_STATE const&, IE const&)     { return !ctx.buffer().empty(); }
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{
 		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;

@@ -52,13 +52,13 @@ constexpr MED_RESULT decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 	if constexpr (is_peek_v<IE>)
 	{
 #if (MED_EXCEPTIONS)
-		if (func(PUSH_STATE{}))
+		if (func(PUSH_STATE{}, ie))
 		{
 			func(ie, typename WRAPPER::ie_type{});
 			func(POP_STATE{});
 		}
 #else
-		return func(PUSH_STATE{})
+		return func(PUSH_STATE{}, ie)
 			&& func(ie, typename WRAPPER::ie_type{})
 			&& func(POP_STATE{});
 #endif //MED_EXCEPTIONS

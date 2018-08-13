@@ -38,7 +38,8 @@ struct octet_decoder
 
 	//state
 	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
-	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
+	template <class IE>
+	bool operator() (PUSH_STATE const&, IE const&)     { return ctx.buffer().push_state(); }
 	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
 	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
 	template <class IE>

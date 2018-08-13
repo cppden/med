@@ -32,13 +32,9 @@ struct encoder
 	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
 	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
 
-	bool operator() (PUSH_STATE const&)                      { return ctx.buffer().push_state(); }
+	template <class IE>
+	bool operator() (PUSH_STATE const&, IE const&)           { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE const&)                       { ctx.buffer().pop_state(); }
-	// MED_RESULT operator() (ADVANCE_STATE const& ss)
-	// {
-	// 	if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-	// 	return ctx.error_ctx().set_error(error::OVERFLOW, "advance", ctx.buffer().size(), ss.bits);
-	// }
 
 	//errors
 	template <typename... ARGS>
@@ -50,7 +46,7 @@ struct encoder
 	{
 		constexpr auto open_brace = []()
 		{
-			if constexpr (IE::ordered) return '[';
+			if constexpr (is_multi_field_v<IE>) return '[';
 			else return '{';
 		};
 
@@ -65,7 +61,7 @@ struct encoder
 	template <class IE>
 	MED_RESULT operator() (IE const&, HEADER_CONTAINER const&)
 	{
-		CODEC_TRACE(":CONTAINER[%s]: %s", name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("HEADER_CONTAINER[%s]: %s", name<IE>(), ctx.buffer().toString());
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = ':';
@@ -78,7 +74,7 @@ struct encoder
 	{
 		constexpr auto closing_brace = []()
 		{
-			if constexpr (IE::ordered) return ']';
+			if constexpr (is_multi_field_v<IE>) return ']';
 			else return '}';
 		};
 

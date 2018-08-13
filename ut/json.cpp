@@ -1,5 +1,4 @@
 #include "ut.hpp"
-#include "tag_named.hpp"
 #include "json/json.hpp"
 #include "json/encoder.hpp"
 #include "json/decoder.hpp"
@@ -11,7 +10,7 @@ namespace js {
 using namespace med::literals;
 
 template <class N>
-using T = med::tag_named<N>;
+using T = med::json::T<N>;
 
 struct BOOL : med::json::boolean{};
 struct INT : med::json::integer{};
@@ -19,14 +18,12 @@ struct UINT : med::json::unsignedint{};
 struct NUM : med::json::number{};
 struct STR : med::json::string{};
 
-struct ARR : med::json::array<STR, med::max<10>>{};
-
 struct MSG : med::json::object<
 	M< T<decltype("bool_field"_name)>, BOOL >,
 	O< T<decltype("int_field"_name)>, INT >,
 	O< T<decltype("uint_field"_name)>, UINT >,
 	O< T<decltype("double_field"_name)>, NUM >,
-	O< T<decltype("array_field"_name)>, ARR >
+	O< T<decltype("array_field"_name)>, STR, med::max<10> >
 >
 {};
 
@@ -46,7 +43,7 @@ TEST(json, hash)
 	ASSERT_EQ(chash, hval);
 }
 
-#if 0
+#if 1
 TEST(json, encode)
 {
 	js::MSG msg;
@@ -54,9 +51,8 @@ TEST(json, encode)
 	msg.ref<js::INT>().set(-10);
 	msg.ref<js::UINT>().set(137);
 	msg.ref<js::NUM>().set(3.14159);
-	auto& arr = msg.ref<js::ARR>();
-	arr.push_back<js::STR>()->set("one");
-	arr.push_back<js::STR>()->set("two");
+	msg.push_back<js::STR>()->set("one");
+	msg.push_back<js::STR>()->set("two");
 
 	char buffer[1024] = {};
 	med::json::encoder_context ctx{ buffer };
@@ -112,23 +108,15 @@ TEST(json, decode)
 		EXPECT_EQ(3.14159, pf->get());
 	}
 	{
-		js::ARR const* pf = cmsg.field();
-		ASSERT_NE(nullptr, pf);
-		std::string_view const casv[] = {"one"sv,"two"sv};
-		ASSERT_EQ(std::size(casv), pf->count<js::STR>());
+		std::string_view const casv[] = {"one"sv,"two"sv,"three"sv};
+		ASSERT_EQ(std::size(casv), cmsg.count<js::STR>());
 		auto* i = casv;
-		for (auto& s : pf->get<js::STR>())
+		for (auto& s : cmsg.get<js::STR>())
 		{
 			EXPECT_EQ(*i, s.get());
 			++i;
 		}
 	}
-	auto& arr = msg.ref<js::ARR>();
-	arr.push_back<js::STR>()->set("one");
-	arr.push_back<js::STR>()->set("two");
-
-//	std::string const got{buffer, ctx.buffer().get_offset()};
-//	EXPECT_EQ(exp, got);
 }
 
 #endif

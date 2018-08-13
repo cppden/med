@@ -16,10 +16,14 @@ Distributed under the MIT License
 #include "../set.hpp"
 #include "../sequence.hpp"
 #include "../buffer.hpp"
+#include "../tag_named.hpp"
 #include "../encoder_context.hpp"
 #include "../decoder_context.hpp"
 
 namespace med::json {
+
+template <class N>
+using T = tag_named<N>;
 
 //string with hash
 template <class ...T>
@@ -63,8 +67,8 @@ using string  = med::ascii_string<>;
 template <class ...IEs>
 struct object : set<hash_string<>, IEs...>{};
 
-template <class ...T>
-struct array : sequence<med::optional<T...>>{};
+template <class ...IEs>
+struct strict_object : sequence<IEs...>{};
 
 using encoder_context = med::encoder_context<buffer<char*>>;
 using decoder_context = med::decoder_context<buffer<char const*>>;

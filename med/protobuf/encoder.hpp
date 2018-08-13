@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include "debug.hpp"
 #include "name.hpp"
+#include "state.hpp"
 #include "octet_string.hpp"
 
 namespace med::protobuf {
@@ -50,7 +51,8 @@ struct encoder
 		}
 	}
 
-	bool operator() (PUSH_STATE const&)                 { return ctx.buffer().push_state(); }
+	template <class IE>
+	bool operator() (PUSH_STATE const&, IE const&)      { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{

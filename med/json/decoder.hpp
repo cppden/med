@@ -73,31 +73,18 @@ struct decoder
 
 	//state
 	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
-	bool operator() (PUSH_STATE const&)                { return ctx.buffer().push_state(); }
+	template <class IE>
+	bool operator() (PUSH_STATE const&, IE const&)
+	{
+		return this->template test_eof<IE>() && ctx.buffer().push_state();
+	}
 	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
 	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
 	template <class IE>
 	bool operator() (CHECK_STATE const&, IE const&)
 	{
-		constexpr auto closing_brace = []()
-		{
-			if constexpr (is_multi_field_v<IE>) return ']';
-			else return '}';
-		};
-
-		if (skip_ws(ctx.buffer()) == closing_brace())
-		{
-			CODEC_TRACE("CHECK_STATE-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
-			return false;
-		}
-
-		return !ctx.buffer().empty();
+		return this->template test_eof<IE>() && not ctx.buffer().empty();
 	}
-//	MED_RESULT operator() (ADVANCE_STATE const& ss)
-//	{
-//		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-//		return ctx.error_ctx().set_error(error::OVERFLOW, "advance", ctx.buffer().size() * granularity, ss.bits);
-//	}
 
 	//errors
 	template <typename... ARGS>
@@ -109,7 +96,7 @@ struct decoder
 	{
 		constexpr auto open_brace = []()
 		{
-			if constexpr (IE::ordered) return '[';
+			if constexpr (is_multi_field_v<IE>) return '[';
 			else return '{';
 		};
 
@@ -135,7 +122,7 @@ struct decoder
 	{
 		constexpr auto closing_brace = []()
 		{
-			if constexpr (IE::ordered) return ']';
+			if constexpr (is_multi_field_v<IE>) return ']';
 			else return '}';
 		};
 
@@ -222,7 +209,7 @@ struct decoder
 	MED_RESULT operator() (IE& ie, IE_OCTET_STRING const&)
 	{
 		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), ctx.buffer().toString());
-		auto* p = ctx.buffer().begin(), pe = ctx.buffer().end();
+		auto p = ctx.buffer().begin(), pe = ctx.buffer().end();
 		if (p != pe && '"' == *p++)
 		{
 			auto* const ps = p; //start of string
@@ -270,6 +257,24 @@ struct decoder
 	}
 
 private:
+	template <class IE>
+	bool test_eof()
+	{
+		constexpr auto closing_brace = []()
+		{
+			if constexpr (is_multi_field_v<IE>) return ']';
+			else return '}';
+		};
+
+		if (skip_ws(ctx.buffer()) == closing_brace())
+		{
+			CODEC_TRACE("EOF %c [%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+			return false;
+		}
+		CODEC_TRACE("not EOF %c [%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+		return true;
+	}
+
 	template <typename VAL, class IE>
 	auto convert(char const* p, char const* fmt, IE& ie)
 	{
@@ -279,17 +284,18 @@ private:
 			CODEC_TRACE("%s[%s]=%.*s", name<IE>(), fmt, pos, p);
 			if constexpr (not std::is_same_v<VAL, typename IE::value_type>)
 			{
-				if (std::numeric_limits<typename IE::value_type>::min() >= val
-				&& std::numeric_limits<typename IE::value_type>::max() <= val)
+				if (val >= std::numeric_limits<typename IE::value_type>::min()
+				&& val <= std::numeric_limits<typename IE::value_type>::max())
 				{
 					ie.set_encoded(static_cast<typename IE::value_type>(val));
+					MED_RETURN_SUCCESS;
 				}
 			}
 			else
 			{
 				ie.set_encoded(val);
+				MED_RETURN_SUCCESS;
 			}
-			MED_RETURN_SUCCESS;
 		}
 		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), p[0], p - ctx.buffer().get_start());
 	}
