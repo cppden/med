@@ -77,10 +77,10 @@ using tag_type_t = typename tag_type<T>::type;
 template <class T, typename Enable = void>
 struct tag_value_get
 {
-	static constexpr std::size_t value{};
+	static constexpr auto value = nullptr;
 };
 template <class T>
-struct tag_value_get<T, std::enable_if_t<!std::is_void_v<decltype(tag_type<T>::type::get())>>>
+struct tag_value_get<T, std::enable_if_t<not std::is_void_v<decltype(tag_type<T>::type::get())>>>
 {
 	static constexpr auto value = tag_type<T>::type::get();
 };

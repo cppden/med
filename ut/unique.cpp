@@ -6,22 +6,25 @@
 
 #include "util/unique.hpp"
 
-
 TEST(unique, static_odd)
 {
-	static_assert(med::util::are_unique(1, 2, 3, 4, 5));
-	static_assert(!med::util::are_unique(5, 2, 3, 4, 5));
-	static_assert(!med::util::are_unique(1, 5, 3, 4, 5));
-	static_assert(!med::util::are_unique(1, 2, 5, 4, 5));
-	static_assert(!med::util::are_unique(1, 2, 3, 5, 5));
+	using namespace med::util;
+	static_assert(are_unique(nullptr, 1u, 2, 3, 4, 5));
+	static_assert(are_unique(1u, 2, 3, nullptr, 4, 5));
+	static_assert(are_unique(1u, 2, 3, 4, 5, nullptr));
+	static_assert(not are_unique(5, 2, 3, 4, 5));
+	static_assert(not are_unique(1, 5, 3, 4, 5));
+	static_assert(not are_unique(1, 2, 5, 4, 5));
+	static_assert(not are_unique(1, 2, 3, 5, 5));
 }
 
 TEST(unique, static_even)
 {
-	static_assert(med::util::are_unique(1, 2, 3, 4));
-	static_assert(!med::util::are_unique(4, 2, 3, 4));
-	static_assert(!med::util::are_unique(1, 4, 3, 4));
-	static_assert(!med::util::are_unique(1, 2, 4, 4));
+	using namespace med::util;
+	static_assert(are_unique(1, 2, 3, 4));
+	static_assert(not are_unique(4, 2, 3, 4));
+	static_assert(not are_unique(1, 4, 3, 4));
+	static_assert(not are_unique(1, 2, 4, 4));
 }
 
 TEST(unique, dynamics)
