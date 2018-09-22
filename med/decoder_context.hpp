@@ -40,7 +40,7 @@ private:
 
 public:
 	decoder_context(void const* data, std::size_t size, void* alloc_data, std::size_t alloc_size)
-		: m_allocator{ m_errCtx }
+		: m_allocator{ &m_errCtx }
 	{
 		reset(data, size);
 

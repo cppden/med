@@ -90,8 +90,8 @@ class allocator<true, BUFFER, ERR_CTX> : public internal::base_allocator
 public:
 	using error_ctx_type = ERR_CTX;
 
-	explicit allocator(ERR_CTX& err) noexcept
-		: m_errCtx{err}
+	explicit allocator(ERR_CTX* err) noexcept
+		: m_errCtx{ err }
 	{}
 
 	/**
@@ -108,12 +108,20 @@ public:
 			this->begin(result + 1);
 			return result;
 		}
-		m_errCtx.set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
+#if (MED_EXCEPTIONS)
+		ERR_CTX::set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
+#else
+		if (m_errCtx)
+		{
+			m_errCtx->set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
+		}
+#endif
+
 		return nullptr;
 	}
 
 private:
-	ERR_CTX&    m_errCtx;
+	ERR_CTX*    m_errCtx;
 };
 
 template <class BUFFER, class ERR_CTX>
@@ -123,7 +131,7 @@ public:
 	using error_ctx_type = ERR_CTX;
 
 	//TODO: anything better than depending on buffer? pointer to end doesn't look better though...
-	explicit allocator(ERR_CTX& err, BUFFER& buf) noexcept
+	explicit allocator(ERR_CTX* err, BUFFER& buf) noexcept
 		: m_buffer{ buf }
 		, m_errCtx{ err }
 	{}
@@ -144,13 +152,20 @@ public:
 			m_buffer.end(static_cast<typename BUFFER::pointer>(p));
 			return result;
 		}
-		m_errCtx.set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
+#if (MED_EXCEPTIONS)
+		ERR_CTX::set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
+#else
+		if (m_errCtx)
+		{
+			m_errCtx->set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
+		}
+#endif
 		return nullptr;
 	}
 
 private:
 	BUFFER&     m_buffer;
-	ERR_CTX&    m_errCtx;
+	ERR_CTX*    m_errCtx;
 };
 
 

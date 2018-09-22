@@ -34,12 +34,13 @@ template <class TRAITS>
 class error_context
 {
 public:
+	using traits = TRAITS;
 
 #if (MED_EXCEPTIONS)
 	static constexpr void reset()          { }
 
 	template <class BUFFER>
-	void set_error(BUFFER const& bufpos, error err, char const* name, std::size_t val0 = 0, std::size_t val1 = 0)
+	static void set_error(BUFFER const& bufpos, error err, char const* name, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
 		if (error::SUCCESS != err)
 		{
@@ -52,22 +53,22 @@ public:
 			switch (err)
 			{
 			case error::OVERFLOW:
-				throw overflow(psz_buf, TRAITS::overflow(), name, val1);
+				throw overflow(psz_buf, traits::overflow(), name, val1);
 
 			case error::INVALID_VALUE:
-				throw invalid_value(psz_buf, TRAITS::invalid_value(), name, val1, val0);
+				throw invalid_value(psz_buf, traits::invalid_value(), name, val1, val0);
 
 			case error::UNKNOWN_TAG:
-				throw unknown_tag(psz_buf, TRAITS::unknown_tag(), name, val0);
+				throw unknown_tag(psz_buf, traits::unknown_tag(), name, val0);
 
 			case error::MISSING_IE:
-				throw missing_ie(psz_buf, TRAITS::missing_ie(), name, val0, val1);
+				throw missing_ie(psz_buf, traits::missing_ie(), name, val0, val1);
 
 			case error::EXTRA_IE:
-				throw extra_ie(psz_buf, TRAITS::excessive_ie(), name, val0, val1);
+				throw extra_ie(psz_buf, traits::excessive_ie(), name, val0, val1);
 
 			case error::OUT_OF_MEMORY:
-				throw out_of_memory(psz_buf, TRAITS::out_of_memory(), name, val0);
+				throw out_of_memory(psz_buf, traits::out_of_memory(), name, val0);
 
 			default:
 				break;

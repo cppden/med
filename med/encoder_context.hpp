@@ -42,7 +42,7 @@ private:
 public:
 	encoder_context(void* data, std::size_t size)
 		: m_buffer{ }
-		, m_allocator{ m_errCtx, m_buffer }
+		, m_allocator{ &m_errCtx, m_buffer }
 	{
 		reset(data, size);
 	}
