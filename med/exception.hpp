@@ -9,14 +9,28 @@ Distributed under the MIT License
 
 #pragma once
 
-#include "config.hpp"
-
-#if (MED_EXCEPTIONS)
-
 #include <cstdio>
 #include <exception>
 
+#include "config.hpp"
 #include "error.hpp"
+#include "debug.hpp"
+
+namespace med {
+
+template <int N, typename... ARGS>
+char const* format(char(&out)[N], char const* bufpos, char const* fmt, ARGS&&... args) noexcept
+{
+	int res = std::snprintf(out, sizeof(out), fmt, std::forward<ARGS>(args)...);
+	if (bufpos && res > 0 && res < N)
+	{
+		std::strncpy(out + res, bufpos, sizeof(out) - res);
+	}
+	out[N-1] = 0;
+	return out;
+}
+
+#if (MED_EXCEPTIONS)
 
 #define MED_RESULT           void
 #define MED_RETURN_SUCCESS   return
@@ -24,9 +38,6 @@ Distributed under the MIT License
 #define MED_AND              ,
 #define MED_EXPR_AND(expr)
 #define MED_CHECK_FAIL(expr) expr
-
-
-namespace med {
 
 class exception : public std::exception
 {
@@ -40,17 +51,8 @@ public:
 protected:
 	//only derived can be created
 	exception() = default;
-//	template <typename... ARGS>
-//	exception(char const* fmt, ARGS&&... args) noexcept { format(fmt, std::forward<ARGS>(args)...); }
 
-	template <typename... ARGS>
-	void format(char const* fmt, ARGS&&... args) noexcept
-	{
-		std::snprintf(m_what, sizeof(m_what), fmt, std::forward<ARGS>(args)...);
-	}
-
-private:
-	char       m_what[128];
+	char m_what[128];
 };
 
 //OVERFLOW
@@ -58,7 +60,7 @@ struct overflow : exception
 {
 //	using exception::exception;
 	template <typename... ARGS>
-	overflow(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+	overflow(ARGS&&... args) noexcept	{ format(this->m_what, std::forward<ARGS>(args)...); }
 };
 
 //INVALID_VALUE,
@@ -69,13 +71,13 @@ struct invalid_value : public value_exception
 {
 //	using value_exception::value_exception;
 	template <typename... ARGS>
-	invalid_value(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+	invalid_value(ARGS&&... args) noexcept	{ format(this->m_what, std::forward<ARGS>(args)...); }
 };
 struct unknown_tag : public value_exception
 {
 //	using value_exception::value_exception;
 	template <typename... ARGS>
-	unknown_tag(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+	unknown_tag(ARGS&&... args) noexcept	{ format(this->m_what, std::forward<ARGS>(args)...); }
 };
 
 //MISSING_IE
@@ -86,13 +88,13 @@ struct missing_ie : public ie_exception
 {
 //	using ie_exception::ie_exception;
 	template <typename... ARGS>
-	missing_ie(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+	missing_ie(ARGS&&... args) noexcept		{ format(this->m_what, std::forward<ARGS>(args)...); }
 };
 struct extra_ie : public ie_exception
 {
 //	using ie_exception::ie_exception;
 	template <typename... ARGS>
-	extra_ie(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+	extra_ie(ARGS&&... args) noexcept		{ format(this->m_what, std::forward<ARGS>(args)...); }
 };
 
 //OUT_OF_MEMORY
@@ -100,10 +102,8 @@ struct out_of_memory : public exception
 {
 //	using exception::exception;
 	template <typename... ARGS>
-	out_of_memory(char const* fmt, ARGS&&... args) noexcept	{ format(fmt, std::forward<ARGS>(args)...); }
+	out_of_memory(ARGS&&... args) noexcept	{ format(this->m_what, std::forward<ARGS>(args)...); }
 };
-
-}	//end: namespace med
 
 #else //w/o exceptions
 
@@ -115,3 +115,8 @@ struct out_of_memory : public exception
 #define MED_CHECK_FAIL(expr) if (!(expr)) MED_RETURN_FAILURE
 
 #endif //MED_EXCEPTIONS
+
+#define MED_RETURN_ERROR(err, func, ...) \
+	{ CODEC_TRACE("%s", #err); return func(err, __VA_ARGS__); }
+
+}	//end: namespace med

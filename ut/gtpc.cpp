@@ -103,12 +103,12 @@ TEST(opt_defs, unset)
 		1,2,3,
 		0
 	};
+	uint8_t buffer[1024] = {};
 
 	{
 		gtpc::header header;
 		header.sn(0x010203);
 
-		uint8_t buffer[1024];
 		med::encoder_context<> ctx{ buffer };
 #if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, header);
@@ -119,9 +119,10 @@ TEST(opt_defs, unset)
 		ASSERT_TRUE(Matches(encoded, buffer));
 	}
 	{
+		std::memcpy(buffer, encoded, sizeof(encoded));
 		med::decoder_context<> ctx;
 		gtpc::header header;
-		ctx.reset(encoded, sizeof(encoded));
+		ctx.reset(buffer, sizeof(encoded));
 #if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, header);
 #else
@@ -140,13 +141,13 @@ TEST(opt_defs, set)
 		1,2,3,
 		0x70
 	};
+	uint8_t buffer[1024] = {};
 
 	{
 		gtpc::header header;
 		header.sn(0x010203);
 		header.ref<gtpc::message_priority>().set(7);
 
-		uint8_t buffer[1024];
 		med::encoder_context<> ctx{ buffer };
 #if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, header);
@@ -157,9 +158,10 @@ TEST(opt_defs, set)
 		ASSERT_TRUE(Matches(encoded, buffer));
 	}
 	{
+		std::memcpy(buffer, encoded, sizeof(encoded));
 		med::decoder_context<> ctx;
 		gtpc::header header;
-		ctx.reset(encoded, sizeof(encoded));
+		ctx.reset(buffer, sizeof(encoded));
 #if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, header);
 #else

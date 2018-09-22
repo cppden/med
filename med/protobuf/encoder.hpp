@@ -47,7 +47,7 @@ struct encoder
 		}
 		else
 		{
-			return ctx.error_ctx().set_error(error::MISSING_IE, name<IE>(), 0);
+			MED_RETURN_ERROR(error::MISSING_IE, (*this), name<IE>(), 0);
 		}
 	}
 
@@ -57,12 +57,12 @@ struct encoder
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{
 		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().set_error(error::OVERFLOW, "advance", ctx.buffer().size() * granularity, ss.bits);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity);
 	}
 	MED_RESULT operator() (ADD_PADDING const& pad)
 	{
 		if (ctx.buffer().fill(pad.bits/granularity, pad.filler)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().set_error(error::OVERFLOW, "padding", ctx.buffer().size() * granularity, pad.bits);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), "padding", pad.bits/granularity);
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
@@ -71,7 +71,7 @@ struct encoder
 	template <typename... ARGS>
 	MED_RESULT operator() (error e, ARGS&&... args)
 	{
-		return ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...);
+		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
 	}
 
 	//IE_VALUE
@@ -91,7 +91,7 @@ struct encoder
 			}
 			else
 			{
-				return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+				MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
 			}
 			CODEC_TRACE("\twrote %#02x, value=%#zx", uint8_t(value|0x80), std::size_t(value >> 7));
 			value >>= 7;
@@ -104,7 +104,7 @@ struct encoder
 		}
 		else
 		{
-			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
 		}
 	}
 
@@ -118,7 +118,7 @@ struct encoder
 			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.size() * granularity);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
 	}
 
 private:

@@ -11,11 +11,10 @@ Distributed under the MIT License
 
 #include <utility>
 
-#include "error.hpp"
+#include "exception.hpp"
 #include "optional.hpp"
 #include "state.hpp"
 #include "padding.hpp"
-#include "debug.hpp"
 #include "length.hpp"
 #include "name.hpp"
 #include "placeholder.hpp"
@@ -33,7 +32,7 @@ struct default_handler
 	constexpr MED_RESULT operator()(FUNC& func, IE const&, HEADER const& header) const
 	{
 		CODEC_TRACE("ERROR tag=%#zx", std::size_t(get_tag(header)));
-		return func(error::UNKNOWN_TAG, name<IE>(), get_tag(header));
+		MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<IE>(), get_tag(header));
 	}
 };
 
@@ -90,7 +89,7 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
 	CODEC_TRACE("ERROR tag=%zu", std::size_t(tag.get_encoded()));
-	return func(error::UNKNOWN_TAG, name<WRAPPER>(), tag.get_encoded());
+	MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<WRAPPER>(), tag.get_encoded());
 }
 
 //Length-Value
@@ -110,12 +109,12 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 		if (0 != end.size())
 		{
 			CODEC_TRACE("%s: end-size=%zu", name<IE>(), end.size());
-			return func(error::OVERFLOW, name<WRAPPER>(), end.size() * FUNC::granularity);
+			MED_RETURN_ERROR(error::OVERFLOW, func, name<WRAPPER>(), len_value);
 		}
 		MED_RETURN_SUCCESS;
 	}
 	//TODO: something more informative: tried to set length beyond data end
-	return func(error::OVERFLOW, name<WRAPPER>(), 0);
+	MED_RETURN_ERROR(error::OVERFLOW, func, name<WRAPPER>(), len_value);
 }
 
 template <bool BY_IE, class FUNC, class IE, class UNEXP>
@@ -197,7 +196,7 @@ protected:
 		m_size_state = m_decoder(PUSH_SIZE{len_value});
 		if (not m_size_state)
 		{
-			MED_RETURN_ERROR(error::OVERFLOW, m_decoder, name<IE>(), m_size_state.size() * FUNC::granularity, len_value * FUNC::granularity);
+			MED_RETURN_ERROR(error::OVERFLOW, m_decoder, name<IE>(), len_value);
 		}
 		MED_RETURN_SUCCESS;
 	}
@@ -275,7 +274,7 @@ inline MED_RESULT decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 			}
 			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
 			//if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
-			// return func(error::OVERFLOW, name<IE>(), left * FUNC::granularity);
+			//	MED_RETURN_ERROR(error::OVERFLOW, func, name<IE>(), left);
 		}
 		else
 		{

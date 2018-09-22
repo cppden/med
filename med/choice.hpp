@@ -160,7 +160,7 @@ struct choice_for<>
 	static MED_RESULT encode(FUNC&& func, TO const& to)
 	{
 		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
-		return func(error::UNKNOWN_TAG, name<TO>(), get_tag(to.get_header()));
+		MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<TO>(), get_tag(to.get_header()));
 	}
 
 	template <class TO>

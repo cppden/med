@@ -5,7 +5,11 @@
 # Meta-Encoder/Decoder
 
 ## Description
-Header-only C++ library for non-ASN.1 based definition of messages with generating corresponding encoder and decoder via meta-programming.
+Zero-dependency (STL) header-only C++ library for definition of messages with generation of corresponding encoder and decoder via meta-programming.
+MED is extensible library which can be adopted to support many type of encoding rules. Currently it includes:
+* complete implementation of non-ASN.1 octet encoding rules;
+* initial implementation of Google ProtoBuf encoding rules;
+* initial implementation of JSON encoding rules.
 
 See [overview](doc/Overview.md) for details and samples.
 
@@ -93,4 +97,4 @@ struct PROTO : med::choice< med::value<uint8_t>
 ```
 
 ## Dependencies
-Any modern C++ compiler with C++17 support.
+Any modern C++ compiler with C++17 support (see travis for the selected ones).

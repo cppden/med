@@ -14,6 +14,8 @@ Distributed under the MIT License
 
 #include "config.hpp"
 #include "functional.hpp"
+#include "name.hpp"
+#include "exception.hpp"
 
 namespace med {
 
@@ -49,12 +51,12 @@ inline MED_RESULT check_arity(FUNC& func, IE const&, std::size_t count)
 		}
 		else
 		{
-			return func(error::EXTRA_IE, name<IE>(), IE::max, count);
+			MED_RETURN_ERROR(error::EXTRA_IE, func, name<IE>(), IE::max, count);
 		}
 	}
 	else
 	{
-		return func(error::MISSING_IE, name<IE>(), IE::min, count);
+		MED_RETURN_ERROR(error::MISSING_IE, func, name<IE>(), IE::min, count);
 	}
 }
 

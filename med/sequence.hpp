@@ -126,7 +126,7 @@ struct seq_for<IE, IES...>
 				if (!vtag)
 				{
 					func(POP_STATE{}); //restore state
-					func(error::SUCCESS); //clear error
+					//func(error::SUCCESS); //clear error
 				}
 				MED_CHECK_FAIL(check_arity(func, ie));
 			}
@@ -452,7 +452,7 @@ struct sequence : container<IES...>
 	template <class DECODER, class UNEXP>
 	MED_RESULT decode(DECODER&& decoder, UNEXP& unexp)
 	{
-		value<std::size_t> vtag; //TODO: any clue from sequence?
+		value<std::size_t> vtag;
 		return sl::seq_for<IES...>::template decode<void>(this->m_ies, decoder, unexp, vtag);
 	}
 };

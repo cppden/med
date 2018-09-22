@@ -12,8 +12,9 @@ Distributed under the MIT License
 #include <cstddef>
 #include <cstdint>
 #include <algorithm>
-
-#include "debug.hpp"
+#include <iostream>
+//#include <iomanip>
+//#include <string_view>
 
 
 namespace med {
@@ -199,7 +200,7 @@ public:
 
 	bool fill(std::size_t count, uint8_t value)
 	{
-		CODEC_TRACE("padding %zu bytes=%u", count, value);
+		//CODEC_TRACE("padding %zu bytes=%u", count, value);
 		if (size() >= count)
 		{
 			while (count--) *m_state.cursor++ = value;
@@ -220,23 +221,60 @@ public:
 
 	auto push_size(std::size_t size)       { return size_state{this, size}; }
 
-#ifdef CODEC_TRACE_ENABLE
+#if 1
 	char const* toString() const
 	{
 		static char sz[64];
-		auto const* p = begin();
-		//int()
+		auto p = begin();
 		if constexpr (std::is_same_v<char, value_type>)
 		{
-			std::snprintf(sz, sizeof(sz), "%p@%zu+%zu: %.*s", (void*)p, get_offset(), size()
-				, int(std::min(size(), std::size_t(32))), p);
+			auto const len = int(std::min(size(), std::size_t(16)));
+			std::snprintf(sz, sizeof(sz), "[%zu]+%zu=%.*s", size(), get_offset(), len, p);
 		}
 		else
 		{
-			std::snprintf(sz, sizeof(sz), "%p@%zu+%zu: %02x %02x [%02x] %02x %02x", (void*)p, get_offset(), size()
-				, p[-2], p[-1], p[0], p[1], p[2]);
+			std::snprintf(sz, sizeof(sz)
+					, "[%zu]+%zu=%02x%02x%02x%02x[%02x]%02x%02x%02x%02x"
+					, size(), get_offset(), p[-4],p[-3],p[-2],p[-1], p[0], p[1],p[2],p[3],p[4]);
 		}
 		return sz;
+	}
+
+	friend std::ostream& operator << (std::ostream& out, buffer const& buf)
+	{
+		return out << buf.toString();
+	}
+#else
+	//seems everyone likes C++ streams but for some reason I find them way too ugly...
+	//NOTE: left here only for comparison with handy printf
+	friend std::ostream& operator << (std::ostream& out, buffer const& buf)
+	{
+		auto const save_flags = out.flags();
+
+		out
+			<< '[' << buf.size() << ']'
+			<< '+' << buf.get_offset() << '=';
+		if constexpr (std::is_same_v<char, value_type>)
+		{
+			auto const size = std::min(buf.size(), std::size_t(32));
+			out << '=' << std::string_view{buf.begin(), size};
+		}
+		else
+		{
+			auto* p = buf.begin() - 4;
+			for (int i = -4; i < 0; ++i)
+			{
+				out << std::hex << std::setfill('0') << std::setw(2) << +p[i];
+			}
+			out << '[' << std::hex << std::setfill('0') << std::setw(2) << +p[0] << ']';
+			for (int i = 1; i < 5; ++i)
+			{
+				std::cout << std::hex << std::setfill('0') << std::setw(2) << +p[i];
+			}
+		}
+
+		out.flags(save_flags);
+		return out;
 	}
 #endif
 

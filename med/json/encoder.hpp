@@ -38,7 +38,10 @@ struct encoder
 
 	//errors
 	template <typename... ARGS>
-	MED_RESULT operator() (error e, ARGS&&... args)          { return ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...); }
+	MED_RESULT operator() (error e, ARGS&&... args)
+	{
+		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
+	}
 
 	//CONTAINER
 	template <class IE>
@@ -56,7 +59,7 @@ struct encoder
 			out[0] = open_brace();
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
 	}
 	template <class IE>
 	MED_RESULT operator() (IE const&, HEADER_CONTAINER const&)
@@ -67,7 +70,7 @@ struct encoder
 			out[0] = ':';
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
 	}
 	template <class IE>
 	MED_RESULT operator() (IE const&, EXIT_CONTAINER const&)
@@ -84,7 +87,7 @@ struct encoder
 			out[0] = closing_brace();
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
 	}
 	template <class IE>
 	MED_RESULT operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
@@ -95,7 +98,7 @@ struct encoder
 			out[0] = ',';
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), 1);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
 	}
 
 	//IE_VALUE
@@ -146,7 +149,8 @@ struct encoder
 
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size());
+		//TODO: report valid size
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
 	}
 
 	//IE_OCTET_STRING
@@ -161,7 +165,7 @@ struct encoder
 			out[ie.size()] = '"';
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size(), ie.size());
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
 	}
 
 private:

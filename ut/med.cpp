@@ -251,7 +251,6 @@ TEST(decode, msg_func)
 #endif
 }
 
-//TODO: add more isolated UTs on fields
 TEST(field, tagged_nibble)
 {
 	uint8_t buffer[4];

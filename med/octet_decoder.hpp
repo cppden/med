@@ -47,21 +47,20 @@ struct octet_decoder
 	MED_RESULT operator() (ADVANCE_STATE const& ss)
 	{
 		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().set_error(error::OVERFLOW, "advance", ctx.buffer().size() * granularity, ss.bits);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity);
 	}
 	MED_RESULT operator() (ADD_PADDING const& pad)
 	{
 		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
 		if (ctx.buffer().advance(pad.bits/granularity)) MED_RETURN_SUCCESS;
-		return ctx.error_ctx().set_error(error::OVERFLOW, "padding", ctx.buffer().size() * granularity, pad.bits);
+		MED_RETURN_ERROR(error::OVERFLOW, (*this), "padding", pad.bits/granularity);
 	}
 
 	//errors
 	template <typename... ARGS>
 	MED_RESULT operator() (error e, ARGS&&... args)
 	{
-		return ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...);
-		//TODO: use ctx.buffer().get_offset()
+		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
 	}
 
 	//IE_VALUE
@@ -89,7 +88,7 @@ struct octet_decoder
 		}
 		else
 		{
-			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, IE::traits::bits);
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
 		}
 	}
 
@@ -102,7 +101,7 @@ struct octet_decoder
 		{
 			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.size()));
 			if (ctx.buffer().advance(ie.size())) MED_RETURN_SUCCESS;
-			return ctx.error_ctx().set_error(error::OVERFLOW, name<IE>(), ctx.buffer().size() * granularity, ie.size() * granularity);
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
 		}
 		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ie.size(), ctx.buffer().get_offset());
 	}

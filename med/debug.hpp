@@ -40,6 +40,3 @@ inline char const* filename(char const* fname)
 #else
 #define CODEC_TRACE(...)
 #endif
-
-#define MED_RETURN_ERROR(err, func, ...) \
-	{ CODEC_TRACE("%s", #err); return func(err, __VA_ARGS__); }

@@ -88,7 +88,10 @@ struct decoder
 
 	//errors
 	template <typename... ARGS>
-	MED_RESULT operator() (error e, ARGS&&... args)    { return ctx.error_ctx().set_error(e, std::forward<ARGS>(args)...); }
+	MED_RESULT operator() (error e, ARGS&&... args)
+	{
+		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
+	}
 
 	//CONTAINER
 	template <class IE>
@@ -105,7 +108,7 @@ struct decoder
 			CODEC_TRACE("ENTRY_CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
 			MED_RETURN_SUCCESS;
 		}
-		return ctx.error_ctx().set_error(error::INVALID_VALUE, name<IE>(), open_brace());
+		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), open_brace());
 	}
 	template <class IE>
 	MED_RESULT operator() (IE const&, HEADER_CONTAINER const&)
@@ -200,7 +203,8 @@ struct decoder
 		}
 		else
 		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 0, 3);
+			//TODO: need valid size to report
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 0);
 		}
 	}
 
