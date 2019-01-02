@@ -283,7 +283,7 @@ private:
 	auto convert(char const* p, char const* fmt, IE& ie)
 	{
 		VAL val; int pos;
-		if (1 == std::sscanf(p, fmt, &val, &pos) && ctx.buffer().template advance(pos - 1))
+		if (1 == std::sscanf(p, fmt, &val, &pos) && ctx.buffer().advance(pos - 1))
 		{
 			CODEC_TRACE("%s[%s]=%.*s", name<IE>(), fmt, pos, p);
 			if constexpr (not std::is_same_v<VAL, typename IE::value_type>)

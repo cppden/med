@@ -9,8 +9,6 @@ Distributed under the MIT License
 
 #pragma once
 
-#include <cstdint>
-
 #include "../value.hpp"
 #include "../octet_string.hpp"
 #include "../set.hpp"

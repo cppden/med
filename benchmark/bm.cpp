@@ -1,5 +1,9 @@
 #include <benchmark/benchmark.h>
 
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic pop
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
 #include "med.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
@@ -20,7 +24,7 @@ using CNT = med::counter_t<med::value<uint16_t>>;
 template <std::size_t TAG>
 using T = med::value<med::fixed<TAG, uint8_t>>;
 template <std::size_t TAG>
-using C = med::value<med::fixed<TAG>>;
+using C = med::value<med::fixed<TAG, uint8_t>>;
 
 struct FLD_UC : med::value<uint8_t>
 {

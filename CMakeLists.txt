@@ -72,6 +72,7 @@ add_compile_options(
 	-Wunreachable-code
 	-pedantic
 	-pedantic-errors
+	-mtune=native
 )
 
 #set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -Wno-gnu-zero-variadic-macro-arguments")

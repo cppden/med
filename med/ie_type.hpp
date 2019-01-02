@@ -23,6 +23,7 @@ struct AGGREGATE {}; //represents a aggregation of IEs (holds externally)
 struct IE_NULL {};
 struct IE_VALUE        : PRIMITIVE {};
 struct IE_OCTET_STRING : PRIMITIVE {};
+struct IE_BIT_STRING   : PRIMITIVE {};
 
 struct IE_TV : AGGREGATE {};
 struct IE_LV : AGGREGATE {};

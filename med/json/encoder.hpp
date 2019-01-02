@@ -134,17 +134,21 @@ struct encoder
 			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
 			{
 				int const written = std::snprintf(out, len, "%g", ie.get());
-				ctx.buffer().template advance(written - len);
+				ctx.buffer().advance(written - len);
 			}
 			else if constexpr (std::is_signed_v<typename IE::value_type>)
 			{
 				int const written = std::snprintf(out, len, "%lld", static_cast<long long>(ie.get()));
-				ctx.buffer().template advance(written - len);
+				ctx.buffer().advance(written - len);
 			}
 			else if constexpr (std::is_unsigned_v<typename IE::value_type>)
 			{
 				int const written = std::snprintf(out, len, "%llu", static_cast<unsigned long long>(ie.get()));
-				ctx.buffer().template advance(written - len);
+				ctx.buffer().advance(written - len);
+			}
+			else
+			{
+				MED_RETURN_ERROR(error::UNKNOWN_TAG, (*this), name<IE>(), 1);
 			}
 
 			MED_RETURN_SUCCESS;
@@ -170,8 +174,5 @@ struct encoder
 
 private:
 };
-
-template <class ENC_CTX>
-auto make_encoder(ENC_CTX& ctx) { return encoder<ENC_CTX>{ctx}; }
 
 }	//end: namespace med::json
