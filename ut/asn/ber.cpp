@@ -143,7 +143,7 @@ std::string encoded(typename IE::value_type const& val)
 	med::decoder_context<> dctx;
 	dctx.reset(ectx.buffer().get_start(), ectx.buffer().get_offset());
 #if (MED_EXCEPTIONS)
-	decode(med::octet_decoder{dctx}, dec);
+	decode(med::asn::ber::decoder{dctx}, dec);
 #else
 	EXPECT_TRUE(decode(med::asn::ber::decoder{dctx}, dec)) << toString(dctx.error_ctx());
 #endif
