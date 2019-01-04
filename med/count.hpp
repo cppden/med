@@ -41,15 +41,11 @@ constexpr bool is_counter_v = is_counter<T>::value;
 namespace detail {
 
 template <class FUNC, class IE>
-inline MED_RESULT check_arity(FUNC& func, IE const&, std::size_t count)
+inline void check_arity(FUNC& func, IE const&, std::size_t count)
 {
 	if (count >= IE::min)
 	{
-		if (count <= IE::max)
-		{
-			MED_RETURN_SUCCESS;
-		}
-		else
+		if (count > IE::max)
 		{
 			MED_RETURN_ERROR(error::EXTRA_IE, func, name<IE>(), IE::max, count);
 		}
@@ -64,15 +60,11 @@ inline MED_RESULT check_arity(FUNC& func, IE const&, std::size_t count)
 
 //multi-field
 template <class FUNC, class IE>
-constexpr MED_RESULT check_arity(FUNC& func, IE const& ie, std::size_t count)
+constexpr void check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
 	if constexpr (is_optional_v<IE>)
 	{
-#if (MED_EXCEPTIONS)
 		if (count) { detail::check_arity(func, ie, count); }
-#else
-		return (0 == count) || detail::check_arity(func, ie, count);
-#endif
 	}
 	else
 	{
@@ -81,7 +73,7 @@ constexpr MED_RESULT check_arity(FUNC& func, IE const& ie, std::size_t count)
 }
 
 template <class FUNC, class IE>
-constexpr MED_RESULT check_arity(FUNC& func, IE const& ie)
+constexpr void check_arity(FUNC& func, IE const& ie)
 {
 	if constexpr (is_optional_v<IE>)
 	{

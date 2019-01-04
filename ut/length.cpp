@@ -138,11 +138,8 @@ TEST(length, placeholder)
 		hdr.ref<U16>().set(0x1661);
 		hdr.ref<U8>().set(0x37);
 
-#if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, msg);
-#else
-		ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
+
 		uint8_t const encoded[] = {
 			0x16, 0x61
 			, 0, 0, 0    //length 3 bytes
@@ -153,11 +150,7 @@ TEST(length, placeholder)
 
 		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 		PL_SEQ dmsg;
-#if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{dctx}, dmsg);
-#else
-		ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(ctx.error_ctx());
-#endif
 		PL_HDR& dhdr = dmsg.ref<PL_HDR>();
 		EXPECT_EQ(hdr.get<U16>().get(), dhdr.get<U16>().get());
 		EXPECT_EQ(hdr.get<U8>().get(), dhdr.get<U8>().get());
@@ -169,11 +162,7 @@ TEST(length, placeholder)
 		msg.push_back<U32>(ctx)->set(0x01020304);
 		msg.push_back<U32>(ctx)->set(0x05060708);
 
-#if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, msg);
-#else
-		ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 		uint8_t const encoded[] = {
 			0x16, 0x61
 			, 0, 0, 16    //length 3 bytes
@@ -186,11 +175,7 @@ TEST(length, placeholder)
 
 		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 		PL_SEQ dmsg;
-#if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{dctx}, dmsg);
-#else
-		ASSERT_TRUE(decode(med::octet_decoder{dctx}, dmsg)) << toString(dctx.error_ctx());
-#endif
 		ASSERT_EQ(msg.count<U32>(), dmsg.count<U32>());
 		auto it = dmsg.get<U32>().begin();
 		for (auto const& v : msg.get<U32>())
@@ -212,22 +197,13 @@ TEST(length, m_lmv)
 	med::decoder_context<> ctx{encoded};
 	len::M_LMV msg;
 
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::out_of_memory);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
-	EXPECT_EQ(med::error::OUT_OF_MEMORY, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-#endif
 
 	ctx.get_allocator().reset(alloc); //assign allocation space
 	ctx.reset(); //reset from previous errors
 	msg.clear(); //clear message from previous decode
 
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 
 	auto const& vals = msg.get<len::MV>().get<len::U8>();
 	uint8_t const exp[] = {1,2,3};
@@ -248,12 +224,7 @@ TEST(length, m_lmv)
 	ctx.reset(shorter, 4); //reset to new data
 	msg.clear(); //clear message from previous decode
 
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::overflow);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-#endif
 }
 
 TEST(length, c_lv)
@@ -266,11 +237,7 @@ TEST(length, c_lv)
 	med::decoder_context<> ctx{encoded};
 	len::C_LV msg;
 
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 
 	auto const* var = msg.get<len::VAR>();
 	ASSERT_NE(nullptr, var);
@@ -284,12 +251,7 @@ TEST(length, c_lv)
 		1, 2
 	};
 	ctx.reset(shorter,sizeof(shorter));
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
-	EXPECT_EQ(med::error::INVALID_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-#endif
 }
 
 TEST(length, vlvar)
@@ -308,11 +270,7 @@ TEST(length, vlvar)
 		vlvar->ref<len::VAR>().set(data[i]);
 	}
 
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 
 	uint8_t encoded[] = {
 		0,0,0,1, 0x31, //len=3, val=1
@@ -327,11 +285,7 @@ TEST(length, vlvar)
 	med::decoder_context<> dctx{encoded};
 	msg.clear();
 
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{dctx}, msg)) << toString(dctx.error_ctx());
-#endif
 
 	std::size_t index = 1;
 	for (auto const& v : msg.get<len::VLVAR>())
@@ -360,11 +314,7 @@ TEST(length, seq)
 		0x1,0x60
 	};
 	msg.clear(); ctx.reset(ok);
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 	EXPECT_EQ(0x160, msg.get<len::SEQ2>().get<len::U16>().get());
 
 	uint8_t const short_total_len[] = {
@@ -373,12 +323,7 @@ TEST(length, seq)
 		0,0,0,2, 1,2, //U16
 	};
 	msg.clear(); ctx.reset(short_total_len);
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::overflow);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-#endif
 
 	uint8_t const inv_value[] = {
 		12, //SEQ total len
@@ -386,12 +331,6 @@ TEST(length, seq)
 		0,0,0,2, 1,2, //U16
 	};
 	msg.clear(); ctx.reset(inv_value);
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{ctx}, msg));
-	EXPECT_EQ(med::error::INVALID_VALUE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-#endif
-
 }
 #endif

@@ -53,11 +53,7 @@ TEST(protobuf, encode_plain)
 	uint8_t buffer[128] = {};
 	med::encoder_context<> ctx{ buffer };
 
-#if (MED_EXCEPTIONS)
 	encode(med::protobuf::encoder{ctx}, msg);
-#else
-	ASSERT_TRUE(encode(med::protobuf::encoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 	EXPECT_EQ(sizeof(pb::plain_encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(pb::plain_encoded, buffer));
 }
@@ -68,11 +64,7 @@ TEST(protobuf, decode_plain)
 
 	pb::plain msg;
 
-#if (MED_EXCEPTIONS)
 	decode(med::protobuf::decoder{ctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::protobuf::decoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 
 	pb::plain const& cmsg = msg;
 

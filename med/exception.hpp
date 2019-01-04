@@ -1,6 +1,6 @@
 /**
 @file
-med exception is only used if MED_EXCEPTIONS=1 was defined
+med exceptions
 
 @copyright Denis Priyomov 2016-2017
 Distributed under the MIT License
@@ -29,15 +29,6 @@ char const* format(char(&out)[N], char const* bufpos, char const* fmt, ARGS&&...
 	out[N-1] = 0;
 	return out;
 }
-
-#if (MED_EXCEPTIONS)
-
-#define MED_RESULT           void
-#define MED_RETURN_SUCCESS   return
-#define MED_RETURN_FAILURE   return
-#define MED_AND              ,
-#define MED_EXPR_AND(expr)
-#define MED_CHECK_FAIL(expr) expr
 
 class exception : public std::exception
 {
@@ -104,17 +95,6 @@ struct out_of_memory : public exception
 	template <typename... ARGS>
 	out_of_memory(ARGS&&... args) noexcept	{ format(this->m_what, std::forward<ARGS>(args)...); }
 };
-
-#else //w/o exceptions
-
-#define MED_RESULT           bool
-#define MED_RETURN_SUCCESS   return true
-#define MED_RETURN_FAILURE   return false
-#define MED_AND              &&
-#define MED_EXPR_AND(expr)   (expr) &&
-#define MED_CHECK_FAIL(expr) if (!(expr)) MED_RETURN_FAILURE
-
-#endif //MED_EXCEPTIONS
 
 #define MED_RETURN_ERROR(err, func, ...) \
 	{ CODEC_TRACE("%s", #err); return func(err, __VA_ARGS__); }

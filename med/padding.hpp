@@ -71,14 +71,13 @@ struct padder
 		return 0;
 	}
 
-	MED_RESULT add() const
+	void add() const
 	{
 		if (auto const pad_bits = size())
 		{
 			CODEC_TRACE("PADDING %zu bits", pad_bits);
-			return m_func(ADD_PADDING{pad_bits, IE::padding::filler});
+			m_func(ADD_PADDING{pad_bits, IE::padding::filler});
 		}
-		MED_RETURN_SUCCESS;
 	}
 
 private:

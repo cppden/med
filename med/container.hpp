@@ -100,7 +100,7 @@ struct container_for<IE, IES...>
 	}
 
 	template <class TO, class FROM, class... ARGS>
-	static inline MED_RESULT copy(TO& to, FROM const& from, ARGS&&... args)
+	static inline void copy(TO& to, FROM const& from, ARGS&&... args)
 	{
 		using field_type = get_field_type_t<IE>;
 		auto const& from_field = from.m_ies.template as<field_type>();
@@ -112,23 +112,16 @@ struct container_for<IE, IES...>
 				to_field.clear();
 				for (auto const& rhs : from_field)
 				{
-					if (auto* p = to_field.push_back(std::forward<ARGS>(args)...))
-					{
-						MED_CHECK_FAIL(p->copy(rhs, std::forward<ARGS>(args)...));
-					}
-					else
-					{
-						MED_RETURN_FAILURE;
-					}
+					auto* p = to_field.push_back(std::forward<ARGS>(args)...);
+					p->copy(rhs, std::forward<ARGS>(args)...);
 				}
 			}
 			else
 			{
-				MED_CHECK_FAIL(to_field.ref_field().copy(from_field.ref_field(), std::forward<ARGS>(args)...));
+				to_field.ref_field().copy(from_field.ref_field(), std::forward<ARGS>(args)...);
 			}
 		}
-		//MED_CHECK_FAIL( field_copy<IE>(to, from, std::forward<ARGS>(args)...) );
-		return container_for<IES...>::copy(to, from, std::forward<ARGS>(args)...);
+		container_for<IES...>::copy(to, from, std::forward<ARGS>(args)...);
 	}
 };
 
@@ -145,7 +138,7 @@ struct container_for<>
 	static constexpr std::size_t calc_length(TO const&)             { return 0; }
 
 	template <class TO, class FROM, class... ARGS>
-	static constexpr MED_RESULT copy(TO&, FROM const&, ARGS&&...)   { MED_RETURN_SUCCESS; }
+	static constexpr void copy(TO&, FROM const&, ARGS&&...)         { }
 };
 
 }	//end: namespace sl
@@ -182,7 +175,7 @@ public:
 	}
 
 	template <class FIELD>
-	[[deprecated("inefficient, may be removed")]]
+	[[deprecated("inefficient, will be removed")]]
 	FIELD const* get(std::size_t index) const
 	{
 		auto& ie = m_ies.template as<FIELD>();
@@ -236,13 +229,13 @@ public:
 	std::size_t calc_length() const         { return sl::container_for<IES...>::calc_length(this->m_ies); }
 
 	template <class FROM, class... ARGS>
-	MED_RESULT copy(FROM const& from, ARGS&&... args)
+	void copy(FROM const& from, ARGS&&... args)
 	{
 		return sl::container_for<IES...>::copy(*this, from, std::forward<ARGS>(args)...);
 	}
 
 	template <class TO, class... ARGS>
-	MED_RESULT copy_to(TO& to, ARGS&&... args) const
+	void copy_to(TO& to, ARGS&&... args) const
 	{
 		return sl::container_for<IES...>::copy(to, *this, std::forward<ARGS>(args)...);
 	}

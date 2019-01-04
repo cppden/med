@@ -57,11 +57,7 @@ TEST(json, encode)
 	char buffer[1024] = {};
 	med::json::encoder_context ctx{ buffer };
 
-#if (MED_EXCEPTIONS)
 	encode(med::json::encoder{ctx}, msg);
-#else
-	ASSERT_TRUE(encode(med::json::encoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 	std::string const got{buffer, ctx.buffer().get_offset()};
 	std::string const exp{R"({"bool_field":true,"int_field":-10,"uint_field":137,"double_field":3.14159,"array_field":["one","two"]})"};
 	EXPECT_EQ(exp, got);
@@ -84,11 +80,7 @@ TEST(json, decode)
 	med::json::decoder_context ctx{ encoded.data(), encoded.size() };
 
 	js::MSG msg;
-#if (MED_EXCEPTIONS)
 	decode(med::json::decoder{ctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::json::decoder{ctx}, msg)) << ctx.error_ctx();
-#endif
 
 	auto const& cmsg = msg;
 	EXPECT_EQ(true, cmsg.get<js::BOOL>().get());

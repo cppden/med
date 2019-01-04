@@ -133,20 +133,12 @@ std::string encoded(typename IE::value_type const& val)
 
 	IE enc;
 	enc.set(val);
-#if (MED_EXCEPTIONS)
 	encode(med::asn::ber::encoder{ectx}, enc);
-#else
-	EXPECT_TRUE(encode(med::asn::ber::encoder{ectx}, enc)) << toString(ectx.error_ctx());
-#endif
 
 	IE dec;
 	med::decoder_context<> dctx;
 	dctx.reset(ectx.buffer().get_start(), ectx.buffer().get_offset());
-#if (MED_EXCEPTIONS)
 	decode(med::asn::ber::decoder{dctx}, dec);
-#else
-	EXPECT_TRUE(decode(med::asn::ber::decoder{dctx}, dec)) << toString(dctx.error_ctx());
-#endif
 	EXPECT_EQ(enc.get(), dec.get());
 
 	return as_string(ectx.buffer());

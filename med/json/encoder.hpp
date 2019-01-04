@@ -38,14 +38,14 @@ struct encoder
 
 	//errors
 	template <typename... ARGS>
-	MED_RESULT operator() (error e, ARGS&&... args)
+	void operator() (error e, ARGS&&... args)
 	{
 		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
 	}
 
 	//CONTAINER
 	template <class IE>
-	MED_RESULT operator() (IE const&, ENTRY_CONTAINER const&)
+	void operator() (IE const&, ENTRY_CONTAINER const&)
 	{
 		constexpr auto open_brace = []()
 		{
@@ -57,23 +57,27 @@ struct encoder
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = open_brace();
-			MED_RETURN_SUCCESS;
 		}
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		else
+		{
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		}
 	}
 	template <class IE>
-	MED_RESULT operator() (IE const&, HEADER_CONTAINER const&)
+	void operator() (IE const&, HEADER_CONTAINER const&)
 	{
 		CODEC_TRACE("HEADER_CONTAINER[%s]: %s", name<IE>(), ctx.buffer().toString());
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = ':';
-			MED_RETURN_SUCCESS;
 		}
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		else
+		{
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		}
 	}
 	template <class IE>
-	MED_RESULT operator() (IE const&, EXIT_CONTAINER const&)
+	void operator() (IE const&, EXIT_CONTAINER const&)
 	{
 		constexpr auto closing_brace = []()
 		{
@@ -85,25 +89,29 @@ struct encoder
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = closing_brace();
-			MED_RETURN_SUCCESS;
 		}
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		else
+		{
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		}
 	}
 	template <class IE>
-	MED_RESULT operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
+	void operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
 	{
 		CODEC_TRACE("CONTAINER,[%s]: %s", name<IE>(), ctx.buffer().toString());
 		if (auto* out = ctx.buffer().template advance<1>())
 		{
 			out[0] = ',';
-			MED_RETURN_SUCCESS;
 		}
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		else
+		{
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		}
 	}
 
 	//IE_VALUE
 	template <class IE>
-	MED_RESULT operator() (IE const& ie, IE_VALUE const&)
+	void operator() (IE const& ie, IE_VALUE const&)
 	{
 		constexpr std::size_t len = [](){
 			if constexpr (std::is_same_v<bool, typename IE::value_type>)
@@ -150,16 +158,17 @@ struct encoder
 			{
 				MED_RETURN_ERROR(error::UNKNOWN_TAG, (*this), name<IE>(), 1);
 			}
-
-			MED_RETURN_SUCCESS;
 		}
-		//TODO: report valid size
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		else
+		{
+			//TODO: report valid size
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), 1);
+		}
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
-	MED_RESULT operator() (IE const& ie, IE_OCTET_STRING const&)
+	void operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
 		if (auto* out = ctx.buffer().advance(ie.size() + 2)) //2 quotes
 		{
@@ -167,9 +176,11 @@ struct encoder
 			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
 			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 			out[ie.size()] = '"';
-			MED_RETURN_SUCCESS;
 		}
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
+		else
+		{
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
+		}
 	}
 
 private:

@@ -116,7 +116,7 @@ public:
 	field_type const* first() const                         { return empty() ? nullptr : &m_fields[0].value; }
 	field_type const* last() const                          { return empty() ? nullptr : &m_tail->value; }
 
-	//inefficient read-only access
+	[[deprecated("inefficient, will be removed")]]
 	field_type const* at(std::size_t index) const
 	{
 		if (index >= count()) return nullptr;
@@ -131,18 +131,9 @@ public:
 	{
 		if (count() < inplace)
 		{
-			auto* piv = m_fields + count();
-			CODEC_TRACE("%s: inplace %s[%zu]=%p", __FUNCTION__, name<field_type>(), count(), (void*)piv);
-			if (m_count++) { m_tail->next = piv; }
-			piv->next = nullptr;
-			m_tail = piv;
-			return &m_tail->value;
+			return inplace_push_back();
 		}
-#if (MED_EXCEPTIONS)
 		throw out_of_memory("No space for in-place '%.32s': %zu bytes", name<field_type>(), sizeof(field_type));
-#else
-		return nullptr;
-#endif
 	}
 
 	//uses inplace or external storage
@@ -153,24 +144,17 @@ public:
 		//try inplace 1st then external
 		if (count() < inplace)
 		{
-			return push_back();
+			return inplace_push_back();
 		}
 		else
 		{
-			if (auto* piv = get_allocator_ptr(ctx)->template allocate<field_value>())
-			{
-				++m_count;
-				m_tail->next = piv;
-				piv->next = nullptr;
-				m_tail = piv;
-				return &m_tail->value;
-			}
+			auto* piv = get_allocator_ptr(ctx)->template allocate<field_value>();
+			++m_count;
+			m_tail->next = piv;
+			piv->next = nullptr;
+			m_tail = piv;
+			return &m_tail->value;
 		}
-#if (MED_EXCEPTIONS)
-		throw out_of_memory("No allocator for '%.32s': %zu bytes", name<field_type>(), sizeof(field_type));
-#else
-		return nullptr;
-#endif
 	}
 
 	//won't recover space if external storage was used
@@ -193,6 +177,17 @@ public:
 	}
 
 private:
+	//checks are done by caller
+	field_type* inplace_push_back()
+	{
+		auto* piv = m_fields + count();
+		CODEC_TRACE("%s: inplace %s[%zu]=%p", __FUNCTION__, name<field_type>(), count(), (void*)piv);
+		if (m_count++) { m_tail->next = piv; }
+		piv->next = nullptr;
+		m_tail = piv;
+		return &m_tail->value;
+	}
+
 	multi_field(multi_field const&) = delete;
 	multi_field& operator= (multi_field const&) = delete;
 

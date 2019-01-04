@@ -63,13 +63,12 @@ public:
 	struct null_encoder
 	{
 		template <class IE>
-		constexpr MED_RESULT operator()(printer& me, IE const& ie)
+		constexpr void operator()(printer& me, IE const& ie)
 		{
 			if constexpr (has_name_v<IE>)
 			{
 				me.print_named(ie, typename has_print<IE>::type{});
 			}
-			MED_RETURN_SUCCESS;
 		}
 	};
 
@@ -77,7 +76,7 @@ public:
 	{
 	public:
 		template <class IE>
-		MED_RESULT operator()(printer& me, IE const& ie)
+		void operator()(printer& me, IE const& ie)
 		{
 			if constexpr (has_name_v<IE>)
 			{
@@ -93,35 +92,27 @@ public:
 	private:
 		//customized prints
 		template <class IE>
-		MED_RESULT print_named(printer& me, IE const& ie, int_t<2> pt)
+		void print_named(printer& me, IE const& ie, int_t<2> pt)
 		{
 			me.print_named(ie, pt);
-			MED_RETURN_SUCCESS;
 		}
+
 		template <class IE>
-		MED_RESULT print_named(printer& me, IE const& ie, int_t<1> pt)
+		void print_named(printer& me, IE const& ie, int_t<1> pt)
 		{
 			me.print_named(ie, pt);
-			MED_RETURN_SUCCESS;
 		}
 
 		//no customized print, change depth level
 		template <class IE>
-		MED_RESULT print_named(printer& me, IE const& ie, int_t<0>)
+		void print_named(printer& me, IE const& ie, int_t<0>)
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
 			CODEC_TRACE("depth -> %zu < max=%zu", me.m_depth, me.m_max_depth);
-#if (MED_EXCEPTIONS)
 			if (0 == me.m_max_depth || me.m_max_depth > me.m_depth) { ie.encode(me); }
 			me.m_depth = depth;
 			CODEC_TRACE("depth <- %zu", depth);
-#else
-			bool const ret = (0 == me.m_max_depth || me.m_max_depth > me.m_depth) ? ie.encode(me) : true;
-			me.m_depth = depth;
-			CODEC_TRACE("depth <- %zu", depth);
-			return ret;
-#endif
 		}
 	};
 
@@ -134,21 +125,20 @@ public:
 
 	//primitive
 	template <class IE, class IE_TYPE>
-	constexpr MED_RESULT operator() (IE const& ie, IE_TYPE const&)
+	constexpr void operator() (IE const& ie, IE_TYPE const&)
 	{
 		if constexpr (has_name_v<IE>)
 		{
 			print_named(ie, typename has_print<IE>::type{});
 		}
-		MED_RETURN_SUCCESS;
 	}
 
 	//state
 	constexpr void operator() (SNAPSHOT const&) { }
 	//errors
-	constexpr MED_RESULT operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { MED_RETURN_SUCCESS; }
+	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
 	//length encoder
-	template <int DELTA> constexpr MED_RESULT operator() (placeholder::_length<DELTA> const&) { MED_RETURN_SUCCESS; }
+	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
 
 private:
 	friend class container_encoder;
@@ -200,28 +190,21 @@ public:
 	struct null_encoder
 	{
 		template <class IE>
-		MED_RESULT operator()(dumper& me, IE const& ie)
+		void operator()(dumper& me, IE const& ie)
 		{
 			me.dump(ie);
-			MED_RETURN_SUCCESS;
 		}
 	};
 
 	struct container_encoder
 	{
 		template <class IE>
-		MED_RESULT operator()(dumper& me, IE const& ie)
+		void operator()(dumper& me, IE const& ie)
 		{
 			me.m_sink.on_container(me.m_depth, name<IE>());
 			auto const depth = me.m_depth++;
-#if (MED_EXCEPTIONS)
 			ie.encode(me);
 			me.m_depth = depth;
-#else
-			bool const ret = ie.encode(me);
-			me.m_depth = depth;
-			return ret;
-#endif
 		}
 	};
 
@@ -232,18 +215,17 @@ public:
 
 	//primitives
 	template <class IE, class IE_TYPE>
-	MED_RESULT operator() (IE const& ie, IE_TYPE const&)
+	void operator() (IE const& ie, IE_TYPE const&)
 	{
 		dump(ie);
-		MED_RETURN_SUCCESS;
 	}
 
 	//state
 	constexpr void operator() (SNAPSHOT const&) { }
 	//errors
-	constexpr MED_RESULT operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { MED_RETURN_SUCCESS; }
+	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
 	//length encoder
-	template <int DELTA> constexpr MED_RESULT operator() (placeholder::_length<DELTA> const&) { MED_RETURN_SUCCESS; }
+	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
 
 	template <class IE>
 	void dump(IE const& ie)

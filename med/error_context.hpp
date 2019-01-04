@@ -36,9 +36,6 @@ class error_context
 public:
 	using traits = TRAITS;
 
-#if (MED_EXCEPTIONS)
-	static constexpr void reset()          { }
-
 	template <class BUFFER>
 	static void set_error(BUFFER const& bufpos, error err, char const* name, std::size_t val0 = 0, std::size_t val1 = 0)
 	{
@@ -75,84 +72,7 @@ public:
 			}
 		}
 	}
-
-#else
-
-	explicit operator bool() const         { return success(); }
-	bool success() const                   { return error::SUCCESS == m_error; }
-	error get_error() const                { return m_error; }
-
-	void reset()                           { m_error = error::SUCCESS; }
-
-	template <class BUFFER>
-	bool set_error(BUFFER const& bufpos, error err, char const* name, std::size_t val0 = 0, std::size_t val1 = 0)
-	{
-		m_name     = name;
-		m_param[0] = val0;
-		m_param[1] = val1;
-		m_error    = err;
-		if constexpr (std::is_class_v<BUFFER>)
-		{
-			m_bufpos = bufpos.toString();
-		}
-		else
-		{
-			m_bufpos = nullptr;
-		}
-		return success();
-	}
-
-private:
-	template <class T>
-	friend char const* toString(error_context<T> const&);
-
-	char const* m_name {nullptr};
-	std::size_t m_param[2] {};
-	error       m_error { error::SUCCESS };
-	char const* m_bufpos; //buffer pos/descrption
-
-#endif //MED_EXCEPTIONS
 };
 
-#if (MED_EXCEPTIONS)
-#else
-template <class TRAITS>
-inline char const* toString(error_context<TRAITS> const& ec)
-{
-	static char sz[128];
-
-	switch (ec.m_error)
-	{
-	case error::OVERFLOW:
-		return format(sz, ec.m_bufpos, TRAITS::overflow(), ec.m_name, ec.m_param[1]);
-
-	case error::INVALID_VALUE:
-		return format(sz, ec.m_bufpos, TRAITS::invalid_value(), ec.m_name, ec.m_param[1], ec.m_param[0]);
-
-	case error::UNKNOWN_TAG:
-		return format(sz, ec.m_bufpos, TRAITS::unknown_tag(), ec.m_name, ec.m_param[0], ec.m_param[0]);
-
-	case error::MISSING_IE:
-		return format(sz, ec.m_bufpos, TRAITS::missing_ie(), ec.m_name, ec.m_param[0], ec.m_param[1]);
-
-	case error::EXTRA_IE:
-		return format(sz, ec.m_bufpos, TRAITS::excessive_ie(), ec.m_name, ec.m_param[0], ec.m_param[1]);
-
-	case error::OUT_OF_MEMORY:
-		return format(sz, ec.m_bufpos, TRAITS::out_of_memory(), ec.m_name, ec.m_param[0]);
-
-	//case error::SUCCESS:
-	default:
-		return nullptr;
-	}
-}
-
-template <class TRAITS>
-inline std::ostream& operator << (std::ostream& out, error_context<TRAITS> const& ec)
-{
-	auto* psz = toString(ec);
-	return out << (psz ? psz : "");
-}
-#endif //MED_EXCEPTIONS
 
 }	//end: namespace med

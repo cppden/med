@@ -18,13 +18,13 @@ Distributed under the MIT License
 namespace med {
 
 template <class FUNC, class IE>
-inline MED_RESULT update(FUNC&& func, IE const& ie)
+inline void update(FUNC&& func, IE const& ie)
 {
 	static_assert(has_ie_type<IE>(), "IE IS EXPECTED");
 	static_assert(std::is_base_of<with_snapshot, IE>(), "IE WITH med::with_snapshot EXPECTED");
 	CODEC_TRACE("update %s", name<IE>());
-	return func(SET_STATE{}, ie)
-		MED_AND sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
+	func(SET_STATE{}, ie);
+	sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
 }
 
 }	//end: namespace med

@@ -40,7 +40,6 @@ private:
 
 public:
 	decoder_context(void const* data, std::size_t size, void* alloc_data, std::size_t alloc_size)
-		: m_allocator{ &m_errCtx }
 	{
 		reset(data, size);
 
@@ -86,7 +85,6 @@ public:
 	{
 		get_allocator().reset();
 		buffer().reset(static_cast<typename buffer_type::pointer>(data), size);
-		error_ctx().reset();
 	}
 	template <typename T, std::size_t SIZE>
 	void reset(T const (&data)[SIZE])       { reset(data, sizeof(data)); }
@@ -95,7 +93,6 @@ public:
 	{
 		get_allocator().reset();
 		buffer().reset();
-		error_ctx().reset();
 	}
 
 private:

@@ -200,11 +200,10 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	void clear()                            { m_value.clear(); }
 
 	template <class... ARGS>
-	MED_RESULT copy(base_t const& from, ARGS&&...)
+	void copy(base_t const& from, ARGS&&...)
 	{
 		clear();
 		m_value.assign(from.begin(), from.end());
-		MED_RETURN_SUCCESS;
 	}
 
 	template <class T = VALUE>

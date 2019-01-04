@@ -9,13 +9,6 @@ Distributed under the MIT License
 
 #pragma once
 
-/**
- * Use exceptions (1) or bool result (0) as error handling
- */
-#ifndef MED_EXCEPTIONS
-#define MED_EXCEPTIONS 0
-#endif
-
 //#ifndef CODEC_TRACE_ENABLE
 //#endif
 

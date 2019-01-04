@@ -47,7 +47,7 @@ inline void discard(FUNC& func, TAG& vtag)
 }
 
 template <class FUNC, class IE>
-inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
+inline void encode_multi(FUNC& func, IE const& ie)
 {
 	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
 	for (auto& field : ie)
@@ -55,12 +55,12 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			MED_CHECK_FAIL(sl::encode_ie<IE>(func, field, typename IE::ie_type{}));
+			sl::encode_ie<IE>(func, field, typename IE::ie_type{});
 			if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 			{
 				if (ie.last() != &field)
 				{
-					MED_CHECK_FAIL(func(ie, NEXT_CONTAINER_ELEMENT{}));
+					func(ie, NEXT_CONTAINER_ELEMENT{});
 				}
 			}
 		}
@@ -69,7 +69,6 @@ inline MED_RESULT encode_multi(FUNC& func, IE const& ie)
 			return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count() - 1);
 		}
 	}
-	MED_RETURN_SUCCESS;
 }
 
 
@@ -80,7 +79,7 @@ template <class IE, class... IES>
 struct seq_for<IE, IES...>
 {
 	template <class PREV_IE, class TO, class FUNC, class UNEXP, class TAG>
-	static inline MED_RESULT decode(TO& to, FUNC& func, UNEXP& unexp, TAG& vtag)
+	static inline void decode(TO& to, FUNC& func, UNEXP& unexp, TAG& vtag)
 	{
 		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
@@ -95,7 +94,7 @@ struct seq_for<IE, IES...>
 					//convert const to writable
 					using TAG_IE = typename IE::tag_type::writable;
 					TAG_IE tag;
-					MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
+					func(tag, typename TAG_IE::ie_type{});
 					vtag.set_encoded(tag.get_encoded());
 					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 				}
@@ -104,14 +103,14 @@ struct seq_for<IE, IES...>
 				{
 					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count());
 					auto* field = ie.push_back(func);
-					MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
+					med::decode(func, *field, unexp);
 
 					if (func(PUSH_STATE{}, ie)) //not at the end
 					{
 						//convert const to writable
 						using TAG_IE = typename IE::tag_type::writable;
 						TAG_IE tag;
-						MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
+						func(tag, typename TAG_IE::ie_type{});
 						vtag.set_encoded(tag.get_encoded());
 						CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 					}
@@ -128,7 +127,7 @@ struct seq_for<IE, IES...>
 					func(POP_STATE{}); //restore state
 					//func(error::SUCCESS); //clear error
 				}
-				MED_CHECK_FAIL(check_arity(func, ie));
+				check_arity(func, ie);
 			}
 			else //multi-field w/o tag
 			{
@@ -141,25 +140,25 @@ struct seq_for<IE, IES...>
 				{
 					std::size_t count = typename IE::count_getter{}(to);
 					CODEC_TRACE("[%s]*%zu", name<IE>(), count);
-					MED_CHECK_FAIL(check_arity(func, ie, count));
+					check_arity(func, ie, count);
 					while (count--)
 					{
 						auto* field = ie.push_back(func);
-						MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
+						med::decode(func, *field, unexp);
 					}
 				}
 				else if constexpr (is_counter_v<IE>) //multi-field w/ counter
 				{
 					typename IE::counter_type counter_ie;
-					MED_CHECK_FAIL(med::decode(func, counter_ie));
+					med::decode(func, counter_ie);
 					auto count = counter_ie.get_encoded();
 					CODEC_TRACE("[%s] = %zu", name<IE>(), std::size_t(count));
-					MED_CHECK_FAIL(check_arity(func, ie, count));
+					check_arity(func, ie, count);
 					while (count--)
 					{
 						auto* field = ie.push_back(func);
 						CODEC_TRACE("#%zu = %p", std::size_t(count), (void*)field);
-						MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
+						med::decode(func, *field, unexp);
 					}
 				}
 				else if constexpr (has_condition_v<IE>) //conditional multi-field
@@ -170,11 +169,11 @@ struct seq_for<IE, IES...>
 						{
 							CODEC_TRACE("C[%s]#%zu", name<IE>(), ie.count());
 							auto* field = ie.push_back(func);
-							MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
+							med::decode(func, *field, unexp);
 						}
 						while (typename IE::condition{}(to));
 
-						MED_CHECK_FAIL(check_arity(func, ie));
+						check_arity(func, ie);
 					}
 					else
 					{
@@ -187,27 +186,19 @@ struct seq_for<IE, IES...>
 					std::size_t count = 0;
 					while (func(CHECK_STATE{}, ie) && count < IE::max)
 					{
-						if (auto* field = ie.push_back(func))
+						auto* field = ie.push_back(func);
+						if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 						{
-							if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+							if (count > 0)
 							{
-								if (count > 0)
-								{
-									MED_CHECK_FAIL(func(ie, NEXT_CONTAINER_ELEMENT{}));
-								}
+								func(ie, NEXT_CONTAINER_ELEMENT{});
 							}
-							MED_CHECK_FAIL(sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp));
 						}
-#if (!MED_EXCEPTIONS)
-						else
-						{
-							return func(error::OUT_OF_MEMORY, name<IE>());
-						}
-#endif
+						sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp);
 						++count;
 					}
 
-					MED_CHECK_FAIL(check_arity(func, ie, count));
+					check_arity(func, ie, count);
 				}
 			}
 		}
@@ -221,25 +212,27 @@ struct seq_for<IE, IES...>
 					if (!vtag)
 					{
 						//save state before decoding a tag
-						if (not func(PUSH_STATE{}, ie))
+						if (func(PUSH_STATE{}, ie))
+						{
+							//convert const to writable
+							using TAG_IE = typename IE::tag_type::writable;
+							TAG_IE tag;
+							func(tag, typename TAG_IE::ie_type{});
+							vtag.set_encoded(tag.get_encoded());
+							CODEC_TRACE("pop tag=%zx", std::size_t(tag.get_encoded()));
+						}
+						else
 						{
 							CODEC_TRACE("EoF at %s", name<IE>());
-							MED_RETURN_SUCCESS; //end of buffer
+							return; //end of buffer
 						}
-
-						//convert const to writable
-						using TAG_IE = typename IE::tag_type::writable;
-						TAG_IE tag;
-						MED_CHECK_FAIL(func(tag, typename TAG_IE::ie_type{}));
-						vtag.set_encoded(tag.get_encoded());
-						CODEC_TRACE("pop tag=%zx", std::size_t(tag.get_encoded()));
 					}
 
 					if (IE::tag_type::match(vtag.get_encoded())) //check tag decoded
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(func, vtag); //clear current tag as decoded
-						MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
+						med::decode(func, ie.ref_field(), unexp);
 					}
 				}
 				else //optional w/o tag
@@ -256,7 +249,7 @@ struct seq_for<IE, IES...>
 						if (was_set || has_default_value_v<IE>)
 						{
 							CODEC_TRACE("C[%s]", name<IE>());
-							MED_CHECK_FAIL(med::decode(func, ie, unexp));
+							med::decode(func, ie, unexp);
 							if constexpr (has_default_value_v<IE>)
 							{
 								if (not was_set) { ie.ref_field().clear(); } //discard since it's a default
@@ -271,12 +264,15 @@ struct seq_for<IE, IES...>
 					{
 						CODEC_TRACE("[%s]...", name<IE>());
 
-						if (not func(CHECK_STATE{}, ie))
+						if (func(CHECK_STATE{}, ie))
+						{
+							med::decode(func, ie.ref_field(), unexp);
+						}
+						else
 						{
 							CODEC_TRACE("EOF at [%s]", name<IE>());
-							MED_RETURN_SUCCESS; //end of buffer
+							return; //end of buffer
 						}
-						MED_CHECK_FAIL(med::decode(func, ie.ref_field(), unexp));
 					}
 				}
 			}
@@ -289,14 +285,14 @@ struct seq_for<IE, IES...>
 				{
 					discard(func, vtag);
 				}
-				MED_CHECK_FAIL(med::decode(func, ie, unexp));
+				med::decode(func, ie, unexp);
 			}
 		}
 		return seq_for<IES...>::template decode<IE>(to, func, unexp, vtag);
 	}
 
 	template <class PREV_IE, class TO, class FUNC>
-	static inline MED_RESULT encode(TO const& to, FUNC& func)
+	static inline void encode(TO const& to, FUNC& func)
 	{
 		if constexpr (is_multi_field_v<IE>)
 		{
@@ -313,9 +309,9 @@ struct seq_for<IE, IES...>
 					{
 						typename IE::counter_type counter_ie;
 						counter_ie.set_encoded(ie.count());
-						MED_CHECK_FAIL(check_arity(func, ie));
-						MED_CHECK_FAIL(med::encode(func, counter_ie));
-						MED_CHECK_FAIL(encode_multi(func, ie));
+						check_arity(func, ie);
+						med::encode(func, counter_ie);
+						encode_multi(func, ie);
 					}
 				}
 				//mandatory multi-field w/ counter w/o tag
@@ -325,16 +321,16 @@ struct seq_for<IE, IES...>
 					CODEC_TRACE("CV{%s}=%zu", name<IE>(), ie.count());
 					typename IE::counter_type counter_ie;
 					counter_ie.set_encoded(ie.count());
-					MED_CHECK_FAIL(check_arity(func, ie));
-					MED_CHECK_FAIL(med::encode(func, counter_ie));
-					MED_CHECK_FAIL(encode_multi(func, ie));
+					check_arity(func, ie);
+					med::encode(func, counter_ie);
+					encode_multi(func, ie);
 				}
 			}
 			else //multi-field w/o counter
 			{
 				IE const& ie = to;
-				MED_CHECK_FAIL(encode_multi(func, ie));
-				MED_CHECK_FAIL(check_arity(func, ie));
+				encode_multi(func, ie);
+				check_arity(func, ie);
 			}
 		}
 		else //single-instance field
@@ -345,7 +341,7 @@ struct seq_for<IE, IES...>
 				{
 					CODEC_TRACE("[%s] with setter", name<IE>());
 					IE ie;
-					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
+					ie.copy(static_cast<IE const&>(to), func);
 
 					typename IE::setter_type setter;
 					if constexpr (std::is_same_v<bool, decltype(setter(ie, to))>)
@@ -361,7 +357,7 @@ struct seq_for<IE, IES...>
 					}
 					if (ie.ref_field().is_set())
 					{
-						MED_CHECK_FAIL(med::encode(func, ie));
+						med::encode(func, ie);
 					}
 				}
 				else //w/o setter
@@ -370,7 +366,7 @@ struct seq_for<IE, IES...>
 					CODEC_TRACE("%c[%s]", ie.ref_field().is_set()?'+':'-', name<IE>());
 					if (ie.ref_field().is_set() || has_default_value_v<IE>)
 					{
-						MED_CHECK_FAIL(med::encode(func, ie));
+						med::encode(func, ie);
 					}
 				}
 			}
@@ -380,7 +376,7 @@ struct seq_for<IE, IES...>
 				{
 					CODEC_TRACE("{%s} with setter", name<IE>());
 					IE ie;
-					MED_CHECK_FAIL(ie.copy(static_cast<IE const&>(to), func));
+					ie.copy(static_cast<IE const&>(to), func);
 
 					typename IE::setter_type setter;
 					if constexpr (std::is_same_v<bool, decltype(setter(ie, to))>)
@@ -396,11 +392,11 @@ struct seq_for<IE, IES...>
 					}
 					if (ie.ref_field().is_set())
 					{
-						MED_CHECK_FAIL(med::encode(func, ie));
+						med::encode(func, ie);
 					}
 					else
 					{
-						return func(error::MISSING_IE, name<IE>(), 1, 0);
+						func(error::MISSING_IE, name<IE>(), 1, 0);
 					}
 				}
 				else //w/o setter
@@ -409,11 +405,11 @@ struct seq_for<IE, IES...>
 					CODEC_TRACE("%c{%s}", ie.ref_field().is_set()?'+':'-', class_name<IE>());
 					if (ie.ref_field().is_set())
 					{
-						MED_CHECK_FAIL(med::encode(func, ie));
+						med::encode(func, ie);
 					}
 					else
 					{
-						return func(error::MISSING_IE, name<IE>(), 1, 0);
+						func(error::MISSING_IE, name<IE>(), 1, 0);
 					}
 				}
 			}
@@ -426,16 +422,10 @@ template <>
 struct seq_for<>
 {
 	template <class PREV_IE, class TO, class FUNC, class UNEXP, class TAG>
-	static constexpr MED_RESULT decode(TO&, FUNC&&, UNEXP&, TAG&)
-	{
-		MED_RETURN_SUCCESS;
-	}
+	static constexpr void decode(TO&, FUNC&&, UNEXP&, TAG&)     { }
 
 	template <class PREV_IE, class TO, class FUNC>
-	static constexpr MED_RESULT encode(TO&, FUNC&&)
-	{
-		MED_RETURN_SUCCESS;
-	}
+	static constexpr void encode(TO&, FUNC&&)                   { }
 };
 
 }	//end: namespace sl
@@ -444,13 +434,13 @@ template <class ...IES>
 struct sequence : container<IES...>
 {
 	template <class ENCODER>
-	MED_RESULT encode(ENCODER&& encoder) const
+	void encode(ENCODER&& encoder) const
 	{
 		return sl::seq_for<IES...>::template encode<void>(this->m_ies, encoder);
 	}
 
 	template <class DECODER, class UNEXP>
-	MED_RESULT decode(DECODER&& decoder, UNEXP& unexp)
+	void decode(DECODER&& decoder, UNEXP& unexp)
 	{
 		value<std::size_t> vtag;
 		return sl::seq_for<IES...>::template decode<void>(this->m_ies, decoder, unexp, vtag);

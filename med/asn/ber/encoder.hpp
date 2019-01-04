@@ -33,14 +33,13 @@ struct encoder
 	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
 	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
 	template <class IE>
-	MED_RESULT operator() (SET_STATE const&, IE const& ie)
+	void operator() (SET_STATE const&, IE const& ie)
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
 			if (ss.validate_length(get_length(ie)))
 			{
 				ctx.buffer().set_state(ss);
-				MED_RETURN_SUCCESS;
 			}
 			else
 			{
@@ -56,24 +55,26 @@ struct encoder
 	template <class IE>
 	bool operator() (PUSH_STATE const&, IE const&)      { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
-	MED_RESULT operator() (ADVANCE_STATE const& ss)
+	void operator() (ADVANCE_STATE const& ss)
 	{
-		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity);
+		if (nullptr == ctx.buffer().advance(ss.bits/granularity))
+		{
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity);
+		}
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
 
 	//errors
 	template <typename... ARGS>
-	MED_RESULT operator() (error e, ARGS&&... args)
+	void operator() (error e, ARGS&&... args)
 	{
 		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
 	}
 
 	//IE_VALUE
 	template <class IE>
-	MED_RESULT operator() (IE const& ie, IE_VALUE const&)
+	void operator() (IE const& ie, IE_VALUE const&)
 	{
 		//static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		using tv = tag_value<typename IE::traits, false>;
@@ -89,9 +90,12 @@ struct encoder
 				{
 					out[0] = 1; //length
 					out[1] = ie.get_encoded() ? 0xFF : 0x00; //value
-					MED_RETURN_SUCCESS;
+					return;
 				}
-				MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
+				else
+				{
+					MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
+				}
 			}
 			else if constexpr (std::is_integral_v<typename IE::value_type>)
 			{
@@ -102,9 +106,12 @@ struct encoder
 					*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
 					put_bytes(ie.get_encoded(), out, len); //value
 					CODEC_TRACE("\t%u octets for %d: %s", len, ie.get_encoded(), ctx.buffer().toString());
-					MED_RETURN_SUCCESS;
+					return;
 				}
-				MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
+				else
+				{
+					MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
+				}
 			}
 			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
 			{
@@ -119,15 +126,17 @@ struct encoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	MED_RESULT operator() (IE const& ie, IE_OCTET_STRING const&)
+	void operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
 		if ( uint8_t* out = ctx.buffer().advance(ie.size()) )
 		{
 			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
 			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
-			MED_RETURN_SUCCESS;
 		}
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
+		else
+		{
+			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
+		}
 	}
 
 private:
@@ -187,7 +196,7 @@ private:
 		}
 	}
 
-	MED_RESULT put_length(std::size_t len)
+	void put_length(std::size_t len)
 	{
 		// X.690
 		// 8.1.3.3 in definite form length octets consist of 1+ octets, in short (8.1.3.4) or long form (8.1.3.5).
@@ -197,9 +206,11 @@ private:
 			if (uint8_t* out = ctx.buffer().template advance<1>())
 			{
 				*out = static_cast<uint8_t>(len);
-				MED_RETURN_SUCCESS;
 			}
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), "", 1);
+			else
+			{
+				MED_RETURN_ERROR(error::OVERFLOW, (*this), "", 1);
+			}
 		}
 		else
 		{
@@ -213,9 +224,11 @@ private:
 			{
 				*out++ = bytes | 0x80;
 				put_bytes(len, out, bytes);
-				MED_RETURN_SUCCESS;
 			}
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), "", 1+bytes);
+			else
+			{
+				MED_RETURN_ERROR(error::OVERFLOW, (*this), "", 1+bytes);
+			}
 		}
 	}
 };

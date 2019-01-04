@@ -111,11 +111,10 @@ struct integer : IE<IE_VALUE>
 	bool is_set() const                         { return m_set; }
 	explicit operator bool() const              { return is_set(); }
 	template <class... ARGS>
-	MED_RESULT copy(base_t const& from, ARGS&&...)
+	void copy(base_t const& from, ARGS&&...)
 	{
 		m_value = from.m_value;
 		m_set = from.m_set;
-		MED_RETURN_SUCCESS;
 	}
 
 private:
@@ -148,7 +147,7 @@ struct const_integer : IE<const IE_VALUE>
 	static constexpr bool is_set()                      { return true; }
 	static constexpr bool match(value_type v)           { return traits::value == v; }
 	template <class... ARGS>
-	static constexpr MED_RESULT copy(base_t const&, ARGS&&...) { MED_RETURN_SUCCESS; }
+	static constexpr void copy(base_t const&, ARGS&&...){ }
 };
 
 
@@ -171,7 +170,7 @@ struct init_integer : IE<IE_VALUE>
 	static constexpr void set_encoded(value_type)       { }
 	static constexpr bool is_set()                      { return true; }
 	template <class... ARGS>
-	static constexpr MED_RESULT copy(base_t const&, ARGS&&...) { MED_RETURN_SUCCESS; }
+	static constexpr void copy(base_t const&, ARGS&&...){ }
 };
 
 

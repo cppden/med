@@ -88,11 +88,7 @@ TEST(print, container)
 	med::decoder_context<> ctx;
 
 	ctx.reset(encoded, sizeof(encoded));
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 
 	std::size_t const cont_num[6] = { 21,  1,  9, 15, 19, 21 };
 	std::size_t const cust_num[6] = { 10,  0,  2,  4,  6,  8 };
@@ -128,11 +124,7 @@ TEST(print_all, container)
 	med::decoder_context<> ctx;
 
 	ctx.reset(encoded, sizeof(encoded));
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, msg);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
 
 	dummy_sink d{0};
 	med::print_all(d, msg);
@@ -170,11 +162,7 @@ private:
 
 TEST_P(PrintUt, levels)
 {
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{m_ctx}, m_proto);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{m_ctx}, m_proto)) << toString(m_ctx.error_ctx());
-#endif
 
 	dummy_sink d{0};
 	med::print(d, m_proto, 1);
@@ -199,11 +187,7 @@ TEST_P(PrintUt, incomplete)
 	EncData const& param = GetParam();
 	m_ctx.reset(param.encoded.data(), 2);
 
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{m_ctx}, m_proto), med::exception);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{m_ctx}, m_proto));
-#endif
 
 	dummy_sink d{0};
 	med::print(d, m_proto);

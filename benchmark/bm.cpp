@@ -128,14 +128,7 @@ void BM_encode_ok(benchmark::State& state)
 		ctx.reset();
 		dummy += buffer[0];
 		msg.ref<FLD_UC>().set(dummy);
-#if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, proto);
-#else
-		if (not encode(med::octet_encoder{ctx}, proto))
-		{
-			std::abort();
-		}
-#endif
 		benchmark::DoNotOptimize(dummy);
 	}
 }
@@ -154,7 +147,6 @@ void BM_encode_fail(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset();
-#if (MED_EXCEPTIONS)
 		try
 		{
 			encode(med::octet_encoder{ctx}, proto);
@@ -163,13 +155,6 @@ void BM_encode_fail(benchmark::State& state)
 		catch (med::missing_ie const& ex)
 		{
 		}
-#else
-		if (encode(med::octet_encoder{ctx}, proto)
-		|| med::error::MISSING_IE != ctx.error_ctx().get_error())
-		{
-			std::abort();
-		}
-#endif
 	}
 }
 BENCHMARK(BM_encode_fail);
@@ -192,14 +177,7 @@ void BM_decode_ok(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset(encoded, sizeof(encoded));
-#if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, proto);
-#else
-		if (not decode(med::octet_decoder{ctx}, proto))
-		{
-			std::abort();
-		}
-#endif
 		dummy += proto.get<MSG_SEQ>()->get<FLD_UC>().get();
 		benchmark::DoNotOptimize(dummy);
 	}
@@ -225,7 +203,6 @@ void BM_decode_fail(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
-#if (MED_EXCEPTIONS)
 		try
 		{
 			decode(med::octet_decoder{ctx}, proto);
@@ -234,13 +211,6 @@ void BM_decode_fail(benchmark::State& state)
 		catch (med::invalid_value const& ex)
 		{
 		}
-#else
-		if (decode(med::octet_decoder{ctx}, proto)
-		|| med::error::INVALID_VALUE != ctx.error_ctx().get_error())
-		{
-			std::abort();
-		}
-#endif
 	}
 }
 BENCHMARK(BM_decode_fail);

@@ -44,21 +44,21 @@ struct decoder
 	auto operator() (GET_STATE const&)                  { return ctx.buffer().get_state(); }
 	template <class IE>
 	bool operator() (CHECK_STATE const&, IE const&)     { return !ctx.buffer().empty(); }
-	MED_RESULT operator() (ADVANCE_STATE const& ss)
+	void operator() (ADVANCE_STATE const& ss)
 	{
-		if (ctx.buffer().advance(ss.bits/granularity)) MED_RETURN_SUCCESS;
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity);
+		if (nullptr == ctx.buffer().advance(ss.bits/granularity))
+		{ MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity); }
 	}
-	MED_RESULT operator() (ADD_PADDING const& pad)
+	void operator() (ADD_PADDING const& pad)
 	{
 		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
-		if (ctx.buffer().advance(pad.bits/granularity)) MED_RETURN_SUCCESS;
-		MED_RETURN_ERROR(error::OVERFLOW, (*this), "padding", pad.bits/granularity);
+		if (nullptr == ctx.buffer().advance(pad.bits/granularity))
+		{ MED_RETURN_ERROR(error::OVERFLOW, (*this), "padding", pad.bits/granularity); }
 	}
 
 	//errors
 	template <typename... ARGS>
-	MED_RESULT operator() (error e, ARGS&&... args)
+	void operator() (error e, ARGS&&... args)
 	{
 		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
 	}
@@ -66,7 +66,7 @@ struct decoder
 	//IE_VALUE
 	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
 	template <class IE>
-	MED_RESULT operator() (IE& ie, IE_VALUE const&)
+	void operator() (IE& ie, IE_VALUE const&)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
@@ -112,7 +112,6 @@ struct decoder
 				ie.set_encoded(val);
 			}
 			CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
-			MED_RETURN_SUCCESS;
 		}
 		else
 		{
@@ -122,16 +121,19 @@ struct decoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	MED_RESULT operator() (IE& ie, IE_OCTET_STRING const&)
+	void operator() (IE& ie, IE_OCTET_STRING const&)
 	{
 		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
 		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))
 		{
 			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.size()));
-			if (ctx.buffer().advance(ie.size())) MED_RETURN_SUCCESS;
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
+			if (nullptr == ctx.buffer().advance(ie.size()))
+			{ MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size()); }
 		}
-		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ie.size(), ctx.buffer().get_offset());
+		else
+		{
+			MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ie.size(), ctx.buffer().get_offset());
+		}
 	}
 
 private:

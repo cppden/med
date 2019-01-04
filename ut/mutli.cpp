@@ -46,11 +46,7 @@ TEST(multi, pop_back)
 	EXPECT_EQ(3, std::distance(mie.begin(), mie.end()));
 	msg.pop_back<multi::U8>();
 
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif //MED_EXCEPTIONS
 
 	uint8_t const encoded[] = {
 		1, 1,

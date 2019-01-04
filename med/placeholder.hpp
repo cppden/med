@@ -26,7 +26,7 @@ struct _length
 		static constexpr void clear()       { }
 		static constexpr bool is_set()      { return true; }
 		template <class... ARGS>
-		static constexpr MED_RESULT copy(field_t const&, ARGS&&...) { MED_RETURN_SUCCESS; }
+		static constexpr void copy(field_t const&, ARGS&&...) { }
 	};
 	static constexpr field_t ref_field()    { return field_t{}; }
 	static constexpr bool is_set()          { return true; }

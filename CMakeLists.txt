@@ -10,7 +10,6 @@ message(STATUS "MED library optional configuration:")
 message(STATUS "\t(use ccmake or cmake -DWITH_XX=true)")
 message(STATUS "-------------------------------------------------------")
 option (WITH_BM "With Google benchmark." OFF)
-option (WITH_EX "With exceptions." OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -38,13 +37,6 @@ else (WITH_BM)
 	message(STATUS "\tWITH_BM=false (no benchmark)")
 endif (WITH_BM)
 
-if (WITH_EX)
-	message(STATUS "\tWITH_EX=true (exceptions for error handling)")
-	add_definitions(-DMED_EXCEPTIONS=1)
-else (WITH_EX)
-	add_definitions(-DMED_EXCEPTIONS=0)
-	message(STATUS "\tWITH_EX=false (bool for error handling)")
-endif (WITH_EX)
 
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)

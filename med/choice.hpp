@@ -73,7 +73,7 @@ struct choice_for<IE, IEs...>
 	}
 
 	template <class ENCODER, class TO>
-	static MED_RESULT encode(ENCODER&& encoder, TO const& to)
+	static void encode(ENCODER&& encoder, TO const& to)
 	{
 		if (IE::tag_type::match(get_tag(to.get_header())))
 		{
@@ -81,17 +81,17 @@ struct choice_for<IE, IEs...>
 			CODEC_TRACE("CASE[%s]", name<case_t>());
 			void const* store_p = &to.m_storage;
 
-			return med::encode(encoder, to.get_header())
-				MED_AND med::encode(encoder, *static_cast<case_t const*>(store_p));
+			med::encode(encoder, to.get_header());
+			med::encode(encoder, *static_cast<case_t const*>(store_p));
 		}
 		else
 		{
-			return choice_for<IEs...>::encode(encoder, to);
+			choice_for<IEs...>::encode(encoder, to);
 		}
 	}
 
 	template <class DECODER, class TO, class UNEXP>
-	static MED_RESULT decode(DECODER&& decoder, TO& to, UNEXP& unexp)
+	static void decode(DECODER&& decoder, TO& to, UNEXP& unexp)
 	{
 		using case_t = typename IE::case_type;
 		if (IE::tag_type::match( get_tag(to.get_header()) ))
@@ -124,18 +124,18 @@ struct choice_for<IE, IEs...>
 	}
 
 	template <class TO, class FROM, class... ARGS>
-	static inline MED_RESULT copy(TO& to, FROM const& from, ARGS&&... args)
+	static inline void copy(TO& to, FROM const& from, ARGS&&... args)
 	{
 		if (IE::tag_type::match(get_tag(from.get_header())))
 		{
 			using value_type = typename IE::case_type;
 			void const* store_p = &from.m_storage;
-			MED_CHECK_FAIL(to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p), std::forward<ARGS>(args)...));
-			return to.header().copy(from.get_header());
+			to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p), std::forward<ARGS>(args)...);
+			to.header().copy(from.get_header());
 		}
 		else
 		{
-			return choice_for<IEs...>::copy(to, from, std::forward<ARGS>(args)...);
+			choice_for<IEs...>::copy(to, from, std::forward<ARGS>(args)...);
 		}
 	}
 };
@@ -150,14 +150,14 @@ struct choice_for<>
 	}
 
 	template <class FUNC, class TO, class UNEXP>
-	static MED_RESULT decode(FUNC&& func, TO& to, UNEXP& unexp)
+	static void decode(FUNC&& func, TO& to, UNEXP& unexp)
 	{
 		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
 		return unexp(func, to, to.get_header());
 	}
 
 	template <class FUNC, class TO>
-	static MED_RESULT encode(FUNC&& func, TO const& to)
+	static void encode(FUNC&& func, TO const& to)
 	{
 		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
 		MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<TO>(), get_tag(to.get_header()));
@@ -170,9 +170,9 @@ struct choice_for<>
 	}
 
 	template <class TO, class FROM, class... ARGS>
-	static constexpr MED_RESULT copy(TO&, FROM const&, ARGS&&...)
+	static constexpr void copy(TO&, FROM const&, ARGS&&...)
 	{
-		MED_RETURN_FAILURE;
+		//MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<TO>(), get_tag(to.get_header()));
 	}
 };
 
@@ -257,39 +257,37 @@ public:
 	}
 
 	template <class FROM, class... ARGS>
-	MED_RESULT copy(FROM const& from, ARGS&&... args)
+	void copy(FROM const& from, ARGS&&... args)
 	{
 		if (from.is_set())
 		{
 			return sl::choice_for<CASES...>::copy(*this, from, std::forward<ARGS>(args)...);
 		}
-		MED_RETURN_SUCCESS;
 	}
 
 	template <class DST, class... ARGS>
-	MED_RESULT copy_to(DST& to, ARGS&&... args) const
+	void copy_to(DST& to, ARGS&&... args) const
 	{
 		if (this->is_set())
 		{
 			return sl::choice_for<CASES...>::copy(to, *this, std::forward<ARGS>(args)...);
 		}
-		MED_RETURN_SUCCESS;
 	}
 
 
 	template <class ENCODER>
-	MED_RESULT encode(ENCODER&& encoder) const
+	void encode(ENCODER&& encoder) const
 	{
 		return sl::choice_for<CASES...>::encode(encoder, *this);
 	}
 
 	template <class DECODER, class UNEXP>
-	MED_RESULT decode(DECODER&& decoder, UNEXP& unexp)
+	void decode(DECODER&& decoder, UNEXP& unexp)
 	{
 		static_assert(util::are_unique(tag_value_get<CASES>::value...), "TAGS ARE NOT UNIQUE");
 
-		return med::decode(decoder, header(), unexp)
-			MED_AND sl::choice_for<CASES...>::decode(decoder, *this, unexp);
+		med::decode(decoder, header(), unexp);
+		sl::choice_for<CASES...>::decode(decoder, *this, unexp);
 	}
 
 private:

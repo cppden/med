@@ -38,11 +38,7 @@ TEST(encode, msg_func)
 	msg.push_back<FLD_UC>(ctx)->set(37);
 	msg.push_back<FLD_UC>(ctx)->set(38);
 
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, proto);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, proto)) << toString(ctx.error_ctx());
-#endif
 
 	uint8_t const encoded1[] = { 0xFF
 		, 0x10
@@ -57,11 +53,7 @@ TEST(encode, msg_func)
 	msg.push_back<FLD_U8>(ctx)->set('a');
 	msg.ref<FLD_U16>().set(0x35D9);
 
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, proto);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, proto)) << toString(ctx.error_ctx());
-#endif
 
 	uint8_t const encoded2[] = { 0xFF
 		, 0x61
@@ -84,11 +76,7 @@ TEST(encode, msg_func)
 		p->set(make_hash(i));
 	}
 
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, proto);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, proto)) << toString(ctx.error_ctx());
-#endif
 
 	uint8_t const encoded3[] = { 0xFF
 		, 0xB7
@@ -116,11 +104,7 @@ TEST(decode, msg_func)
 		, 37, 38
 	};
 	ctx.reset(encoded1, sizeof(encoded1));
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, proto);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, proto)) << toString(ctx.error_ctx());
-#endif
 
 	MSG_FUNC const* msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -144,11 +128,7 @@ TEST(decode, msg_func)
 		, 0x35, 0xD9
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, proto);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, proto)) << toString(ctx.error_ctx());
-#endif
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -181,11 +161,7 @@ TEST(decode, msg_func)
 		, 0, 0, 0x15, 0xF1
 	};
 	ctx.reset(encoded3, sizeof(encoded3));
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, proto);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, proto)) << toString(ctx.error_ctx());
-#endif
 
 	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
@@ -225,13 +201,7 @@ TEST(decode, msg_func)
 		, 0xFE, 0xE1, 0xAB, 0xBA
 	};
 	ctx.reset(mandatory_underflow, sizeof(mandatory_underflow));
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::missing_ie);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{ctx}, proto));
-	EXPECT_EQ(med::error::MISSING_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#endif
 
 	uint8_t const conditional_overflow[] = { 0xFF
 		, 0xD7
@@ -242,13 +212,7 @@ TEST(decode, msg_func)
 		, 0xFE, 0xE1, 0xAB, 0xBA
 	};
 	ctx.reset(conditional_overflow, sizeof(conditional_overflow));
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::extra_ie);
-#else
-	ASSERT_FALSE(decode(med::octet_decoder{ctx}, proto));
-	EXPECT_EQ(med::error::EXTRA_IE, ctx.error_ctx().get_error()) << toString(ctx.error_ctx());
-	EXPECT_NE(nullptr, toString(ctx.error_ctx()));
-#endif
 }
 
 TEST(field, tagged_nibble)
@@ -258,21 +222,13 @@ TEST(field, tagged_nibble)
 
 	FLD_TN field;
 	field.set(5);
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, field);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, field)) << toString(ctx.error_ctx());
-#endif
 	EXPECT_STRCASEEQ("E5 ", as_string(ctx.buffer()));
 
 	decltype(field) dfield;
 	med::decoder_context<> dctx;
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, dfield);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{dctx}, dfield)) << toString(ctx.error_ctx());
-#endif
 	EXPECT_EQ(field.get(), dfield.get());
 }
 
@@ -323,11 +279,8 @@ TEST(encode, setter_with_length)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, msg);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, msg)) << toString(ctx.error_ctx());
-#endif
+
 	uint8_t const encoded[] = {
 		3, 1, 0x55, 0xAA,
 		8, 7, 0,1,2,3,4,5,6
@@ -357,21 +310,15 @@ TEST(update, fixed)
 	med::encoder_context<> ctx{ buffer };
 	auto encoder = make_octet_encoder(ctx);
 
-#if (MED_EXCEPTIONS)
 	encode(encoder, msg);
-#else
-	ASSERT_TRUE(encode(encoder, msg)) << toString(ctx.error_ctx());
-#endif
+
 	uint8_t const encoded[] = {7, 4, 0x12,0x34,0x56,0x78};
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
 
 	ufld.set(0x3456789A);
-#if (MED_EXCEPTIONS)
 	med::update(encoder, ufld);
-#else
-	ASSERT_TRUE(med::update(encoder, ufld)) << toString(ctx.error_ctx());
-#endif
+
 	uint8_t const updated[] = {7, 4, 0x34,0x56,0x78,0x9A};
 	EXPECT_TRUE(Matches(updated, buffer));
 }

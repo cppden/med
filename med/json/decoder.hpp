@@ -88,14 +88,14 @@ struct decoder
 
 	//errors
 	template <typename... ARGS>
-	MED_RESULT operator() (error e, ARGS&&... args)
+	void operator() (error e, ARGS&&... args)
 	{
 		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
 	}
 
 	//CONTAINER
 	template <class IE>
-	MED_RESULT operator() (IE const&, ENTRY_CONTAINER const&)
+	void operator() (IE const&, ENTRY_CONTAINER const&)
 	{
 		constexpr auto open_brace = []()
 		{
@@ -103,25 +103,23 @@ struct decoder
 			else return '{';
 		};
 
-		if (skip_ws_after(ctx.buffer(), open_brace()))
+		if (not skip_ws_after(ctx.buffer(), open_brace()))
 		{
-			CODEC_TRACE("ENTRY_CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
-			MED_RETURN_SUCCESS;
+			MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), open_brace());
 		}
-		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), open_brace());
+		CODEC_TRACE("ENTRY_CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
 	}
 	template <class IE>
-	MED_RESULT operator() (IE const&, HEADER_CONTAINER const&)
+	void operator() (IE const&, HEADER_CONTAINER const&)
 	{
-		if (skip_ws_after(ctx.buffer(), ':'))
+		if (not skip_ws_after(ctx.buffer(), ':'))
 		{
-			CODEC_TRACE("CONTAINER-:-[%s]: %s", name<IE>(), ctx.buffer().toString());
-			MED_RETURN_SUCCESS;
+			MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ':');
 		}
-		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ':');
+		CODEC_TRACE("CONTAINER-:-[%s]: %s", name<IE>(), ctx.buffer().toString());
 	}
 	template <class IE>
-	MED_RESULT operator() (IE const&, EXIT_CONTAINER const&)
+	void operator() (IE const&, EXIT_CONTAINER const&)
 	{
 		constexpr auto closing_brace = []()
 		{
@@ -129,32 +127,26 @@ struct decoder
 			else return '}';
 		};
 
-		if (skip_ws_after(ctx.buffer(), closing_brace()))
+		if (not skip_ws_after(ctx.buffer(), closing_brace()))
 		{
-			CODEC_TRACE("EXIT_CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
-			MED_RETURN_SUCCESS;
-		}
-		else
-		{
-			CODEC_TRACE("EXIT_CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
 			MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), closing_brace(), ctx.buffer().get_offset());
 		}
+		CODEC_TRACE("EXIT_CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
 	}
 
 	template <class IE>
-	MED_RESULT operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
+	void operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
 	{
-		if (skip_ws_after(ctx.buffer(), ','))
+		if (not skip_ws_after(ctx.buffer(), ','))
 		{
-			CODEC_TRACE("CONTAINER-,-[%s]: %s", name<IE>(), ctx.buffer().toString());
-			MED_RETURN_SUCCESS;
+			MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ',', ctx.buffer().get_offset());
 		}
-		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ',', ctx.buffer().get_offset());
+		CODEC_TRACE("CONTAINER-,-[%s]: %s", name<IE>(), ctx.buffer().toString());
 	}
 
 	//IE_VALUE
 	template <class IE>
-	MED_RESULT operator() (IE& ie, IE_VALUE const&)
+	void operator() (IE& ie, IE_VALUE const&)
 	{
 		auto* p = ctx.buffer().template advance<1>();
 		if (p)
@@ -169,7 +161,7 @@ struct decoder
 					{
 						CODEC_TRACE("%s=%s", name<IE>(), s);
 						ie.set_encoded(false);
-						MED_RETURN_SUCCESS;
+						return;
 					}
 				}
 				else if ('t' == p[0] && nullptr != ctx.buffer().template advance<3>()) //true
@@ -179,7 +171,7 @@ struct decoder
 					{
 						CODEC_TRACE("%s=%s", name<IE>(), s);
 						ie.set_encoded(true);
-						MED_RETURN_SUCCESS;
+						return;
 					}
 				}
 			}
@@ -210,7 +202,7 @@ struct decoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	MED_RESULT operator() (IE& ie, IE_OCTET_STRING const&)
+	void operator() (IE& ie, IE_OCTET_STRING const&)
 	{
 		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), ctx.buffer().toString());
 		auto p = ctx.buffer().begin(), pe = ctx.buffer().end();
@@ -235,7 +227,7 @@ struct decoder
 							CODEC_TRACE("hash(%.*s)=%#zx", int(ie.size()), (char*)ie.data(), std::size_t(hash_val));
 							ie.set_hash(hash_val);
 							ctx.buffer().offset(p - ps + 1);
-							MED_RETURN_SUCCESS;
+							return;
 						}
 					}
 				}
@@ -251,7 +243,7 @@ struct decoder
 						{
 							CODEC_TRACE("len(%.*s)=%zu", int(ie.size()), (char*)ie.data(), ie.size());
 							ctx.buffer().offset(p - ps + 1);
-							MED_RETURN_SUCCESS;
+							return;
 						}
 					}
 				}
@@ -292,13 +284,13 @@ private:
 				&& val <= std::numeric_limits<typename IE::value_type>::max())
 				{
 					ie.set_encoded(static_cast<typename IE::value_type>(val));
-					MED_RETURN_SUCCESS;
+					return;
 				}
 			}
 			else
 			{
 				ie.set_encoded(val);
-				MED_RETURN_SUCCESS;
+				return;
 			}
 		}
 		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), p[0], p - ctx.buffer().get_start());

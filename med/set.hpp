@@ -25,7 +25,7 @@ namespace med {
 namespace sl {
 
 template <class HEADER, class IE, class FUNC>
-constexpr MED_RESULT encode_header(FUNC& func)
+constexpr void encode_header(FUNC& func)
 {
 	if constexpr (std::is_base_of_v<PRIMITIVE, typename HEADER::ie_type>)
 	{
@@ -40,8 +40,6 @@ constexpr MED_RESULT encode_header(FUNC& func)
 	{
 		static_assert(std::is_base_of_v<CONTAINER, typename HEADER::ie_type>, "unexpected aggregate?");
 	}
-	
-	MED_RETURN_SUCCESS;
 }
 
 template <class T, class FUNC>
@@ -73,23 +71,23 @@ struct set_for<IE, IEs...>
 	}
 
 	template <class PREV_IE, class HEADER, class TO, class FUNC>
-	static inline MED_RESULT encode(TO const& to, FUNC& func)
+	static inline void encode(TO const& to, FUNC& func)
 	{
 		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC> && not std::is_void_v<PREV_IE>)
 		{
-			MED_CHECK_FAIL(func(to, NEXT_CONTAINER_ELEMENT{}));
+			func(to, NEXT_CONTAINER_ELEMENT{});
 		}
 		if constexpr (is_multi_field_v<IE>)
 		{
 			IE const& ie = static_cast<IE const&>(to);
 			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
 
-			MED_CHECK_FAIL(check_arity(func, ie));
+			check_arity(func, ie);
 			if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 			{
-				MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
-				MED_CHECK_FAIL(func(ie, HEADER_CONTAINER{}));
-				MED_CHECK_FAIL(func(ie, ENTRY_CONTAINER{}));
+				encode_header<HEADER, IE>(func);
+				func(ie, HEADER_CONTAINER{});
+				func(ie, ENTRY_CONTAINER{});
 				bool first = true;
 				for (auto& field : ie)
 				{
@@ -97,9 +95,9 @@ struct set_for<IE, IEs...>
 					{
 						if (not first)
 						{
-							MED_CHECK_FAIL(func(to, NEXT_CONTAINER_ELEMENT{}));
+							func(to, NEXT_CONTAINER_ELEMENT{});
 						}
-						MED_CHECK_FAIL(med::encode(func, field));
+						med::encode(func, field);
 					}
 					else
 					{
@@ -108,7 +106,7 @@ struct set_for<IE, IEs...>
 					}
 					first = false;
 				}
-				MED_CHECK_FAIL(func(ie, EXIT_CONTAINER{}));
+				func(ie, EXIT_CONTAINER{});
 			}
 			else
 			{
@@ -116,8 +114,8 @@ struct set_for<IE, IEs...>
 				{
 					if (field.is_set())
 					{
-						MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
-						MED_CHECK_FAIL(med::encode(func, field));
+						encode_header<HEADER, IE>(func);
+						med::encode(func, field);
 					}
 					else
 					{
@@ -133,12 +131,12 @@ struct set_for<IE, IEs...>
 			if (ie.ref_field().is_set())
 			{
 				CODEC_TRACE("[%s]", name<IE>());
-				MED_CHECK_FAIL((encode_header<HEADER, IE>(func)));
+				encode_header<HEADER, IE>(func);
 				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 				{
-					MED_CHECK_FAIL(func(to, HEADER_CONTAINER{}));
+					func(to, HEADER_CONTAINER{});
 				}
-				MED_CHECK_FAIL(med::encode(func, ie.ref_field()));
+				med::encode(func, ie.ref_field());
 			}
 			else if constexpr (!is_optional_v<IE>)
 			{
@@ -149,7 +147,7 @@ struct set_for<IE, IEs...>
 	}
 
 	template <class TO, class FUNC, class UNEXP, class HEADER>
-	static inline MED_RESULT decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
+	static inline void decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
 	{
 		if constexpr (is_multi_field_v<IE>)
 		{
@@ -162,21 +160,21 @@ struct set_for<IE, IEs...>
 				CODEC_TRACE("[%s]@%zu", name<IE>(), ie.count());
 				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 				{
-					//MED_CHECK_FAIL(func(ie, HEADER_CONTAINER{}));
-					MED_CHECK_FAIL(func(ie, ENTRY_CONTAINER{}));
+					//func(ie, HEADER_CONTAINER{});
+					func(ie, ENTRY_CONTAINER{});
 
 					while (func(PUSH_STATE{}, ie))
 					{
 						if (auto const num = ie.count())
 						{
-							MED_CHECK_FAIL(func(ie, NEXT_CONTAINER_ELEMENT{}));
+							func(ie, NEXT_CONTAINER_ELEMENT{});
 							if (num >= IE::max)
 							{
 								return func(error::EXTRA_IE, name<IE>(), IE::max, num);
 							}
 						}
 						auto* field = ie.push_back(func);
-						MED_CHECK_FAIL(MED_EXPR_AND(field) med::decode(func, *field, unexp));
+						med::decode(func, *field, unexp);
 					}
 
 					return func(ie, EXIT_CONTAINER{});
@@ -188,7 +186,7 @@ struct set_for<IE, IEs...>
 						return func(error::EXTRA_IE, name<IE>(), IE::max, ie.count());
 					}
 					auto* field = ie.push_back(func);
-					return MED_EXPR_AND(field) med::decode(func, *field, unexp);
+					return med::decode(func, *field, unexp);
 				}
 			}
 		}
@@ -216,12 +214,12 @@ struct set_for<IE, IEs...>
 	}
 
 	template <class TO, class FUNC>
-	static MED_RESULT check(TO const& to, FUNC& func)
+	static void check(TO const& to, FUNC& func)
 	{
 		if constexpr (is_multi_field_v<IE>)
 		{
 			IE const& ie = static_cast<IE const&>(to);
-			MED_CHECK_FAIL(check_arity(func, ie));
+			check_arity(func, ie);
 		}
 		else //single-instance field
 		{
@@ -242,16 +240,16 @@ struct set_for<>
 	static constexpr char const* name_tag(TAG const&)    { return nullptr; }
 
 	template <class PREV_IE, class HEADER, class TO, class FUNC>
-	static constexpr MED_RESULT encode(TO&, FUNC&)       { MED_RETURN_SUCCESS; }
+	static constexpr void encode(TO&, FUNC&)             { }
 
 	template <class TO, class FUNC, class UNEXP, class HEADER>
-	static MED_RESULT decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
+	static void decode(TO& to, FUNC& func, UNEXP& unexp, HEADER const& header)
 	{
 		return unexp(func, to, header);
 	}
 
 	template <class TO, class FUNC>
-	static constexpr MED_RESULT check(TO&, FUNC&)       { MED_RETURN_SUCCESS; }
+	static constexpr void check(TO&, FUNC&)              { }
 };
 
 }	//end: namespace sl
@@ -268,13 +266,13 @@ struct set : container<IEs...>
 	}
 
 	template <class ENCODER>
-	MED_RESULT encode(ENCODER& encoder) const
+	void encode(ENCODER& encoder) const
 	{
 		return sl::set_for<IEs...>::template encode<void, header_type>(this->m_ies, encoder);
 	}
 
 	template <class FUNC, class UNEXP>
-	MED_RESULT decode(FUNC& func, UNEXP& unexp)
+	void decode(FUNC& func, UNEXP& unexp)
 	{
 		static_assert(util::are_unique(tag_value_get<IEs>::value...), "TAGS ARE NOT UNIQUE");
 
@@ -286,18 +284,18 @@ struct set : container<IEs...>
 			{
 				if (not first)
 				{
-					MED_CHECK_FAIL(func(*this, NEXT_CONTAINER_ELEMENT{}));
+					func(*this, NEXT_CONTAINER_ELEMENT{});
 				}
 
 				header_type header;
-				MED_CHECK_FAIL(med::decode(func, header, unexp));
+				med::decode(func, header, unexp);
 				sl::pop_state<header_type>(func);
 				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
 				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 				{
-					MED_CHECK_FAIL(func(*this, HEADER_CONTAINER{}));
+					func(*this, HEADER_CONTAINER{});
 				}
-				MED_CHECK_FAIL(sl::set_for<IEs...>::decode(this->m_ies, func, unexp, header));
+				sl::set_for<IEs...>::decode(this->m_ies, func, unexp, header);
 				first = false;
 			}
 		}
@@ -306,14 +304,14 @@ struct set : container<IEs...>
 			while (func(PUSH_STATE{}, *this)) //NOTE: this usage doesn't address IE which corresponds to PUSH_STATE
 			{
 				header_type header;
-				MED_CHECK_FAIL(med::decode(func, header, unexp));
+				med::decode(func, header, unexp);
 				sl::pop_state<header_type>(func);
 				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
 				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
 				{
-					MED_CHECK_FAIL(func(*this, HEADER_CONTAINER{}));
+					func(*this, HEADER_CONTAINER{});
 				}
-				MED_CHECK_FAIL(sl::set_for<IEs...>::decode(this->m_ies, func, unexp, header));
+				sl::set_for<IEs...>::decode(this->m_ies, func, unexp, header);
 			}
 		}
 		return sl::set_for<IEs...>::check(this->m_ies, func);

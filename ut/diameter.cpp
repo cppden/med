@@ -348,11 +348,7 @@ TEST(diameter, padding_encode)
 
 	uint8_t buffer[1024] = {};
 	med::encoder_context<> ctx{ buffer };
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ctx}, base);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ctx}, base)) << toString(ctx.error_ctx());
-#endif
 
 	ASSERT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
 	ASSERT_TRUE(Matches(diameter::dpr, buffer));
@@ -362,11 +358,7 @@ TEST(diameter, padding_decode)
 {
 	med::decoder_context<> ctx{ diameter::dpr };
 	diameter::base base;
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{ctx}, base);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{ctx}, base)) << toString(ctx.error_ctx());
-#endif
 
 	ASSERT_EQ(0, base.header().ap_id());
 	ASSERT_EQ(0x22222222, base.header().hop_id());
@@ -409,12 +401,7 @@ TEST(diameter, padding_bad)
 	med::decoder_context<> ctx{ dpr };
 
 	diameter::base base;
-#if (MED_EXCEPTIONS)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, base), med::exception);
-#else
-	EXPECT_FALSE(decode(med::octet_decoder{ctx}, base));
-	EXPECT_EQ(med::error::OVERFLOW, ctx.error_ctx().get_error());
-#endif
 }
 
 TEST(diameter, any_avp)
@@ -496,11 +483,7 @@ TEST(diameter, any_avp)
 
 	med::decoder_context<> dctx{ dpa };
 	diameter::base base;
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, base);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{dctx}, base)) << toString(dctx.error_ctx());
-#endif
 
 	ASSERT_EQ(0, base.header().ap_id());
 	ASSERT_EQ(0x22222222, base.header().hop_id());
@@ -523,11 +506,7 @@ TEST(diameter, any_avp)
 	//encode
 	uint8_t buffer[1024] = {};
 	med::encoder_context<> ectx{ buffer };
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ectx}, base);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ectx}, base)) << toString(ectx.error_ctx());
-#endif
 
 	ASSERT_EQ(sizeof(dpa_enc), ectx.buffer().get_offset());
 	ASSERT_TRUE(Matches(dpa_enc, buffer));
@@ -563,11 +542,7 @@ TEST(diameter, any_msg)
 	med::decoder_context<> dctx{ dwa };
 
 	diameter::base base;
-#if (MED_EXCEPTIONS)
 	decode(med::octet_decoder{dctx}, base);
-#else
-	ASSERT_TRUE(decode(med::octet_decoder{dctx}, base)) << toString(dctx.error_ctx());
-#endif
 
 	ASSERT_EQ(0, base.header().ap_id());
 	ASSERT_EQ(0x22222222, base.header().hop_id());
@@ -594,11 +569,7 @@ TEST(diameter, any_msg)
 	//encode
 	uint8_t buffer[1024] = {};
 	med::encoder_context<> ectx{ buffer };
-#if (MED_EXCEPTIONS)
 	encode(med::octet_encoder{ectx}, base);
-#else
-	ASSERT_TRUE(encode(med::octet_encoder{ectx}, base)) << toString(ectx.error_ctx());
-#endif
 
 	ASSERT_EQ(sizeof(dwa), ectx.buffer().get_offset());
 	ASSERT_TRUE(Matches(dwa, buffer));

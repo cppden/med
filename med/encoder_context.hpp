@@ -42,7 +42,7 @@ private:
 public:
 	encoder_context(void* data, std::size_t size)
 		: m_buffer{ }
-		, m_allocator{ &m_errCtx, m_buffer }
+		, m_allocator{ m_buffer }
 	{
 		reset(data, size);
 	}
@@ -68,8 +68,6 @@ public:
 	{
 		get_allocator().reset(static_cast<uint8_t*>(data), size);
 		m_buffer.reset(static_cast<typename buffer_type::pointer>(data), size);
-
-		error_ctx().reset();
 		m_snapshot = nullptr;
 	}
 
@@ -77,8 +75,6 @@ public:
 	{
 		get_allocator().reset();
 		m_buffer.reset();
-
-		error_ctx().reset();
 		m_snapshot = nullptr;
 	}
 
@@ -89,14 +85,12 @@ public:
 	void snapshot(SNAPSHOT const& snap)
 	{
 		CODEC_TRACE("snapshot %p{%zu}", (void*)snap.id, snap.size);
-		if (snapshot_s* p = get_allocator().template allocate<snapshot_s>())
-		{
-			p->snapshot = snap;
-			p->state = m_buffer.get_state();
+		snapshot_s* p = get_allocator().template allocate<snapshot_s>();
+		p->snapshot = snap;
+		p->state = m_buffer.get_state();
 
-			p->next = m_snapshot ? m_snapshot->next : nullptr;
-			m_snapshot = p;
-		}
+		p->next = m_snapshot ? m_snapshot->next : nullptr;
+		m_snapshot = p;
 	}
 
 	class snap_s : public state_t

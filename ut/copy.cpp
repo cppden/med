@@ -54,28 +54,18 @@ TEST(copy, seq_same)
 	uint8_t dec_buf[128];
 	{
 		med::decoder_context<> ctx{ encoded, dec_buf };
-#if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, src_msg);
 		//fails when need allocator but not provided one
 		ASSERT_THROW(dst_msg.copy(src_msg), med::exception);
 		//succeed with allocator
 		dst_msg.copy(src_msg, ctx);
-#else
-		ASSERT_TRUE(decode(med::octet_decoder{ctx}, src_msg)) << toString(ctx.error_ctx());
-		ASSERT_FALSE(dst_msg.copy(src_msg));
-		ASSERT_TRUE(dst_msg.copy(src_msg, ctx));
-#endif
 	}
 
 	{
 		uint8_t buffer[128];
 		med::encoder_context<> ctx{ buffer };
 
-#if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, dst_msg);
-#else
-		ASSERT_TRUE(encode(med::octet_encoder{ctx}, dst_msg)) << toString(ctx.error_ctx());
-#endif
 		EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 		EXPECT_TRUE(Matches(encoded, buffer));
 	}
@@ -99,13 +89,8 @@ TEST(copy, seq_diff)
 		};
 
 		med::decoder_context<> ctx{ encoded, dec_buf };
-#if (MED_EXCEPTIONS)
 		decode(med::octet_decoder{ctx}, src_msg);
 		dst_msg.copy(src_msg, ctx);
-#else
-		ASSERT_TRUE(decode(med::octet_decoder{ctx}, src_msg)) << toString(ctx.error_ctx());
-		ASSERT_TRUE(dst_msg.copy(src_msg, ctx));
-#endif
 	}
 
 	{
@@ -124,11 +109,7 @@ TEST(copy, seq_diff)
 		uint8_t buffer[128];
 		med::encoder_context<> ctx{ buffer };
 
-#if (MED_EXCEPTIONS)
 		encode(med::octet_encoder{ctx}, dst_msg);
-#else
-		ASSERT_TRUE(encode(med::octet_encoder{ctx}, dst_msg)) << toString(ctx.error_ctx());
-#endif
 		EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 		EXPECT_TRUE(Matches(encoded, buffer));
 	}

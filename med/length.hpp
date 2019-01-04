@@ -142,7 +142,7 @@ using has_length_converters = decltype(detail::test_value_to_length<T>(0));
 
 
 template <class FUNC, class FIELD>
-constexpr MED_RESULT length_to_value(FUNC& func, FIELD& field, std::size_t len)
+constexpr void length_to_value(FUNC& func, FIELD& field, std::size_t len)
 {
 	//convert length to raw value if needed
 	if constexpr (detail::has_length_converters<FIELD>::value)
@@ -181,11 +181,10 @@ constexpr MED_RESULT length_to_value(FUNC& func, FIELD& field, std::size_t len)
 	{
 		field.set_encoded(len);
 	}
-	MED_RETURN_SUCCESS;
 }
 
 template <class FUNC, class FIELD>
-constexpr MED_RESULT value_to_length(FUNC& func, FIELD& field, std::size_t& len)
+constexpr void value_to_length(FUNC& func, FIELD& field, std::size_t& len)
 {
 	//use proper length accessor
 	if constexpr (detail::has_get_length<FIELD>::value)
@@ -207,7 +206,6 @@ constexpr MED_RESULT value_to_length(FUNC& func, FIELD& field, std::size_t& len)
 			MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
 		}
 	}
-	MED_RETURN_SUCCESS;
 }
 
 }	//end: namespace med

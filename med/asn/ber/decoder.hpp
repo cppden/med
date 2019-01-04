@@ -50,14 +50,14 @@ struct decoder
 
 	//errors
 	template <typename... ARGS>
-	MED_RESULT operator() (error e, ARGS&&... args)
+	void operator() (error e, ARGS&&... args)
 	{
 		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
 	}
 
 	//IE_VALUE
 	template <class IE>
-	MED_RESULT operator() (IE& ie, IE_VALUE const&)
+	void operator() (IE& ie, IE_VALUE const&)
 	{
 		using tv = tag_value<typename IE::traits, false>;
 		if (uint8_t const* input = ctx.buffer().template advance<tv::num_bytes()>())
@@ -73,8 +73,7 @@ struct decoder
 					{
 						if (input[0] == 1)
 						{
-							ie.set_encoded(input[1] != 0);
-							MED_RETURN_SUCCESS;
+							return ie.set_encoded(input[1] != 0);
 						}
 						MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), input[0]);
 					}
@@ -90,8 +89,7 @@ struct decoder
 							CODEC_TRACE("\t%u octets: %s", len, ctx.buffer().toString());
 							if (uint8_t const* input = ctx.buffer().advance(len)) //value
 							{
-								ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
-								MED_RETURN_SUCCESS;
+								return ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
 							}
 						}
 						MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), input[0]);
@@ -112,7 +110,7 @@ struct decoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	MED_RESULT operator() (IE& ie, IE_OCTET_STRING const&)
+	void operator() (IE& ie, IE_OCTET_STRING const&)
 	{
 		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), ctx.buffer().toString());
 		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ie.size(), ctx.buffer().get_offset());

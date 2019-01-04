@@ -14,7 +14,7 @@ Distributed under the MIT License
 namespace med::sl {
 
 template <class IE, class ...ARGS>
-inline MED_RESULT field_copy(IE& to, IE const& from, ARGS&&... args)
+inline void field_copy(IE& to, IE const& from, ARGS&&... args)
 {
 	if (from.is_set())
 	{
@@ -23,14 +23,8 @@ inline MED_RESULT field_copy(IE& to, IE const& from, ARGS&&... args)
 			to.clear();
 			for (auto const& rhs : from)
 			{
-				if (auto* p = to.push_back(std::forward<ARGS>(args)...))
-				{
-					MED_CHECK_FAIL(p->copy(rhs, std::forward<ARGS>(args)...));
-				}
-				else
-				{
-					MED_RETURN_FAILURE;
-				}
+				auto* p = to.push_back(std::forward<ARGS>(args)...);
+				p->copy(rhs, std::forward<ARGS>(args)...);
 			}
 		}
 		else
@@ -38,7 +32,6 @@ inline MED_RESULT field_copy(IE& to, IE const& from, ARGS&&... args)
 			return to.ref_field().copy(from.ref_field(), std::forward<ARGS>(args)...);
 		}
 	}
-	MED_RETURN_SUCCESS;
 }
 
 } //namespace med::sl
