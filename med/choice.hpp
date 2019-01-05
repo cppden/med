@@ -12,8 +12,6 @@ Distributed under the MIT License
 #include <new>
 
 #include "exception.hpp"
-#include "error.hpp"
-#include "debug.hpp"
 #include "tag.hpp"
 #include "length.hpp"
 #include "encode.hpp"
@@ -157,10 +155,9 @@ struct choice_for<>
 	}
 
 	template <class FUNC, class TO>
-	static void encode(FUNC&& func, TO const& to)
+	static void encode(FUNC&, TO const& to)
 	{
-		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
-		MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<TO>(), get_tag(to.get_header()));
+		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(to.get_header()));
 	}
 
 	template <class TO>
@@ -172,7 +169,6 @@ struct choice_for<>
 	template <class TO, class FROM, class... ARGS>
 	static constexpr void copy(TO&, FROM const&, ARGS&&...)
 	{
-		//MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<TO>(), get_tag(to.get_header()));
 	}
 };
 

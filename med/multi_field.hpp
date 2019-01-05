@@ -133,7 +133,7 @@ public:
 		{
 			return inplace_push_back();
 		}
-		throw out_of_memory("No space for in-place '%.32s': %zu bytes", name<field_type>(), sizeof(field_type));
+		MED_THROW_EXCEPTION(out_of_memory, name<field_type>(), sizeof(field_type));
 	}
 
 	//uses inplace or external storage

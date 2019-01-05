@@ -11,8 +11,7 @@ Distributed under the MIT License
 
 #include <utility>
 
-#include "debug.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "state.hpp"
 #include "name.hpp"
 #include "ie_type.hpp"
@@ -46,21 +45,12 @@ struct octet_decoder
 	bool operator() (CHECK_STATE const&, IE const&)    { return !ctx.buffer().empty(); }
 	void operator() (ADVANCE_STATE const& ss)
 	{
-		if (nullptr == ctx.buffer().advance(ss.bits/granularity))
-		{ MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity); }
+		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
 	}
 	void operator() (ADD_PADDING const& pad)
 	{
 		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
-		if (nullptr == ctx.buffer().advance(pad.bits/granularity))
-		{ MED_RETURN_ERROR(error::OVERFLOW, (*this), "padding", pad.bits/granularity); }
-	}
-
-	//errors
-	template <typename... ARGS>
-	void operator() (error e, ARGS&&... args)
-	{
-		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
+		ctx.buffer().template advance<ADD_PADDING>(pad.bits/granularity);
 	}
 
 	//IE_VALUE
@@ -69,26 +59,20 @@ struct octet_decoder
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
-		if (uint8_t const* pval = ctx.buffer().template advance<IE::traits::bits / granularity>())
+		uint8_t const* pval = ctx.buffer().template advance<IE, IE::traits::bits / granularity>();
+		auto const val = get_bytes<IE>(pval);
+		if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
 		{
-			auto const val = get_bytes<IE>(pval);
-			if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
+			if (not ie.set_encoded(val))
 			{
-				if (not ie.set_encoded(val))
-				{
-					MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), val, ctx.buffer().get_offset());
-				}
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer());
 			}
-			else
-			{
-				ie.set_encoded(val);
-			}
-			CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
 		}
 		else
 		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
+			ie.set_encoded(val);
 		}
+		CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
 	}
 
 	//IE_OCTET_STRING
@@ -99,12 +83,11 @@ struct octet_decoder
 		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))
 		{
 			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.size()));
-			if (nullptr == ctx.buffer().advance(ie.size()))
-			{ MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size()); }
+			ctx.buffer().template advance<IE>(ie.size());
 		}
 		else
 		{
-			MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ie.size(), ctx.buffer().get_offset());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer());
 		}
 	}
 

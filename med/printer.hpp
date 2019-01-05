@@ -10,9 +10,8 @@ Distributed under the MIT License
 #pragma once
 
 
-#include "debug.hpp"
 #include "encode.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "name.hpp"
 
 /*
@@ -27,6 +26,11 @@ struct SinkSample
 	void on_custom(std::size_t depth, char const* name, std::string const& s)
 	{
 		printf("%*c%s=%s\n", depth, ' ', name, s.c_str());
+	}
+
+	void on_error(char const* err)
+	{
+		printf("%s\n", err);
 	}
 };
 */
@@ -135,8 +139,6 @@ public:
 
 	//state
 	constexpr void operator() (SNAPSHOT const&) { }
-	//errors
-	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
 	//length encoder
 	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
 
@@ -177,7 +179,14 @@ private:
 template <class SINK, class IE, std::size_t MAX_LINE = 128>
 void print(SINK&& sink, IE const& ie, std::size_t max_depth = 0)
 {
-	encode(printer<SINK, MAX_LINE>{std::forward<SINK>(sink), max_depth}, ie);
+	try
+	{
+		encode(printer<SINK, MAX_LINE>{std::forward<SINK>(sink), max_depth}, ie);
+	}
+	catch (exception const& ex)
+	{
+		sink.on_error(ex.what());
+	}
 }
 
 
@@ -222,18 +231,12 @@ public:
 
 	//state
 	constexpr void operator() (SNAPSHOT const&) { }
-	//errors
-	constexpr void operator() (error, char const*, std::size_t, std::size_t = 0, std::size_t = 0) { }
 	//length encoder
 	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
 
 	template <class IE>
-	void dump(IE const& ie)
-	{
-		m_sink.on_value(m_depth, name<IE>(), ie.get());
-	}
+	void dump(IE const& ie)                     { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
 
-private:
 	friend struct container_encoder;
 
 	SINK        m_sink;
@@ -244,7 +247,15 @@ private:
 template <class SINK, class IE, std::size_t MAX_LINE = 128>
 void print_all(SINK&& sink, IE const& ie)
 {
-	encode(dumper<SINK, MAX_LINE>{std::forward<SINK>(sink)}, ie);
+	dumper<SINK, MAX_LINE> d{std::forward<SINK>(sink)};
+	try
+	{
+		encode(d, ie);
+	}
+	catch (exception const& ex)
+	{
+		d.m_sink.on_error(ex.what());
+	}
 }
 
 } //namespace med

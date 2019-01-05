@@ -48,64 +48,42 @@ struct decoder
 	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
 	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
 
-	//errors
-	template <typename... ARGS>
-	void operator() (error e, ARGS&&... args)
-	{
-		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
-	}
-
 	//IE_VALUE
 	template <class IE>
 	void operator() (IE& ie, IE_VALUE const&)
 	{
 		using tv = tag_value<typename IE::traits, false>;
-		if (uint8_t const* input = ctx.buffer().template advance<tv::num_bytes()>())
+		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		std::size_t vtag = 0;
+		get_bytes_impl(input, vtag, std::make_index_sequence<tv::num_bytes()>{});
+		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
+		if (tv::value() == vtag)
 		{
-			std::size_t vtag = 0;
-			get_bytes_impl(input, vtag, std::make_index_sequence<tv::num_bytes()>{});
-			CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
-			if (tv::value() == vtag)
+			if constexpr (std::is_same_v<bool, typename IE::value_type>)
 			{
-				if constexpr (std::is_same_v<bool, typename IE::value_type>)
+				uint8_t const* input = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
+				if (input[0] == 1)
 				{
-					if (uint8_t const* input = ctx.buffer().template advance<1 + 1>()) //length + value
-					{
-						if (input[0] == 1)
-						{
-							return ie.set_encoded(input[1] != 0);
-						}
-						MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), input[0]);
-					}
-					MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
+					return ie.set_encoded(input[1] != 0);
 				}
-				else if constexpr (std::is_integral_v<typename IE::value_type>)
-				{
-					//TODO: drop support of NO-EXCEPTION to avoid such macoronni
-					if (uint8_t const* input = ctx.buffer().template advance<1>()) //length
-					{
-						if (uint8_t const len = input[0]; 0 < len && len < 127) //1..127 in one octet
-						{
-							CODEC_TRACE("\t%u octets: %s", len, ctx.buffer().toString());
-							if (uint8_t const* input = ctx.buffer().advance(len)) //value
-							{
-								return ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
-							}
-						}
-						MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), input[0]);
-					}
-					MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
-				}
-				else if constexpr (std::is_floating_point_v<typename IE::value_type>)
-				{
-				}
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer());
 			}
-			MED_RETURN_ERROR(error::UNKNOWN_TAG, (*this), name<IE>(), vtag);
+			else if constexpr (std::is_integral_v<typename IE::value_type>)
+			{
+				uint8_t const* input = ctx.buffer().template advance<IE, 1>(); //length
+				if (uint8_t const len = input[0]; 0 < len && len < 127) //1..127 in one octet
+				{
+					CODEC_TRACE("\t%u octets: %s", len, ctx.buffer().toString());
+					uint8_t const* input = ctx.buffer().template advance<IE>(len); //value
+					return ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
+				}
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer());
+			}
+			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
+			{
+			}
 		}
-		else
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), tv::num_bytes());
-		}
+		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
 	}
 
 	//IE_OCTET_STRING
@@ -113,7 +91,7 @@ struct decoder
 	void operator() (IE& ie, IE_OCTET_STRING const&)
 	{
 		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), ctx.buffer().toString());
-		MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), ie.size(), ctx.buffer().get_offset());
+		MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer());
 	}
 
 private:

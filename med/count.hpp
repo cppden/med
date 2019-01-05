@@ -41,18 +41,18 @@ constexpr bool is_counter_v = is_counter<T>::value;
 namespace detail {
 
 template <class FUNC, class IE>
-inline void check_arity(FUNC& func, IE const&, std::size_t count)
+inline void check_arity(FUNC&, IE const&, std::size_t count)
 {
 	if (count >= IE::min)
 	{
 		if (count > IE::max)
 		{
-			MED_RETURN_ERROR(error::EXTRA_IE, func, name<IE>(), IE::max, count);
+			MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, count);
 		}
 	}
 	else
 	{
-		MED_RETURN_ERROR(error::MISSING_IE, func, name<IE>(), IE::min, count);
+		MED_THROW_EXCEPTION(missing_ie, name<IE>(), IE::min, count);
 	}
 }
 

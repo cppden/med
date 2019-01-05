@@ -13,20 +13,17 @@ Distributed under the MIT License
 #include "allocator.hpp"
 #include "snapshot.hpp"
 #include "buffer.hpp"
-#include "error_context.hpp"
 #include "debug.hpp"
 
 namespace med {
 
 template <
 		class BUFFER = buffer<uint8_t*>,
-		class ERR_CTX = error_context<octet_error_ctx_traits>,
-		class ALLOCATOR = allocator<false, BUFFER, ERR_CTX>
+		class ALLOCATOR = allocator<false, BUFFER>
 		>
 class encoder_context
 {
 public:
-	using error_ctx_type = ERR_CTX;
 	using allocator_type = ALLOCATOR;
 	using buffer_type = BUFFER;
 	using state_t = typename buffer_type::state_type;
@@ -57,8 +54,6 @@ public:
 	encoder_context& operator=(encoder_context const&) = delete;
 
 	buffer_type& buffer()                   { return m_buffer; }
-	error_ctx_type& error_ctx()             { return m_errCtx; }
-	explicit operator bool() const          { return static_cast<bool>(error_ctx()); }
 	allocator_type& get_allocator()         { return m_allocator; }
 
 	template <typename T, std::size_t SIZE>
@@ -127,7 +122,6 @@ public:
 private:
 	using const_iterator = snapshot_s const*;
 
-	error_ctx_type m_errCtx;
 	buffer_type    m_buffer;
 	allocator_type m_allocator;
 

@@ -12,11 +12,10 @@ Distributed under the MIT License
 #include <utility>
 
 #include "config.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "optional.hpp"
 #include "snapshot.hpp"
 #include "padding.hpp"
-#include "debug.hpp"
 #include "length.hpp"
 #include "name.hpp"
 #include "placeholder.hpp"
@@ -114,7 +113,7 @@ struct length_encoder<false, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 			std::size_t len_value = end - this->m_start - m_delta;
 			//CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
 			length_type len_ie;
-			length_to_value(this->m_encoder, len_ie, len_value);
+			length_to_value(len_ie, len_value);
 			this->m_encoder(SET_STATE{}, this->m_lenpos);
 			encode(this->m_encoder, len_ie);
 			this->m_encoder(SET_STATE{}, end);
@@ -153,7 +152,7 @@ struct length_encoder<true, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		{
 			auto const end = this->m_encoder(GET_STATE{});
 			std::size_t const len_value = end - this->m_start - 1;
-			length_to_value(this->m_encoder, m_len_ie, len_value);
+			length_to_value(m_len_ie, len_value);
 			this->m_encoder(SET_STATE{}, this->m_lenpos);
 			encode(this->m_encoder, m_len_ie);
 			this->m_encoder(SET_STATE{}, end);
@@ -260,7 +259,7 @@ inline void encode_ie(FUNC& func, IE const& ie, IE_LV const&)
 	typename WRAPPER::length_type len_ie{};
 	std::size_t len_value = get_length(ref_field(ie));
 	CODEC_TRACE("L=%zx[%s]:", std::size_t(len_ie.get()), name<IE>());
-	length_to_value(func, len_ie, len_value);
+	length_to_value(len_ie, len_value);
 	encode(func, len_ie);
 	encode(func, ref_field(ie));
 }

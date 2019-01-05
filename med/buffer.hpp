@@ -16,6 +16,8 @@ Distributed under the MIT License
 //#include <iomanip>
 //#include <string_view>
 
+#include "exception.hpp"
+#include "name.hpp"
 
 namespace med {
 
@@ -156,7 +158,7 @@ public:
 	bool empty() const                     { return begin() >= end(); }
 	explicit operator bool() const         { return !empty(); }
 
-	template <int DELTA>
+	template <class IE, int DELTA>
 	pointer advance()
 	{
 		pointer p = nullptr;
@@ -167,6 +169,10 @@ public:
 				p = begin();
 				m_state.cursor += DELTA;
 			}
+			else
+			{
+				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this);
+			}
 		}
 		else if constexpr (DELTA < 0)
 		{
@@ -175,10 +181,15 @@ public:
 				m_state.cursor += DELTA;
 				p = begin();
 			}
+			else
+			{
+				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this);
+			}
 		}
 		return p;
 	}
 
+	template <class IE = void>
 	pointer advance(int delta)
 	{
 		pointer p = nullptr;
@@ -192,21 +203,28 @@ public:
 			m_state.cursor += delta;
 			p = begin();
 		}
+		else if constexpr (not std::is_void_v<IE>)
+		{
+			MED_THROW_EXCEPTION(overflow, name<IE>(), delta, *this);
+		}
 		return p;
 	}
 
 	/// similar to advance but no bounds check
 	void offset(int delta)                 { m_state.cursor += delta; }
 
-	bool fill(std::size_t count, uint8_t value)
+	template <class IE>
+	void fill(std::size_t count, uint8_t value)
 	{
 		//CODEC_TRACE("padding %zu bytes=%u", count, value);
 		if (size() >= count)
 		{
 			while (count--) *m_state.cursor++ = value;
-			return true;
 		}
-		return false;
+		else
+		{
+			MED_THROW_EXCEPTION(overflow, name<IE>(), count, *this);
+		}
 	}
 
 	pointer begin() const                  { return m_state.cursor; }

@@ -43,34 +43,20 @@ struct encoder
 			}
 			else
 			{
-				MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), 0);
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), get_length(ie), ctx.buffer());
 			}
 		}
 		else
 		{
-			MED_RETURN_ERROR(error::MISSING_IE, (*this), name<IE>(), 0);
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0, ctx.buffer());
 		}
 	}
 
 	template <class IE>
 	bool operator() (PUSH_STATE const&, IE const&)      { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
-	void operator() (ADVANCE_STATE const& ss)
-	{
-		if (nullptr == ctx.buffer().advance(ss.bits/granularity))
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity);
-		}
-	}
+	void operator() (ADVANCE_STATE const& ss)           { ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity); }
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
-
-
-	//errors
-	template <typename... ARGS>
-	void operator() (error e, ARGS&&... args)
-	{
-		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
-	}
 
 	//IE_VALUE
 	template <class IE>
@@ -80,63 +66,40 @@ struct encoder
 		using tv = tag_value<typename IE::traits, false>;
 		CODEC_TRACE("VAL[%s]=%#zx %zu bits", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits);
 		//CODEC_TRACE("tag=%zX bits=%zu", tv::value(), tv::tag_num_bits());
-		if (uint8_t* out = ctx.buffer().template advance<tv::num_bytes()>())
+		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
+
+		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
-			put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
-			if constexpr (std::is_same_v<bool, typename IE::value_type>)
-			{
-				//X.690 8.2 Encoding of a boolean value
-				if (uint8_t* out = ctx.buffer().template advance<1 + 1>()) //length + value
-				{
-					out[0] = 1; //length
-					out[1] = ie.get_encoded() ? 0xFF : 0x00; //value
-					return;
-				}
-				else
-				{
-					MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
-				}
-			}
-			else if constexpr (std::is_integral_v<typename IE::value_type>)
-			{
-				//X.690 8.3 Encoding of an integer value
-				auto const len = length::bytes<typename IE::value_type>(ie.get_encoded());
-				if (uint8_t* out = ctx.buffer().advance(1 + len)) //length + value
-				{
-					*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
-					put_bytes(ie.get_encoded(), out, len); //value
-					CODEC_TRACE("\t%u octets for %d: %s", len, ie.get_encoded(), ctx.buffer().toString());
-					return;
-				}
-				else
-				{
-					MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
-				}
-			}
-			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
-			{
-			}
-			MED_RETURN_ERROR(error::UNKNOWN_TAG, (*this), name<IE>(), 1);
+			//X.690 8.2 Encoding of a boolean value
+			uint8_t* out = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
+			out[0] = 1; //length
+			out[1] = ie.get_encoded() ? 0xFF : 0x00; //value
+			return;
 		}
-		else
+		else if constexpr (std::is_integral_v<typename IE::value_type>)
 		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), tv::num_bytes());
+			//X.690 8.3 Encoding of an integer value
+			auto const len = length::bytes<typename IE::value_type>(ie.get_encoded());
+			uint8_t* out = ctx.buffer().template advance<IE>(1 + len); //length + value
+			*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
+			put_bytes(ie.get_encoded(), out, len); //value
+			CODEC_TRACE("\t%u octets for %d: %s", len, ie.get_encoded(), ctx.buffer().toString());
+			return;
 		}
+		else if constexpr (std::is_floating_point_v<typename IE::value_type>)
+		{
+		}
+		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer());
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		if ( uint8_t* out = ctx.buffer().advance(ie.size()) )
-		{
-			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
-			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
-		}
-		else
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
-		}
+		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
+		octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
+		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 	}
 
 private:
@@ -196,6 +159,7 @@ private:
 		}
 	}
 
+	template <class IE>
 	void put_length(std::size_t len)
 	{
 		// X.690
@@ -203,14 +167,8 @@ private:
 		if (len < 0x80)
 		{
 			// 8.1.3.4 short form can only be used when length <= 127.
-			if (uint8_t* out = ctx.buffer().template advance<1>())
-			{
-				*out = static_cast<uint8_t>(len);
-			}
-			else
-			{
-				MED_RETURN_ERROR(error::OVERFLOW, (*this), "", 1);
-			}
+			uint8_t* out = ctx.buffer().template advance<IE, 1>();
+			*out = static_cast<uint8_t>(len);
 		}
 		else
 		{
@@ -220,15 +178,9 @@ private:
 			// c) the value 0b11111111 shall not be used.
 			// Subsequent octets encode as unsigned binary integer equal to the the length value.
 			uint8_t const bytes = length::bytes(len);
-			if (uint8_t* out = ctx.buffer().advance(1 + bytes))
-			{
-				*out++ = bytes | 0x80;
-				put_bytes(len, out, bytes);
-			}
-			else
-			{
-				MED_RETURN_ERROR(error::OVERFLOW, (*this), "", 1+bytes);
-			}
+			uint8_t* out = ctx.buffer().template advance<IE>(1 + bytes);
+			*out++ = bytes | 0x80;
+			put_bytes(len, out, bytes);
 		}
 	}
 };

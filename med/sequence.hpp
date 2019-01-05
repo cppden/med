@@ -66,7 +66,7 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		}
 		else
 		{
-			return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count() - 1);
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count() - 1);
 		}
 	}
 }
@@ -125,7 +125,6 @@ struct seq_for<IE, IES...>
 				if (!vtag)
 				{
 					func(POP_STATE{}); //restore state
-					//func(error::SUCCESS); //clear error
 				}
 				check_arity(func, ie);
 			}
@@ -348,13 +347,14 @@ struct seq_for<IE, IES...>
 					{
 						if (not setter(ie, to))
 						{
-							MED_RETURN_ERROR(error::INVALID_VALUE, func, name<IE>(), ie.get());
+							MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.get());
 						}
 					}
 					else
 					{
 						setter(ie, to);
 					}
+
 					if (ie.ref_field().is_set())
 					{
 						med::encode(func, ie);
@@ -383,7 +383,7 @@ struct seq_for<IE, IES...>
 					{
 						if (not setter(ie, to))
 						{
-							MED_RETURN_ERROR(error::INVALID_VALUE, func, name<IE>(), ie.get());
+							MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.get());
 						}
 					}
 					else
@@ -396,7 +396,7 @@ struct seq_for<IE, IES...>
 					}
 					else
 					{
-						func(error::MISSING_IE, name<IE>(), 1, 0);
+						MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
 					}
 				}
 				else //w/o setter
@@ -409,7 +409,7 @@ struct seq_for<IE, IES...>
 					}
 					else
 					{
-						func(error::MISSING_IE, name<IE>(), 1, 0);
+						MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
 					}
 				}
 			}

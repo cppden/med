@@ -29,10 +29,9 @@ namespace sl {
 struct default_handler
 {
 	template <class FUNC, class IE, class HEADER>
-	constexpr void operator()(FUNC& func, IE const&, HEADER const& header) const
+	constexpr void operator()(FUNC&, IE const&, HEADER const& header) const
 	{
-		CODEC_TRACE("ERROR tag=%#zx", std::size_t(get_tag(header)));
-		MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<IE>(), get_tag(header));
+		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), get_tag(header));
 	}
 };
 
@@ -81,8 +80,7 @@ inline void decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 		return decode(func, ref_field(ie), unexp);
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-	CODEC_TRACE("ERROR tag=%zu", std::size_t(tag.get_encoded()));
-	MED_RETURN_ERROR(error::UNKNOWN_TAG, func, name<WRAPPER>(), tag.get_encoded());
+	MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag.get_encoded());
 }
 
 //Length-Value
@@ -94,7 +92,7 @@ inline void decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 	decode(func, len_ie, unexp);
 	std::size_t len_value = len_ie.get_encoded();
 	CODEC_TRACE("raw len=%zu", len_value);
-	value_to_length(func, len_ie, len_value);
+	value_to_length(len_ie, len_value);
 	if (auto end = func(PUSH_SIZE{len_value}))
 	{
 		decode(func, ref_field(ie), unexp);
@@ -102,13 +100,13 @@ inline void decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
 		if (0 != end.size())
 		{
 			CODEC_TRACE("%s: end-size=%zu", name<IE>(), end.size());
-			MED_RETURN_ERROR(error::OVERFLOW, func, name<WRAPPER>(), len_value);
+			MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value);
 		}
 	}
 	else
 	{
 		//TODO: something more informative: tried to set length beyond data end
-		MED_RETURN_ERROR(error::OVERFLOW, func, name<WRAPPER>(), len_value);
+		MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value);
 	}
 }
 
@@ -183,15 +181,15 @@ protected:
 	{
 		decode(m_decoder, len_ie, m_unexp);
 		std::size_t len_value = 0;
-		value_to_length(m_decoder, len_ie, len_value);
+		value_to_length(len_ie, len_value);
 		if (not calc_buf_len<DELTA>(len_value))
 		{
-			MED_RETURN_ERROR(error::INVALID_VALUE, m_decoder, name<IE>(), len_value);
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/);
 		}
 		m_size_state = m_decoder(PUSH_SIZE{len_value});
 		if (not m_size_state)
 		{
-			MED_RETURN_ERROR(error::OVERFLOW, m_decoder, name<IE>(), len_value);
+			MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/);
 		}
 	}
 
@@ -268,7 +266,7 @@ inline void decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 			}
 			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
 			//if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
-			//	MED_RETURN_ERROR(error::OVERFLOW, func, name<IE>(), left);
+			//MED_THROW_EXCEPTION(overflow, name<IE>(), left);
 		}
 		else
 		{

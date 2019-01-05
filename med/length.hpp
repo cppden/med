@@ -13,8 +13,6 @@ Distributed under the MIT License
 #include "ie_type.hpp"
 #include "value_traits.hpp"
 #include "name.hpp"
-#include "error.hpp"
-#include "debug.hpp"
 
 
 namespace med {
@@ -141,15 +139,15 @@ using has_length_converters = decltype(detail::test_value_to_length<T>(0));
 }	//end: namespace detail
 
 
-template <class FUNC, class FIELD>
-constexpr void length_to_value(FUNC& func, FIELD& field, std::size_t len)
+template <class FIELD>
+constexpr void length_to_value(FIELD& field, std::size_t len)
 {
 	//convert length to raw value if needed
 	if constexpr (detail::has_length_converters<FIELD>::value)
 	{
 		if (not FIELD::length_to_value(len))
 		{
-			MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
+			MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len);
 		}
 	}
 
@@ -162,7 +160,7 @@ constexpr void length_to_value(FUNC& func, FIELD& field, std::size_t len)
 		{
 			if (not field.set_length(len))
 			{
-				MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
+				MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len);
 			}
 		}
 		else
@@ -174,7 +172,7 @@ constexpr void length_to_value(FUNC& func, FIELD& field, std::size_t len)
 	{
 		if (not field.set_encoded(len))
 		{
-			MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
+			MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len);
 		}
 	}
 	else
@@ -183,8 +181,8 @@ constexpr void length_to_value(FUNC& func, FIELD& field, std::size_t len)
 	}
 }
 
-template <class FUNC, class FIELD>
-constexpr void value_to_length(FUNC& func, FIELD& field, std::size_t& len)
+template <class FIELD>
+constexpr void value_to_length(FIELD& field, std::size_t& len)
 {
 	//use proper length accessor
 	if constexpr (detail::has_get_length<FIELD>::value)
@@ -203,7 +201,7 @@ constexpr void value_to_length(FUNC& func, FIELD& field, std::size_t& len)
 	{
 		if (not FIELD::value_to_length(len))
 		{
-			MED_RETURN_ERROR(error::INVALID_VALUE, func, name<FIELD>(), len);
+			MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len);
 		}
 	}
 }

@@ -12,7 +12,7 @@ Distributed under the MIT License
 #include <memory>
 
 #include "name.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 
 namespace med {
 
@@ -81,15 +81,13 @@ private:
 
 } //end: namespace
 
-template <bool FORWARD, class BUFFER, class ERR_CTX>
+template <bool FORWARD, class BUFFER>
 class allocator;
 
-template <class BUFFER, class ERR_CTX>
-class allocator<true, BUFFER, ERR_CTX> : public internal::base_allocator
+template <class BUFFER>
+class allocator<true, BUFFER> : public internal::base_allocator
 {
 public:
-	using error_ctx_type = ERR_CTX;
-
 	/**
 	 * Allocates T from the beginning of current free buffer space
 	 * @return pointer to instance of T or nullptr/throw when out of space
@@ -104,17 +102,14 @@ public:
 			this->begin(result + 1);
 			return result;
 		}
-		ERR_CTX::set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
-		return nullptr;
+		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T));
 	}
 };
 
-template <class BUFFER, class ERR_CTX>
-class allocator<false, BUFFER, ERR_CTX> : public internal::base_allocator
+template <class BUFFER>
+class allocator<false, BUFFER> : public internal::base_allocator
 {
 public:
-	using error_ctx_type = ERR_CTX;
-
 	//TODO: anything better than depending on buffer? pointer to end doesn't look better though...
 	explicit allocator(BUFFER& buf) noexcept
 		: m_buffer{ buf }
@@ -136,8 +131,7 @@ public:
 			m_buffer.end(static_cast<typename BUFFER::pointer>(p));
 			return result;
 		}
-		ERR_CTX::set_error(nullptr, error::OUT_OF_MEMORY, name<T>(), sizeof(T));
-		return nullptr;
+		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T));
 	}
 
 private:

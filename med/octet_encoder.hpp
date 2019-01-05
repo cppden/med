@@ -41,12 +41,12 @@ struct octet_encoder
 			}
 			else
 			{
-				MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), 0);
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), get_length(ie));
 			}
 		}
 		else
 		{
-			MED_RETURN_ERROR(error::MISSING_IE, (*this), name<IE>(), 0);
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
 		}
 	}
 
@@ -55,23 +55,13 @@ struct octet_encoder
 	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
 	void operator() (ADVANCE_STATE const& ss)
 	{
-		if (nullptr == ctx.buffer().advance(ss.bits/granularity))
-		{ MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity); }
+		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
 	}
 	void operator() (ADD_PADDING const& pad)
 	{
-		if (not ctx.buffer().fill(pad.bits/granularity, pad.filler))
-		{ MED_RETURN_ERROR(error::OVERFLOW, (*this), "padding", pad.bits/granularity); }
+		ctx.buffer().template fill<ADD_PADDING>(pad.bits/granularity, pad.filler);
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
-
-
-	//errors
-	template <typename... ARGS>
-	void operator() (error e, ARGS&&... args)
-	{
-		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
-	}
 
 	//IE_VALUE
 	template <class IE>
@@ -79,29 +69,17 @@ struct octet_encoder
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("VAL[%s]=%#zx %zu bits: %s", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits, ctx.buffer().toString());
-		if (uint8_t* out = ctx.buffer().template advance<IE::traits::bits / granularity>())
-		{
-			put_bytes(ie, out);
-		}
-		else
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
-		}
+		uint8_t* out = ctx.buffer().template advance<IE, IE::traits::bits / granularity>();
+		put_bytes(ie, out);
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		if ( uint8_t* out = ctx.buffer().advance(ie.size()) )
-		{
-			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
-			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
-		}
-		else
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
-		}
+		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
+		octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
+		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 	}
 
 private:

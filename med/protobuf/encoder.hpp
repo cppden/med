@@ -41,12 +41,12 @@ struct encoder
 			}
 			else
 			{
-				MED_RETURN_ERROR(error::INVALID_VALUE, (*this), name<IE>(), 0);
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), get_length(ie));
 			}
 		}
 		else
 		{
-			MED_RETURN_ERROR(error::MISSING_IE, (*this), name<IE>(), 0);
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
 		}
 	}
 
@@ -55,27 +55,13 @@ struct encoder
 	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
 	void operator() (ADVANCE_STATE const& ss)
 	{
-		if (nullptr == ctx.buffer().advance(ss.bits/granularity))
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), "advance", ss.bits/granularity);
-		}
+		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
 	}
 	void operator() (ADD_PADDING const& pad)
 	{
-		if (not ctx.buffer().fill(pad.bits/granularity, pad.filler))
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), "padding", pad.bits/granularity);
-		}
+		ctx.buffer().template fill<ADD_PADDING>(pad.bits/granularity, pad.filler);
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
-
-
-	//errors
-	template <typename... ARGS>
-	void operator() (error e, ARGS&&... args)
-	{
-		return ctx.error_ctx().set_error(ctx.buffer(), e, std::forward<ARGS>(args)...);
-	}
 
 	//IE_VALUE
 	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
@@ -88,41 +74,23 @@ struct encoder
 		//TODO: estimate exact size needed? will it be faster?
 		while (value >= 0x80)
 		{
-			if (uint8_t* const output = ctx.buffer().template advance<1>())
-			{
-				*output = static_cast<uint8_t>(value | 0x80);
-			}
-			else
-			{
-				MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
-			}
+			uint8_t* const output = ctx.buffer().template advance<IE, 1>();
+			*output = static_cast<uint8_t>(value | 0x80);
 			CODEC_TRACE("\twrote %#02x, value=%#zx", uint8_t(value|0x80), std::size_t(value >> 7));
 			value >>= 7;
 		}
-		if (uint8_t* const output = ctx.buffer().template advance<1>())
-		{
-			*output = static_cast<uint8_t>(value);
-			CODEC_TRACE("\twrote value %02X", uint8_t(value));
-		}
-		else
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), IE::traits::bits/granularity);
-		}
+		uint8_t* const output = ctx.buffer().template advance<IE, 1>();
+		*output = static_cast<uint8_t>(value);
+		CODEC_TRACE("\twrote value %02X", uint8_t(value));
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		if ( uint8_t* out = ctx.buffer().advance(ie.size()) )
-		{
-			octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
-			CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
-		}
-		else
-		{
-			MED_RETURN_ERROR(error::OVERFLOW, (*this), name<IE>(), ie.size());
-		}
+		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
+		octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
+		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 	}
 
 private:

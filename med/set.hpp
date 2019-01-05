@@ -10,14 +10,13 @@ Distributed under the MIT License
 #pragma once
 
 #include "config.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "optional.hpp"
 #include "container.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
 #include "name.hpp"
 #include "tag.hpp"
-#include "debug.hpp"
 #include "util/unique.hpp"
 
 namespace med {
@@ -102,7 +101,7 @@ struct set_for<IE, IEs...>
 					else
 					{
 						//TODO: actually this field was pushed but not set... do we need a new error?
-						return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count()-1);
+						MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1);
 					}
 					first = false;
 				}
@@ -120,7 +119,7 @@ struct set_for<IE, IEs...>
 					else
 					{
 						//TODO: actually this field was pushed but not set... do we need a new error?
-						return func(error::MISSING_IE, name<IE>(), ie.count(), ie.count()-1);
+						MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1);
 					}
 				}
 			}
@@ -140,7 +139,7 @@ struct set_for<IE, IEs...>
 			}
 			else if constexpr (!is_optional_v<IE>)
 			{
-				return func(error::MISSING_IE, name<IE>(), 1, 0);
+				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
 			}
 		}
 		return set_for<IEs...>::template encode<IE, HEADER>(to, func);
@@ -170,7 +169,7 @@ struct set_for<IE, IEs...>
 							func(ie, NEXT_CONTAINER_ELEMENT{});
 							if (num >= IE::max)
 							{
-								return func(error::EXTRA_IE, name<IE>(), IE::max, num);
+								MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, num);
 							}
 						}
 						auto* field = ie.push_back(func);
@@ -183,7 +182,7 @@ struct set_for<IE, IEs...>
 				{
 					if (ie.count() >= IE::max)
 					{
-						return func(error::EXTRA_IE, name<IE>(), IE::max, ie.count());
+						MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count());
 					}
 					auto* field = ie.push_back(func);
 					return med::decode(func, *field, unexp);
@@ -203,7 +202,7 @@ struct set_for<IE, IEs...>
 				{
 					return med::decode(func, ie.ref_field(), unexp);
 				}
-				return func(error::EXTRA_IE, name<IE>(), 1);
+				MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1);
 			}
 			else
 			{
@@ -226,7 +225,7 @@ struct set_for<IE, IEs...>
 			IE const& ie = static_cast<IE const&>(to);
 			if (not (is_optional_v<IE> || ie.ref_field().is_set()))
 			{
-				return func(error::MISSING_IE, name<IE>(), 1, 0);
+				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
 			}
 		}
 		return set_for<IEs...>::check(to, func);

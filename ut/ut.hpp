@@ -219,6 +219,11 @@ struct dummy_sink
 			CODEC_TRACE("custom[%s]=%s", name, s.c_str());
 		}
 	}
+
+	void on_error(char const* err)
+	{
+		std::printf("ERROR: %s\n", err);
+	}
 };
 
 template <typename ...T>
