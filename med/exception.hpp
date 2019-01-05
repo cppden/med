@@ -12,7 +12,7 @@ Distributed under the MIT License
 #include <cstdint>
 #include <cstdio>
 #include <exception>
-#undef OVERFLOW
+#include <type_traits>
 
 #include "config.hpp"
 #include "debug.hpp"
@@ -37,29 +37,17 @@ inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<T>, char const*>
 {
 	return t.toString();
 }
-template <class T>
-inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<t.buffer()>, char const*>
-{
-	return t.buffer().toString();
-}
-template <class T>
-inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<t.ctx.buffer()>, char const*>
-{
-	return t.ctx.buffer().toString();
-}
+//template <class T>
+//inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<t.buffer()>, char const*>
+//{
+//	return t.buffer().toString();
+//}
+//template <class T>
+//inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<t.ctx.buffer()>, char const*>
+//{
+//	return t.ctx.buffer().toString();
+//}
 
-}
-
-template <int N, typename... ARGS>
-char const* format(char(&out)[N], char const* bufpos, char const* fmt, ARGS&&... args) noexcept
-{
-	int res = std::snprintf(out, sizeof(out), fmt, std::forward<ARGS>(args)...);
-	if (bufpos && res > 0 && res < N)
-	{
-		std::strncpy(out + res, bufpos, sizeof(out) - res);
-	}
-	out[N-1] = 0;
-	return out;
 }
 
 class exception : public std::exception
@@ -73,14 +61,25 @@ protected:
 	//only derived can be created
 	exception() = default;
 
+	template <typename... ARGS>
+	void format(char const* bufpos, char const* fmt, ARGS&&... args) noexcept
+	{
+		int res = std::snprintf(m_what, sizeof(m_what), fmt, std::forward<ARGS>(args)...);
+		if (bufpos && res > 0 && res < int(sizeof(m_what)))
+		{
+			std::strncpy(m_what + res, bufpos, sizeof(m_what) - res - 1);
+		}
+		m_what[sizeof(m_what) - 1] = 0;
+	}
+
 	char m_what[128];
 };
 
 //OVERFLOW
 struct overflow : exception
 {
-	overflow(char const* name, std::size_t bytes, char const* aux = nullptr) noexcept
-		{ format(this->m_what, "'%.32s' needs %zu octets. %s", name, bytes, aux?aux:""); }
+	overflow(char const* name, std::size_t bytes, char const* bufpos = nullptr) noexcept
+		{ format(bufpos, "'%.32s' needs %zu octets.", name, bytes); }
 
 	template <class CTX>
 	overflow(char const* name, std::size_t bytes, CTX const& ctx) noexcept
@@ -91,8 +90,8 @@ struct value_exception : public exception {};
 
 struct invalid_value : public value_exception
 {
-	invalid_value(char const* name, std::size_t val, char const* aux = nullptr) noexcept
-		{ format(this->m_what, "Invalid value of '%.32s' = 0x%zX. %s", name, val, aux?aux:""); }
+	invalid_value(char const* name, std::size_t val, char const* bufpos = nullptr) noexcept
+		{ format(bufpos, "Invalid value of '%.32s' = 0x%zX.", name, val); }
 
 	template <class CTX>
 	invalid_value(char const* name, std::size_t val, CTX const& ctx) noexcept
@@ -100,8 +99,8 @@ struct invalid_value : public value_exception
 };
 struct unknown_tag : public value_exception
 {
-	unknown_tag(char const* name, std::size_t val, char const* aux = nullptr) noexcept
-		{ format(this->m_what, "Unknown tag of '%.32s' = 0x%zX. %s", name, val, aux?aux:""); }
+	unknown_tag(char const* name, std::size_t val, char const* bufpos = nullptr) noexcept
+		{ format(bufpos, "Unknown tag of '%.32s' = 0x%zX.", name, val); }
 
 	template <class CTX>
 	unknown_tag(char const* name, std::size_t val, CTX const& ctx) noexcept
@@ -112,8 +111,8 @@ struct ie_exception : public exception {};
 
 struct missing_ie : public ie_exception
 {
-	missing_ie(char const* name, std::size_t exp, std::size_t got, char const* aux = nullptr) noexcept
-		{ format(this->m_what, "Missing IE '%.32s': at least %zu expected, got %zu. %s", name, exp, got, aux?aux:""); }
+	missing_ie(char const* name, std::size_t exp, std::size_t got, char const* bufpos = nullptr) noexcept
+		{ format(bufpos, "Missing IE '%.32s': at least %zu expected, got %zu.", name, exp, got); }
 
 	template <class CTX>
 	missing_ie(char const* name, std::size_t exp, std::size_t got, CTX const& ctx) noexcept
@@ -121,8 +120,8 @@ struct missing_ie : public ie_exception
 };
 struct extra_ie : public ie_exception
 {
-	extra_ie(char const* name, std::size_t exp, std::size_t got, char const* aux = nullptr) noexcept
-		{ format(this->m_what, "Excessive IE '%.32s': no more than %zu expected, got %zu. %s", name, exp, got, aux?aux:""); }
+	extra_ie(char const* name, std::size_t exp, std::size_t got, char const* bufpos = nullptr) noexcept
+		{ format(bufpos, "Excessive IE '%.32s': no more than %zu expected, got %zu.", name, exp, got); }
 
 	template <class CTX>
 	extra_ie(char const* name, std::size_t exp, std::size_t got, CTX const& ctx) noexcept
@@ -132,8 +131,8 @@ struct extra_ie : public ie_exception
 //OUT_OF_MEMORY
 struct out_of_memory : public exception
 {
-	out_of_memory(char const* name, std::size_t bytes, char const* aux = nullptr) noexcept
-		{ format(this->m_what, "No space to allocate IE '%.32s': %zu octets. %s", name, bytes, aux?aux:""); }
+	out_of_memory(char const* name, std::size_t bytes, char const* bufpos = nullptr) noexcept
+		{ format(bufpos, "No space to allocate IE '%.32s': %zu octets.", name, bytes); }
 
 	template <class CTX>
 	out_of_memory(char const* name, std::size_t bytes, CTX const& ctx) noexcept

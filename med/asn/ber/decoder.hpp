@@ -139,24 +139,19 @@ private:
 		}
 	}
 
+	template <class IE>
 	std::size_t get_length()
 	{
-		if (uint8_t const* input = ctx.buffer().template advance<1>())
+		uint8_t const* input = ctx.buffer().template advance<IE, 1>();
+		auto const bytes = *input;
+		if (bytes < 0x80) //short form
 		{
-			auto const bytes = *input;
-			if (bytes < 0x80) //short form
-			{
-				return bytes;
-			}
-			else if (uint8_t const* input = ctx.buffer().advance(bytes & 0x7F))
-			{
-				return get_bytes<std::size_t>(input, bytes);
-			}
+			return bytes;
 		}
-#ifdef MED_EXCEPTIONS
-//#error clean this up
-#endif
-		return 0;
+		else if (uint8_t const* input = ctx.buffer().template advance<IE>(bytes & 0x7F))
+		{
+			return get_bytes<std::size_t>(input, bytes);
+		}
 	}
 
 };
