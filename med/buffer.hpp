@@ -158,6 +158,20 @@ public:
 	bool empty() const                     { return begin() >= end(); }
 	explicit operator bool() const         { return !empty(); }
 
+	template <class IE>
+	void push(value_type v)
+	{
+		if (not empty()) { *m_state.cursor++ = v; }
+		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this); }
+	}
+
+	template <class IE>
+	value_type pop()
+	{
+		if (not empty()) { return *m_state.cursor++; }
+		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this); }
+	}
+
 	template <class IE, int DELTA>
 	pointer advance()
 	{

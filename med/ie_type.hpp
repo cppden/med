@@ -37,6 +37,7 @@ struct IE
 //always-set empty IE as a message w/o body
 struct empty : IE<IE_NULL>
 {
+	using value_type = void;
 	static constexpr void clear()           { }
 	static constexpr void set()             { }
 	static constexpr bool get()             { return true; }

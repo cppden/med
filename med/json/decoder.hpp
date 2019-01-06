@@ -142,57 +142,41 @@ struct decoder
 	void operator() (IE& ie, IE_VALUE const&)
 	{
 		auto* p = ctx.buffer().template advance<IE, 1>();
-		if (p)
+		//CODEC_TRACE("->VAL[%s]: %.*s", name<IE>(), 5, p);
+		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
-			//CODEC_TRACE("->VAL[%s]: %.*s", name<IE>(), 5, p);
-			if constexpr (std::is_same_v<bool, typename IE::value_type>)
+			ctx.buffer().template advance<IE, 3>(); //min len of [t]rue, [f]alse
+			if ('t' == p[0] && 'r' == p[1] && 'u' == p[2] && 'e' == p[3]) //true
 			{
-				ctx.buffer().template advance<IE, 3>(); //min len of [t]rue, [f]alse
-				if ('f' == p[0]) //false
+				CODEC_TRACE("%s=true", name<IE>());
+				ie.set_encoded(true);
+				return;
+			}
+			else
+			{
+				ctx.buffer().template pop<IE>(); //+1 over len(true)
+				if ('f' == p[0] && 'a' == p[1] && 'l' == p[2] && 's' == p[3] && 'e' == p[4])
 				{
-					ctx.buffer().template advance<IE, 1>(); //+1 over len(true)
-					static constexpr char const* s = "false";
-					if (s[1] == p[1] && s[2] == p[2] && s[3] == p[3] && s[4] == p[4])
-					{
-						CODEC_TRACE("%s=%s", name<IE>(), s);
-						ie.set_encoded(false);
-						return;
-					}
-				}
-				else if ('t' == p[0]) //true
-				{
-					static constexpr char const* s = "true";
-					if (s[1] == p[1] && s[2] == p[2] && s[3] == p[3])
-					{
-						CODEC_TRACE("%s=%s", name<IE>(), s);
-						ie.set_encoded(true);
-						return;
-					}
+					CODEC_TRACE("%s=false", name<IE>());
+					ie.set_encoded(false);
+					return;
 				}
 			}
-			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
-			{
-				return convert<long double>(p, "%Lg%n", ie);
-			}
-			else if constexpr (std::is_signed_v<typename IE::value_type>)
-			{
-				return convert<long long>(p, "%lld%n", ie);
-			}
-			else if constexpr (std::is_unsigned_v<typename IE::value_type>)
-			{
-				return convert<unsigned long long>(p, "%llu%n", ie);
-			}
+		}
+		else if constexpr (std::is_floating_point_v<typename IE::value_type>)
+		{
+			return convert<long double>(p, "%Lg%n", ie);
+		}
+		else if constexpr (std::is_signed_v<typename IE::value_type>)
+		{
+			return convert<long long>(p, "%lld%n", ie);
+		}
+		else if constexpr (std::is_unsigned_v<typename IE::value_type>)
+		{
+			return convert<unsigned long long>(p, "%llu%n", ie);
 		}
 
-		if (p)
-		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), p[0], ctx.buffer());
-		}
-		else
-		{
-			//TODO: need valid size to report
-			MED_THROW_EXCEPTION(overflow, name<IE>(), 0, ctx.buffer());
-		}
+		MED_THROW_EXCEPTION(invalid_value, name<IE>(), p[0], ctx.buffer());
 	}
 
 	//IE_OCTET_STRING
@@ -269,7 +253,8 @@ private:
 	template <typename VAL, class IE>
 	auto convert(char const* p, char const* fmt, IE& ie)
 	{
-		VAL val; int pos;
+		VAL val;
+		int pos;
 		if (1 == std::sscanf(p, fmt, &val, &pos) && ctx.buffer().advance(pos - 1))
 		{
 			CODEC_TRACE("%s[%s]=%.*s", name<IE>(), fmt, pos, p);

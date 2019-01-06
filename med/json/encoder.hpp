@@ -47,15 +47,13 @@ struct encoder
 		};
 
 		CODEC_TRACE("CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
-		auto* out = ctx.buffer().template advance<IE, 1>();
-		out[0] = open_brace();
+		ctx.buffer().template push<IE>(open_brace());
 	}
 	template <class IE>
 	void operator() (IE const&, HEADER_CONTAINER const&)
 	{
 		CODEC_TRACE("HEADER_CONTAINER[%s]: %s", name<IE>(), ctx.buffer().toString());
-		auto* out = ctx.buffer().template advance<IE, 1>();
-		out[0] = ':';
+		ctx.buffer().template push<IE>(':');
 	}
 
 	template <class IE>
@@ -68,16 +66,14 @@ struct encoder
 		};
 
 		CODEC_TRACE("CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
-		auto* out = ctx.buffer().template advance<IE, 1>();
-		out[0] = closing_brace();
+		ctx.buffer().template push<IE>(closing_brace());
 	}
 
 	template <class IE>
 	void operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
 	{
 		CODEC_TRACE("CONTAINER,[%s]: %s", name<IE>(), ctx.buffer().toString());
-		auto* out = ctx.buffer().template advance<IE, 1>();
-		out[0] = ',';
+		ctx.buffer().template push<IE>(',');
 	}
 
 	//IE_VALUE

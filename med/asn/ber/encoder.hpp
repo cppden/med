@@ -58,6 +58,18 @@ struct encoder
 	void operator() (ADVANCE_STATE const& ss)           { ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity); }
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
+	//IE_NULL
+	template <class IE>
+	void operator() (IE const&, IE_NULL const&)
+	{
+		using tv = tag_value<traits<NULL_TYPE>, false>;
+		ctx.buffer().template push<IE>(tv::value());
+		//X.690 8.8 Encoding of a null value
+		//8.8.2 The contents octets shall not contain any octets.
+		//NOTE – The length octet is zero.
+		ctx.buffer().template push<IE>(0); //length + no value
+	}
+
 	//IE_VALUE
 	template <class IE>
 	void operator() (IE const& ie, IE_VALUE const&)
@@ -167,8 +179,7 @@ private:
 		if (len < 0x80)
 		{
 			// 8.1.3.4 short form can only be used when length <= 127.
-			uint8_t* out = ctx.buffer().template advance<IE, 1>();
-			*out = static_cast<uint8_t>(len);
+			ctx.buffer().template push<IE>(len);
 		}
 		else
 		{

@@ -74,13 +74,11 @@ struct encoder
 		//TODO: estimate exact size needed? will it be faster?
 		while (value >= 0x80)
 		{
-			uint8_t* const output = ctx.buffer().template advance<IE, 1>();
-			*output = static_cast<uint8_t>(value | 0x80);
+			ctx.buffer().template push<IE>(value | 0x80);
 			CODEC_TRACE("\twrote %#02x, value=%#zx", uint8_t(value|0x80), std::size_t(value >> 7));
 			value >>= 7;
 		}
-		uint8_t* const output = ctx.buffer().template advance<IE, 1>();
-		*output = static_cast<uint8_t>(value);
+		ctx.buffer().template push<IE>(value);
 		CODEC_TRACE("\twrote value %02X", uint8_t(value));
 	}
 

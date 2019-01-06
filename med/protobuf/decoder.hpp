@@ -60,18 +60,16 @@ struct decoder
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
-		uint8_t const* input = ctx.buffer().template advance<IE, 1>();
-		typename IE::value_type val = *input;
+		typename IE::value_type val = ctx.buffer().template pop<IE>();
 		if (val & 0x80)
 		{
 			val &= 0x7F;
 			std::size_t count = 0;
 			for (;;)
 			{
-				input = ctx.buffer().template advance<IE, 1>();
 				if (++count < MAX_VARINT_BYTES)
 				{
-					auto const byte = *input;
+					auto const byte = ctx.buffer().template pop<IE>();
 					val |= static_cast<typename IE::value_type>(byte & 0x7F) << (7 * count);
 					if (0 == (byte & 0x80)) { break; }
 				}

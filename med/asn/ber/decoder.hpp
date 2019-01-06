@@ -48,6 +48,26 @@ struct decoder
 	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
 	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
 
+	//IE_NULL
+	template <class IE>
+	void operator() (IE&, IE_NULL const&)
+	{
+		using tv = tag_value<traits<NULL_TYPE>, false>;
+		uint8_t const vtag = ctx.buffer().template pop<IE>();
+		CODEC_TRACE("NULL tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
+		if (tv::value() == vtag)
+		{
+			if (uint8_t const length = ctx.buffer().template pop<IE>())
+			{
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), length, ctx.buffer());
+			}
+		}
+		else
+		{
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+		}
+	}
+
 	//IE_VALUE
 	template <class IE>
 	void operator() (IE& ie, IE_VALUE const&)
@@ -70,8 +90,7 @@ struct decoder
 			}
 			else if constexpr (std::is_integral_v<typename IE::value_type>)
 			{
-				uint8_t const* input = ctx.buffer().template advance<IE, 1>(); //length
-				if (uint8_t const len = input[0]; 0 < len && len < 127) //1..127 in one octet
+				if (uint8_t const len = ctx.buffer().template pop<IE>(); 0 < len && len < 127) //1..127 in one octet
 				{
 					CODEC_TRACE("\t%u octets: %s", len, ctx.buffer().toString());
 					uint8_t const* input = ctx.buffer().template advance<IE>(len); //value
@@ -142,8 +161,7 @@ private:
 	template <class IE>
 	std::size_t get_length()
 	{
-		uint8_t const* input = ctx.buffer().template advance<IE, 1>();
-		auto const bytes = *input;
+		uint8_t const bytes = ctx.buffer().template pop<IE>();
 		if (bytes < 0x80) //short form
 		{
 			return bytes;

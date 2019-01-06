@@ -144,6 +144,24 @@ std::string encoded(typename IE::value_type const& val)
 	return as_string(ectx.buffer());
 }
 
+template <class IE>
+std::string encoded()
+{
+	uint8_t enc_buf[128] = {};
+	med::encoder_context<> ectx{ enc_buf };
+
+	IE enc;
+	encode(med::asn::ber::encoder{ectx}, enc);
+
+	IE dec;
+	med::decoder_context<> dctx;
+	dctx.reset(ectx.buffer().get_start(), ectx.buffer().get_offset());
+	decode(med::asn::ber::decoder{dctx}, dec);
+
+	return as_string(ectx.buffer());
+}
+
+
 #if 1
 TEST(asn_ber, boolean)
 {	
@@ -167,5 +185,10 @@ TEST(asn_ber, integer)
 	EXPECT_EQ("02 02 00 80 "s, encoded<med::asn::integer>(128));
 	EXPECT_EQ("02 01 80 "s, encoded<med::asn::integer>(-128));
 	EXPECT_EQ("02 02 FF 7F "s, encoded<med::asn::integer>(-129));
+}
+
+TEST(asn_ber, null)
+{
+	EXPECT_EQ("05 00 "s, encoded<med::asn::null>());
 }
 
