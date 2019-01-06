@@ -63,6 +63,13 @@ struct octet_encoder
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
+	//IE_NULL
+	template <class IE>
+	void operator() (IE const&, IE_NULL const&)
+	{
+		CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString());
+	}
+
 	//IE_VALUE
 	template <class IE>
 	void operator() (IE const& ie, IE_VALUE const&)
@@ -106,8 +113,5 @@ private:
 		put_bytes_impl<NUM_BYTES>(output, ie.get_encoded(), std::make_index_sequence<NUM_BYTES>{});
 	}
 };
-
-template <class ENC_CTX>
-auto make_octet_encoder(ENC_CTX& ctx) { return octet_encoder<ENC_CTX>{ctx}; }
 
 }	//end: namespace med

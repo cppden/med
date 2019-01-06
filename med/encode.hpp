@@ -26,23 +26,6 @@ namespace med {
 //structure layer
 namespace sl {
 
-template <class T, typename Enable = void>
-struct null_encoder
-{
-	template <class FUNC, class IE>
-	static constexpr void encode(FUNC&, IE const&)      { }
-};
-
-template <class T>
-struct null_encoder<T, std::void_t<typename T::null_encoder>>
-{
-	template <class FUNC, class IE>
-	static void encode(FUNC& func, IE const& ie)
-	{
-		return typename T::null_encoder{}(func, ie);
-	}
-};
-
 template <bool BY_IE, class FUNC, class LEN>
 struct length_encoder;
 
@@ -225,7 +208,7 @@ struct container_encoder<T, std::void_t<typename T::container_encoder>>
 template <class WRAPPER, class FUNC, class IE>
 constexpr void encode_ie(FUNC& func, IE const& ie, IE_NULL const&)
 {
-	return null_encoder<FUNC>::encode(func, ie);
+	func(ie, typename WRAPPER::ie_type{});
 }
 
 template <class WRAPPER, class FUNC, class IE>

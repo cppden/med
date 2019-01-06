@@ -53,6 +53,13 @@ struct octet_decoder
 		ctx.buffer().template advance<ADD_PADDING>(pad.bits/granularity);
 	}
 
+	//IE_NULL
+	template <class IE>
+	void operator() (IE&, IE_NULL const&)
+	{
+		CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString());
+	}
+
 	//IE_VALUE
 	template <class IE>
 	void operator() (IE& ie, IE_VALUE const&)
@@ -117,8 +124,5 @@ private:
 		return value;
 	}
 };
-
-template <class ENC_CTX>
-auto make_octet_decoder(ENC_CTX& ctx) { return octet_decoder<ENC_CTX>{ctx}; }
 
 }	//end: namespace med

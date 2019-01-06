@@ -45,23 +45,8 @@ struct empty : IE<IE_NULL>
 	static constexpr void copy(empty const&, ARGS&&...) { }
 };
 
-//selectable IE as empty case in choice
-struct selectable : IE<IE_NULL>
-{
-	void set()                              { m_set = true; }
-	bool get() const                        { return is_set(); }
-	void clear()                            { m_set = false; }
-	bool is_set() const                     { return m_set; }
-	explicit operator bool() const          { return is_set(); }
-	template <class... ARGS>
-	void copy(selectable const& from, ARGS&&...) { m_set = from.is_set(); }
-
-private:
-	bool    m_set{false};
-};
-
 template <class T>
-constexpr bool is_empty_v = std::is_base_of<IE<IE_NULL>, T>::value;
+constexpr bool is_empty_v = std::is_same_v<IE_NULL, typename T::ie_type>;
 
 //read during decode w/o changing buffer state
 //skipped during encode and length calculation

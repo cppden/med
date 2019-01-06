@@ -64,18 +64,6 @@ class printer
 
 public:
 
-	struct null_encoder
-	{
-		template <class IE>
-		constexpr void operator()(printer& me, IE const& ie)
-		{
-			if constexpr (has_name_v<IE>)
-			{
-				me.print_named(ie, typename has_print<IE>::type{});
-			}
-		}
-	};
-
 	class container_encoder
 	{
 	public:
@@ -144,7 +132,6 @@ public:
 
 private:
 	friend class container_encoder;
-	friend struct null_encoder;
 
 	//customized print 2
 	template <class IE>
@@ -195,16 +182,6 @@ template <class SINK, std::size_t MAX_LINE>
 class dumper
 {
 public:
-
-	struct null_encoder
-	{
-		template <class IE>
-		void operator()(dumper& me, IE const& ie)
-		{
-			me.dump(ie);
-		}
-	};
-
 	struct container_encoder
 	{
 		template <class IE>

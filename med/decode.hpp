@@ -36,10 +36,10 @@ struct default_handler
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-constexpr void decode_ie(FUNC&, IE& ie, IE_NULL const&, UNEXP&)
+constexpr void decode_ie(FUNC& func, IE& ie, IE_NULL const&, UNEXP&)
 {
-	CODEC_TRACE("NULL %s", name<IE>());
-	ie.set();
+	func(ie, typename WRAPPER::ie_type{});
+	//ie.set();
 }
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
