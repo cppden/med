@@ -92,10 +92,16 @@ struct OOO_SEQ : med::sequence<
 >
 {};
 
+struct NO_THING : med::empty
+{
+	static constexpr char const* name() { return "Nothing"; }
+};
+
 struct FLD_CHO : med::choice< med::value<uint8_t>
 	, med::tag<C<0x00>, FLD_U8>
 	, med::tag<C<0x02>, FLD_U16>
 	, med::tag<C<0x04>, FLD_IP>
+	, med::tag<C<0x06>, NO_THING>
 >
 {};
 

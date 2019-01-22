@@ -158,13 +158,14 @@ struct dummy_sink
 	std::size_t num_on_value{ 0 };
 	std::size_t num_on_container{ 0 };
 	std::size_t num_on_custom{ 0 };
+	std::size_t num_on_error{ 0 };
 
 	void on_value(std::size_t depth, char const* name, std::size_t value)
 	{
 		++num_on_value;
 		if (m_factor)
 		{
-			printf("%zu%*c%s : %zu (%zXh)\n", depth, int(m_factor*depth), ' ', name, value, value);
+			std::printf("%zu%*c%s : %zu (%zXh)\n", depth, int(m_factor*depth), ' ', name, value, value);
 		}
 		else
 		{
@@ -178,15 +179,15 @@ struct dummy_sink
 		++num_on_value;
 		if (m_factor)
 		{
-			printf("%zu%*c%s :", depth, int(m_factor*depth), ' ', name);
+			std::printf("%zu%*c%s :", depth, int(m_factor*depth), ' ', name);
 
 			using iter_t = uint8_t const*;
 			for (iter_t it = value.data(), ite = it + value.size(); it != ite; ++it)
 			{
-				printf(" %02X", *it);
+				std::printf(" %02X", *it);
 			}
 
-			printf(" (%zu)\n", value.size());
+			std::printf(" (%zu)\n", value.size());
 		}
 		else
 		{
@@ -199,7 +200,7 @@ struct dummy_sink
 		++num_on_container;
 		if (m_factor)
 		{
-			printf("%zu%*c%s\n", depth, int(m_factor*depth), ' ', name);
+			std::printf("%zu%*c%s\n", depth, int(m_factor*depth), ' ', name);
 		}
 		else
 		{
@@ -212,7 +213,7 @@ struct dummy_sink
 		++num_on_custom;
 		if (m_factor)
 		{
-			printf("%zu%*c%s : %s\n", depth, int(m_factor*depth), ' ', name, s.c_str());
+			std::printf("%zu%*c%s : %s\n", depth, int(m_factor*depth), ' ', name, s.c_str());
 		}
 		else
 		{
@@ -222,7 +223,15 @@ struct dummy_sink
 
 	void on_error(char const* err)
 	{
-		std::printf("ERROR: %s\n", err);
+		++num_on_error;
+		if (m_factor)
+		{
+			std::printf("ERROR: %s\n", err);
+		}
+		else
+		{
+			CODEC_TRACE("ERROR: %s", err);
+		}
 	}
 };
 

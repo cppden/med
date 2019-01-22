@@ -175,11 +175,13 @@ TEST_P(PrintUt, levels)
 	EXPECT_EQ(num_prints[0][0], d.num_on_container);
 	EXPECT_EQ(num_prints[0][1], d.num_on_custom);
 	EXPECT_EQ(num_prints[0][2], d.num_on_value);
+	EXPECT_EQ(0, d.num_on_error);
 
 	med::print(d, m_proto, 2);
 	EXPECT_EQ(num_prints[1][0], d.num_on_container);
 	EXPECT_LE(num_prints[1][1], d.num_on_custom);
 	EXPECT_LE(num_prints[1][2], d.num_on_value);
+	EXPECT_EQ(0, d.num_on_error);
 }
 
 TEST_P(PrintUt, incomplete)
@@ -192,22 +194,23 @@ TEST_P(PrintUt, incomplete)
 	dummy_sink d{0};
 	med::print(d, m_proto);
 
-	std::size_t const num_prints[3] = {
+	std::size_t const num_prints[4] = {
 #ifdef CODEC_TRACE_ENABLE
-		1, 0, 2,
+		1, 0, 2, 1
 #else
-		1, 0, 1,
+		1, 0, 1, 1
 #endif
 	};
 
 	EXPECT_EQ(num_prints[0], d.num_on_container);
 	EXPECT_EQ(num_prints[1], d.num_on_custom);
 	EXPECT_GE(num_prints[2], d.num_on_value);
+	EXPECT_EQ(num_prints[3], d.num_on_error);
 }
 
 EncData const test_prints[] = {
 	{
-		{ 1
+		{ 1 //MSG_SEQ
 			, 37
 			, 0x21, 0x35, 0xD9
 			, 3, 0xDA, 0xBE, 0xEF
@@ -218,7 +221,7 @@ EncData const test_prints[] = {
 		}
 	},
 	{
-		{ 4
+		{ 4 //MSG_SET
 			, 0, 0x22, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
 			, 0, 0x89, 0xFE, 0xE1, 0xAB, 0xBA
 			, 0, 0x49, 3, 0xDA, 0xBE, 0xEF
@@ -227,7 +230,7 @@ EncData const test_prints[] = {
 		}
 	},
 	{
-		{ 0x14
+		{ 0x14 //MSG_MSET
 			, 0, 0x22, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
 			, 0, 0x22, 7, 't', 'e', 's', 't', '.', 'i', 't'
 			, 0, 0x89, 0xFE, 0xE1, 0xAB, 0xBA
@@ -239,6 +242,18 @@ EncData const test_prints[] = {
 			, 0, 0x89, 0xAB, 0xBA, 0xC0, 0x01
 			, 0, 0x0b, 0x12
 			, 0, 0x0c, 0x13
+		}
+	},
+	{
+		{ 0x11 //MSG_MSEQ
+			, 37, 38                          //M< FLD_UC, med::arity<2> >
+			, 0x21,0x35,0xD9, 0x21,0x35,0xDA  //M< T<0x21>, FLD_U16, med::arity<2> >
+			, 3, 0xDA, 0xBE, 0xEF             //M< L, FLD_U24, med::arity<2> >
+			, 3, 0x22, 0xBE, 0xEF
+			, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_IP, med::max<2> >
+			, 0x51, 0x01, 0x02, 0x03, 0x04    //M< T<0x51>, FLD_DW, med::max<2> >
+			, 0,1, 1, 0x21, 0,2 //M<C16, Seq>  <=2
+			, 0x60, 1, 0x06
 		}
 	},
 };

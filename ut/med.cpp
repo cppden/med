@@ -232,52 +232,21 @@ TEST(field, tagged_nibble)
 	EXPECT_EQ(field.get(), dfield.get());
 }
 
-//represents IE with byte value in LSBs with other bits reserved
-template <uint8_t BITS>
-struct LS_BITS : med::value<uint8_t>
-{
-	static constexpr value_type mask = (1u << BITS) - 1;
-	value_type get_encoded() const      { return base_t::get_encoded() & mask; }
-	void set(value_type v)              { base_t::set_encoded(v & mask); }
-};
-
-struct NO_THING : med::empty
-{
-	static constexpr char const* name() { return "Nothing"; }
-};
-
-struct FLD_INFO : med::choice< LS_BITS<3>
-	, med::tag<med::value<med::fixed<0b000, uint8_t>>, NO_THING>
-	, med::tag<med::value<med::fixed<0b001, uint8_t>>, FLD_DW>
->
-{
-	static constexpr char const* name() { return "Info"; }
-};
-
 TEST(field, empty)
 {
 	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };
 
-	FLD_INFO field;
+	FLD_CHO field;
 	field.ref<NO_THING>();
 	encode(med::octet_encoder{ctx}, field);
-	EXPECT_STRCASEEQ("00 ", as_string(ctx.buffer()));
+	EXPECT_STRCASEEQ("06 ", as_string(ctx.buffer()));
 
 	decltype(field) dfield;
 	med::decoder_context<> dctx;
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 	decode(med::octet_decoder{dctx}, dfield);
 	EXPECT_NE(nullptr, dfield.get<NO_THING>());
-
-	ctx.reset();
-	field.clear();
-	field.ref<FLD_DW>().set(1);
-	encode(med::octet_encoder{ctx}, field);
-	EXPECT_STRCASEEQ("01 00 00 00 01 ", as_string(ctx.buffer()));
-	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
-	decode(med::octet_decoder{dctx}, dfield);
-	EXPECT_EQ(1, dfield.get<FLD_DW>()->get());
 }
 
 //setter with length calc

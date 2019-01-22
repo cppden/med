@@ -162,7 +162,6 @@ std::string encoded()
 }
 
 
-#if 1
 TEST(asn_ber, boolean)
 {	
 	EXPECT_EQ("01 01 FF "s, encoded<med::asn::boolean>(true));
@@ -176,7 +175,7 @@ TEST(asn_ber, prefixed_boolean)
 	EXPECT_EQ("9F 88 00 01 FF "s, encoded<boolean>(true));
 	EXPECT_EQ("9F 88 00 01 00 "s, encoded<boolean>(false));
 }
-#endif
+
 
 TEST(asn_ber, integer)
 {
