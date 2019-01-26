@@ -52,8 +52,10 @@ struct decoder
 	template <class IE>
 	void operator() (IE&, IE_NULL const&)
 	{
-		using tv = tag_value<traits<NULL_TYPE>, false>;
-		uint8_t const vtag = ctx.buffer().template pop<IE>();
+		using tv = tag_value<typename IE::traits, false>;
+		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		std::size_t vtag = 0;
+		get_bytes_impl(input, vtag, std::make_index_sequence<tv::num_bytes()>{});
 		CODEC_TRACE("NULL tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
 		if (tv::value() == vtag)
 		{

@@ -186,8 +186,22 @@ TEST(asn_ber, integer)
 	EXPECT_EQ("02 02 FF 7F "s, encoded<med::asn::integer>(-129));
 }
 
+TEST(asn_ber, prefixed_integer)
+{
+	using integer = med::value<int, med::asn::traits<1024, med::asn::tag_class::CONTEXT_SPECIFIC>>;
+
+	EXPECT_EQ("9F 88 00 01 00 "s, encoded<integer>(0));
+	EXPECT_EQ("9F 88 00 02 00 80 "s, encoded<integer>(128));
+}
+
 TEST(asn_ber, null)
 {
 	EXPECT_EQ("05 00 "s, encoded<med::asn::null>());
+}
+
+TEST(asn_ber, null_prefixed)
+{
+	using null = med::empty<med::asn::traits<1024, med::asn::tag_class::CONTEXT_SPECIFIC>>;
+	EXPECT_EQ("9F 88 00 00 "s, encoded<null>());
 }
 

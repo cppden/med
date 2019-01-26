@@ -12,7 +12,7 @@ struct U32 : med::value<uint32_t>{};
 struct code : U16 {};
 struct length : U16 {};
 
-template <code::value_type CODE = 0, class BODY = med::empty>
+template <code::value_type CODE = 0, class BODY = med::empty<>>
 struct hdr :
 	med::sequence<
 		med::placeholder::_length<0>,
@@ -25,7 +25,7 @@ struct hdr :
 };
 
 template <>
-struct hdr<0, med::empty> :
+struct hdr<0, med::empty<>> :
 	med::sequence<
 		M<length>,
 		M<code>

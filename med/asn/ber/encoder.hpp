@@ -62,8 +62,9 @@ struct encoder
 	template <class IE>
 	void operator() (IE const&, IE_NULL const&)
 	{
-		using tv = tag_value<traits<NULL_TYPE>, false>;
-		ctx.buffer().template push<IE>(tv::value());
+		using tv = tag_value<typename IE::traits, false>;
+		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
 		//X.690 8.8 Encoding of a null value
 		//8.8.2 The contents octets shall not contain any octets.
 		//NOTE – The length octet is zero.

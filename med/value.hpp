@@ -19,8 +19,6 @@ Distributed under the MIT License
 
 namespace med {
 
-struct default_extension_traits {};
-
 //traits representing a fixed value of particular size (in bits/bytes/int)
 //which is predefined during encode and decode
 template <std::size_t VAL, class T, class EXT_TRAITS = default_extension_traits, class Enable = void>
@@ -47,10 +45,10 @@ struct fixed<VAL, bytes<BYTES>, EXT_TRAITS, void>
 
 template <std::size_t VAL, typename T, class EXT_TRAITS>
 struct fixed< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
-	: integral_traits<EXT_TRAITS, T>
+	: base_traits<EXT_TRAITS, T>
 {
 	static constexpr bool is_const = true;
-	static constexpr typename integral_traits<EXT_TRAITS, T>::value_type value = VAL;
+	static constexpr typename base_traits<EXT_TRAITS, T>::value_type value = VAL;
 };
 
 //traits representing a fixed value with default
@@ -76,9 +74,9 @@ struct defaults<VAL, bytes<BYTES>, EXT_TRAITS, void>
 
 template <std::size_t VAL, typename T, class EXT_TRAITS>
 struct defaults< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
-	: integral_traits<EXT_TRAITS, T>
+	: base_traits<EXT_TRAITS, T>
 {
-	static constexpr typename integral_traits<EXT_TRAITS, T>::value_type default_value = VAL;
+	static constexpr typename base_traits<EXT_TRAITS, T>::value_type default_value = VAL;
 };
 
 //traits representing initialized value which is encoded with the fixed value
@@ -209,7 +207,7 @@ struct value<bytes<BYTES>, EXT_TRAITS, void>
 
 template <typename VAL, class EXT_TRAITS>
 struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_integral_v<VAL>> >
-	: integer<integral_traits<EXT_TRAITS, VAL>> {};
+	: integer<base_traits<EXT_TRAITS, VAL>> {};
 
 //meta-function to select proper int
 template <class T, typename Enable = void>
@@ -257,7 +255,7 @@ struct value< T, EXT_TRAITS, std::enable_if_t<not std::is_void_v<typename T::val
 //TODO: support in octet codecs? rename integer to more generic name?
 template <typename VAL, class EXT_TRAITS>
 struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_floating_point_v<VAL>> >
-	: integer<floating_point_traits<EXT_TRAITS, VAL>> {};
+	: integer<base_traits<EXT_TRAITS, VAL>> {};
 
 
 } //namespace med

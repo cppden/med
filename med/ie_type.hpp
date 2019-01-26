@@ -9,10 +9,12 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "value_traits.hpp"
 #include "functional.hpp"
 #include "exception.hpp"
 
 namespace med {
+
 
 //meta-selectors for IEs
 struct PRIMITIVE {}; //represents value/data which is handled by physical layer of codec
@@ -35,9 +37,12 @@ struct IE
 };
 
 //always-set empty IE as a message w/o body
+template <class EXT_TRAITS = default_extension_traits>
 struct empty : IE<IE_NULL>
 {
+	using traits     = base_traits<EXT_TRAITS, void, 0>;
 	using value_type = void;
+
 	static constexpr void clear()           { }
 	static constexpr void set()             { }
 	static constexpr bool get()             { return true; }

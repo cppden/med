@@ -16,7 +16,7 @@ Distributed under the MIT License
 namespace med::asn {
 
 using boolean = med::value<bool, traits<tag_value::BOOLEAN>>;
-using null = med::empty;
+using null = med::empty<traits<tag_value::NULL_TYPE>>;
 
 using integer = med::value<int, traits<tag_value::INTEGER>>;
 using uinteger = med::value<unsigned int, traits<tag_value::INTEGER>>;

@@ -92,7 +92,7 @@ struct OOO_SEQ : med::sequence<
 >
 {};
 
-struct NO_THING : med::empty
+struct NO_THING : med::empty<>
 {
 	static constexpr char const* name() { return "Nothing"; }
 };
