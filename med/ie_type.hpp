@@ -37,10 +37,10 @@ struct IE
 };
 
 //always-set empty IE as a message w/o body
-template <class EXT_TRAITS = default_extension_traits>
+template <class EXT_TRAITS = empty_traits>
 struct empty : IE<IE_NULL>
 {
-	using traits     = base_traits<EXT_TRAITS, void, 0>;
+	using traits     = base_traits<void, bits<0>, EXT_TRAITS>;
 	using value_type = void;
 
 	static constexpr void clear()           { }

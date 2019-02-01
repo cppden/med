@@ -13,18 +13,18 @@ Distributed under the MIT License
 
 namespace med {
 
-template <uint8_t NUM>
+template <std::size_t NUM>
 struct bits
 {
-	static_assert(NUM > 0 && NUM <= 64, "INVALID NUMBER OF BITS");
-	static constexpr uint8_t size = NUM;
+	//static_assert(NUM > 0 && NUM <= 64, "INVALID NUMBER OF BITS");
+	static constexpr std::size_t size = NUM;
 };
 
-template <uint8_t NUM>
+template <std::size_t NUM>
 struct bytes
 {
-	static_assert(NUM > 0 && NUM <= 8, "INVALID NUMBER OF BYTES");
-	static constexpr uint8_t size = NUM;
+	//static_assert(NUM > 0 && NUM <= 8, "INVALID NUMBER OF BYTES");
+	static constexpr std::size_t size = NUM;
 };
 
 } //namespace med

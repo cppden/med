@@ -132,7 +132,7 @@ struct encoder
 	{
 		auto* out = ctx.buffer().template advance<IE>(ie.size() + 2); //2 quotes
 		*out++ = '"';
-		octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
+		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());
 		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 		out[ie.size()] = '"';
 	}

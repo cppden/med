@@ -19,12 +19,6 @@ Distributed under the MIT License
 
 namespace med {
 
-template <std::size_t MIN>
-struct min : std::integral_constant<std::size_t, MIN> {};
-
-template <std::size_t MAX>
-struct max : std::integral_constant<std::size_t, MAX> {};
-
 template <std::size_t MAX>
 struct pmax : std::integral_constant<std::size_t, MAX> {};
 

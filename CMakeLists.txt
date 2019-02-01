@@ -41,7 +41,7 @@ endif (WITH_BM)
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
 if (COMPILER_SUPPORTS_CXX17)
-	add_definitions(-std=c++17)
+	add_compile_options(-std=c++17)
 else ()
 	message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler.")
 endif ()
@@ -53,6 +53,9 @@ set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 file(GLOB_RECURSE MED_SRCS med/*.hpp)
 file(GLOB_RECURSE UT_SRCS ut/*.cpp)
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
+
+#expose private for UTs
+add_compile_definitions(UNIT_TEST)
 
 add_compile_options(
 	-Werror

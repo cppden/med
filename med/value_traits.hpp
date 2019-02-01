@@ -10,19 +10,58 @@ Distributed under the MIT License
 #pragma once
 
 #include <type_traits>
-#include <cstdint>
+
+#include "units.hpp"
 
 namespace med {
 
-struct default_extension_traits {};
+struct empty_traits {};
 
-template <class EXT_TRAITS, typename VAL, std::size_t NUM_BITS = sizeof(VAL) * 8>
-struct base_traits : EXT_TRAITS
+namespace detail {
+
+template <
+		typename VT,
+		std::size_t NUM_BITS  = sizeof(VT) * 8,
+		class EXT_TRAITS = empty_traits
+		>
+struct bit_traits : EXT_TRAITS
 {
 	static constexpr std::size_t bits = NUM_BITS;
-	using value_type = VAL;
+	using value_type = VT;
 };
 
+template <
+		typename VT,
+		std::size_t MIN_BYTES = sizeof(VT),
+		std::size_t MAX_BYTES = MIN_BYTES,
+		class EXT_TRAITS = empty_traits
+		>
+struct octet_traits : EXT_TRAITS
+{
+	static constexpr std::size_t min_octets = MIN_BYTES;
+	static constexpr std::size_t max_octets = MAX_BYTES;
+	using value_type = VT;
+};
+
+} //end: namespace detail
+
+template <std::size_t MIN>
+struct min : std::integral_constant<std::size_t, MIN> {};
+
+template <std::size_t MAX>
+struct max : std::integral_constant<std::size_t, MAX> {};
+
+template <class VT, class = void, class = void, class = void>
+struct base_traits;
+
+template <class VT>
+struct base_traits<VT, void, void, void> : detail::bit_traits<VT> {};
+template <class VT, class EXT_TRAITS>
+struct base_traits<VT, EXT_TRAITS, void, void> : detail::bit_traits<VT, sizeof(VT)*8, EXT_TRAITS> {};
+template <class VT, std::size_t BITS>
+struct base_traits<VT, bits<BITS>, void, void> : detail::bit_traits<VT, BITS> {};
+template <class VT, std::size_t BITS, class EXT_TRAITS>
+struct base_traits<VT, bits<BITS>, EXT_TRAITS, void> : detail::bit_traits<VT, BITS, EXT_TRAITS> {};
 
 constexpr std::size_t bits_to_bytes(std::size_t num_bits)
 {
@@ -31,33 +70,33 @@ constexpr std::size_t bits_to_bytes(std::size_t num_bits)
 
 
 /******************************************************************************
-* Class:		value_traits<LEN>
-* Description:	select min integer type to fit LEN bits
-* Notes:		LEN is number of bits
+* Class:		value_traits<BITS>
+* Description:	select min integer type to fit BITS bits
+* Notes:		BITS is number of bits
 ******************************************************************************/
-template <class EXT_TRAITS, std::size_t LEN, typename Enabler = void> struct value_traits;
+template <class EXT_TRAITS, std::size_t BITS, typename Enabler = void> struct value_traits;
 
-template <class EXT_TRAITS, std::size_t LEN>
-struct value_traits<EXT_TRAITS, LEN, std::enable_if_t<(LEN > 0 && LEN <= 8)>>
-		: base_traits<EXT_TRAITS, uint8_t, LEN> {};
+template <class EXT_TRAITS, std::size_t BITS>
+struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 0 && BITS <= 8)>>
+		: base_traits<uint8_t, bits<BITS>, EXT_TRAITS> {};
 
-template <class EXT_TRAITS, std::size_t LEN>
-struct value_traits<EXT_TRAITS, LEN, std::enable_if_t<(LEN > 8 && LEN <= 16)>>
-		: base_traits<EXT_TRAITS, uint16_t, LEN> {};
+template <class EXT_TRAITS, std::size_t BITS>
+struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 8 && BITS <= 16)>>
+		: base_traits<uint16_t, bits<BITS>, EXT_TRAITS> {};
 
-template <class EXT_TRAITS, std::size_t LEN>
-struct value_traits<EXT_TRAITS, LEN, std::enable_if_t<(LEN > 16 && LEN <= 32)>>
-		: base_traits<EXT_TRAITS, uint32_t, LEN> {};
+template <class EXT_TRAITS, std::size_t BITS>
+struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 16 && BITS <= 32)>>
+		: base_traits<uint32_t, bits<BITS>, EXT_TRAITS> {};
 
-template <class EXT_TRAITS, std::size_t LEN>
-struct value_traits<EXT_TRAITS, LEN, std::enable_if_t<(LEN > 32 && LEN <= 64)>>
-		: base_traits<EXT_TRAITS, uint64_t, LEN> {};
+template <class EXT_TRAITS, std::size_t BITS>
+struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 32 && BITS <= 64)>>
+		: base_traits<uint64_t, bits<BITS>, EXT_TRAITS> {};
 
-template <class EXT_TRAITS ,std::size_t LEN>
-struct value_traits<EXT_TRAITS, LEN, std::enable_if_t<(LEN > 64)>> : EXT_TRAITS
+template <class EXT_TRAITS ,std::size_t BITS>
+struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 64)>> : EXT_TRAITS
 {
-	static constexpr std::size_t bits = LEN;
-	struct value_type {uint8_t value[bits_to_bytes(LEN)];};
+	static constexpr std::size_t bits = BITS;
+	struct value_type {uint8_t value[bits_to_bytes(BITS)];};
 //	using param_type =  value_type const&;
 };
 

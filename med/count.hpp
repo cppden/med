@@ -41,7 +41,7 @@ constexpr bool is_counter_v = is_counter<T>::value;
 namespace detail {
 
 template <class FUNC, class IE>
-inline void check_arity(FUNC&, IE const&, std::size_t count)
+inline void check_n_arity(FUNC&, IE const&, std::size_t count)
 {
 	if (count >= IE::min)
 	{
@@ -64,11 +64,11 @@ constexpr void check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
 	if constexpr (is_optional_v<IE>)
 	{
-		if (count) { detail::check_arity(func, ie, count); }
+		if (count) { detail::check_n_arity(func, ie, count); }
 	}
 	else
 	{
-		return detail::check_arity(func, ie, count);
+		detail::check_n_arity(func, ie, count);
 	}
 }
 
@@ -77,11 +77,11 @@ constexpr void check_arity(FUNC& func, IE const& ie)
 {
 	if constexpr (is_optional_v<IE>)
 	{
-		return check_arity(func, ie, ie.count());
+		if (ie.count()) { detail::check_n_arity(func, ie, ie.count()); }
 	}
 	else
 	{
-		return detail::check_arity(func, ie, ie.count());
+		detail::check_n_arity(func, ie, ie.count());
 	}
 }
 

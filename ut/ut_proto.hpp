@@ -202,8 +202,8 @@ struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 	bool set(std::size_t len, void const* data)
 	{
 		//need additional nibble for the tag
-		std::size_t num_octets = (len + 1);// / 2;
-		if (num_octets >= min_octets && num_octets <= max_octets)
+		std::size_t const num_octets = (len + 1);// / 2;
+		if (num_octets >= traits::min_octets && num_octets <= traits::max_octets)
 		{
 			m_value.resize(num_octets);
 			uint8_t* p = m_value.data();

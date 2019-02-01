@@ -51,7 +51,7 @@ inline testing::AssertionResult Matches(T const(&expected)[size], T const* actua
 template <class T>
 char const* as_string(T const& buffer)
 {
-	static char sz[1024];
+	static char sz[64*1024];
 	auto* it = buffer.get_start();
 	auto* ite = it + buffer.get_offset();
 

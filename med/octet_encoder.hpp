@@ -85,7 +85,7 @@ struct octet_encoder
 	void operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
 		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
-		octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
+		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());
 		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 	}
 

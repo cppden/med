@@ -8,13 +8,12 @@
 
 using namespace std::literals;
 
-TEST(asn_ber, length)
+TEST(asn_ber, len_size)
 {
 	static_assert(med::asn::ber::length::bits<char>(0b0000'0000) == 1);
 	static_assert(med::asn::ber::length::bits<char>(0b0000'0001) == 2);
 	static_assert(med::asn::ber::length::bits<char>(0b0000'0010) == 3);
 	static_assert(med::asn::ber::length::bits<char>(0b0000'0100) == 4);
-	static_assert(med::asn::ber::length::bits<char>(0b0000'1000) == 5);
 	static_assert(med::asn::ber::length::bits<char>(0b0000'1000) == 5);
 	static_assert(med::asn::ber::length::bits<char>(0b0001'0000) == 6);
 	static_assert(med::asn::ber::length::bits<char>(0b0010'0000) == 7);
@@ -32,7 +31,6 @@ TEST(asn_ber, length)
 	static_assert(med::asn::ber::length::bits<short>(0b0000'0000'0000'0001) == 2);
 	static_assert(med::asn::ber::length::bits<short>(0b0000'0000'0000'0010) == 3);
 	static_assert(med::asn::ber::length::bits<short>(0b0000'0000'0000'0100) == 4);
-	static_assert(med::asn::ber::length::bits<short>(0b0000'0000'0000'1000) == 5);
 	static_assert(med::asn::ber::length::bits<short>(0b0000'0000'0000'1000) == 5);
 	static_assert(med::asn::ber::length::bits<short>(0b0000'0000'0001'0000) == 6);
 	static_assert(med::asn::ber::length::bits<short>(0b0000'0000'0010'0000) == 7);
@@ -67,7 +65,6 @@ TEST(asn_ber, length)
 	static_assert(med::asn::ber::length::bits<int>(0b0000'0000'0000'0010) == 3);
 	static_assert(med::asn::ber::length::bits<int>(0b0000'0000'0000'0100) == 4);
 	static_assert(med::asn::ber::length::bits<int>(0b0000'0000'0000'1000) == 5);
-	static_assert(med::asn::ber::length::bits<int>(0b0000'0000'0000'1000) == 5);
 	static_assert(med::asn::ber::length::bits<int>(0b0000'0000'0001'0000) == 6);
 	static_assert(med::asn::ber::length::bits<int>(0b0000'0000'0010'0000) == 7);
 	static_assert(med::asn::ber::length::bits<int>(0b0000'0000'0100'0000) == 8);
@@ -85,7 +82,6 @@ TEST(asn_ber, length)
 	static_assert(med::asn::ber::length::bits<long>(0b0000'0000'0000'0010) == 3);
 	static_assert(med::asn::ber::length::bits<long>(0b0000'0000'0000'0100) == 4);
 	static_assert(med::asn::ber::length::bits<long>(0b0000'0000'0000'1000) == 5);
-	static_assert(med::asn::ber::length::bits<long>(0b0000'0000'0000'1000) == 5);
 	static_assert(med::asn::ber::length::bits<long>(0b0000'0000'0001'0000) == 6);
 	static_assert(med::asn::ber::length::bits<long>(0b0000'0000'0010'0000) == 7);
 	static_assert(med::asn::ber::length::bits<long>(0b0000'0000'0100'0000) == 8);
@@ -97,6 +93,140 @@ TEST(asn_ber, length)
 	static_assert(med::asn::ber::length::bits<long>(-17) == 6);
 	static_assert(med::asn::ber::length::bits<long>(-33) == 7);
 	static_assert(med::asn::ber::length::bits<long>(-65) == 8);
+
+	//unsigned
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0000'0000) == 1);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0000'0001) == 1);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0000'0010) == 2);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0000'0100) == 3);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0000'1000) == 4);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0001'0000) == 5);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0010'0000) == 6);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b0100'0000) == 7);
+	static_assert(med::asn::ber::length::bits<uint8_t>(0b1000'0000) == 8);
+
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0000'0000) == 1);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0000'0001) == 1);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0000'0010) == 2);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0000'0100) == 3);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0000'1000) == 4);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0001'0000) == 5);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0010'0000) == 6);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'0100'0000) == 7);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0000'1000'0000) == 8);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0001'0000'0000) == 9);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0010'0000'0000) == 10);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'0100'0000'0000) == 11);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0000'1000'0000'0000) == 12);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0001'0000'0000'0000) == 13);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0010'0000'0000'0000) == 14);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b0100'0000'0000'0000) == 15);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b1000'0000'0000'0000) == 16);
+	static_assert(med::asn::ber::length::bits<uint16_t>(0b1111'1111'1111'1111) == 16);
+
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0000'0000) == 1);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0000'0001) == 1);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0000'0010) == 2);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0000'0100) == 3);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0000'1000) == 4);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0001'0000) == 5);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0010'0000) == 6);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'0100'0000) == 7);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0000'1000'0000) == 8);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0001'0000'0000) == 9);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0010'0000'0000) == 10);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'0100'0000'0000) == 11);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0000'1000'0000'0000) == 12);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0001'0000'0000'0000) == 13);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0010'0000'0000'0000) == 14);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'0100'0000'0000'0000) == 15);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0000'1000'0000'0000'0000) == 16);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0001'1000'0000'0000'0000) == 17);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0010'1000'0000'0000'0000) == 18);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'0100'1000'0000'0000'0000) == 19);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0000'1000'1000'0000'0000'0000) == 20);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0001'0000'1000'0000'0000'0000) == 21);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0010'0000'1000'0000'0000'0000) == 22);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'0100'0000'1000'0000'0000'0000) == 23);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0000'1000'0000'1000'0000'0000'0000) == 24);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0001'0000'0000'1000'0000'0000'0000) == 25);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0010'0000'0000'1000'0000'0000'0000) == 26);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'0100'0000'0000'1000'0000'0000'0000) == 27);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0000'1000'0000'0000'1000'0000'0000'0000) == 28);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0001'0000'0000'0000'1000'0000'0000'0000) == 29);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0010'0000'0000'0000'1000'0000'0000'0000) == 30);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b0100'0000'0000'0000'1000'0000'0000'0000) == 31);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b1000'0000'0000'0000'1000'0000'0000'0000) == 32);
+	static_assert(med::asn::ber::length::bits<uint32_t>(0b1111'1111'1111'1111'1111'1111'1111'1111) == 32);
+
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000) == 1);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0001) == 1);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0010) == 2);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0100) == 3);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'1000) == 4);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0001'0000) == 5);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0010'0000) == 6);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0100'0000) == 7);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'1000'0000) == 8);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0001'0000'0000) == 9);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0010'0000'0000) == 10);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0100'0000'0000) == 11);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'1000'0000'0000) == 12);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0001'0000'0000'0000) == 13);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0010'0000'0000'0000) == 14);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0100'0000'0000'0000) == 15);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'1000'0000'0000'0000) == 16);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0001'1000'0000'0000'0000) == 17);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0010'1000'0000'0000'0000) == 18);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0100'1000'0000'0000'0000) == 19);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'1000'1000'0000'0000'0000) == 20);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0001'0000'1000'0000'0000'0000) == 21);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0010'0000'1000'0000'0000'0000) == 22);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0100'0000'1000'0000'0000'0000) == 23);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'1000'0000'1000'0000'0000'0000) == 24);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0001'0000'0000'1000'0000'0000'0000) == 25);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0010'0000'0000'1000'0000'0000'0000) == 26);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0100'0000'0000'1000'0000'0000'0000) == 27);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'1000'0000'0000'1000'0000'0000'0000) == 28);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0001'0000'0000'0000'1000'0000'0000'0000) == 29);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0010'0000'0000'0000'1000'0000'0000'0000) == 30);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0100'0000'0000'0000'1000'0000'0000'0000) == 31);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b1000'0000'0000'0000'1000'0000'0000'0000) == 32);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b1111'1111'1111'1111'1111'1111'1111'1111) == 32);
+}
+
+TEST(asn_ber, len_encode)
+{
+	auto enc_len = [](std::size_t len)
+	{
+		uint8_t enc_buf[32] = {};
+		med::encoder_context<> ctx{ enc_buf };
+		med::asn::ber::encoder enc{ctx};
+
+		enc.put_length<med::asn::null>(len);
+		return as_string(ctx.buffer());
+	};
+
+	EXPECT_EQ("00 "s, enc_len(0));
+	EXPECT_EQ("7F "s, enc_len(127));
+	EXPECT_EQ("81 80 "s, enc_len(128));
+	EXPECT_EQ("82 01 4D "s, enc_len(333));
+}
+
+TEST(asn_ber, len_decode)
+{
+	auto dec_len = [](std::initializer_list<uint8_t> bytes)
+	{
+		med::decoder_context<> ctx{ bytes.begin(), bytes.size() };
+		med::asn::ber::decoder dec{ctx};
+
+		return dec.get_length<med::asn::null>();
+	};
+
+	EXPECT_EQ(0, dec_len({0}));
+	EXPECT_EQ(127, dec_len({0x7F}));
+	EXPECT_EQ(128, dec_len({0x81, 0x80}));
+	EXPECT_EQ(333, dec_len({0x82, 0x01, 0x4D}));
 }
 
 TEST(asn_ber, identifier)
@@ -126,7 +256,7 @@ TEST(asn_ber, identifier)
 }
 
 template <class IE>
-std::string encoded(typename IE::value_type const& val)
+auto encoded(typename IE::value_type const& val) -> std::enable_if_t<std::is_arithmetic_v<typename IE::value_type>, std::string>
 {
 	uint8_t enc_buf[128] = {};
 	med::encoder_context<> ectx{ enc_buf };
@@ -140,6 +270,26 @@ std::string encoded(typename IE::value_type const& val)
 	dctx.reset(ectx.buffer().get_start(), ectx.buffer().get_offset());
 	decode(med::asn::ber::decoder{dctx}, dec);
 	EXPECT_EQ(enc.get(), dec.get());
+
+	return as_string(ectx.buffer());
+}
+
+template <class IE, typename T>
+std::string encoded(T const* pval, std::size_t size)
+{
+	uint8_t enc_buf[128*1024] = {};
+	med::encoder_context<> ectx{ enc_buf };
+
+	IE enc;
+	enc.set(size, pval);
+	encode(med::asn::ber::encoder{ectx}, enc);
+
+	IE dec;
+	med::decoder_context<> dctx;
+	dctx.reset(ectx.buffer().get_start(), ectx.buffer().get_offset());
+	decode(med::asn::ber::decoder{dctx}, dec);
+	EXPECT_EQ(enc.get().size(), dec.get().size());
+	//EXPECT_EQ(enc.get().data(), dec.get().data());
 
 	return as_string(ectx.buffer());
 }
@@ -196,12 +346,62 @@ TEST(asn_ber, prefixed_integer)
 
 TEST(asn_ber, null)
 {
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+		Nothing ::= NULL
+	END
+
+	value Nothing ::= NULL
+	*/
 	EXPECT_EQ("05 00 "s, encoded<med::asn::null>());
 }
 
 TEST(asn_ber, null_prefixed)
 {
-	using null = med::empty<med::asn::traits<1024, med::asn::tag_class::CONTEXT_SPECIFIC>>;
-	EXPECT_EQ("9F 88 00 00 "s, encoded<null>());
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+		Nothing ::= [137] NULL
+	END
+	*/
+	using null = med::empty<med::asn::traits<137, med::asn::tag_class::CONTEXT_SPECIFIC>>;
+	EXPECT_EQ("9F 81 09 00 "s, encoded<null>());
 }
 
+TEST(asn_ber, octet_string)
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+		Str ::= OCTET STRING
+	END
+	*/
+
+	//value Str ::= '010203'H
+	uint8_t const small[] = {1, 2, 3};
+	EXPECT_EQ("04 03 01 02 03 "s, encoded<med::asn::octet_string>(small, std::size(small)));
+
+	//value Str ::= '000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F606162636465666768696A6B6C6D6E6F707172737475767778797A7B7C7D7E7F808182838485868788898A8B8C8D8E8F909192939495969798999A9B9C9D9E9FA0A1A2A3A4A5A6A7A8A9AAABACADAEAFB0B1B2B3B4B5B6B7B8B9BABBBCBDBEBFC0C1C2C3C4C5C6C7C8C9CACBCCCDCECFD0D1D2D3D4D5D6D7D8D9DADBDCDDDEDFE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEFF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C'H
+	std::vector<uint8_t> big;
+	for (std::size_t i = 0; i < 333; ++i) { big.push_back(uint8_t(i)); }
+	EXPECT_EQ("04 82 01 4D 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C "s
+		, encoded<med::asn::octet_string>(big.data(), big.size()));
+}
+
+TEST(asn_ber, octet_string_prefixed)
+{
+/*
+World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+	Str ::= [APPLICATION 12321] OCTET STRING
+END
+*/
+	using octet_str = med::octet_string<med::octets_var_extern, med::asn::traits<12321, med::asn::tag_class::APPLICATION>>;
+
+	//value Str ::= '010203'H
+	uint8_t const small[] = {1, 2, 3};
+	EXPECT_EQ("5F E0 21 03 01 02 03 "s, encoded<octet_str>(small, std::size(small)));
+
+	//value Str ::= '000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F606162636465666768696A6B6C6D6E6F707172737475767778797A7B7C7D7E7F808182838485868788898A8B8C8D8E8F909192939495969798999A9B9C9D9E9FA0A1A2A3A4A5A6A7A8A9AAABACADAEAFB0B1B2B3B4B5B6B7B8B9BABBBCBDBEBFC0C1C2C3C4C5C6C7C8C9CACBCCCDCECFD0D1D2D3D4D5D6D7D8D9DADBDCDDDEDFE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEFF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C'H
+	std::vector<uint8_t> big;
+	for (std::size_t i = 0; i < 333; ++i) { big.push_back(uint8_t(i)); }
+	EXPECT_EQ("5F E0 21 82 01 4D 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C "s
+		, encoded<octet_str>(big.data(), big.size()));
+}

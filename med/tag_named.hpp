@@ -70,6 +70,7 @@ constexpr Chars<CHARS...> operator""_name() { return { }; }
 template <class NAME>
 struct tag_named
 {
+	using traits = detail::octet_traits<char, NAME::size()>;
 	using ie_type = IE_OCTET_STRING;
 	using name_type = std::string_view;
 	using value_type = uint64_t;
@@ -86,11 +87,6 @@ struct tag_named
 	//oct-string prereqs
 	static constexpr std::size_t size()        { return NAME::size(); }
 	static constexpr auto* data()              { return NAME::data(); }
-	enum limits_e : std::size_t
-	{
-		min_octets = NAME::size(),
-		max_octets = min_octets,
-	};
 };
 
 

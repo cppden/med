@@ -88,7 +88,6 @@ struct encoder
 			uint8_t* out = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
 			out[0] = 1; //length
 			out[1] = ie.get_encoded() ? 0xFF : 0x00; //value
-			return;
 		}
 		else if constexpr (std::is_integral_v<typename IE::value_type>)
 		{
@@ -98,24 +97,61 @@ struct encoder
 			*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
 			put_bytes(ie.get_encoded(), out, len); //value
 			CODEC_TRACE("\t%u octets for %d: %s", len, ie.get_encoded(), ctx.buffer().toString());
-			return;
 		}
 		else if constexpr (std::is_floating_point_v<typename IE::value_type>)
 		{
+			//TODO: implement
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer());
 		}
-		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer());
+		else
+		{
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer());
+		}
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE const& ie, IE_OCTET_STRING const&)
 	{
-		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
-		octets<IE::min_octets, IE::max_octets>::copy(out, ie.data(), ie.size());
+		//X.690 8.7 Encoding of an octetstring value (not segmented only)
+		using tv = tag_value<typename IE::traits, false>;
+		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+
+		put_length<IE>(ie.size());
+		out = ctx.buffer().template advance<IE>(ie.size());
+		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());
 		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 	}
 
+#ifndef UNIT_TEST
 private:
+#endif
+
+	template <class IE>
+	void put_length(std::size_t len)
+	{
+		// X.690
+		// 8.1.3.3 in definite form length octets consist of 1+ octets, in short (8.1.3.4) or long form (8.1.3.5).
+		if (len < 0x80)
+		{
+			// 8.1.3.4 short form can only be used when length <= 127.
+			ctx.buffer().template push<IE>(len);
+		}
+		else
+		{
+			// 8.1.3.5 In the long form an initial octet is encoded as follows:
+			// a) bit 8 shall be one;
+			// b) bits 7 to 1 encode the number of subsequent octets;
+			// c) the value 0b11111111 shall not be used.
+			// Subsequent octets encode as unsigned binary integer equal to the the length value.
+			uint8_t const bytes = length::bytes(len);
+			uint8_t* out = ctx.buffer().template advance<IE>(1 + bytes);
+			*out++ = bytes | 0x80;
+			put_bytes(len, out, bytes);
+		}
+	}
+
 	template <std::size_t NUM_BYTES, typename VALUE>
 	static constexpr void put_byte(uint8_t*, VALUE const) { }
 
@@ -169,30 +205,6 @@ private:
 				*output++ = static_cast<uint8_t>(value >> s);
 			}
 			break;
-		}
-	}
-
-	template <class IE>
-	void put_length(std::size_t len)
-	{
-		// X.690
-		// 8.1.3.3 in definite form length octets consist of 1+ octets, in short (8.1.3.4) or long form (8.1.3.5).
-		if (len < 0x80)
-		{
-			// 8.1.3.4 short form can only be used when length <= 127.
-			ctx.buffer().template push<IE>(len);
-		}
-		else
-		{
-			// 8.1.3.5 In the long form an initial octet is encoded as follows:
-			// a) bit 8 shall be one;
-			// b) bits 7 to 1 encode the number of subsequent octets;
-			// c) the value 0b11111111 shall not be used.
-			// Subsequent octets encode as unsigned binary integer equal to the the length value.
-			uint8_t const bytes = length::bytes(len);
-			uint8_t* out = ctx.buffer().template advance<IE>(1 + bytes);
-			*out++ = bytes | 0x80;
-			put_bytes(len, out, bytes);
 		}
 	}
 };

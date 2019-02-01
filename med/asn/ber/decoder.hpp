@@ -83,7 +83,7 @@ struct decoder
 		{
 			if constexpr (std::is_same_v<bool, typename IE::value_type>)
 			{
-				uint8_t const* input = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
+				input = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
 				if (input[0] == 1)
 				{
 					return ie.set_encoded(input[1] != 0);
@@ -95,27 +95,74 @@ struct decoder
 				if (uint8_t const len = ctx.buffer().template pop<IE>(); 0 < len && len < 127) //1..127 in one octet
 				{
 					CODEC_TRACE("\t%u octets: %s", len, ctx.buffer().toString());
-					uint8_t const* input = ctx.buffer().template advance<IE>(len); //value
-					return ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
+					input = ctx.buffer().template advance<IE>(len); //value
+					ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
 				}
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer());
+				else
+				{
+					MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer());
+				}
 			}
 			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
 			{
 			}
 		}
-		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+		else
+		{
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+		}
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE& ie, IE_OCTET_STRING const&)
 	{
-		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), ctx.buffer().toString());
-		MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer());
+		using tv = tag_value<typename IE::traits, false>;
+		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		std::size_t vtag = 0;
+		get_bytes_impl(input, vtag, std::make_index_sequence<tv::num_bytes()>{});
+		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
+		if (tv::value() == vtag)
+		{
+			auto const len = get_length<IE>();
+			CODEC_TRACE("\tSTR[%s] %u octets: %s", name<IE>(), len, ctx.buffer().toString());
+			if (ie.set_encoded(len, ctx.buffer().begin()))
+			{
+				ctx.buffer().template advance<IE>(len);
+			}
+			else
+			{
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer());
+			}
+		}
+		else
+		{
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+		}
 	}
 
+#ifndef UNIT_TEST
 private:
+#endif
+
+	template <class IE>
+	std::size_t get_length()
+	{
+		uint8_t bytes = ctx.buffer().template pop<IE>();
+		//short form
+		if (bytes < 0x80) { return bytes; }
+
+		bytes &= 0x7F;
+		if (bytes)
+		{
+			return get_bytes<std::size_t>(ctx.buffer().template advance<IE>(bytes), bytes);
+		}
+		else //indefinite form (X.690 8.1.3.6.1)
+		{
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), 0x80, ctx.buffer());
+		}
+	}
+
 	template <typename VALUE>
 	static constexpr void get_byte(uint8_t const*, VALUE&) { }
 
@@ -159,21 +206,6 @@ private:
 			}
 		}
 	}
-
-	template <class IE>
-	std::size_t get_length()
-	{
-		uint8_t const bytes = ctx.buffer().template pop<IE>();
-		if (bytes < 0x80) //short form
-		{
-			return bytes;
-		}
-		else if (uint8_t const* input = ctx.buffer().template advance<IE>(bytes & 0x7F))
-		{
-			return get_bytes<std::size_t>(input, bytes);
-		}
-	}
-
 };
 
 } //end: namespace med::asn::ber
