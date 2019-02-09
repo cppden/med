@@ -8,7 +8,7 @@ The primary goal of the library design is to provide ultimate run-time performan
 
 The next goal is to mimic ASN.1 design where message definition is abstracted from its physical representation.
 
-Because of performance requirements the library uses no dynamic memory allocation and no exceptions.
+Because of performance requirements the library uses no dynamic memory allocation and exceptions for error reporting.
 Due to the fact that the library is based on templates any real protocol defined with it will put a noticeable load on the C++ compiler increasing the compilation times. To mitigate this it's advised to keep user code instantiating encoder/decoder in separate files. The latter also helps to mitigate possible code-bloat.
 
 The user of the library needs only to define the structure of the messages consisting particular protocol. All the checks for presence of mandatory and conditional fields and their validation will be performed automatically during decoding and even during encoding by the generated code. When message fails to decode it's still possible to print a part of it which is useful for diagnostic purposes.

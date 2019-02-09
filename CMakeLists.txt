@@ -55,7 +55,8 @@ file(GLOB_RECURSE UT_SRCS ut/*.cpp)
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
 
 #expose private for UTs
-add_compile_definitions(UNIT_TEST)
+#add_compile_definitions(UNIT_TEST)
+add_definitions(-DUNIT_TEST)
 
 add_compile_options(
 	-Werror

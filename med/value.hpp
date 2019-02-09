@@ -12,8 +12,6 @@ Distributed under the MIT License
 #include <type_traits>
 
 #include "ie_type.hpp"
-#include "units.hpp"
-#include "value_traits.hpp"
 #include "exception.hpp"
 
 
@@ -27,7 +25,7 @@ struct fixed
 	static_assert(std::is_void<T>(), "MALFORMED FIXED");
 };
 
-template <std::size_t VAL, uint8_t BITS, class EXT_TRAITS>
+template <std::size_t VAL, std::size_t BITS, class EXT_TRAITS>
 struct fixed<VAL, bits<BITS>, EXT_TRAITS, void>
 	: value_traits<EXT_TRAITS, BITS>
 {
@@ -35,7 +33,7 @@ struct fixed<VAL, bits<BITS>, EXT_TRAITS, void>
 	static constexpr typename value_traits<EXT_TRAITS, BITS>::value_type value = VAL;
 };
 
-template <std::size_t VAL, uint8_t BYTES, class EXT_TRAITS>
+template <std::size_t VAL, std::size_t BYTES, class EXT_TRAITS>
 struct fixed<VAL, bytes<BYTES>, EXT_TRAITS, void>
 	: value_traits<EXT_TRAITS, BYTES*8>
 {
@@ -58,14 +56,14 @@ struct defaults
 	static_assert(std::is_void<T>(), "MALFORMED DEFAULTS");
 };
 
-template <std::size_t VAL, uint8_t BITS, class EXT_TRAITS>
+template <std::size_t VAL, std::size_t BITS, class EXT_TRAITS>
 struct defaults<VAL, bits<BITS>, EXT_TRAITS, void>
 	: value_traits<EXT_TRAITS, BITS>
 {
 	static constexpr typename value_traits<EXT_TRAITS, BITS>::value_type default_value = VAL;
 };
 
-template <std::size_t VAL, uint8_t BYTES, class EXT_TRAITS>
+template <std::size_t VAL, std::size_t BYTES, class EXT_TRAITS>
 struct defaults<VAL, bytes<BYTES>, EXT_TRAITS, void>
 	: value_traits<EXT_TRAITS, BYTES*8>
 {
@@ -197,11 +195,11 @@ template <class T, class EXT_TRAITS = empty_traits, class Enable = void>
 struct value;
 
 
-template <uint8_t BITS, class EXT_TRAITS>
+template <std::size_t BITS, class EXT_TRAITS>
 struct value<bits<BITS>, EXT_TRAITS, void>
 	: integer<value_traits<EXT_TRAITS, BITS>> {};
 
-template <uint8_t BYTES, class EXT_TRAITS>
+template <std::size_t BYTES, class EXT_TRAITS>
 struct value<bytes<BYTES>, EXT_TRAITS, void>
 	: integer<value_traits<EXT_TRAITS, BYTES*8>> {};
 
