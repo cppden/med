@@ -92,6 +92,7 @@ struct encoder
 		else if constexpr (std::is_integral_v<typename IE::value_type>)
 		{
 			//X.690 8.3 Encoding of an integer value
+			//X.690 8.4 Encoding of an enumerated value
 			auto const len = length::bytes<typename IE::value_type>(ie.get_encoded());
 			uint8_t* out = ctx.buffer().template advance<IE>(1 + len); //length + value
 			*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer

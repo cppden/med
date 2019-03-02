@@ -76,9 +76,9 @@ constexpr std::size_t calc_length(FIELD const& field, CONTAINER const&)
 template <class WRAPPER, class FIELD>
 constexpr std::size_t calc_length(FIELD const& field, PRIMITIVE const&)
 {
-	if constexpr (detail::has_get_length<FIELD>::value)
+	if constexpr (detail::has_get_length<FIELD>::value && !detail::has_set_length<FIELD>::value)
 	{
-		CODEC_TRACE("length(%s) = %zu", name<FIELD>(), field.get_length());
+		CODEC_TRACE("length(%s) = %zu", name<FIELD>(), std::size_t(field.get_length()));
 		return field.get_length();
 	}
 	else

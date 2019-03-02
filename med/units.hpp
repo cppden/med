@@ -13,12 +13,16 @@ Distributed under the MIT License
 
 namespace med {
 
+enum class nbits : std::size_t {};
+
 template <std::size_t NUM>
 struct bits
 {
 	//static_assert(NUM > 0 && NUM <= 64, "INVALID NUMBER OF BITS");
 	static constexpr std::size_t size = NUM;
 };
+
+enum class nbytes : std::size_t {};
 
 template <std::size_t NUM>
 struct bytes

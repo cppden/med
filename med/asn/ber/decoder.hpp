@@ -83,6 +83,7 @@ struct decoder
 		{
 			if constexpr (std::is_same_v<bool, typename IE::value_type>)
 			{
+				//X.690 8.2 Encoding of a boolean value
 				input = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
 				if (input[0] == 1)
 				{
@@ -92,6 +93,8 @@ struct decoder
 			}
 			else if constexpr (std::is_integral_v<typename IE::value_type>)
 			{
+				//X.690 8.3 Encoding of an integer value
+				//X.690 8.4 Encoding of an enumerated value
 				if (uint8_t const len = ctx.buffer().template pop<IE>(); 0 < len && len < 127) //1..127 in one octet
 				{
 					CODEC_TRACE("\t%u octets: %s", len, ctx.buffer().toString());
@@ -125,7 +128,7 @@ struct decoder
 		if (tv::value() == vtag)
 		{
 			auto const len = get_length<IE>();
-			CODEC_TRACE("\tSTR[%s] %u octets: %s", name<IE>(), len, ctx.buffer().toString());
+			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), std::size_t(len), ctx.buffer().toString());
 			if (ie.set_encoded(len, ctx.buffer().begin()))
 			{
 				ctx.buffer().template advance<IE>(len);

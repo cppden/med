@@ -11,19 +11,19 @@ using T = med::value<med::fixed<TAG, uint32_t>>;
 
 struct U8  : med::value<uint8_t>
 {
-	bool set_encoded(value_type v) { return (v < 0xF0) ? base_t::set_encoded(v), true : false; }
+	bool set_encoded(value_type v) { return (v < 0xF0) ? (base_t::set_encoded(v), true) : false; }
 };
 struct U16 : med::value<uint16_t>
 {
-	bool set_encoded(value_type v) { return (v < 0xF000) ? base_t::set_encoded(v), true : false; }
+	bool set_encoded(value_type v) { return (v < 0xF000) ? (base_t::set_encoded(v), true) : false; }
 };
 struct U24 : med::value<med::bytes<3>>
 {
-	bool set_encoded(value_type v) { return (v < 0xF00000) ? base_t::set_encoded(v), true : false; }
+	bool set_encoded(value_type v) { return (v < 0xF00000) ? (base_t::set_encoded(v), true) : false; }
 };
 struct U32 : med::value<uint32_t>
 {
-	bool set_encoded(value_type v) { return (v < 0xF0000000) ? base_t::set_encoded(v), true : false; }
+	bool set_encoded(value_type v) { return (v < 0xF0000000) ? (base_t::set_encoded(v), true) : false; }
 };
 
 struct CHOICE : med::choice< med::value<uint32_t>
@@ -97,6 +97,14 @@ struct VLVAR : med::sequence<
 	using length_type = VL;
 };
 
+struct VLARR : med::sequence<
+	M<VLVAR, med::max<2>>
+>{};
+
+struct LVLARR : med::sequence<
+	M<L, VLARR>
+>{};
+
 struct VMSG : med::sequence<
 	M< T<1>, VLVAR, med::max<2>>,
 	O< T<2>, U16, med::max<2>>,
@@ -121,6 +129,87 @@ struct PL_SEQ : med::sequence<
 	using length_type = U24;
 	static constexpr char const* name()         { return "PL-Sequence"; }
 };
+
+//24.501
+// 9.11.2.8 (v.15.2.1) S-NSSAI
+struct mapped_hplmn_sst : med::value<uint8_t>
+{
+	static constexpr char const* name() { return "Mapped-HPLMN-SST"; }
+};
+
+struct mapped_hplmn_sd : med::value<med::bits<24>>
+{
+	static constexpr char const* name() { return "Mapped-HPLMN-SD"; }
+};
+
+struct sst : med::value<uint8_t>
+{
+	static constexpr char const* name() { return "SST"; }
+};
+
+struct sd : med::value<med::bits<24>>
+{
+	static constexpr char const* name() { return "SD"; }
+};
+
+struct s_nssai_length : med::value<uint8_t>
+{
+	enum : value_type
+	{
+		SST_AND_MAPPED_SST  = 0b00000010,
+		SST_AND_SD          = 0b00000100,
+		SST_AND_SD_AND_MAPPED_SST        = 0b00000101,
+		SST_AND_SD_AND_MAPPED_SST_AND_SD = 0b00001000
+	};
+
+//	// value part
+//	value_type get() const          { return get_encoded(); }
+//	void set(value_type v)          { set_encoded(v); }
+
+	// length part
+	value_type get_length() const   { return get_encoded(); }
+	bool set_length(value_type v)   { set_encoded(v); return true; }
+
+	struct has_sd
+	{
+		template <class T> bool operator()(T const& ies) const
+		{
+			auto const len = ies.template as<s_nssai_length>().get();
+			return (len == SST_AND_SD || len == SST_AND_SD_AND_MAPPED_SST || len == SST_AND_SD_AND_MAPPED_SST_AND_SD);
+		}
+	};
+
+	struct has_mapped_sst
+	{
+		template <class T> bool operator()(T const& ies) const
+		{
+			auto const len = ies.template as<s_nssai_length>().get();
+			return (len == SST_AND_MAPPED_SST || len == SST_AND_SD_AND_MAPPED_SST);
+		}
+	};
+
+	struct has_mapped_sd
+	{
+		template <class T> bool operator()(T const& ies) const
+		{
+			auto const len = ies.template as<s_nssai_length>().get();
+			return (len == SST_AND_SD_AND_MAPPED_SST_AND_SD);
+		}
+	};
+};
+
+struct s_nssai : med::sequence<
+	M< s_nssai_length >
+	, M< sst >
+	, O< sd, s_nssai_length::has_sd >
+	, O< mapped_hplmn_sst, s_nssai_length::has_mapped_sst >
+	, O< mapped_hplmn_sd,  s_nssai_length::has_mapped_sd  >
+>
+{
+	using length_type = s_nssai_length;
+	static constexpr char const* name() { return "S-NSSAI"; }
+};
+
 
 } //namespace len
 
@@ -297,6 +386,55 @@ TEST(length, vlvar)
 	}
 }
 
+TEST(length, lvlarr)
+{
+	uint8_t buffer[128];
+
+	med::encoder_context<> ctx{ buffer };
+	len::LVLARR msg;
+
+	std::string_view const data[] = {"123"sv, "123456"sv};
+	for (std::size_t i = 0; i < std::size(data); ++i)
+	{
+		auto* vlvar = msg.ref<len::VLARR>().push_back<len::VLVAR>();
+		vlvar->ref<len::VL>().set(i + 1);
+		vlvar->ref<len::VAR>().set(data[i]);
+	}
+
+	encode(med::octet_encoder{ctx}, msg);
+	size_t size = ctx.buffer().get_offset();
+
+	std::cout << "{";
+	for(std::size_t i = 0; i < size; i++)
+		std::cout << "0x" << std::hex << (uint32_t)buffer[i] << ((i == size-1) ? "}\n" : ", ");
+
+	uint8_t encoded[] = {
+		0x0B, //len=11
+		0x31, //len=3, val=1
+		'1','2','3',
+		0x62, //len=6, val=2
+		'1','2','3','4','5','6',
+	};
+
+	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	ASSERT_TRUE(Matches(encoded, buffer));
+
+	//check decode
+	med::decoder_context<> dctx{encoded};
+	msg.clear();
+
+	decode(med::octet_decoder{dctx}, msg);
+
+	std::size_t index = 1;
+	for (auto const& v : msg.get<len::VLARR>().get<len::VLVAR>())
+	{
+		EXPECT_EQ(index, v.get<len::VL>().get());
+		EXPECT_EQ(index*3, v.get<len::VL>().get_length());
+		EXPECT_EQ(data[index-1], v.get<len::VAR>().get());
+		++index;
+	}
+}
+
 #if 1
 TEST(length, seq)
 {
@@ -334,3 +472,10 @@ TEST(length, seq)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
 }
 #endif
+
+
+TEST(length, value_conditional)
+{
+	//len::s_nssai msg;
+}
+

@@ -17,6 +17,8 @@ namespace med {
 
 struct empty_traits {};
 
+using num_octs_t = uint32_t;
+
 namespace detail {
 
 template <
@@ -28,6 +30,18 @@ struct bit_traits : EXT_TRAITS
 {
 	static constexpr std::size_t bits = NUM_BITS;
 	using value_type = VT;
+};
+
+template <
+		std::size_t MIN_BITS = 0,
+		std::size_t MAX_BITS = MIN_BITS,
+		class EXT_TRAITS = empty_traits
+		>
+struct bits_traits : EXT_TRAITS
+{
+	static constexpr std::size_t min_bits = MIN_BITS;
+	static constexpr std::size_t max_bits = MAX_BITS;
+	using value_type = uint8_t;
 };
 
 template <
@@ -66,6 +80,13 @@ struct base_traits<VT, bits<BITS>, EXT_TRAITS, void> : detail::bit_traits<VT, BI
 constexpr std::size_t bits_to_bytes(std::size_t num_bits)
 {
 	return (num_bits + 7) / 8;
+}
+
+//number of least significant bits = number of MSBits in the last octet
+constexpr uint8_t least_bits(std::size_t num_bits)
+{
+	uint8_t const last_octet_bits = num_bits % 8;
+	return last_octet_bits ? last_octet_bits : 8;
 }
 
 

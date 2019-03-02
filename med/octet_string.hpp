@@ -67,13 +67,13 @@ public:
 	void assign(void const* b_, void const* e_)
 	{
 		m_data = static_cast<uint8_t const*>(b_);
-		m_size = std::size_t(static_cast<uint8_t const*>(e_) - m_data);
+		m_size = num_octs_t(static_cast<uint8_t const*>(e_) - m_data);
 		m_is_set = true;
 	}
 
 private:
 	uint8_t const* m_data;
-	std::size_t    m_size {0};
+	num_octs_t     m_size {0}; //not using size_t to reduce layout size
 	bool           m_is_set {false};
 };
 
@@ -85,10 +85,10 @@ public:
 	bool is_set() const                                 { return m_is_set; }
 
 	std::size_t size() const                            { return m_size; }
-	void resize(std::size_t v)                          { m_size = (v <= MAX_LEN) ? v : MAX_LEN; m_is_set = true; }
+	void resize(std::size_t v)                          { m_size = num_octs_t((v <= MAX_LEN) ? v : MAX_LEN); m_is_set = true; }
 	uint8_t const* data() const                         { return is_set() ? m_data : nullptr; }
 	uint8_t* data()                                     { return m_data; }
-	void clear()                                        { m_size = 0; m_is_set =false; }
+	void clear()                                        { m_size = 0; m_is_set = false; }
 
 	//let external data to be set externally (risky but more efficient)
 	uint8_t* emplace(std::size_t num)                   { resize(num); return data(); }
@@ -96,14 +96,14 @@ public:
 	//NOTE: no check for MAX_LEN since it's limited by caller in octet_string::set
 	void assign(uint8_t const* beg_, uint8_t const* end_)
 	{
-		m_size = static_cast<std::size_t>(end_ - beg_);
+		m_size = num_octs_t(end_ - beg_);
 		octets<0, MAX_LEN>::copy(m_data, beg_, m_size);
 		m_is_set = true;
 	}
 
 private:
 	uint8_t     m_data[MAX_LEN];
-	std::size_t m_size {0};
+	num_octs_t  m_size {0};
 	bool        m_is_set {false};
 };
 
@@ -248,7 +248,7 @@ protected:
 };
 
 
-template <class VALUE = octets_var_extern, class = void, class = void, class = void>
+template <class VALUE = octets_var_extern, class = void, class = void>
 struct octet_string;
 
 //ASCII-printable string not zero-terminated
@@ -269,45 +269,47 @@ struct ascii_string : octet_string<T...>
 	}
 };
 
+constexpr std::size_t MAX_OCTS = std::numeric_limits<num_octs_t>::max();
+
 template <class VALUE>
-struct octet_string<VALUE, void, void, void>
-		: octet_string_impl<detail::octet_traits<uint8_t, 0, std::numeric_limits<std::size_t>::max()>, VALUE> {};
+struct octet_string<VALUE, void, void>
+		: octet_string_impl<detail::octet_traits<uint8_t, 0, MAX_OCTS>, VALUE> {};
 template <class VALUE, class EXT_TRAITS>
-struct octet_string<VALUE, EXT_TRAITS, void, void>
-		: octet_string_impl<detail::octet_traits<uint8_t, 0, std::numeric_limits<std::size_t>::max(), EXT_TRAITS>, VALUE> {};
+struct octet_string<VALUE, EXT_TRAITS, void>
+		: octet_string_impl<detail::octet_traits<uint8_t, 0, MAX_OCTS, EXT_TRAITS>, VALUE> {};
 
 template <std::size_t MIN>
-struct octet_string<min<MIN>, void, void, void>
-		: octet_string_impl<detail::octet_traits<uint8_t, MIN, std::numeric_limits<std::size_t>::max()>, octets_var_extern> {};
+struct octet_string<min<MIN>, void, void>
+		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX_OCTS>, octets_var_extern> {};
 template <class VALUE, std::size_t MIN>
-struct octet_string<VALUE, min<MIN>, void, void>
-		: octet_string_impl<detail::octet_traits<uint8_t, MIN, std::numeric_limits<std::size_t>::max()>, VALUE> {};
+struct octet_string<VALUE, min<MIN>, void>
+		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX_OCTS>, VALUE> {};
 template <std::size_t MIN, class VALUE>
-struct octet_string<min<MIN>, VALUE, void, void>
-		: octet_string_impl<detail::octet_traits<uint8_t, MIN, std::numeric_limits<std::size_t>::max()>, VALUE> {};
+struct octet_string<min<MIN>, VALUE, void>
+		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX_OCTS>, VALUE> {};
 
 template <std::size_t MAX>
-struct octet_string<max<MAX>, void, void, void>
+struct octet_string<max<MAX>, void, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, 0, MAX>, octets_var_extern> {};
 template <class VALUE, std::size_t MAX>
-struct octet_string<VALUE, max<MAX>, void, void>
+struct octet_string<VALUE, max<MAX>, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, 0, MAX>, VALUE> {};
 template <std::size_t MAX, class VALUE>
-struct octet_string<max<MAX>, VALUE, void, void>
+struct octet_string<max<MAX>, VALUE, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, 0, MAX>, VALUE> {};
 
 template <std::size_t MIN, std::size_t MAX>
-struct octet_string<min<MIN>, max<MAX>, void, void>
+struct octet_string<min<MIN>, max<MAX>, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX>, octets_var_extern> {};
 template <class VALUE, std::size_t MIN, std::size_t MAX>
-struct octet_string<VALUE, min<MIN>, max<MAX>, void>
+struct octet_string<VALUE, min<MIN>, max<MAX>>
 		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX>, VALUE> {};
 template <std::size_t MIN, std::size_t MAX, class VALUE>
-struct octet_string<min<MIN>, max<MAX>, VALUE, void>
+struct octet_string<min<MIN>, max<MAX>, VALUE>
 		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX>, VALUE> {};
 
 template <std::size_t FIXED>
-struct octet_string<octets_fix_extern<FIXED>, void, void, void>
+struct octet_string<octets_fix_extern<FIXED>, void, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, FIXED>, octets_fix_extern<FIXED>>
 {
 	using base_t = octet_string_impl<detail::octet_traits<uint8_t, FIXED>, octets_fix_extern<FIXED>>;
@@ -317,7 +319,7 @@ struct octet_string<octets_fix_extern<FIXED>, void, void, void>
 };
 
 template <std::size_t FIXED>
-struct octet_string<octets_fix_intern<FIXED>, void, void, void>
+struct octet_string<octets_fix_intern<FIXED>, void, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, FIXED>, octets_fix_intern<FIXED>>
 {
 	using base_t = octet_string_impl<detail::octet_traits<uint8_t, FIXED>, octets_fix_intern<FIXED>>;
@@ -326,7 +328,7 @@ struct octet_string<octets_fix_intern<FIXED>, void, void, void>
 	void set(uint8_t const(&data)[FIXED])   { this->set_encoded(FIXED, &data[0]); }
 };
 template <std::size_t MAX, std::size_t MIN>
-struct octet_string<octets_var_intern<MAX>, min<MIN>, void, void>
+struct octet_string<octets_var_intern<MAX>, min<MIN>, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX>, octets_var_intern<MAX>> {};
 
 }	//end: namespace med
