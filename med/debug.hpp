@@ -11,7 +11,7 @@ Distributed under the MIT License
 #include <cstdio>
 #include <cstring>
 
-//#define CODEC_TRACE_ENABLE
+#define CODEC_TRACE_ENABLE
 
 
 #ifdef CODEC_TRACE_ENABLE

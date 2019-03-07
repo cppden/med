@@ -94,7 +94,7 @@ struct length_encoder<false, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		{
 			auto const end = this->m_encoder(GET_STATE{});
 			std::size_t len_value = end - this->m_start - m_delta;
-			//CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
+			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
 			length_type len_ie;
 			length_to_value(len_ie, len_value);
 			this->m_encoder(SET_STATE{}, this->m_lenpos);

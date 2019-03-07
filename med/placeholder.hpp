@@ -30,6 +30,7 @@ struct _length
 	};
 	static constexpr field_t ref_field()    { return field_t{}; }
 	static constexpr bool is_set()          { return true; }
+	static constexpr void clear()           { }
 };
 
 }	//end: namespace placeholder

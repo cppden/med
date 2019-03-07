@@ -132,14 +132,14 @@ struct PL_SEQ : med::sequence<
 
 //24.501
 // 9.11.2.8 (v.15.2.1) S-NSSAI
-struct mapped_hplmn_sst : med::value<uint8_t>
+struct mapped_sst : med::value<uint8_t>
 {
-	static constexpr char const* name() { return "Mapped-HPLMN-SST"; }
+	static constexpr char const* name() { return "Mapped-SST"; }
 };
 
-struct mapped_hplmn_sd : med::value<med::bits<24>>
+struct mapped_sd : med::value<med::bits<24>>
 {
-	static constexpr char const* name() { return "Mapped-HPLMN-SD"; }
+	static constexpr char const* name() { return "Mapped-SD"; }
 };
 
 struct sst : med::value<uint8_t>
@@ -202,8 +202,8 @@ struct s_nssai : med::sequence<
 	M< s_nssai_length >
 	, M< sst >
 	, O< sd, s_nssai_length::has_sd >
-	, O< mapped_hplmn_sst, s_nssai_length::has_mapped_sst >
-	, O< mapped_hplmn_sd,  s_nssai_length::has_mapped_sd  >
+	, O< mapped_sst, s_nssai_length::has_mapped_sst >
+	, O< mapped_sd, s_nssai_length::has_mapped_sd >
 >
 {
 	using length_type = s_nssai_length;
@@ -272,6 +272,8 @@ TEST(length, placeholder)
 			EXPECT_EQ(v.get(), it->get());
 			it++;
 		}
+
+		msg.clear();
 	}
 }
 
@@ -474,8 +476,29 @@ TEST(length, seq)
 #endif
 
 
-TEST(length, value_conditional)
+TEST(length, val_cond)
 {
-	//len::s_nssai msg;
+	uint8_t buffer[32];
+	med::encoder_context<> ctx{ buffer };
+	med::decoder_context<> dctx;
+
+	len::s_nssai msg;
+
+	{
+		msg.ref<len::s_nssai_length>().set(0);
+		msg.ref<len::sst>().set(2);
+		encode(med::octet_encoder{ctx}, msg);
+		uint8_t const encoded[] = {0x01, 0x02};
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		len::s_nssai dmsg;
+		decode(med::octet_decoder{dctx}, dmsg);
+		EXPECT_EQ(1, dmsg.get<len::s_nssai_length>().get());
+		EXPECT_EQ(msg.get<len::sst>().get(), dmsg.get<len::sst>().get());
+	}
+	msg.clear();
+	ctx.reset();
 }
 
