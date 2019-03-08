@@ -403,7 +403,7 @@ struct seq_for<IE, IES...>
 				{
 					IE const& ie = to;
 					CODEC_TRACE("%c{%s}", ie.ref_field().is_set()?'+':'-', class_name<IE>());
-					if (ie.ref_field().is_set())
+					if (detail::has_set_length<IE>::value || ie.ref_field().is_set())
 					{
 						med::encode(func, ie);
 					}

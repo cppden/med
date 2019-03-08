@@ -132,50 +132,31 @@ struct PL_SEQ : med::sequence<
 
 //24.501
 // 9.11.2.8 (v.15.2.1) S-NSSAI
-struct mapped_sst : med::value<uint8_t>
-{
-	static constexpr char const* name() { return "Mapped-SST"; }
-};
-
-struct mapped_sd : med::value<med::bits<24>>
-{
-	static constexpr char const* name() { return "Mapped-SD"; }
-};
-
-struct sst : med::value<uint8_t>
-{
-	static constexpr char const* name() { return "SST"; }
-};
-
-struct sd : med::value<med::bits<24>>
-{
-	static constexpr char const* name() { return "SD"; }
-};
+struct mapped_sst : med::value<uint8_t> {};
+struct mapped_sd : med::value<med::bits<24>> {};
+struct sst : med::value<uint8_t> {};
+struct sd : med::value<med::bits<24>> {};
 
 struct s_nssai_length : med::value<uint8_t>
 {
-	enum : value_type
-	{
-		SST_AND_MAPPED_SST  = 0b00000010,
-		SST_AND_SD          = 0b00000100,
-		SST_AND_SD_AND_MAPPED_SST        = 0b00000101,
-		SST_AND_SD_AND_MAPPED_SST_AND_SD = 0b00001000
-	};
-
-//	// value part
-//	value_type get() const          { return get_encoded(); }
-//	void set(value_type v)          { set_encoded(v); }
-
-	// length part
 	value_type get_length() const   { return get_encoded(); }
 	bool set_length(value_type v)   { set_encoded(v); return true; }
+
+	/*
+	sst[1], sd[3], 1st sst is M
+	1 = 1 : sst
+	2 = 1 + 1: sst + m-sst
+	4 = 1 + 3: sst + sd
+	5 = 1 + 3 + 1: sst + sd + m-sst
+	7 = 1 + 3 + 3: sst + sd + m-sd
+	8 = 1 + 3 + 1 + 3: sst + sd + m-sst + m-sd
+	*/
 
 	struct has_sd
 	{
 		template <class T> bool operator()(T const& ies) const
 		{
-			auto const len = ies.template as<s_nssai_length>().get();
-			return (len == SST_AND_SD || len == SST_AND_SD_AND_MAPPED_SST || len == SST_AND_SD_AND_MAPPED_SST_AND_SD);
+			return ies.template as<s_nssai_length>().get() >= 4;
 		}
 	};
 
@@ -184,7 +165,7 @@ struct s_nssai_length : med::value<uint8_t>
 		template <class T> bool operator()(T const& ies) const
 		{
 			auto const len = ies.template as<s_nssai_length>().get();
-			return (len == SST_AND_MAPPED_SST || len == SST_AND_SD_AND_MAPPED_SST);
+			return len == 2 or len == 5 or len == 8;
 		}
 	};
 
@@ -193,7 +174,7 @@ struct s_nssai_length : med::value<uint8_t>
 		template <class T> bool operator()(T const& ies) const
 		{
 			auto const len = ies.template as<s_nssai_length>().get();
-			return (len == SST_AND_SD_AND_MAPPED_SST_AND_SD);
+			return len >= 7;
 		}
 	};
 };
@@ -478,17 +459,16 @@ TEST(length, seq)
 
 TEST(length, val_cond)
 {
-	uint8_t buffer[32];
+	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };
 	med::decoder_context<> dctx;
 
 	len::s_nssai msg;
 
 	{
-		msg.ref<len::s_nssai_length>().set(0);
 		msg.ref<len::sst>().set(2);
 		encode(med::octet_encoder{ctx}, msg);
-		uint8_t const encoded[] = {0x01, 0x02};
+		uint8_t const encoded[] = {1, 0x02};
 		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 		ASSERT_TRUE(Matches(encoded, buffer));
 
@@ -500,5 +480,45 @@ TEST(length, val_cond)
 	}
 	msg.clear();
 	ctx.reset();
+	{
+		msg.ref<len::sst>().set(2);
+		msg.ref<len::sd>().set(3);
+		encode(med::octet_encoder{ctx}, msg);
+		uint8_t const encoded[] = {4, 0x02, 0, 0, 0x03};
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		len::s_nssai dmsg;
+		decode(med::octet_decoder{dctx}, dmsg);
+		EXPECT_EQ(4, dmsg.get<len::s_nssai_length>().get());
+		EXPECT_EQ(msg.get<len::sst>().get(), dmsg.get<len::sst>().get());
+		ASSERT_EQ(msg.count<len::sd>(), dmsg.count<len::sd>());
+		EXPECT_EQ(msg.get<len::sd>()->get(), dmsg.get<len::sd>()->get());
+	}
+	msg.clear();
+	ctx.reset();
+	{
+		msg.ref<len::sst>().set(2);
+		msg.ref<len::sd>().set(3);
+		msg.ref<len::mapped_sst>().set(4);
+		msg.ref<len::mapped_sd>().set(5);
+		encode(med::octet_encoder{ctx}, msg);
+		uint8_t const encoded[] = {8, 0x02, 0,0,0x03, 0x04, 0,0,0x05};
+		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+		ASSERT_TRUE(Matches(encoded, buffer));
+
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		len::s_nssai dmsg;
+		decode(med::octet_decoder{dctx}, dmsg);
+		EXPECT_EQ(8, dmsg.get<len::s_nssai_length>().get());
+		EXPECT_EQ(msg.get<len::sst>().get(), dmsg.get<len::sst>().get());
+		ASSERT_EQ(msg.count<len::sd>(), dmsg.count<len::sd>());
+		EXPECT_EQ(msg.get<len::sd>()->get(), dmsg.get<len::sd>()->get());
+		ASSERT_EQ(msg.count<len::mapped_sst>(), dmsg.count<len::mapped_sst>());
+		EXPECT_EQ(msg.get<len::mapped_sst>()->get(), dmsg.get<len::mapped_sst>()->get());
+		ASSERT_EQ(msg.count<len::mapped_sd>(), dmsg.count<len::mapped_sd>());
+		EXPECT_EQ(msg.get<len::mapped_sd>()->get(), dmsg.get<len::mapped_sd>()->get());
+	}
 }
 
