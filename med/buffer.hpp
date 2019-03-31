@@ -76,8 +76,8 @@ public:
 		{
 			if (m_end)
 			{
+				CODEC_TRACE("restored end %p->%p: %s", (void*)m_buf->m_end, (void*)m_end, m_buf->toString());
 				m_buf->m_end = m_end;
-				CODEC_TRACE("restored end to %p: %s", (void*)m_end, m_buf->toString());
 				m_end = nullptr;
 			}
 		}

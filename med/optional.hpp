@@ -460,6 +460,18 @@ struct optional<
 
 
 #if 1 ///<<<--- LV
+template <class LEN, class FIELD>
+struct optional<
+	LEN,
+	FIELD,
+	void,
+	min<1>,
+	max<1>,
+	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
+> : length_value_t<LEN, FIELD>, optional_t
+{
+};
+
 //optional field as a part of compound
 template <class LEN, class FIELD, class CONDITION>
 struct optional<

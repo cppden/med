@@ -166,7 +166,7 @@ protected:
 		}
 		len_value += DELTA;
 		auto const state_delta = std::size_t(m_decoder(GET_STATE{}) - m_start);
-		CODEC_TRACE("len=%zu state-delta=%zu", len_value, state_delta);
+		CODEC_TRACE("len<%d>=%zu state-delta=%zu", DELTA, len_value, state_delta);
 		if (state_delta > len_value)
 		{
 			CODEC_TRACE("len=%zu less than buffer has been advanced=%zu", len_value, state_delta);

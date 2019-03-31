@@ -191,6 +191,62 @@ struct s_nssai : med::sequence<
 	static constexpr char const* name() { return "S-NSSAI"; }
 };
 
+namespace ppp {
+//RFC1994 4.1.  Challenge and Response
+/*
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     Code      |  Identifier   |            Length             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Value-Size   |  Value ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Name ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+Code
+	1 for Challenge;
+	2 for Response.
+*/
+struct code : med::value<uint8_t>{};
+struct id : med::value<uint8_t>{};
+struct cval : med::ascii_string<med::min<1>, med::max<255>> {};
+struct rval : med::ascii_string<med::min<1>, med::max<255>> {};
+struct name : med::ascii_string<med::min<1>, med::max<255>> {};
+struct hdr : med::sequence<
+	M<code>,
+	M<id>,
+	med::placeholder::_length<0>
+>
+{
+	auto get_tag() const    { return get<code>().get(); }
+	void set_tag(uint8_t v) { return ref<code>().set(v); }
+};
+
+template <std::size_t TAG>
+using T = med::value<med::fixed<TAG, uint8_t>>;
+
+struct challenge : med::sequence<
+	M<L, cval>,
+	O<name>
+>
+{
+};
+
+struct response : med::sequence<
+	O<L, rval>
+>
+{
+};
+
+struct proto : med::choice< hdr
+	, med::tag<T<1>, challenge>
+	, med::tag<T<2>, response>
+>
+{
+	using length_type = med::value<uint16_t>;
+};
+
+} //end: namespace ppp
+
 
 } //namespace len
 
@@ -418,7 +474,6 @@ TEST(length, lvlarr)
 	}
 }
 
-#if 1
 TEST(length, seq)
 {
 	med::decoder_context<> ctx;
@@ -454,8 +509,6 @@ TEST(length, seq)
 	msg.clear(); ctx.reset(inv_value);
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
 }
-#endif
-
 
 TEST(length, val_cond)
 {
@@ -519,6 +572,71 @@ TEST(length, val_cond)
 		EXPECT_EQ(msg.get<len::mapped_sst>()->get(), dmsg.get<len::mapped_sst>()->get());
 		ASSERT_EQ(msg.count<len::mapped_sd>(), dmsg.count<len::mapped_sd>());
 		EXPECT_EQ(msg.get<len::mapped_sd>()->get(), dmsg.get<len::mapped_sd>()->get());
+	}
+}
+
+TEST(length, ppp)
+{
+	{
+		uint8_t const encoded[] = {
+			1, //code
+			3, //id
+			0, 16, //len
+			1, 'a', //challenge value
+			'n','a','m','e','-','v','a','l','u','e'
+		};
+
+		med::decoder_context<> ctx{encoded};
+		len::ppp::proto msg;
+
+		decode(med::octet_decoder{ctx}, msg);
+
+		EXPECT_EQ(3, msg.header().get<len::ppp::id>().get());
+		len::ppp::challenge const* c = msg.cselect();
+		ASSERT_NE(nullptr, c);
+		EXPECT_EQ(1, c->get<len::ppp::cval>().size());
+		EXPECT_EQ('a', c->get<len::ppp::cval>().data()[0]);
+		len::ppp::name const* name = c->field();
+		ASSERT_NE(nullptr, name);
+		EXPECT_EQ(10, name->size());
+	}
+	{
+		uint8_t const encoded[] = {
+			2, //code
+			5, //id
+			0, 6, //len
+			1, 'r', //response value
+		};
+
+		med::decoder_context<> ctx{encoded};
+		len::ppp::proto msg;
+
+		decode(med::octet_decoder{ctx}, msg);
+
+		EXPECT_EQ(5, msg.header().get<len::ppp::id>().get());
+		len::ppp::response const* r = msg.cselect();
+		ASSERT_NE(nullptr, r);
+		len::ppp::rval const* rval = r->field();
+		ASSERT_NE(nullptr, rval);
+		EXPECT_EQ(1, rval->size());
+	}
+	{
+		uint8_t const encoded[] = {
+			2, //code
+			5, //id
+			0, 4, //len
+		};
+
+		med::decoder_context<> ctx{encoded};
+		len::ppp::proto msg;
+
+		decode(med::octet_decoder{ctx}, msg);
+
+		EXPECT_EQ(5, msg.header().get<len::ppp::id>().get());
+		len::ppp::response const* r = msg.cselect();
+		ASSERT_NE(nullptr, r);
+		len::ppp::rval const* rval = r->field();
+		EXPECT_EQ(nullptr, rval);
 	}
 }
 

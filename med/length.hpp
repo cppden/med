@@ -195,7 +195,7 @@ constexpr void value_to_length(FIELD& field, std::size_t& len)
 		len = field.get_encoded();
 	}
 
-	CODEC_TRACE("L=%zx[%s]:", len, name<FIELD>());
+	CODEC_TRACE("L=%zu [%s]", len, name<FIELD>());
 
 	//convert raw value to length if needed
 	if constexpr (detail::has_length_converters<FIELD>::value)

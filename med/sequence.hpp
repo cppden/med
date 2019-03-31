@@ -262,10 +262,9 @@ struct seq_for<IE, IES...>
 					else //optional field w/o tag (optional by end of data)
 					{
 						CODEC_TRACE("[%s]...", name<IE>());
-
 						if (func(CHECK_STATE{}, ie))
 						{
-							med::decode(func, ie.ref_field(), unexp);
+							med::decode(func, ie, unexp);
 						}
 						else
 						{
