@@ -249,61 +249,55 @@ TEST(field, empty)
 	EXPECT_NE(nullptr, dfield.get<NO_THING>());
 }
 
-//setter with length calc
-struct SHDR : med::value<uint8_t>
-{
-	template <class FLD>
-	struct setter
-	{
-		template <class T>
-		bool operator()(SHDR& shdr, T const& ies) const
-		{
-			if (auto const qty = med::field_count(ies.template as<FLD>()))
-			{
-				shdr.set(qty);
-				return true;
-			}
+namespace init {
 
-			return false;
-		}
+struct MSG1 : med::sequence<
+	M< med::value<med::init<0,uint8_t>> >, //spare
+	M< FLD_UC >
+>{};
+
+struct MSG2 : med::sequence<
+	M< FLD_UC >
+>{};
+
+struct PROTO : med::sequence<
+	O< T<1>, L, MSG1>,
+	O< T<2>, L, MSG2>
+>{};
+
+} //end: namespace init
+
+TEST(field, init)
+{
+	using namespace init;
+
+	auto dec = [](auto& ctx)
+	{
+		init::PROTO msg;
+		med::decoder_context<> dctx;
+		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+		decode(med::octet_decoder{dctx}, msg);
+		FLD_UC const* v = nullptr;
+		if (auto* p = msg.get<MSG1>()) { v = &p->get<FLD_UC>(); }
+		else if (auto* p = msg.get<MSG2>()) { v = &p->get<FLD_UC>(); }
+		ASSERT_NE(nullptr, v);
+		EXPECT_EQ(7, v->get());
 	};
 
-};
-struct SFLD : med::sequence<
-	M<SHDR, SHDR::setter<FLD_U16>>,
-	M<FLD_U16>
->{};
-struct SMFLD : med::sequence<
-	M<SHDR, SHDR::setter<FLD_U8>>,
-	M<FLD_U8, med::max<7>>
->{};
-struct SLEN : med::sequence<
-	M<L, SFLD>,
-	M<L, SMFLD>
->
-{
-};
-
-TEST(encode, setter_with_length)
-{
-	SLEN msg;
-	msg.ref<SFLD>().ref<FLD_U16>().set(0x55AA);
-	for (std::size_t i = 0; i < 7; ++i)
-	{
-		msg.ref<SMFLD>().push_back<FLD_U8>()->set(i);
-	}
-
-	uint8_t buffer[1024];
+	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };
 
+	init::PROTO msg;
+	msg.ref<MSG1>().ref<FLD_UC>().set(7);
 	encode(med::octet_encoder{ctx}, msg);
+	EXPECT_STRCASEEQ("01 02 00 07 ", as_string(ctx.buffer()));
+	dec(ctx);
 
-	uint8_t const encoded[] = {
-		3, 1, 0x55, 0xAA,
-		8, 7, 0,1,2,3,4,5,6
-	};
-	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded, buffer));
+	msg.clear(); ctx.reset();
+	msg.ref<MSG2>().ref<FLD_UC>().set(7);
+	encode(med::octet_encoder{ctx}, msg);
+	EXPECT_STRCASEEQ("02 01 07 ", as_string(ctx.buffer()));
+	dec(ctx);
 }
 
 //update

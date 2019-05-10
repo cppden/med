@@ -15,6 +15,7 @@ Distributed under the MIT License
 #include "encode.hpp"
 #include "decode.hpp"
 #include "debug.hpp"
+#include "meta/typelist.hpp"
 
 namespace med {
 

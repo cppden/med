@@ -16,7 +16,8 @@ Distributed under the MIT License
 #include "length.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
-#include "util/unique.hpp"
+#include "meta/unique.hpp"
+#include "meta/typelist.hpp"
 
 namespace med {
 
@@ -204,6 +205,7 @@ private:
 
 public:
 	using header_type = HEADER;
+	using ies_types = meta::typelist<CASES...>;
 
 	template <typename TAG>
 	static constexpr char const* name_tag(TAG const& tag)
@@ -280,8 +282,7 @@ public:
 	template <class DECODER, class UNEXP>
 	void decode(DECODER&& decoder, UNEXP& unexp)
 	{
-		static_assert(util::are_unique(tag_value_get<CASES>::value...), "TAGS ARE NOT UNIQUE");
-
+		static_assert(std::is_void_v<meta::tag_unique_t<ies_types>>, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 		med::decode(decoder, header(), unexp);
 		sl::choice_for<CASES...>::decode(decoder, *this, unexp);
 	}

@@ -100,4 +100,11 @@ struct has_default_value<T, std::void_t<decltype(T::traits::default_value)>> : s
 template <class T>
 constexpr bool has_default_value_v = has_default_value<T>::value;
 
+template<typename T, typename Enable = void>
+struct is_predefined : std::false_type { };
+template <class T>
+struct is_predefined<T, std::enable_if_t<T::is_const>> : std::true_type {};
+template <class T>
+constexpr bool is_predefined_v = is_predefined<T>::value;
+
 }	//end: namespace med

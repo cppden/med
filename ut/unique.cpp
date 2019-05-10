@@ -3,12 +3,26 @@
 #include <random>
 
 #include "ut.hpp"
+#include "ut_proto.hpp"
 
-#include "util/unique.hpp"
+#include "meta/typelist.hpp"
+#include "meta/unique.hpp"
+
+
+TEST(unique, typed)
+{
+	using s1 = med::meta::typelist<
+		med::tag<C<0x02>, FLD_U16>,
+		med::tag<C<0x03>, FLD_UC>,
+		med::tag<C<0x04>, FLD_U8>
+	>;
+//	med::meta::clash<med::meta::tag_unique_t<s1>>::none();
+	static_assert(std::is_void_v<med::meta::tag_unique_t<s1>>);
+}
 
 TEST(unique, static_odd)
 {
-	using namespace med::util;
+	using namespace med::meta;
 	static_assert(are_unique(nullptr, 1u, 2, 3, 4, 5));
 	static_assert(are_unique(1u, 2, 3, nullptr, 4, 5));
 	static_assert(are_unique(1u, 2, 3, 4, 5, nullptr));
@@ -20,7 +34,7 @@ TEST(unique, static_odd)
 
 TEST(unique, static_even)
 {
-	using namespace med::util;
+	using namespace med::meta;
 	static_assert(are_unique(1, 2, 3, 4));
 	static_assert(not are_unique(4, 2, 3, 4));
 	static_assert(not are_unique(1, 4, 3, 4));
@@ -36,13 +50,13 @@ TEST(unique, dynamics)
 	for (auto i = 0; i < 5; ++i)
 	{
 		std::shuffle(v.begin(), v.end(), rgen);
-		EXPECT_TRUE(med::util::are_unique(v[0], v[1], v[2], v[3], v[4]));
+		EXPECT_TRUE(med::meta::are_unique(v[0], v[1], v[2], v[3], v[4]));
 	}
 
 	v = {1, 2, 3, 4, 1};
 	for (auto i = 0; i < 5; ++i)
 	{
 		std::shuffle(v.begin(), v.end(), rgen);
-		EXPECT_FALSE(med::util::are_unique(v[0], v[1], v[2], v[3], v[4]));
+		EXPECT_FALSE(med::meta::are_unique(v[0], v[1], v[2], v[3], v[4]));
 	}
 }

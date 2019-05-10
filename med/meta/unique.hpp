@@ -2,9 +2,9 @@
 
 /**
 @file
-copy a field.
+helper classes to detect and prevent duplicate tags in choice and set.
 
-@copyright Denis Priyomov 2016-2018
+@copyright Denis Priyomov 2016-2019
 Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
@@ -12,7 +12,9 @@ Distributed under the MIT License
 #include <utility>
 #include <type_traits>
 
-namespace med::util {
+#include "../tag.hpp"
+
+namespace med::meta {
 
 namespace detail {
 
@@ -98,4 +100,58 @@ constexpr bool are_unique(T... vals)
 	return detail::unique_values<void, T...>::apply(vals...);
 }
 
-} //namespace med::util
+namespace detail {
+
+template <class IE1, class IE2, typename E = void>
+struct is_duplicate
+{
+	static constexpr auto value = false;
+	using type = void;
+};
+
+template <class IE1, class IE2>
+struct is_duplicate<IE1, IE2,
+		std::void_t<decltype(med::tag_type<IE1>::type::get()), decltype(med::tag_type<IE2>::type::get())>>
+{
+	static constexpr auto value = med::tag_type<IE1>::type::get() == med::tag_type<IE2>::type::get();
+	using type = std::pair<IE1, IE2>;
+};
+
+struct fallback
+{
+	static constexpr bool value = true;
+	using type = void;
+};
+
+template <class IE, class TL>
+struct same_tag;
+
+template <class IE, template<class...> class L, class... IEs>
+struct same_tag<IE, L<IEs...>> : std::disjunction<is_duplicate<IE, IEs>..., fallback>
+{};
+
+} //end: namespace detail
+
+template <class L> struct tag_unique;
+template <class L> using tag_unique_t = typename tag_unique<L>::type;
+
+template <template<class...> class L>
+struct tag_unique<L<>>
+{
+	using type = void;
+};
+
+template <class T> struct tag_clash;
+template <> struct tag_clash<void>
+{
+	static constexpr void error() {}
+};
+
+template <template<class...> class L, class T1, class... T>
+struct tag_unique<L<T1, T...>>
+{
+	using clashed_tags = decltype(tag_clash<typename detail::same_tag<T1, L<T...>>::type>::error());
+	using type = std::enable_if_t<std::is_void_v<clashed_tags>, tag_unique_t<L<T...>>>;
+};
+
+} //namespace med::meta

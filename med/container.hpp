@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include "debug.hpp"
 #include "accessor.hpp"
 #include "sl/field_copy.hpp"
+#include "meta/typelist.hpp"
 
 namespace med {
 
@@ -72,11 +73,20 @@ struct container_for<IE, IES...>
 		//optional or mandatory field w/ setter => can be set implicitly
 		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
 		{
+			CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(to).is_set());
 			return static_cast<IE const&>(to).is_set() || container_for<IES...>::is_set(to);
 		}
 		else //mandatory field w/o setter => s.b. set explicitly
 		{
-			return static_cast<IE const&>(to).is_set();
+			if constexpr (is_predefined_v<IE>) //don't account predefined IEs like init/const/def
+			{
+				return container_for<IES...>::is_set(to);
+			}
+			else
+			{
+				CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(to).is_set());
+				return static_cast<IE const&>(to).is_set();
+			}
 		}
 	}
 
@@ -148,6 +158,7 @@ class container : public IE<CONTAINER>
 {
 public:
 	using container_t = container<IES...>;
+	using ies_types = meta::typelist<IES...>;
 
 	template <class FIELD>
 	static constexpr bool has()

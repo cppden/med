@@ -17,7 +17,7 @@ Distributed under the MIT License
 #include "decode.hpp"
 #include "name.hpp"
 #include "tag.hpp"
-#include "util/unique.hpp"
+#include "meta/unique.hpp"
 
 namespace med {
 
@@ -257,6 +257,7 @@ template <class HEADER, class ...IEs>
 struct set : container<IEs...>
 {
 	using header_type = HEADER;
+	using ies_types = typename container<IEs...>::ies_types;
 
 	template <typename TAG>
 	static constexpr char const* name_tag(TAG const& tag)
@@ -273,7 +274,7 @@ struct set : container<IEs...>
 	template <class FUNC, class UNEXP>
 	void decode(FUNC& func, UNEXP& unexp)
 	{
-		static_assert(util::are_unique(tag_value_get<IEs>::value...), "TAGS ARE NOT UNIQUE");
+		static_assert(std::is_void_v<meta::tag_unique_t<ies_types>>, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 
 		//TODO: how to join 2 branches w/o having unused bool
 		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)

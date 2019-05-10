@@ -11,19 +11,19 @@ using T = med::value<med::fixed<TAG, uint32_t>>;
 
 struct U8  : med::value<uint8_t>
 {
-	bool set_encoded(value_type v) { return (v < 0xF0) ? (base_t::set_encoded(v), true) : false; }
+	bool set_encoded(value_type v) { return (v < 0xF0) ? ((void)base_t::set_encoded(v), true) : false; }
 };
 struct U16 : med::value<uint16_t>
 {
-	bool set_encoded(value_type v) { return (v < 0xF000) ? (base_t::set_encoded(v), true) : false; }
+	bool set_encoded(value_type v) { return (v < 0xF000) ? ((void)base_t::set_encoded(v), true) : false; }
 };
 struct U24 : med::value<med::bytes<3>>
 {
-	bool set_encoded(value_type v) { return (v < 0xF00000) ? (base_t::set_encoded(v), true) : false; }
+	bool set_encoded(value_type v) { return (v < 0xF00000) ? ((void)base_t::set_encoded(v), true) : false; }
 };
 struct U32 : med::value<uint32_t>
 {
-	bool set_encoded(value_type v) { return (v < 0xF0000000) ? (base_t::set_encoded(v), true) : false; }
+	bool set_encoded(value_type v) { return (v < 0xF0000000) ? ((void)base_t::set_encoded(v), true) : false; }
 };
 
 struct CHOICE : med::choice< med::value<uint32_t>
@@ -247,6 +247,40 @@ struct proto : med::choice< hdr
 
 } //end: namespace ppp
 
+//setter with length calc
+struct SHDR : med::value<uint8_t>
+{
+	template <class FLD>
+	struct setter
+	{
+		template <class T>
+		bool operator()(SHDR& shdr, T const& ies) const
+		{
+			if (auto const qty = med::field_count(ies.template as<FLD>()))
+			{
+				shdr.set(qty);
+				return true;
+			}
+
+			return false;
+		}
+	};
+
+};
+struct SFLD : med::sequence<
+	M<SHDR, SHDR::setter<U16>>,
+	M<U16>
+>{};
+struct SMFLD : med::sequence<
+	M<SHDR, SHDR::setter<U8>>,
+	M<U8, med::max<7>>
+>{};
+struct SLEN : med::sequence<
+	M<L, SFLD>,
+	M<L, SMFLD>
+>
+{
+};
 
 } //namespace len
 
@@ -638,5 +672,28 @@ TEST(length, ppp)
 		len::ppp::rval const* rval = r->field();
 		EXPECT_EQ(nullptr, rval);
 	}
+}
+
+TEST(length, setter_with_length)
+{
+	using namespace len;
+	SLEN msg;
+	msg.ref<SFLD>().ref<U16>().set(0x55AA);
+	for (std::size_t i = 0; i < 7; ++i)
+	{
+		msg.ref<SMFLD>().push_back<U8>()->set(i);
+	}
+
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+
+	encode(med::octet_encoder{ctx}, msg);
+
+	uint8_t const encoded[] = {
+		3, 1, 0x55, 0xAA,
+		8, 7, 0,1,2,3,4,5,6
+	};
+	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded, buffer));
 }
 
