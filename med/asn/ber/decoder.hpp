@@ -118,6 +118,38 @@ struct decoder
 
 	//IE_OCTET_STRING
 	template <class IE>
+	void operator() (IE& ie, IE_BIT_STRING const&)
+	{
+		using tv = tag_value<typename IE::traits, false>;
+		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		std::size_t vtag = 0;
+		get_bytes_impl(input, vtag, std::make_index_sequence<tv::num_bytes()>{});
+		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
+		if (tv::value() == vtag)
+		{
+			auto const bytes = get_length<IE>() - 1;
+			input = ctx.buffer().template advance<IE, 1>(); //num of unused bits [0..7]
+			std::size_t unused_bits = 0;
+			get_bytes_impl(input, unused_bits, std::make_index_sequence<1>{});
+			std::size_t const num_bits = bytes * 8 - unused_bits;
+			CODEC_TRACE("\tSTR[%s] %zu bits: %s", name<IE>(), num_bits, ctx.buffer().toString());
+			if (ie.set_encoded(num_bits, ctx.buffer().begin()))
+			{
+				ctx.buffer().template advance<IE>(bytes);
+			}
+			else
+			{
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), num_bits, ctx.buffer());
+			}
+		}
+		else
+		{
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+		}
+	}
+
+	//IE_OCTET_STRING
+	template <class IE>
 	void operator() (IE& ie, IE_OCTET_STRING const&)
 	{
 		using tv = tag_value<typename IE::traits, false>;

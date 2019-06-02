@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include "ids.hpp"
 #include "../value.hpp"
 #include "../octet_string.hpp"
+#include "../bit_string.hpp"
 
 namespace med::asn {
 
@@ -28,7 +29,7 @@ using lu_int = med::value<long unsigned int, traits<tag_value::INTEGER>>;
 using enumerated = med::value<int, traits<tag_value::ENUMERATED>>;
 
 using real = med::value<double, traits<tag_value::REAL>>;
-//using bit_string = med::bit_string<traits<tag_value::BIT_STRING>>;
+using bit_string = med::bit_string<traits<tag_value::BIT_STRING>>;
 using octet_string = med::octet_string<octets_var_extern, traits<tag_value::OCTET_STRING>>;
 
 } //end: namespace med::asn

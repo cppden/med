@@ -143,7 +143,7 @@ struct bit_string_impl : IE<IE_BIT_STRING>
 	constexpr std::size_t size() const      { return m_value.size(); }
 	constexpr std::size_t get_length() const{ return size(); }
 
-	auto* data()                            { return m_value.data(); }
+	auto* data() const                      { return m_value.data(); }
 	void clear()                            { m_value.clear(); }
 
 	template <class... ARGS>
@@ -153,14 +153,14 @@ struct bit_string_impl : IE<IE_BIT_STRING>
 	//bool set(std::size_t nbits, std::size_t val)    { return set_encoded(0, nullptr); }
 
 	//NOTE: do not override!
-	bool set_encoded(std::size_t nbits, void const* data)
+	bool set_encoded(std::size_t nb, void const* data)
 	{
-		if (nbits >= traits::min_bits && nbits <= traits::max_bits)
+		if (nb >= traits::min_bits && nb <= traits::max_bits)
 		{
-			m_value.assign_bits(data, nbits);
+			m_value.assign_bits(data, nbits{nb});
 			return is_set();
 		}
-		CODEC_TRACE("ERROR: bits=%zu !=[%zu..%zu]", nbits, traits::min_bits, traits::max_bits);
+		CODEC_TRACE("ERROR: bits=%zu !=[%zu..%zu]", nb, traits::min_bits, traits::max_bits);
 		return false;
 	}
 

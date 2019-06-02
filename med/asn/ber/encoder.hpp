@@ -110,6 +110,26 @@ struct encoder
 		}
 	}
 
+	//IE_BIT_STRING
+	template <class IE>
+	void operator() (IE const& ie, IE_BIT_STRING const&)
+	{
+		//X.690 8.6 Encoding of a bitstring value (not segmented only)
+		using tv = tag_value<typename IE::traits, false>;
+		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+
+		//8.6.2.2 The initial octet shall encode, as an unsigned binary integer,
+		// the number of unused bits in the final subsequent octet in the range [0..7].
+		//8.6.2.3 If the bitstring is empty, there shall be no subsequent octets, and the initial
+		// octet shall be zero.
+		put_length<IE>(ie.size() + 1);
+		ctx.buffer().template push<IE>( uint8_t(8 - uint8_t(ie.get().least_bits())) );
+		out = ctx.buffer().template advance<IE>(ie.size());
+		octets<IE::traits::min_bits*8, IE::traits::max_bits*8>::copy(out, ie.data(), ie.size());
+		CODEC_TRACE("STR[%s] %zu bits: %s", name<IE>(), std::size_t(ie.get().num_of_bits()), ctx.buffer().toString());
+	}
+
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE const& ie, IE_OCTET_STRING const&)
