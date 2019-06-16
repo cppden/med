@@ -22,23 +22,21 @@ struct encoder
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
 	enum : std::size_t { granularity = 1 };
-	static constexpr auto codec_kind = codec_e::STRUCTURED;
 
 	ENC_CTX& ctx;
 
 	explicit encoder(ENC_CTX& ctx_) : ctx{ ctx_ } { }
 
 	//state
-	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
-	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
+	auto operator() (GET_STATE)                       { return ctx.buffer().get_state(); }
+	void operator() (SET_STATE, state_type const& st) { ctx.buffer().set_state(st); }
 
 	template <class IE>
-	bool operator() (PUSH_STATE const&, IE const&)           { return ctx.buffer().push_state(); }
-	void operator() (POP_STATE const&)                       { ctx.buffer().pop_state(); }
+	bool operator() (PUSH_STATE, IE const&)           { return ctx.buffer().push_state(); }
+	void operator() (POP_STATE)                       { ctx.buffer().pop_state(); }
 
-	//CONTAINER
 	template <class IE>
-	void operator() (IE const&, ENTRY_CONTAINER const&)
+	void operator() (ENTRY_CONTAINER, IE const&)
 	{
 		constexpr auto open_brace = []()
 		{
@@ -46,18 +44,19 @@ struct encoder
 			else return '{';
 		};
 
-		CODEC_TRACE("CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("entry<%c> [%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
 		ctx.buffer().template push<IE>(open_brace());
 	}
+
 	template <class IE>
-	void operator() (IE const&, HEADER_CONTAINER const&)
+	void operator() (HEADER_CONTAINER, IE const&)
 	{
-		CODEC_TRACE("HEADER_CONTAINER[%s]: %s", name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("head<:> %s: %s", name<IE>(), ctx.buffer().toString());
 		ctx.buffer().template push<IE>(':');
 	}
 
 	template <class IE>
-	void operator() (IE const&, EXIT_CONTAINER const&)
+	void operator() (EXIT_CONTAINER, IE const&)
 	{
 		constexpr auto closing_brace = []()
 		{
@@ -65,12 +64,12 @@ struct encoder
 			else return '}';
 		};
 
-		CODEC_TRACE("CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("exit<%c> [%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
 		ctx.buffer().template push<IE>(closing_brace());
 	}
 
 	template <class IE>
-	void operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
+	void operator() (NEXT_CONTAINER_ELEMENT, IE const&)
 	{
 		CODEC_TRACE("CONTAINER,[%s]: %s", name<IE>(), ctx.buffer().toString());
 		ctx.buffer().template push<IE>(',');
@@ -78,7 +77,7 @@ struct encoder
 
 	//IE_VALUE
 	template <class IE>
-	void operator() (IE const& ie, IE_VALUE const&)
+	void operator() (IE const& ie, IE_VALUE)
 	{
 		constexpr std::size_t len = [](){
 			if constexpr (std::is_same_v<bool, typename IE::value_type>)
@@ -128,7 +127,7 @@ struct encoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	void operator() (IE const& ie, IE_OCTET_STRING const&)
+	void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		auto* out = ctx.buffer().template advance<IE>(ie.size() + 2); //2 quotes
 		*out++ = '"';

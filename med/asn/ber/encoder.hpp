@@ -30,10 +30,10 @@ struct encoder
 	explicit encoder(ENC_CTX& ctx_) : ctx{ ctx_ } { }
 
 	//state
-	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
-	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
+	auto operator() (GET_STATE)                       { return ctx.buffer().get_state(); }
+	void operator() (SET_STATE, state_type const& st) { ctx.buffer().set_state(st); }
 	template <class IE>
-	void operator() (SET_STATE const&, IE const& ie)
+	void operator() (SET_STATE, IE const& ie)
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
@@ -53,14 +53,14 @@ struct encoder
 	}
 
 	template <class IE>
-	bool operator() (PUSH_STATE const&, IE const&)      { return ctx.buffer().push_state(); }
-	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
+	bool operator() (PUSH_STATE, IE const&)             { return ctx.buffer().push_state(); }
+	void operator() (POP_STATE)                         { ctx.buffer().pop_state(); }
 	void operator() (ADVANCE_STATE const& ss)           { ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity); }
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
 	//IE_NULL
 	template <class IE>
-	void operator() (IE const&, IE_NULL const&)
+	void operator() (IE const&, IE_NULL)
 	{
 		using tv = tag_value<typename IE::traits, false>;
 		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
@@ -73,7 +73,7 @@ struct encoder
 
 	//IE_VALUE
 	template <class IE>
-	void operator() (IE const& ie, IE_VALUE const&)
+	void operator() (IE const& ie, IE_VALUE)
 	{
 		//static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		using tv = tag_value<typename IE::traits, false>;
@@ -112,7 +112,7 @@ struct encoder
 
 	//IE_BIT_STRING
 	template <class IE>
-	void operator() (IE const& ie, IE_BIT_STRING const&)
+	void operator() (IE const& ie, IE_BIT_STRING)
 	{
 		//X.690 8.6 Encoding of a bitstring value (not segmented only)
 		using tv = tag_value<typename IE::traits, false>;
@@ -132,7 +132,7 @@ struct encoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	void operator() (IE const& ie, IE_OCTET_STRING const&)
+	void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		//X.690 8.7 Encoding of an octetstring value (not segmented only)
 		using tv = tag_value<typename IE::traits, false>;
@@ -143,6 +143,17 @@ struct encoder
 		out = ctx.buffer().template advance<IE>(ie.size());
 		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());
 		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
+	}
+
+	template <class IE>
+	void operator() (ENTRY_CONTAINER, IE const&)
+	{
+		CODEC_TRACE("entry [%s]: %s", name<IE>(), ctx.buffer().toString());
+		//X.690 8.9 Encoding of a sequence value (not segmented only)
+		using tv = tag_value<typename IE::traits, true>;
+		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+		//TODO: need to encode length...
 	}
 
 #ifndef UNIT_TEST

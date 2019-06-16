@@ -28,10 +28,10 @@ struct octet_encoder
 	explicit octet_encoder(ENC_CTX& ctx_) : ctx{ ctx_ } { }
 
 	//state
-	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
-	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
+	auto operator() (GET_STATE)                       { return ctx.buffer().get_state(); }
+	void operator() (SET_STATE, state_type const& st) { ctx.buffer().set_state(st); }
 	template <class IE>
-	void operator() (SET_STATE const&, IE const& ie)
+	void operator() (SET_STATE, IE const& ie)
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
@@ -51,8 +51,8 @@ struct octet_encoder
 	}
 
 	template <class IE>
-	bool operator() (PUSH_STATE const&, IE const&)      { return ctx.buffer().push_state(); }
-	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
+	bool operator() (PUSH_STATE, IE const&)           { return ctx.buffer().push_state(); }
+	void operator() (POP_STATE)                       { ctx.buffer().pop_state(); }
 	void operator() (ADVANCE_STATE const& ss)
 	{
 		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
@@ -65,14 +65,14 @@ struct octet_encoder
 
 	//IE_NULL
 	template <class IE>
-	void operator() (IE const&, IE_NULL const&)
+	void operator() (IE const&, IE_NULL)
 	{
 		CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString());
 	}
 
 	//IE_VALUE
 	template <class IE>
-	void operator() (IE const& ie, IE_VALUE const&)
+	void operator() (IE const& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("VAL[%s]=%#zx %zu bits: %s", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits, ctx.buffer().toString());
@@ -82,7 +82,7 @@ struct octet_encoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	void operator() (IE const& ie, IE_OCTET_STRING const&)
+	void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
 		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());

@@ -13,6 +13,7 @@ Distributed under the MIT License
 #include "../value.hpp"
 #include "../octet_string.hpp"
 #include "../bit_string.hpp"
+#include "../sequence.hpp"
 
 namespace med::asn {
 
@@ -31,6 +32,9 @@ using enumerated = med::value<int, traits<tag_value::ENUMERATED>>;
 using real = med::value<double, traits<tag_value::REAL>>;
 using bit_string = med::bit_string<traits<tag_value::BIT_STRING>>;
 using octet_string = med::octet_string<octets_var_extern, traits<tag_value::OCTET_STRING>>;
+
+template <class ...IES>
+using sequence = med::base_sequence<traits<tag_value::SEQUENCE>, IES...>;
 
 } //end: namespace med::asn
 

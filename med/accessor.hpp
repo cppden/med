@@ -35,10 +35,10 @@ struct access
 	}
 };
 
-template <class CONTAINER>
+template <class C>
 struct accessor
 {
-	explicit accessor(CONTAINER& c) noexcept : m_that(c)  { }
+	explicit accessor(C& c) noexcept : m_that(c)  { }
 
 	template <class T, class = std::enable_if_t<!std::is_pointer_v<T>>> operator T& ()
 	{
@@ -51,13 +51,13 @@ struct accessor
 	}
 
 private:
-	CONTAINER& m_that;
+	C& m_that;
 };
 
-template <class CONTAINER>
+template <class C>
 struct caccessor
 {
-	explicit caccessor(CONTAINER const& c) noexcept : m_that(c) { }
+	explicit caccessor(C const& c) noexcept : m_that(c) { }
 	template <class T> operator T const* () const
 	{
 		return access<T>::as_optional(m_that.template get<T>());
@@ -69,41 +69,41 @@ struct caccessor
 	}
 
 private:
-	CONTAINER const& m_that;
+	C const& m_that;
 };
 
-template <class CONTAINER>
+template <class C>
 struct index_caccessor
 {
-	index_caccessor(CONTAINER const& c, std::size_t i) noexcept : m_that{c}, m_index{i}  { }
+	index_caccessor(C const& c, std::size_t i) noexcept : m_that{c}, m_index{i}  { }
 	template <class T> operator T const* () const
 	{
 		return m_that.template get<T>(m_index);
 	}
 
 private:
-	CONTAINER const&  m_that;
+	C const&          m_that;
 	std::size_t const m_index;
 };
 
 }	//end: namespace detail
 
-template <class CONTAINER>
-inline auto make_accessor(CONTAINER& c)
+template <class C>
+inline auto make_accessor(C& c)
 {
-	return detail::accessor<CONTAINER>{ c };
+	return detail::accessor<C>{ c };
 }
 
-template <class CONTAINER>
-inline auto make_accessor(CONTAINER const& c)
+template <class C>
+inline auto make_accessor(C const& c)
 {
-	return detail::caccessor<CONTAINER>{ c };
+	return detail::caccessor<C>{ c };
 }
 
-template <class CONTAINER>
-inline auto make_accessor(CONTAINER const& c, std::size_t index)
+template <class C>
+inline auto make_accessor(C const& c, std::size_t index)
 {
-	return detail::index_caccessor<CONTAINER>{ c, index };
+	return detail::index_caccessor<C>{ c, index };
 }
 
 }	//end: namespace med

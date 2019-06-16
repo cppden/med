@@ -19,7 +19,7 @@ namespace med {
 
 //traits representing a fixed value of particular size (in bits/bytes/int)
 //which is predefined during encode and decode
-template <std::size_t VAL, class T, class EXT_TRAITS = empty_traits, class Enable = void>
+template <std::size_t VAL, class T, class EXT_TRAITS = base_traits, class Enable = void>
 struct fixed
 {
 	static_assert(std::is_void<T>(), "MALFORMED FIXED");
@@ -43,14 +43,14 @@ struct fixed<VAL, bytes<BYTES>, EXT_TRAITS, void>
 
 template <std::size_t VAL, typename T, class EXT_TRAITS>
 struct fixed< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
-	: base_traits<T, EXT_TRAITS>
+	: value_base_traits<T, EXT_TRAITS>
 {
 	static constexpr bool is_const = true;
-	static constexpr typename base_traits<T, EXT_TRAITS>::value_type value = VAL;
+	static constexpr typename value_base_traits<T, EXT_TRAITS>::value_type value = VAL;
 };
 
 //traits representing a fixed value with default
-template <std::size_t VAL, class T, class EXT_TRAITS = empty_traits, class Enable = void>
+template <std::size_t VAL, class T, class EXT_TRAITS = base_traits, class Enable = void>
 struct defaults
 {
 	static_assert(std::is_void<T>(), "MALFORMED DEFAULTS");
@@ -72,14 +72,14 @@ struct defaults<VAL, bytes<BYTES>, EXT_TRAITS, void>
 
 template <std::size_t VAL, typename T, class EXT_TRAITS>
 struct defaults< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
-	: base_traits<T, EXT_TRAITS>
+	: value_base_traits<T, EXT_TRAITS>
 {
-	static constexpr typename base_traits<T, EXT_TRAITS>::value_type default_value = VAL;
+	static constexpr typename value_base_traits<T, EXT_TRAITS>::value_type default_value = VAL;
 };
 
 //traits representing initialized value which is encoded with the fixed value
 //but can have any value when decoded
-template <std::size_t VAL, class T, class EXT_TRAITS = empty_traits>
+template <std::size_t VAL, class T, class EXT_TRAITS = base_traits>
 struct init : fixed<VAL, T, EXT_TRAITS>
 {
 	static constexpr bool is_const = false;
@@ -191,7 +191,7 @@ struct def_integer : integer<TRAITS>
 /**
  * generic value - a facade for integers above
  */
-template <class T, class EXT_TRAITS = empty_traits, class Enable = void>
+template <class T, class EXT_TRAITS = base_traits, class Enable = void>
 struct value;
 
 
@@ -205,7 +205,7 @@ struct value<bytes<BYTES>, EXT_TRAITS, void>
 
 template <typename VAL, class EXT_TRAITS>
 struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_integral_v<VAL>> >
-	: integer<base_traits<VAL, EXT_TRAITS>> {};
+	: integer<value_base_traits<VAL, EXT_TRAITS>> {};
 
 //meta-function to select proper int
 template <class T, typename Enable = void>
@@ -253,7 +253,7 @@ struct value< T, EXT_TRAITS, std::enable_if_t<not std::is_void_v<typename T::val
 //TODO: support in octet codecs? rename integer to more generic name?
 template <typename VAL, class EXT_TRAITS>
 struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_floating_point_v<VAL>> >
-	: integer<base_traits<VAL, EXT_TRAITS>> {};
+	: integer<value_base_traits<VAL, EXT_TRAITS>> {};
 
 
 } //namespace med

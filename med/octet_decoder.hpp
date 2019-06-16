@@ -33,16 +33,16 @@ struct octet_decoder
 	{
 	}
 
-	allocator_type& get_allocator()                    { return ctx.get_allocator(); }
+	allocator_type& get_allocator()             { return ctx.get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
+	auto operator() (PUSH_SIZE const& ps)       { return ctx.buffer().push_size(ps.size); }
 	template <class IE>
-	bool operator() (PUSH_STATE const&, IE const&)     { return ctx.buffer().push_state(); }
-	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
+	bool operator() (PUSH_STATE, IE const&)     { return ctx.buffer().push_state(); }
+	bool operator() (POP_STATE)                 { return ctx.buffer().pop_state(); }
+	auto operator() (GET_STATE)                 { return ctx.buffer().get_state(); }
 	template <class IE>
-	bool operator() (CHECK_STATE const&, IE const&)    { return !ctx.buffer().empty(); }
+	bool operator() (CHECK_STATE, IE const&)    { return !ctx.buffer().empty(); }
 	void operator() (ADVANCE_STATE const& ss)
 	{
 		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
@@ -55,14 +55,14 @@ struct octet_decoder
 
 	//IE_NULL
 	template <class IE>
-	void operator() (IE&, IE_NULL const&)
+	void operator() (IE&, IE_NULL)
 	{
 		CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString());
 	}
 
 	//IE_VALUE
 	template <class IE>
-	void operator() (IE& ie, IE_VALUE const&)
+	void operator() (IE& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
@@ -84,7 +84,7 @@ struct octet_decoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	void operator() (IE& ie, IE_OCTET_STRING const&)
+	void operator() (IE& ie, IE_OCTET_STRING)
 	{
 		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
 		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))

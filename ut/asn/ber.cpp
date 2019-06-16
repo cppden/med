@@ -258,7 +258,8 @@ TEST(asn_ber, identifier)
 }
 
 template <class IE>
-auto encoded(typename IE::value_type const& val) -> std::enable_if_t<std::is_arithmetic_v<typename IE::value_type>, std::string>
+auto encoded(typename IE::value_type const& val)
+	-> std::enable_if_t<std::is_arithmetic_v<typename IE::value_type>, std::string>
 {
 	uint8_t enc_buf[128] = {};
 	med::encoder_context<> ectx{ enc_buf };
@@ -278,6 +279,10 @@ auto encoded(typename IE::value_type const& val) -> std::enable_if_t<std::is_ari
 
 template <class IE, typename T>
 std::string encoded(T const* pval, std::size_t size)
+//	-> std::enable_if_t<
+//		IE::traits::asn_tag_type == med::asn::OCTET_STRING ||
+//		IE::traits::asn_tag_type == med::asn::BIT_STRING
+//	, std::string>
 {
 	uint8_t enc_buf[128*1024] = {};
 	med::encoder_context<> ectx{ enc_buf };
@@ -291,6 +296,24 @@ std::string encoded(T const* pval, std::size_t size)
 	dctx.reset(ectx.buffer().get_start(), ectx.buffer().get_offset());
 	decode(med::asn::ber::decoder{dctx}, dec);
 	EXPECT_EQ(enc.get().size(), dec.get().size());
+	//EXPECT_EQ(enc.get().data(), dec.get().data());
+
+	return as_string(ectx.buffer());
+}
+
+template <class IE>
+std::string encoded(IE const& enc)
+{
+	uint8_t enc_buf[128*1024] = {};
+	med::encoder_context<> ectx{ enc_buf };
+
+	encode(med::asn::ber::encoder{ectx}, enc);
+
+	IE dec;
+	med::decoder_context<> dctx;
+	dctx.reset(ectx.buffer().get_start(), ectx.buffer().get_offset());
+	decode(med::asn::ber::decoder{dctx}, dec);
+	//EXPECT_EQ(enc.get().size(), dec.get().size());
 	//EXPECT_EQ(enc.get().data(), dec.get().data());
 
 	return as_string(ectx.buffer());
@@ -314,6 +337,7 @@ std::string encoded()
 }
 
 
+//8.2 Encoding of a boolean value
 TEST(asn_ber, boolean)
 {	
 	EXPECT_EQ("01 01 FF "s, encoded<med::asn::boolean>(true));
@@ -327,6 +351,7 @@ TEST(asn_ber, prefixed_boolean)
 	EXPECT_EQ("9F 88 00 01 00 "s, encoded<boolean>(false));
 }
 
+//8.3 Encoding of an integer value
 TEST(asn_ber, integer)
 {
 	EXPECT_EQ("02 01 00 "s, encoded<med::asn::integer>(0));
@@ -343,6 +368,7 @@ TEST(asn_ber, prefixed_integer)
 	EXPECT_EQ("9F 88 00 02 00 80 "s, encoded<integer>(128));
 }
 
+//8.4 Encoding of an enumerated value
 TEST(asn_ber, enumerated)
 {
 	/*
@@ -373,6 +399,7 @@ TEST(asn_ber, prefixed_enumerated)
 	EXPECT_EQ("9F 8F 29 01 01 "s, encoded<enumerated>(two));
 }
 
+//8.5 Encoding of a real value
 TEST(DISABLED_asn_ber, real)
 {
 	/*
@@ -400,28 +427,7 @@ TEST(DISABLED_asn_ber, real)
 	EXPECT_EQ("09 01 43 "s, encoded<med::asn::real>(-0));
 }
 
-TEST(asn_ber, null)
-{
-	/*
-	World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
-		Nothing ::= NULL
-	END
-
-	value Nothing ::= NULL
-	*/
-	EXPECT_EQ("05 00 "s, encoded<med::asn::null>());
-}
-TEST(asn_ber, null_prefixed)
-{
-	/*
-	World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
-		Nothing ::= [137] NULL
-	END
-	*/
-	using null = med::empty<med::asn::traits<137, med::asn::tag_class::CONTEXT_SPECIFIC>>;
-	EXPECT_EQ("9F 81 09 00 "s, encoded<null>());
-}
-
+//8.6 Encoding of a bitstring value
 TEST(asn_ber, bit_string)
 {
 	/*
@@ -438,6 +444,7 @@ TEST(asn_ber, bit_string)
 	EXPECT_EQ("03 07 04 0A 3B 5F 29 1C D0 "s, encoded<med::asn::bit_string>(small, 11*4));
 }
 
+//8.7 Encoding of an octetstring value
 TEST(asn_ber, octet_string)
 {
 	/*
@@ -476,7 +483,82 @@ END
 		, encoded<octet_str>(big.data(), big.size()));
 }
 
+//8.8 Encoding of a null value
+TEST(asn_ber, null)
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+		Nothing ::= NULL
+	END
 
+	value Nothing ::= NULL
+	*/
+	EXPECT_EQ("05 00 "s, encoded<med::asn::null>());
+}
+TEST(asn_ber, null_prefixed)
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+		Nothing ::= [137] NULL
+	END
+	*/
+	using null = med::empty<med::asn::traits<137, med::asn::tag_class::CONTEXT_SPECIFIC>>;
+	EXPECT_EQ("9F 81 09 00 "s, encoded<null>());
+}
+
+namespace ab {
+template <typename ...T>
+using M = med::mandatory<T...>;
+template <typename ...T>
+using O = med::optional<T...>;
+
+/*
+World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+BEGIN
+	Seq ::= SEQUENCE
+	{
+		moct	OCTET STRING,
+		ooct	OCTET STRING OPTIONAL,
+		mint	INTEGER,
+		oint	INTEGER OPTIONAL
+	}
+END
+*/
+struct moct : med::asn::octet_string {};
+struct ooct : med::asn::octet_string {};
+struct mint : med::asn::integer {};
+struct oint : med::asn::integer {};
+
+struct Seq : med::asn::sequence<
+	M<moct>,
+	O<ooct>,
+	M<mint>,
+	O<oint>
+>
+{};
+
+}
+
+//8.9 Encoding of a sequence value
+TEST(DISABLED_asn_ber, sequence)
+{
+/*
+value Seq ::= {
+	moct '1234'H,
+	mint 7
+}
+*/
+	ab::Seq s;
+	uint8_t const moct_val[] = {0x12, 0x34};
+	s.ref<ab::moct>().set(sizeof(moct_val), moct_val);
+	s.ref<ab::mint>().set(7);
+	EXPECT_EQ("30 07 80 02 12 34 82 01 07 "s, encoded(s));
+}
+
+//8.10 Encoding of a sequence-of value
+//8.11 Encoding of a set value
+//8.12 Encoding of a set-of value
+//8.13 Encoding of a choice value
 /*
 	cho CHOICE
 	{
@@ -484,3 +566,16 @@ END
 		two INTEGER
 	}
 */
+//8.14 Encoding of a value of a prefixed type
+//8.15 Encoding of an open type
+//8.16 Encoding of an instance-of value
+//8.17 Encoding of a value of the embedded-pdv type
+//8.18 Encoding of a value of the external type
+//8.19 Encoding of an object identifier value
+//8.20 Encoding of a relative object identifier value
+//8.21 Encoding of an OID internationalized resource identifier value
+//8.22 Encoding of a relative OID internationalized resource identifier value
+//8.23 Encoding for values of the restricted character string types
+//8.24 Encoding for values of the unrestricted character string type
+//8.25 Encoding for values of the useful types
+//8.26 Encoding for values of the TIME type and the useful time types

@@ -12,10 +12,10 @@ Distributed under the MIT License
 #include <type_traits>
 
 #include "units.hpp"
+#include "traits.hpp"
 
 namespace med {
 
-struct empty_traits {};
 
 using num_octs_t = uint32_t;
 
@@ -24,7 +24,7 @@ namespace detail {
 template <
 		typename VT,
 		std::size_t NUM_BITS  = sizeof(VT) * 8,
-		class EXT_TRAITS = empty_traits
+		class EXT_TRAITS = base_traits
 		>
 struct bit_traits : EXT_TRAITS
 {
@@ -35,7 +35,7 @@ struct bit_traits : EXT_TRAITS
 template <
 		std::size_t MIN_BITS = 0,
 		std::size_t MAX_BITS = MIN_BITS,
-		class EXT_TRAITS = empty_traits
+		class EXT_TRAITS = base_traits
 		>
 struct bits_traits : EXT_TRAITS
 {
@@ -48,7 +48,7 @@ template <
 		typename VT,
 		std::size_t MIN_BYTES = sizeof(VT),
 		std::size_t MAX_BYTES = MIN_BYTES,
-		class EXT_TRAITS = empty_traits
+		class EXT_TRAITS = base_traits
 		>
 struct octet_traits : EXT_TRAITS
 {
@@ -66,16 +66,16 @@ template <std::size_t MAX>
 struct max : std::integral_constant<std::size_t, MAX> {};
 
 template <class VT, class = void, class = void, class = void>
-struct base_traits;
+struct value_base_traits;
 
 template <class VT>
-struct base_traits<VT, void, void, void> : detail::bit_traits<VT> {};
+struct value_base_traits<VT, void, void, void> : detail::bit_traits<VT> {};
 template <class VT, class EXT_TRAITS>
-struct base_traits<VT, EXT_TRAITS, void, void> : detail::bit_traits<VT, sizeof(VT)*8, EXT_TRAITS> {};
+struct value_base_traits<VT, EXT_TRAITS, void, void> : detail::bit_traits<VT, sizeof(VT)*8, EXT_TRAITS> {};
 template <class VT, std::size_t BITS>
-struct base_traits<VT, bits<BITS>, void, void> : detail::bit_traits<VT, BITS> {};
+struct value_base_traits<VT, bits<BITS>, void, void> : detail::bit_traits<VT, BITS> {};
 template <class VT, std::size_t BITS, class EXT_TRAITS>
-struct base_traits<VT, bits<BITS>, EXT_TRAITS, void> : detail::bit_traits<VT, BITS, EXT_TRAITS> {};
+struct value_base_traits<VT, bits<BITS>, EXT_TRAITS, void> : detail::bit_traits<VT, BITS, EXT_TRAITS> {};
 
 constexpr std::size_t bits_to_bytes(std::size_t num_bits)
 {
@@ -99,19 +99,19 @@ template <class EXT_TRAITS, std::size_t BITS, typename Enabler = void> struct va
 
 template <class EXT_TRAITS, std::size_t BITS>
 struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 0 && BITS <= 8)>>
-		: base_traits<uint8_t, bits<BITS>, EXT_TRAITS> {};
+		: value_base_traits<uint8_t, bits<BITS>, EXT_TRAITS> {};
 
 template <class EXT_TRAITS, std::size_t BITS>
 struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 8 && BITS <= 16)>>
-		: base_traits<uint16_t, bits<BITS>, EXT_TRAITS> {};
+		: value_base_traits<uint16_t, bits<BITS>, EXT_TRAITS> {};
 
 template <class EXT_TRAITS, std::size_t BITS>
 struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 16 && BITS <= 32)>>
-		: base_traits<uint32_t, bits<BITS>, EXT_TRAITS> {};
+		: value_base_traits<uint32_t, bits<BITS>, EXT_TRAITS> {};
 
 template <class EXT_TRAITS, std::size_t BITS>
 struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 32 && BITS <= 64)>>
-		: base_traits<uint64_t, bits<BITS>, EXT_TRAITS> {};
+		: value_base_traits<uint64_t, bits<BITS>, EXT_TRAITS> {};
 
 template <class EXT_TRAITS ,std::size_t BITS>
 struct value_traits<EXT_TRAITS, BITS, std::enable_if_t<(BITS > 64)>> : EXT_TRAITS

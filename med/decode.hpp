@@ -36,14 +36,14 @@ struct default_handler
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-constexpr void decode_ie(FUNC& func, IE& ie, IE_NULL const&, UNEXP&)
+constexpr void decode_ie(FUNC& func, IE& ie, IE_NULL, UNEXP&)
 {
 	func(ie, typename WRAPPER::ie_type{});
 	//ie.set();
 }
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-constexpr void decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
+constexpr void decode_ie(FUNC& func, IE& ie, PRIMITIVE, UNEXP&)
 {
 	CODEC_TRACE("PRIMITIVE %s", name<IE>());
 	if constexpr (is_peek_v<IE>)
@@ -67,7 +67,7 @@ constexpr void decode_ie(FUNC& func, IE& ie, PRIMITIVE const&, UNEXP&)
 
 //Tag-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline void decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
+inline void decode_ie(FUNC& func, IE& ie, IE_TV, UNEXP& unexp)
 {
 	CODEC_TRACE("TV %s", name<IE>());
 	//convert const to writable
@@ -85,7 +85,7 @@ inline void decode_ie(FUNC& func, IE& ie, IE_TV const&, UNEXP& unexp)
 
 //Length-Value
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline void decode_ie(FUNC& func, IE& ie, IE_LV const&, UNEXP& unexp)
+inline void decode_ie(FUNC& func, IE& ie, IE_LV, UNEXP& unexp)
 {
 	typename WRAPPER::length_type len_ie;
 	CODEC_TRACE("LV[%s]", name<WRAPPER>());
@@ -120,7 +120,6 @@ struct len_dec_impl
 	using size_state = typename FUNC::size_state;
 	using allocator_type = typename FUNC::allocator_type;
 	static constexpr std::size_t granularity = FUNC::granularity;
-	static constexpr auto codec_kind = get_codec_kind_v<FUNC>;
 
 	using length_type = typename IE::length_type;
 
@@ -146,8 +145,12 @@ struct len_dec_impl
 	explicit operator bool() const                     { return static_cast<bool>(m_size_state); }
 	auto size() const                                  { return m_size_state.size(); }
 
-	template <class ...T>
-	auto operator() (T&&... args)                      { return m_decoder(std::forward<T>(args)...); }
+	//forward regular types to decoder
+	template <class... Args> //NOTE: decltype is needed to expose actually defined operators
+	auto operator() (Args&&... args) -> decltype(std::declval<FUNC>()(std::forward<Args>(args)...))
+	{
+		return m_decoder(std::forward<Args>(args)...);
+	}
 
 	allocator_type& get_allocator()                    { return m_decoder.get_allocator(); }
 
@@ -236,12 +239,9 @@ struct length_decoder<true, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
 };
 
 template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline void decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
+inline void decode_ie(FUNC& func, IE& ie, CONTAINER, UNEXP& unexp)
 {
-	if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-	{
-		func(ie, ENTRY_CONTAINER{});
-	}
+	call_if<is_callable_with_v<FUNC, ENTRY_CONTAINER>>::call(func, ENTRY_CONTAINER{}, ie);
 
 	if constexpr (is_length_v<IE>)
 	{
@@ -274,26 +274,14 @@ inline void decode_ie(FUNC& func, IE& ie, CONTAINER const&, UNEXP& unexp)
 			ie.decode(ld, unexp);
 			ld.restore_end();
 		}
-
-		//TODO: refactor to cover all branches the same way as in encoder
-		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-		{
-			func(ie, EXIT_CONTAINER{});
-		}
 	}
 	else
 	{
 		CODEC_TRACE("%s w/o length...:", name<IE>());
-		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-		{
-			ie.decode(func, unexp);
-			func(ie, EXIT_CONTAINER{});
-		}
-		else
-		{
-			ie.decode(func, unexp);
-		}
+		ie.decode(func, unexp);
 	}
+
+	call_if<is_callable_with_v<FUNC, EXIT_CONTAINER>>::call(func, EXIT_CONTAINER{}, ie);
 }
 
 }	//end: namespace sl

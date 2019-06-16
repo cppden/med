@@ -173,7 +173,7 @@ protected:
 };
 
 
-template <class TRAITS = empty_traits, class = void, class = void>
+template <class TRAITS = base_traits, class = void, class = void>
 struct bit_string;
 
 constexpr std::size_t MAX_BITS = 8*std::numeric_limits<num_octs_t>::max();

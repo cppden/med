@@ -200,19 +200,16 @@ public:
 	}
 
 	//primitives
-	template <class IE, class IE_TYPE>
-	void operator() (IE const& ie, IE_TYPE const&)
-	{
-		dump(ie);
-	}
+	template <class IE>
+	void operator() (IE const& ie, PRIMITIVE)   { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
 
 	//state
 	constexpr void operator() (SNAPSHOT const&) { }
 	//length encoder
 	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
 
-	template <class IE>
-	void dump(IE const& ie)                     { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
+//	template <class IE>
+//	void dump(IE const& ie)                     { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
 
 	friend struct container_encoder;
 

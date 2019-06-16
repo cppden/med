@@ -57,12 +57,9 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		if (field.is_set())
 		{
 			sl::encode_ie<IE>(func, field, typename IE::ie_type{});
-			if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+			if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
 			{
-				if (ie.last() != &field)
-				{
-					func(ie, NEXT_CONTAINER_ELEMENT{});
-				}
+				if (ie.last() != &field) { func(NEXT_CONTAINER_ELEMENT{}, ie); }
 			}
 		}
 		else
@@ -187,12 +184,9 @@ struct seq_for<IE, IES...>
 					while (func(CHECK_STATE{}, ie) && count < IE::max)
 					{
 						auto* field = ie.push_back(func);
-						if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+						if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
 						{
-							if (count > 0)
-							{
-								func(ie, NEXT_CONTAINER_ELEMENT{});
-							}
+							if (count > 0) { func(NEXT_CONTAINER_ELEMENT{}, ie); }
 						}
 						sl::decode_ie<IE>(func, *field, typename IE::ie_type{}, unexp);
 						++count;
@@ -430,8 +424,8 @@ struct seq_for<>
 
 }	//end: namespace sl
 
-template <class ...IES>
-struct sequence : container<IES...>
+template <class TRAITS, class ...IES>
+struct base_sequence : container<TRAITS, IES...>
 {
 	template <class ENCODER>
 	void encode(ENCODER&& encoder) const
@@ -447,6 +441,8 @@ struct sequence : container<IES...>
 	}
 };
 
+template <class ...IES>
+using sequence = base_sequence<base_traits, IES...>;
 
 } //end: namespace med
 

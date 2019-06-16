@@ -153,11 +153,12 @@ struct container_for<>
 
 }	//end: namespace sl
 
-template <class... IES>
+template <class TRAITS, class... IES>
 class container : public IE<CONTAINER>
 {
 public:
-	using container_t = container<IES...>;
+	using traits = TRAITS;
+	using container_t = container<TRAITS, IES...>;
 	using ies_types = meta::typelist<IES...>;
 
 	template <class FIELD>

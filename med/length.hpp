@@ -64,17 +64,17 @@ constexpr std::size_t get_length(FIELD const& field)
 namespace detail {
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const&, IE_NULL const&) { return 0; }
+constexpr std::size_t calc_length(FIELD const&, IE_NULL) { return 0; }
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, CONTAINER const&)
+constexpr std::size_t calc_length(FIELD const& field, CONTAINER)
 {
 	CODEC_TRACE("calc_length(%s)...", name<FIELD>());
 	return field.calc_length();
 }
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, PRIMITIVE const&)
+constexpr std::size_t calc_length(FIELD const& field, PRIMITIVE)
 {
 	//TODO: use traits to distinguish fixed from variable size
 	if constexpr (detail::has_get_length<FIELD>::value && !detail::has_set_length<FIELD>::value)
@@ -91,7 +91,7 @@ constexpr std::size_t calc_length(FIELD const& field, PRIMITIVE const&)
 }
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, IE_TV const&)
+constexpr std::size_t calc_length(FIELD const& field, IE_TV)
 {
 	using tag_t = typename WRAPPER::tag_type;
 	CODEC_TRACE("calc_length(%s) : TV", name<FIELD>());
@@ -99,7 +99,7 @@ constexpr std::size_t calc_length(FIELD const& field, IE_TV const&)
 }
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, IE_LV const&)
+constexpr std::size_t calc_length(FIELD const& field, IE_LV)
 {
 	using len_t = typename WRAPPER::length_type;
 	CODEC_TRACE("calc_length(%s) : LV", name<FIELD>());

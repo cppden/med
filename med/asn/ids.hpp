@@ -11,6 +11,8 @@ Distributed under the MIT License
 
 #include <cstdint>
 
+#include "../traits.hpp"
+
 namespace med::asn {
 
 /* X.680
@@ -120,10 +122,10 @@ enum tag_value : uint8_t
 
 
 template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
-struct traits
+struct traits : med::base_traits
 {
-	static constexpr auto asn_tag_class = CLASS;
 	static constexpr auto asn_tag_type = TYPE;
+	static constexpr auto asn_tag_class = CLASS;
 	static constexpr auto asn_tag_value = TAG;
 };
 

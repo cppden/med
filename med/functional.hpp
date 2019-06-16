@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <utility>
 #include <type_traits>
 
 namespace med {
@@ -106,5 +107,29 @@ template <class T>
 struct is_predefined<T, std::enable_if_t<T::is_const>> : std::true_type {};
 template <class T>
 constexpr bool is_predefined_v = is_predefined<T>::value;
+
+template <class F, class OP, class Enable = void>
+struct is_callable_with : std::false_type { };
+template <class F, class OP>
+struct is_callable_with<F, OP, decltype(std::declval<F>()(OP{}, std::true_type{}))> : std::true_type { };
+template <class F, class OP>
+constexpr bool is_callable_with_v = is_callable_with<F, OP>::value;
+
+template <bool V = false>
+struct call_if
+{
+	template <class... Ts>
+	static constexpr void call(Ts&&...) {}
+};
+
+template <>
+struct call_if<true>
+{
+	template <class F, class... Ts>
+	static constexpr void call(F&& func, Ts&&... args)
+	{
+		func(std::forward<Ts>(args)...);
+	}
+};
 
 }	//end: namespace med

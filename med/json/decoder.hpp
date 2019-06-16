@@ -64,7 +64,6 @@ struct decoder
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
 	enum : std::size_t { granularity = 1 };
-	static constexpr auto codec_kind = codec_e::STRUCTURED;
 
 	DEC_CTX& ctx;
 
@@ -74,21 +73,20 @@ struct decoder
 	//state
 	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
 	template <class IE>
-	bool operator() (PUSH_STATE const&, IE const&)
+	bool operator() (PUSH_STATE, IE const&)
 	{
 		return this->template test_eof<IE>() && ctx.buffer().push_state();
 	}
-	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
+	bool operator() (POP_STATE)                        { return ctx.buffer().pop_state(); }
+	auto operator() (GET_STATE)                        { return ctx.buffer().get_state(); }
 	template <class IE>
-	bool operator() (CHECK_STATE const&, IE const&)
+	bool operator() (CHECK_STATE, IE const&)
 	{
 		return this->template test_eof<IE>() && not ctx.buffer().empty();
 	}
 
-	//CONTAINER
 	template <class IE>
-	void operator() (IE const&, ENTRY_CONTAINER const&)
+	void operator() (ENTRY_CONTAINER, IE const&)
 	{
 		constexpr auto open_brace = []()
 		{
@@ -100,19 +98,19 @@ struct decoder
 		{
 			MED_THROW_EXCEPTION(invalid_value, name<IE>(), open_brace(), ctx.buffer());
 		}
-		CODEC_TRACE("ENTRY_CONTAINER-%c-[%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("entry<%c> [%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
 	}
 	template <class IE>
-	void operator() (IE const&, HEADER_CONTAINER const&)
+	void operator() (HEADER_CONTAINER, IE const&)
 	{
 		if (not skip_ws_after(ctx.buffer(), ':'))
 		{
 			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ':', ctx.buffer());
 		}
-		CODEC_TRACE("CONTAINER-:-[%s]: %s", name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("head<:> [%s]: %s", name<IE>(), ctx.buffer().toString());
 	}
 	template <class IE>
-	void operator() (IE const&, EXIT_CONTAINER const&)
+	void operator() (EXIT_CONTAINER, IE const&)
 	{
 		constexpr auto closing_brace = []()
 		{
@@ -124,11 +122,11 @@ struct decoder
 		{
 			MED_THROW_EXCEPTION(invalid_value, name<IE>(), closing_brace(), ctx.buffer());
 		}
-		CODEC_TRACE("EXIT_CONTAINER-%c-[%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("exit<%c> [%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
 	}
 
 	template <class IE>
-	void operator() (IE const&, NEXT_CONTAINER_ELEMENT const&)
+	void operator() (NEXT_CONTAINER_ELEMENT, IE const&)
 	{
 		if (not skip_ws_after(ctx.buffer(), ','))
 		{
@@ -139,7 +137,7 @@ struct decoder
 
 	//IE_VALUE
 	template <class IE>
-	void operator() (IE& ie, IE_VALUE const&)
+	void operator() (IE& ie, IE_VALUE)
 	{
 		auto* p = ctx.buffer().template advance<IE, 1>();
 		//CODEC_TRACE("->VAL[%s]: %.*s", name<IE>(), 5, p);
@@ -181,7 +179,7 @@ struct decoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	void operator() (IE& ie, IE_OCTET_STRING const&)
+	void operator() (IE& ie, IE_OCTET_STRING)
 	{
 		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), ctx.buffer().toString());
 		auto p = ctx.buffer().begin(), pe = ctx.buffer().end();

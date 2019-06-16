@@ -45,12 +45,14 @@ struct decoder
 
 	//state
 	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
-	bool operator() (POP_STATE const&)                 { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE const&)                 { return ctx.buffer().get_state(); }
+	bool operator() (POP_STATE)                        { return ctx.buffer().pop_state(); }
+	auto operator() (GET_STATE)                        { return ctx.buffer().get_state(); }
+	template <class IE>
+	bool operator() (CHECK_STATE, IE const&)           { return !ctx.buffer().empty(); }
 
 	//IE_NULL
 	template <class IE>
-	void operator() (IE&, IE_NULL const&)
+	void operator() (IE&, IE_NULL)
 	{
 		using tv = tag_value<typename IE::traits, false>;
 		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
@@ -72,7 +74,7 @@ struct decoder
 
 	//IE_VALUE
 	template <class IE>
-	void operator() (IE& ie, IE_VALUE const&)
+	void operator() (IE& ie, IE_VALUE)
 	{
 		using tv = tag_value<typename IE::traits, false>;
 		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
@@ -116,9 +118,9 @@ struct decoder
 		}
 	}
 
-	//IE_OCTET_STRING
+	//IE_BIT_STRING
 	template <class IE>
-	void operator() (IE& ie, IE_BIT_STRING const&)
+	void operator() (IE& ie, IE_BIT_STRING)
 	{
 		using tv = tag_value<typename IE::traits, false>;
 		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
@@ -150,7 +152,7 @@ struct decoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	void operator() (IE& ie, IE_OCTET_STRING const&)
+	void operator() (IE& ie, IE_OCTET_STRING)
 	{
 		using tv = tag_value<typename IE::traits, false>;
 		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();

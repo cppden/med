@@ -28,10 +28,10 @@ struct encoder
 	explicit encoder(ENC_CTX& ctx_) : ctx{ ctx_ } { }
 
 	//state
-	auto operator() (GET_STATE const&)                       { return ctx.buffer().get_state(); }
-	void operator() (SET_STATE const&, state_type const& st) { ctx.buffer().set_state(st); }
+	auto operator() (GET_STATE)                       { return ctx.buffer().get_state(); }
+	void operator() (SET_STATE, state_type const& st) { ctx.buffer().set_state(st); }
 	template <class IE>
-	void operator() (SET_STATE const&, IE const& ie)
+	void operator() (SET_STATE, IE const& ie)
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
@@ -51,8 +51,8 @@ struct encoder
 	}
 
 	template <class IE>
-	bool operator() (PUSH_STATE const&, IE const&)      { return ctx.buffer().push_state(); }
-	void operator() (POP_STATE const&)                  { ctx.buffer().pop_state(); }
+	bool operator() (PUSH_STATE, IE const&)           { return ctx.buffer().push_state(); }
+	void operator() (POP_STATE)                       { ctx.buffer().pop_state(); }
 	void operator() (ADVANCE_STATE const& ss)
 	{
 		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
@@ -61,12 +61,12 @@ struct encoder
 	{
 		ctx.buffer().template fill<ADD_PADDING>(pad.bits/granularity, pad.filler);
 	}
-	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
+	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
 
 	//IE_VALUE
 	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
 	template <class IE>
-	void operator() (IE const& ie, IE_VALUE const&)
+	void operator() (IE const& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		auto value = ie.get_encoded();
@@ -84,7 +84,7 @@ struct encoder
 
 	//IE_OCTET_STRING
 	template <class IE>
-	void operator() (IE const& ie, IE_OCTET_STRING const&)
+	void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
 		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());

@@ -35,7 +35,6 @@ struct len_enc_impl
 	using state_type = typename FUNC::state_type;
 	using length_type = LEN;
 	static constexpr std::size_t granularity = FUNC::granularity;
-	static constexpr auto codec_kind = get_codec_kind_v<FUNC>;
 
 	explicit len_enc_impl(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
@@ -54,11 +53,11 @@ struct len_enc_impl
 	explicit operator bool() const                       { return static_cast<bool>(m_lenpos); }
 
 	//forward regular types to encoder
-	template <class ...T>
-	auto operator() (T&&... args)
+	template <class... Args> //NOTE: decltype is needed to expose actually defined operators
+	auto operator() (Args&&... args) -> decltype(std::declval<FUNC>()(std::forward<Args>(args)...))
 	{
 		//CODEC_TRACE("%s", __PRETTY_FUNCTION__);
-		return m_encoder(std::forward<T>(args)...);
+		return m_encoder(std::forward<Args>(args)...);
 	}
 
 protected:
@@ -203,31 +202,16 @@ struct container_encoder<T, std::void_t<typename T::container_encoder>>
 	}
 };
 
-
-//IE_NULL
 template <class WRAPPER, class FUNC, class IE>
-constexpr void encode_ie(FUNC& func, IE const& ie, IE_NULL const&)
+inline void encode_ie(FUNC& func, IE const& ie, CONTAINER)
 {
-	func(ie, typename WRAPPER::ie_type{});
+	call_if<is_callable_with_v<FUNC, ENTRY_CONTAINER>>::call(func, ENTRY_CONTAINER{}, ie);
+	container_encoder<FUNC>::encode(func, ie);
+	call_if<is_callable_with_v<FUNC, EXIT_CONTAINER>>::call(func, EXIT_CONTAINER{}, ie);
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, CONTAINER const&)
-{
-	if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-	{
-		func(ie, ENTRY_CONTAINER{});
-		container_encoder<FUNC>::encode(func, ie);
-		func(ie, EXIT_CONTAINER{});
-	}
-	else
-	{
-		container_encoder<FUNC>::encode(func, ie);
-	}
-}
-
-template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, PRIMITIVE const&)
+inline void encode_ie(FUNC& func, IE const& ie, PRIMITIVE)
 {
 	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
 	{
@@ -237,7 +221,7 @@ inline void encode_ie(FUNC& func, IE const& ie, PRIMITIVE const&)
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, IE_LV const&)
+inline void encode_ie(FUNC& func, IE const& ie, IE_LV)
 {
 	typename WRAPPER::length_type len_ie{};
 	std::size_t len_value = get_length(ref_field(ie));
@@ -248,7 +232,7 @@ inline void encode_ie(FUNC& func, IE const& ie, IE_LV const&)
 }
 
 template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, IE_TV const&)
+inline void encode_ie(FUNC& func, IE const& ie, IE_TV)
 {
 	typename WRAPPER::tag_type const tag_ie{};
 	CODEC_TRACE("T%zx<%s>{%s}", std::size_t(tag_ie.get()), name<WRAPPER>(), name<IE>());

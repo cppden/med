@@ -72,57 +72,36 @@ struct set_for<IE, IEs...>
 	template <class PREV_IE, class HEADER, class TO, class FUNC>
 	static inline void encode(TO const& to, FUNC& func)
 	{
-		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC> && not std::is_void_v<PREV_IE>)
-		{
-			func(to, NEXT_CONTAINER_ELEMENT{});
-		}
+		call_if<not std::is_void_v<PREV_IE>
+				&& is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>
+			>::call(func, NEXT_CONTAINER_ELEMENT{}, to);
+
 		if constexpr (is_multi_field_v<IE>)
 		{
 			IE const& ie = static_cast<IE const&>(to);
 			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
 
 			check_arity(func, ie);
-			if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+			//TODO: ugly indeed :(
+			constexpr bool do_hdr = is_callable_with_v<FUNC, HEADER_CONTAINER>;
+			if constexpr (do_hdr)
 			{
 				encode_header<HEADER, IE>(func);
-				func(ie, HEADER_CONTAINER{});
-				func(ie, ENTRY_CONTAINER{});
-				bool first = true;
-				for (auto& field : ie)
-				{
-					if (field.is_set())
-					{
-						if (not first)
-						{
-							func(to, NEXT_CONTAINER_ELEMENT{});
-						}
-						med::encode(func, field);
-					}
-					else
-					{
-						//TODO: actually this field was pushed but not set... do we need a new error?
-						MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1);
-					}
-					first = false;
-				}
-				func(ie, EXIT_CONTAINER{});
+				func(HEADER_CONTAINER{}, ie);
 			}
-			else
+
+			call_if<is_callable_with_v<FUNC, ENTRY_CONTAINER>>::call(func, ENTRY_CONTAINER{}, ie);
+			bool first = true;
+			for (auto& field : ie)
 			{
-				for (auto& field : ie)
-				{
-					if (field.is_set())
-					{
-						encode_header<HEADER, IE>(func);
-						med::encode(func, field);
-					}
-					else
-					{
-						//TODO: actually this field was pushed but not set... do we need a new error?
-						MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1);
-					}
-				}
+				//field was pushed but not set... do we need a new error?
+				if (not field.is_set()) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1); }
+				if (not first) { call_if<is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>>::call(func, NEXT_CONTAINER_ELEMENT{}, to); }
+				if constexpr (not do_hdr) { encode_header<HEADER, IE>(func); }
+				med::encode(func, field);
+				first = false;
 			}
+			call_if<is_callable_with_v<FUNC, EXIT_CONTAINER>>::call(func, EXIT_CONTAINER{}, ie);
 		}
 		else //single-instance field
 		{
@@ -131,10 +110,7 @@ struct set_for<IE, IEs...>
 			{
 				CODEC_TRACE("[%s]", name<IE>());
 				encode_header<HEADER, IE>(func);
-				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-				{
-					func(to, HEADER_CONTAINER{});
-				}
+				call_if<is_callable_with_v<FUNC, HEADER_CONTAINER>>::call(func, HEADER_CONTAINER{}, to);
 				med::encode(func, ie.ref_field());
 			}
 			else if constexpr (!is_optional_v<IE>)
@@ -157,16 +133,17 @@ struct set_for<IE, IEs...>
 
 				IE& ie = static_cast<IE&>(to);
 				CODEC_TRACE("[%s]@%zu", name<IE>(), ie.count());
-				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-				{
-					//func(ie, HEADER_CONTAINER{});
-					func(ie, ENTRY_CONTAINER{});
+				//TODO: looks strange since it doesn't match encode's calls
+				//call_if<is_callable_with_v<FUNC, HEADER_CONTAINER>>::call(func, HEADER_CONTAINER{}, ie);
+				call_if<is_callable_with_v<FUNC, ENTRY_CONTAINER>>::call(func, ENTRY_CONTAINER{}, ie);
 
+				if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
+				{
 					while (func(PUSH_STATE{}, ie))
 					{
 						if (auto const num = ie.count())
 						{
-							func(ie, NEXT_CONTAINER_ELEMENT{});
+							func(NEXT_CONTAINER_ELEMENT{}, ie);
 							if (num >= IE::max)
 							{
 								MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, num);
@@ -175,8 +152,6 @@ struct set_for<IE, IEs...>
 						auto* field = ie.push_back(func);
 						med::decode(func, *field, unexp);
 					}
-
-					return func(ie, EXIT_CONTAINER{});
 				}
 				else
 				{
@@ -185,8 +160,11 @@ struct set_for<IE, IEs...>
 						MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count());
 					}
 					auto* field = ie.push_back(func);
-					return med::decode(func, *field, unexp);
+					med::decode(func, *field, unexp);
 				}
+
+				call_if<is_callable_with_v<FUNC, EXIT_CONTAINER>>::call(func, EXIT_CONTAINER{}, ie);
+				return;
 			}
 		}
 		else //single-instance field
@@ -253,11 +231,11 @@ struct set_for<>
 
 }	//end: namespace sl
 
-template <class HEADER, class ...IEs>
-struct set : container<IEs...>
+template <class TRAITS, class HEADER, class ...IEs>
+struct base_set : container<TRAITS, IEs...>
 {
 	using header_type = HEADER;
-	using ies_types = typename container<IEs...>::ies_types;
+	using ies_types = typename container<TRAITS, IEs...>::ies_types;
 
 	template <typename TAG>
 	static constexpr char const* name_tag(TAG const& tag)
@@ -277,45 +255,23 @@ struct set : container<IEs...>
 		static_assert(std::is_void_v<meta::tag_unique_t<ies_types>>, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 
 		//TODO: how to join 2 branches w/o having unused bool
-		if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
+		bool first = true;
+		while (func(PUSH_STATE{}, *this)) //NOTE: this usage doesn't address IE which corresponds to PUSH_STATE
 		{
-			bool first = true;
-			while (func(PUSH_STATE{}, *this)) //NOTE: this usage doesn't address IE which corresponds to PUSH_STATE
-			{
-				if (not first)
-				{
-					func(*this, NEXT_CONTAINER_ELEMENT{});
-				}
-
-				header_type header;
-				med::decode(func, header, unexp);
-				sl::pop_state<header_type>(func);
-				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
-				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-				{
-					func(*this, HEADER_CONTAINER{});
-				}
-				sl::set_for<IEs...>::decode(this->m_ies, func, unexp, header);
-				first = false;
-			}
-		}
-		else
-		{
-			while (func(PUSH_STATE{}, *this)) //NOTE: this usage doesn't address IE which corresponds to PUSH_STATE
-			{
-				header_type header;
-				med::decode(func, header, unexp);
-				sl::pop_state<header_type>(func);
-				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
-				if constexpr (codec_e::STRUCTURED == get_codec_kind_v<FUNC>)
-				{
-					func(*this, HEADER_CONTAINER{});
-				}
-				sl::set_for<IEs...>::decode(this->m_ies, func, unexp, header);
-			}
+			if (not first) { call_if<is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>>::call(func, NEXT_CONTAINER_ELEMENT{}, *this); }
+			header_type header;
+			med::decode(func, header, unexp);
+			sl::pop_state<header_type>(func);
+			CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+			call_if<is_callable_with_v<FUNC, HEADER_CONTAINER>>::call(func, HEADER_CONTAINER{}, *this);
+			sl::set_for<IEs...>::decode(this->m_ies, func, unexp, header);
+			first = false;
 		}
 		return sl::set_for<IEs...>::check(this->m_ies, func);
 	}
 };
+
+template <class HEADER, class ...IEs>
+using set = base_set<base_traits, HEADER, IEs...>;
 
 }	//end: namespace med
