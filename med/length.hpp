@@ -36,7 +36,12 @@ struct has_length_type<T, std::void_t<typename T::length_type>> : std::true_type
 template <class, typename Enable = void>
 struct has_get_length : std::false_type { };
 template <class T>
-struct has_get_length<T, std::void_t<decltype(std::declval<T>().get_length())>> : std::true_type { };
+struct has_get_length<T, std::void_t<decltype(std::declval<T const>().get_length())>> : std::true_type { };
+
+template <class, typename Enable = void>
+struct has_size : std::false_type { };
+template <class T>
+struct has_size<T, std::void_t<decltype(std::declval<T const>().size())>> : std::true_type { };
 
 template <class, typename Enable = void>
 struct has_set_length : std::false_type { };
@@ -55,7 +60,7 @@ constexpr std::size_t get_length(FIELD const& field)
 {
 	return detail::length_getter<FIELD>::get(field);
 }
-template <class WRAPPER, class FIELD, typename Enable = std::enable_if_t<!std::is_same<WRAPPER, FIELD>::value>>
+template <class WRAPPER, class FIELD, typename Enable = std::enable_if_t<!std::is_same_v<WRAPPER, FIELD>>>
 constexpr std::size_t get_length(FIELD const& field)
 {
 	return detail::length_getter<WRAPPER>::get(field);
@@ -64,23 +69,19 @@ constexpr std::size_t get_length(FIELD const& field)
 namespace detail {
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const&, IE_NULL) { return 0; }
-
-template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, CONTAINER)
+constexpr std::size_t field_length(FIELD const& field, CONTAINER)
 {
-	CODEC_TRACE("calc_length(%s)...", name<FIELD>());
+	CODEC_TRACE("%s(%s)...", __FUNCTION__, name<FIELD>());
 	return field.calc_length();
 }
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, PRIMITIVE)
+constexpr std::size_t field_length(FIELD const& field, PRIMITIVE)
 {
-	//TODO: use traits to distinguish fixed from variable size
-	if constexpr (detail::has_get_length<FIELD>::value && !detail::has_set_length<FIELD>::value)
+	if constexpr (detail::has_size<FIELD>::value)
 	{
-		CODEC_TRACE("length(%s) = %zu", name<FIELD>(), std::size_t(field.get_length()));
-		return field.get_length();
+		CODEC_TRACE("length(%s) = %zu", name<FIELD>(), std::size_t(field.size()));
+		return field.size();
 	}
 	else
 	{
@@ -91,18 +92,18 @@ constexpr std::size_t calc_length(FIELD const& field, PRIMITIVE)
 }
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, IE_TV)
+constexpr std::size_t field_length(FIELD const& field, IE_TV)
 {
 	using tag_t = typename WRAPPER::tag_type;
-	CODEC_TRACE("calc_length(%s) : TV", name<FIELD>());
+	CODEC_TRACE("%s(%s) : TV", __FUNCTION__, name<FIELD>());
 	return get_length(tag_t{}) + get_length<FIELD>(ref_field(field));
 }
 
 template <class WRAPPER, class FIELD>
-constexpr std::size_t calc_length(FIELD const& field, IE_LV)
+constexpr std::size_t field_length(FIELD const& field, IE_LV)
 {
 	using len_t = typename WRAPPER::length_type;
-	CODEC_TRACE("calc_length(%s) : LV", name<FIELD>());
+	CODEC_TRACE("%s(%s) : LV", __FUNCTION__, name<FIELD>());
 	return get_length(len_t{}) + get_length<FIELD>(ref_field(field));
 }
 
@@ -129,7 +130,7 @@ struct length_getter
 		}
 		else
 		{
-			return calc_length<WRAPPER>(field, typename WRAPPER::ie_type{});
+			return field_length<WRAPPER>(field, typename WRAPPER::ie_type{});
 		}
 	}
 };

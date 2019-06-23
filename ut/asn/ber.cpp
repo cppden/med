@@ -540,7 +540,7 @@ struct Seq : med::asn::sequence<
 }
 
 //8.9 Encoding of a sequence value
-TEST(DISABLED_asn_ber, sequence)
+TEST(asn_ber, sequence)
 {
 /*
 value Seq ::= {

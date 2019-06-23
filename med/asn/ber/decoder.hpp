@@ -163,19 +163,38 @@ struct decoder
 		{
 			auto const len = get_length<IE>();
 			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), std::size_t(len), ctx.buffer().toString());
-			if (ie.set_encoded(len, ctx.buffer().begin()))
-			{
-				ctx.buffer().template advance<IE>(len);
-			}
-			else
+			if (!ie.set_encoded(len, ctx.buffer().begin()))
 			{
 				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer());
 			}
+			ctx.buffer().template advance<IE>(len);
 		}
 		else
 		{
 			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
 		}
+	}
+
+	template <class IE>
+	void operator() (ENTRY_CONTAINER, IE const&)
+	{
+		//X.690 8.9 Encoding of a sequence value (not segmented only)
+		using tv = tag_value<typename IE::traits, true>;
+		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		std::size_t vtag = 0;
+		get_bytes_impl(input, vtag, std::make_index_sequence<tv::num_bytes()>{});
+		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
+		if (tv::value() == vtag)
+		{
+			auto const len = get_length<IE>();
+			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), std::size_t(len), ctx.buffer().toString());
+		}
+		else
+		{
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+		}
+		//CODEC_TRACE("entry [%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
+		//TODO: need to encode length...
 	}
 
 #ifndef UNIT_TEST

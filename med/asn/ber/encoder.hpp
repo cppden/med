@@ -146,13 +146,15 @@ struct encoder
 	}
 
 	template <class IE>
-	void operator() (ENTRY_CONTAINER, IE const&)
+	void operator() (ENTRY_CONTAINER, IE const& ie)
 	{
-		CODEC_TRACE("entry [%s]: %s", name<IE>(), ctx.buffer().toString());
 		//X.690 8.9 Encoding of a sequence value (not segmented only)
 		using tv = tag_value<typename IE::traits, true>;
 		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
 		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+		auto const len = ie.calc_length();
+		put_length<IE>(len);
+		CODEC_TRACE("entry [%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
 		//TODO: need to encode length...
 	}
 
@@ -164,7 +166,8 @@ private:
 	void put_length(std::size_t len)
 	{
 		// X.690
-		// 8.1.3.3 in definite form length octets consist of 1+ octets, in short (8.1.3.4) or long form (8.1.3.5).
+		// 8.1.3.3 in definite form length octets consist of 1+ octets,
+		// in short (8.1.3.4) or long form (8.1.3.5).
 		if (len < 0x80)
 		{
 			// 8.1.3.4 short form can only be used when length <= 127.

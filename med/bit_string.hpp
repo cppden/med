@@ -141,7 +141,6 @@ struct bit_string_impl : IE<IE_BIT_STRING>
 	using base_t = bit_string_impl;
 
 	constexpr std::size_t size() const      { return m_value.size(); }
-	constexpr std::size_t get_length() const{ return size(); }
 
 	auto* data() const                      { return m_value.data(); }
 	void clear()                            { m_value.clear(); }

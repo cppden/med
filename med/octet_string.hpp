@@ -182,7 +182,6 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	using base_t = octet_string_impl;
 
 	constexpr std::size_t size() const      { return m_value.size(); }
-	constexpr std::size_t get_length() const{ return size(); }
 
 	elem_type const* data() const           { return m_value.data(); }
 	using const_iterator = elem_type const*;

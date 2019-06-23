@@ -9,7 +9,6 @@ Distributed under the MIT License
 
 #pragma once
 
-#include "debug.hpp"
 #include "name.hpp"
 #include "state.hpp"
 #include "octet_string.hpp"

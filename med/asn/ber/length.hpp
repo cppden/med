@@ -15,6 +15,7 @@ Distributed under the MIT License
 namespace med::asn::ber {
 
 //no support for indefinite length as seems useless so far
+constexpr std::size_t bits_in_byte = 8;
 
 namespace detail {
 
@@ -26,25 +27,31 @@ constexpr auto least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_
 		if constexpr (sizeof(T) <= sizeof(int))
 		{
 #ifdef __clang__
-			return 8*sizeof(int) - ((x != 0 && x != -1) ? (__builtin_clz(x > 0 ? x : ~x) - 1) : 8*sizeof(int) - 1);
+			return bits_in_byte * sizeof(int) - ((x != 0 && x != -1)
+				? (__builtin_clz(x > 0 ? x : ~x) - 1)
+				: bits_in_byte * sizeof(int) - 1);
 #else
-			return 8*sizeof(int) - (__builtin_clz(x >= 0 ? x : ~x) - 1);
+			return bits_in_byte * sizeof(int) - (__builtin_clz(x >= 0 ? x : ~x) - 1);
 #endif
 		}
 		else if constexpr (sizeof(T) <= sizeof(long))
 		{
 #ifdef __clang__
-			return 8*sizeof(long) - ((x != 0 && x != -1) ? (__builtin_clzl(x > 0 ? x : ~x) - 1) : 8*sizeof(long) - 1);
+			return bits_in_byte * sizeof(long) - ((x != 0 && x != -1)
+				? (__builtin_clzl(x > 0 ? x : ~x) - 1)
+				: bits_in_byte * sizeof(long) - 1);
 #else
-			return 8*sizeof(long) - (__builtin_clzl(x >= 0 ? x : ~x) - 1);
+			return bits_in_byte * sizeof(long) - (__builtin_clzl(x >= 0 ? x : ~x) - 1);
 #endif
 		}
 		else
 		{
 #ifdef __clang__
-			return 8*sizeof(long long) - ((x != 0 && x != -1) ? (__builtin_clzll(x > 0 ? x : ~x) - 1) : 8*sizeof(long long) - 1);
+			return bits_in_byte * sizeof(long long) - ((x != 0 && x != -1)
+				? (__builtin_clzll(x > 0 ? x : ~x) - 1)
+				: bits_in_byte * sizeof(long long) - 1);
 #else
-			return 8*sizeof(long long) - (__builtin_clzll(x >= 0 ? x : ~x) - 1);
+			return bits_in_byte * sizeof(long long) - (__builtin_clzll(x >= 0 ? x : ~x) - 1);
 #endif
 		}
 	}
@@ -52,15 +59,15 @@ constexpr auto least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_
 	{
 		if constexpr (sizeof(T) <= sizeof(int))
 		{
-			return 8*sizeof(int) - (x ? __builtin_clz(x) : 8*sizeof(int) - 1);
+			return bits_in_byte * sizeof(int) - (x ? __builtin_clz(x) : bits_in_byte * sizeof(int) - 1);
 		}
 		else if constexpr (sizeof(T) <= sizeof(long))
 		{
-			return 8*sizeof(long) - (x ? __builtin_clzl(x) : 8*sizeof(long) - 1);
+			return bits_in_byte * sizeof(long) - (x ? __builtin_clzl(x) : bits_in_byte * sizeof(long) - 1);
 		}
 		else
 		{
-			return 8*sizeof(long long) - (x ? __builtin_clzll(x) : 8*sizeof(long long) - 1);
+			return bits_in_byte * sizeof(long long) - (x ? __builtin_clzll(x) : bits_in_byte * sizeof(long long) - 1);
 		}
 	}
 }
@@ -73,7 +80,7 @@ struct length
 	static constexpr uint8_t bits(INT x)    { return detail::least_bits<INT>(x); }
 
 	template <typename INT>
-	static constexpr uint8_t bytes(INT x)   { return (bits<INT>(x) + 7) / 8; }
+	static constexpr uint8_t bytes(INT x)   { return (bits<INT>(x) + bits_in_byte - 1) / bits_in_byte; }
 };
 
 } //end: namespace med::asn::ber

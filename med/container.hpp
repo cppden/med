@@ -96,7 +96,7 @@ struct container_for<IE, IES...>
 		if constexpr (is_multi_field_v<IE>)
 		{
 			IE const& ie = to;
-			CODEC_TRACE("calc_length[%s]*", name<IE>());
+			CODEC_TRACE("%s[%s]*", __FUNCTION__, name<IE>());
 			std::size_t len = 0;
 			for (auto& v : ie) { len += get_length<IE>(v); }
 			return len + container_for<IES...>::calc_length(to);

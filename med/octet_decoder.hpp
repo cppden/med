@@ -28,10 +28,7 @@ struct octet_decoder
 
 	DEC_CTX& ctx;
 
-	explicit octet_decoder(DEC_CTX& ctx_)
-		: ctx(ctx_)
-	{
-	}
+	explicit octet_decoder(DEC_CTX& c) : ctx{c} { }
 
 	allocator_type& get_allocator()             { return ctx.get_allocator(); }
 
