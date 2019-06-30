@@ -466,10 +466,12 @@ TEST(decode, seq_opt)
 {
 	SEQ_OPT msg;
 
-	uint8_t const encoded1[] = {0, 1, 0x11, 0x22, 0x33, 0x44};
+	//TODO: why? error: array subscript 8 is outside array bounds
+	constexpr std::size_t enc_size = 6;
+	uint8_t const encoded1[2*enc_size] = {0, 1, 0x11, 0x22, 0x33, 0x44};
 	med::decoder_context<> ctx;
 
-	ctx.reset(encoded1, sizeof(encoded1));
+	ctx.reset(encoded1, enc_size);
 	decode(med::octet_decoder{ctx}, msg);
 
 	FLD_DW const* p1 = msg.cfield();

@@ -128,6 +128,12 @@ TEST(copy, choice)
 	cp::word const* pw = dst.cselect();
 	ASSERT_NE(nullptr, pw);
 	EXPECT_EQ(0xABBA, pw->get());
+
+	src.clear();
+	EXPECT_FALSE(src.is_set());
+	EXPECT_TRUE(dst.is_set());
+	src.copy_to(dst);
+	EXPECT_FALSE(dst.is_set());
 }
 
 //TODO: test copy_to, copy of not set fields?

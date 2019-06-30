@@ -58,8 +58,17 @@ namespace literals {
 #pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
 #endif
 
+#if __GNUC__ > 8
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 template <typename T, T... CHARS>
 constexpr Chars<CHARS...> operator""_name() { return { }; }
+
+#if __GNUC__ > 8
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef __clang__
 #pragma clang diagnostic pop

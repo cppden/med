@@ -40,7 +40,6 @@ template <code::value_type CODE, class BODY, class DERIVED>
 struct avp : hdr<CODE, BODY>, med::tag<med::value<med::fixed<CODE, code::value_type>>, DERIVED>
 {
 	using length_type = length;
-	static constexpr auto choice_type = med::choice_type::fixed;
 
 	bool is_set() const                   { return this->body().is_set(); }
 	//using hdr<CODE, BODY>::get;

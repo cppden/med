@@ -186,8 +186,7 @@ struct decoder
 		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
 		if (tv::value() == vtag)
 		{
-			auto const len = get_length<IE>();
-			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), std::size_t(len), ctx.buffer().toString());
+			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), get_length<IE>(), ctx.buffer().toString());
 		}
 		else
 		{

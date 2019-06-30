@@ -18,158 +18,125 @@ Distributed under the MIT License
 #include "decode.hpp"
 #include "meta/unique.hpp"
 #include "meta/typelist.hpp"
+#include "meta/foreach.hpp"
 
 namespace med {
 
-enum class choice_type
-{
-	dynamic,
-	fixed,
-};
-
-template <class... IEs>
-struct cases;
-
-template <class IE, class... IEs>
-struct cases<IE, IEs...>
-{
-	template <typename FIELD>
-	using at = std::conditional_t<
-		std::is_same_v<typename IE::case_type, FIELD>,
-		IE,
-		typename cases<IEs...>::template at<FIELD>
-	>;
-};
-
-template<>
-struct cases<>
-{
-	template <typename FIELD>
-	using at = void; //No such field found
-};
-
-
 namespace sl {
 
-template <class... IEs>
-struct choice_for;
-
-template <class IE, class... IEs>
-struct choice_for<IE, IEs...>
+template <class FIELD>
+struct choice_at
 {
-	template <typename TAG>
-	static constexpr char const* name_tag(TAG const& tag)
-	{
-		if (IE::tag_type::match(tag))
-		{
-			using case_t = typename IE::case_type;
-			return name<case_t>();
-		}
-		else
-		{
-			return choice_for<IEs...>::name_tag(tag);
-		}
-	}
+	template <class T>
+	using type = std::is_same<FIELD, typename T::case_type>;
+};
 
-	template <class ENCODER, class TO>
-	static void encode(ENCODER&& encoder, TO const& to)
+struct choice_if
+{
+	template <class IE, class T, class... Ts>
+	static bool check(T const& v, Ts&&...)
 	{
-		if (IE::tag_type::match(get_tag(to.get_header())))
-		{
-			using case_t = typename IE::case_type;
-			CODEC_TRACE("CASE[%s]", name<case_t>());
-			void const* store_p = &to.m_storage;
-
-			med::encode(encoder, to.get_header());
-			med::encode(encoder, *static_cast<case_t const*>(store_p));
-		}
-		else
-		{
-			choice_for<IEs...>::encode(encoder, to);
-		}
-	}
-
-	template <class DECODER, class TO, class UNEXP>
-	static void decode(DECODER&& decoder, TO& to, UNEXP& unexp)
-	{
-		using case_t = typename IE::case_type;
-		if (IE::tag_type::match( get_tag(to.get_header()) ))
-		{
-			CODEC_TRACE("->CASE[%s]", name<case_t>());
-			case_t* case_p = new (&to.m_storage) case_t{};
-			return med::decode(decoder, *case_p, unexp);
-		}
-		else
-		{
-			CODEC_TRACE("!CASE[%s] doesn't match %zu", name<case_t>(), std::size_t(get_tag(to.get_header())));
-			return choice_for<IEs...>::decode(decoder, to, unexp);
-		}
-	}
-
-	template <class TO>
-	static std::size_t calc_length(TO const& to)
-	{
-		if (IE::tag_type::match( get_tag(to.get_header()) ))
-		{
-			using case_t = typename IE::case_type;
-			void const* store_p = &to.m_storage;
-			return med::get_length(to.get_header())
-				+ med::get_length(*static_cast<case_t const*>(store_p));
-		}
-		else
-		{
-			return choice_for<IEs...>::calc_length(to);
-		}
-	}
-
-	template <class TO, class FROM, class... ARGS>
-	static inline void copy(TO& to, FROM const& from, ARGS&&... args)
-	{
-		if (IE::tag_type::match(get_tag(from.get_header())))
-		{
-			using value_type = typename IE::case_type;
-			void const* store_p = &from.m_storage;
-			to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p), std::forward<ARGS>(args)...);
-			to.header().copy(from.get_header());
-		}
-		else
-		{
-			choice_for<IEs...>::copy(to, from, std::forward<ARGS>(args)...);
-		}
+		using tag_t = typename IE::tag_type;
+		auto& hdr = v.get_header();
+		return hdr.is_set() && tag_t::match( med::get_tag(hdr) );
 	}
 };
 
-template <>
-struct choice_for<>
+struct choice_len : choice_if
 {
-	template <typename TAG>
-	static constexpr char const* name_tag(TAG const&)
+	template <class IE, class TO>
+	static std::size_t apply(TO const& to)
 	{
-		return nullptr;
-	}
-
-	template <class FUNC, class TO, class UNEXP>
-	static void decode(FUNC&& func, TO& to, UNEXP& unexp)
-	{
-		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
-		return unexp(func, to, to.get_header());
-	}
-
-	template <class FUNC, class TO>
-	static void encode(FUNC&, TO const& to)
-	{
-		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(to.get_header()));
+		using case_t = typename IE::case_type;
+		void const* store_p = &to.m_storage;
+		return med::get_length(to.get_header())
+			+ med::get_length(*static_cast<case_t const*>(store_p));
 	}
 
 	template <class TO>
-	static constexpr std::size_t calc_length(TO const&)
+	static constexpr std::size_t apply(TO const&)
 	{
 		return 0;
 	}
+};
 
-	template <class TO, class FROM, class... ARGS>
-	static constexpr void copy(TO&, FROM const&, ARGS&&...)
+struct choice_copy : choice_if
+{
+	template <class IE, class TO, class FROM>
+	static void apply(TO& to, FROM const& from)
 	{
+		using value_type = typename IE::case_type;
+		void const* store_p = &from.m_storage;
+		to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p));
+		to.header().copy(from.get_header());
+	}
+
+	template <class TO, class FROM>
+	static void apply(TO& to, FROM const&)
+	{
+		to.clear();
+	}
+};
+
+struct choice_name
+{
+	template <class IE, typename TAG>
+	static constexpr bool check(TAG const& tag)
+	{
+		using tag_t = typename IE::tag_type;
+		return tag_t::match( tag );
+	}
+
+	template <class IE, typename TAG>
+	static constexpr char const* apply(TAG const&)
+	{
+		using case_t = typename IE::case_type;
+		return name<case_t>();
+	}
+
+	template <typename TAG>
+	static constexpr char const* apply(TAG const&)
+	{
+		return nullptr;
+	}
+};
+
+struct choice_enc : choice_if
+{
+	template <class IE, class TO, class ENCODER>
+	static void apply(TO const& to, ENCODER&& encoder)
+	{
+		using case_t = typename IE::case_type;
+		CODEC_TRACE("CASE[%s]", name<case_t>());
+		void const* store_p = &to.m_storage;
+
+		med::encode(encoder, to.get_header());
+		med::encode(encoder, *static_cast<case_t const*>(store_p));
+	}
+
+	template <class TO, class ENCODER>
+	static void apply(TO const& to, ENCODER&&)
+	{
+		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(to.get_header()));
+	}
+};
+
+struct choice_dec : choice_if
+{
+	template <class IE, class TO, class DECODER, class UNEXP>
+	static void apply(TO& to, DECODER&& decoder, UNEXP& unexp)
+	{
+		using case_t = typename IE::case_type;
+		CODEC_TRACE("->CASE[%s]", name<case_t>());
+		case_t* case_p = new (&to.m_storage) case_t{};
+		return med::decode(decoder, *case_p, unexp);
+	}
+
+	template <class TO, class DECODER, class UNEXP>
+	static void apply(TO& to, DECODER&& decoder, UNEXP& unexp)
+	{
+		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
+		return unexp(decoder, to, to.get_header());
 	}
 };
 
@@ -210,7 +177,7 @@ public:
 	template <typename TAG>
 	static constexpr char const* name_tag(TAG const& tag)
 	{
-		return sl::choice_for<CASES...>::name_tag(tag);
+		return meta::for_if<ies_types>(sl::choice_name{}, tag);
 	}
 
 	header_type const& header() const       { return m_header; }
@@ -219,26 +186,22 @@ public:
 
 	void clear()                            { header().clear(); }
 	bool is_set() const                     { return header().is_set(); }
-	std::size_t calc_length() const         { return sl::choice_for<CASES...>::calc_length(*this); }
+	std::size_t calc_length() const         { return meta::for_if<ies_types>(sl::choice_len{}, *this); }
 
 	auto select()                           { return make_selector(this); }
 	auto select() const                     { return make_selector(this); }
 	auto cselect() const                    { return make_selector(this); }
 
 	template <class CASE>
-	static constexpr bool has()
-	{
-		using IE = typename cases<CASES...>::template at<CASE>;
-		return not std::is_same_v<void, IE>;
-	}
+	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::choice_at<CASE>>>; }
 
 	template <class CASE>
 	CASE& ref()
 	{
 		//TODO: how to prevent a copy when callee-side re-uses reference by mistake?
 		static_assert(!std::is_const<CASE>(), "REFERENCE IS NOT FOR ACCESSING AS CONST");
-		using IE = typename cases<CASES...>::template at<CASE>;
-		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
+		using IE = meta::find<ies_types, sl::choice_at<CASE>>;
+		static_assert(!std::is_void<IE>(), "NO SUCH CASE IN CHOICE");
 		void* store_p = &m_storage;
 		return *(set_tag(header(), IE::tag_type::get_encoded())
 			? new (store_p) CASE{}
@@ -248,48 +211,33 @@ public:
 	template <class CASE>
 	CASE const* get() const
 	{
-		using IE = typename cases<CASES...>::template at<CASE>;
-		static_assert(!std::is_same<void, IE>(), "NO SUCH CASE IN CHOICE");
+		using IE = meta::find<ies_types, sl::choice_at<CASE>>;
+		static_assert(!std::is_void<IE>(), "NO SUCH CASE IN CHOICE");
 		void const* store_p = &m_storage;
 		return IE::tag_type::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
 	}
 
-	template <class FROM, class... ARGS>
-	void copy(FROM const& from, ARGS&&... args)
-	{
-		if (from.is_set())
-		{
-			return sl::choice_for<CASES...>::copy(*this, from, std::forward<ARGS>(args)...);
-		}
-	}
-
-	template <class DST, class... ARGS>
-	void copy_to(DST& to, ARGS&&... args) const
-	{
-		if (this->is_set())
-		{
-			return sl::choice_for<CASES...>::copy(to, *this, std::forward<ARGS>(args)...);
-		}
-	}
-
+	template <class FROM>
+	void copy(FROM const& from)             { meta::for_if<ies_types>(sl::choice_copy{}, *this, from); }
+	template <class TO>
+	void copy_to(TO& to) const              { meta::for_if<ies_types>(sl::choice_copy{}, to, *this); }
 
 	template <class ENCODER>
-	void encode(ENCODER&& encoder) const
-	{
-		return sl::choice_for<CASES...>::encode(encoder, *this);
-	}
+	void encode(ENCODER&& encoder) const    { meta::for_if<ies_types>(sl::choice_enc{}, *this, std::move(encoder)); }
 
 	template <class DECODER, class UNEXP>
 	void decode(DECODER&& decoder, UNEXP& unexp)
 	{
 		static_assert(std::is_void_v<meta::tag_unique_t<ies_types>>, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 		med::decode(decoder, header(), unexp);
-		sl::choice_for<CASES...>::decode(decoder, *this, unexp);
+		meta::for_if<ies_types>(sl::choice_dec{}, *this, std::move(decoder), unexp);
 	}
 
 private:
-	template <class... IEs>
-	friend struct sl::choice_for;
+	friend struct sl::choice_len;
+	friend struct sl::choice_copy;
+	friend struct sl::choice_enc;
+	friend struct sl::choice_dec;
 
 	using storage_type = std::aligned_union_t<0, typename CASES::case_type...>;
 

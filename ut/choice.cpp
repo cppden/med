@@ -27,6 +27,12 @@ TEST(choice, plain)
 	using namespace cho;
 	using namespace cmp;
 	PLAIN msg;
+	EXPECT_EQ(0, msg.calc_length());
+	msg.ref<cmp::U8>().set(0);
+	EXPECT_EQ(2, msg.calc_length());
+	msg.ref<cmp::U16>().set(0);
+	EXPECT_EQ(3, msg.calc_length());
+
 	msg.ref<U16>().set(0x1234);
 	encode(med::octet_encoder{ctx}, msg);
 	EXPECT_STRCASEEQ("02 12 34 ", as_string(ctx.buffer()));
@@ -66,3 +72,4 @@ TEST(choice, compound)
 	EXPECT_EQ(msg.get<cmp::string>()->get(), dmsg.get<cmp::string>()->get());
 }
 #endif
+
