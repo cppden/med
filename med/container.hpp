@@ -13,104 +13,31 @@ Distributed under the MIT License
 #include "accessor.hpp"
 #include "sl/field_copy.hpp"
 #include "meta/typelist.hpp"
+#include "meta/foreach.hpp"
 
 namespace med {
 
-template <class... IES>
-struct ies;
-
-template <class IE, class... IES>
-struct ies<IE, IES...>
-{
-	template <typename FIELD>
-	using at = std::conditional_t<
-		std::is_same_v<get_field_type_t<IE>, FIELD>,
-		IE,
-		typename ies<IES...>::template at<FIELD>
-	>;
-};
-
-template<>
-struct ies<>
-{
-	template <typename FIELD>
-	using at = void; //not found
-};
-
 namespace sl {
 
-//-----------------------------------------------------------------------
-template <class IE>
-constexpr std::size_t field_arity()
+template <class FIELD>
+struct cont_at
 {
-	if constexpr (is_multi_field_v<IE>)
-	{
-		return IE::max;
-	}
-	else
-	{
-		return 1;
-	}
-}
+	template <class T>
+	using type = std::is_same<FIELD, get_field_type_t<T>>;
+};
 
-//-----------------------------------------------------------------------
-template <class... IES>
-struct container_for;
-
-template <class IE, class... IES>
-struct container_for<IE, IES...>
+struct cont_clear
 {
-	template <class TO>
-	static inline void clear(TO& to)
-	{
-		static_cast<IE&>(to).clear();
-		container_for<IES...>::clear(to);
-	}
+	template <class IE, class SEQ>
+	static void apply(SEQ& s)           { static_cast<IE&>(s).clear(); }
+	template <class SEQ>
+	static constexpr void apply(SEQ&)   { }
+};
 
-	template <class TO>
-	static constexpr bool is_set(TO const& to)
-	{
-		//optional or mandatory field w/ setter => can be set implicitly
-		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
-		{
-			CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(to).is_set());
-			return static_cast<IE const&>(to).is_set() || container_for<IES...>::is_set(to);
-		}
-		else //mandatory field w/o setter => s.b. set explicitly
-		{
-			if constexpr (is_predefined_v<IE>) //don't account predefined IEs like init/const/def
-			{
-				return container_for<IES...>::is_set(to);
-			}
-			else
-			{
-				CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(to).is_set());
-				return static_cast<IE const&>(to).is_set();
-			}
-		}
-	}
-
-	template <class TO>
-	static constexpr std::size_t calc_length(TO const& to)
-	{
-		if constexpr (is_multi_field_v<IE>)
-		{
-			IE const& ie = to;
-			CODEC_TRACE("%s[%s]*", __FUNCTION__, name<IE>());
-			std::size_t len = 0;
-			for (auto& v : ie) { len += get_length<IE>(v); }
-			return len + container_for<IES...>::calc_length(to);
-		}
-		else
-		{
-			IE const& ie = to;
-			return (has_setter_type_v<IE> || ie.ref_field().is_set() ? get_length<IE>(ie.ref_field()) : 0)
-				+ container_for<IES...>::calc_length(to);
-		}
-	}
-
-	template <class TO, class FROM, class... ARGS>
-	static inline void copy(TO& to, FROM const& from, ARGS&&... args)
+struct cont_copy
+{
+	template <class IE, class TO, class FROM, class... ARGS>
+	static void apply(TO& to, FROM const& from, ARGS&&... args)
 	{
 		using field_type = get_field_type_t<IE>;
 		auto const& from_field = from.m_ies.template as<field_type>();
@@ -131,25 +58,88 @@ struct container_for<IE, IES...>
 				to_field.ref_field().copy(from_field.ref_field(), std::forward<ARGS>(args)...);
 			}
 		}
-		container_for<IES...>::copy(to, from, std::forward<ARGS>(args)...);
 	}
-};
-
-template <>
-struct container_for<>
-{
-	template <class TO>
-	static constexpr void clear(TO&)                                { }
-
-	template <class TO>
-	static constexpr bool is_set(TO const&)                         { return false; }
-
-	template <class TO>
-	static constexpr std::size_t calc_length(TO const&)             { return 0; }
 
 	template <class TO, class FROM, class... ARGS>
-	static constexpr void copy(TO&, FROM const&, ARGS&&...)         { }
+	static void apply(TO&, FROM const&, ARGS&&...)  { }
 };
+
+struct cont_len
+{
+	static constexpr std::size_t op(std::size_t r1, std::size_t r2)
+	{
+		return r1 + r2;
+	}
+
+	template <class IE, class SEQ>
+	static std::size_t apply(SEQ const& seq)
+	{
+		if constexpr (is_multi_field_v<IE>)
+		{
+			IE const& ie = seq;
+			CODEC_TRACE("%s[%s]*", __FUNCTION__, name<IE>());
+			std::size_t len = 0;
+			for (auto& v : ie) { len += get_length<IE>(v); }
+			return len;
+		}
+		else
+		{
+			IE const& ie = seq;
+			return (has_setter_type_v<IE> || ie.ref_field().is_set() ? get_length<IE>(ie.ref_field()) : 0);
+		}
+	}
+
+	template <class SEQ>
+	static constexpr std::size_t apply(SEQ const&)  { return 0; }
+};
+
+struct cont_is
+{
+	static constexpr bool op(bool r1, bool r2)
+	{
+		return r1 or r2;
+	}
+
+	template <class IE, class SEQ>
+	static constexpr bool apply(SEQ const& seq)
+	{
+		//optional or mandatory field w/ setter => can be set implicitly
+		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
+		{
+			CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
+			return static_cast<IE const&>(seq).is_set();
+		}
+		else //mandatory field w/o setter => s.b. set explicitly
+		{
+			if constexpr (is_predefined_v<IE>) //don't account predefined IEs like init/const/def
+			{
+				return false;
+			}
+			else
+			{
+				CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
+				return static_cast<IE const&>(seq).is_set();
+			}
+		}
+	}
+
+	template <class SEQ>
+	static constexpr bool apply(SEQ const&) { return false; }
+};
+
+//-----------------------------------------------------------------------
+template <class IE>
+constexpr std::size_t field_arity()
+{
+	if constexpr (is_multi_field_v<IE>)
+	{
+		return IE::max;
+	}
+	else
+	{
+		return 1;
+	}
+}
 
 }	//end: namespace sl
 
@@ -162,11 +152,7 @@ public:
 	using ies_types = meta::typelist<IES...>;
 
 	template <class FIELD>
-	static constexpr bool has()
-	{
-		using IE = typename ies<IES...>::template at<FIELD>;
-		return not std::is_same_v<void, IE>;
-	}
+	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::cont_at<FIELD>>>; }
 
 	template <class FIELD>
 	FIELD& ref()
@@ -227,50 +213,41 @@ public:
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
 
 	template <class FIELD>
-	static constexpr std::size_t arity()
-	{
-		using IE = typename ies<IES...>::template at<FIELD>;
-		return sl::field_arity<IE>();
-	}
+	static constexpr std::size_t arity()    { return sl::field_arity<meta::find<ies_types, sl::cont_at<FIELD>>>(); }
 
 	template <class FIELD>
 	void clear()                            { m_ies.template as<FIELD>().clear(); }
-	void clear()                            { sl::container_for<IES...>::clear(this->m_ies); }
-	//NOTE! check stops at 1st mandatory since it's optimal and more flexible
-	bool is_set() const                     { return sl::container_for<IES...>::is_set(this->m_ies); }
-	std::size_t calc_length() const         { return sl::container_for<IES...>::calc_length(this->m_ies); }
+	void clear()                            { meta::foreach<ies_types>(sl::cont_clear{}, this->m_ies); }
+	bool is_set() const                     { return meta::fold<ies_types>(sl::cont_is{}, this->m_ies); }
+	std::size_t calc_length() const         { return meta::fold<ies_types>(sl::cont_len{}, this->m_ies); }
 
 	template <class FROM, class... ARGS>
 	void copy(FROM const& from, ARGS&&... args)
-	{
-		return sl::container_for<IES...>::copy(*this, from, std::forward<ARGS>(args)...);
-	}
+	{ meta::foreach<ies_types>(sl::cont_copy{}, *this, from, std::forward<ARGS>(args)...); }
 
 	template <class TO, class... ARGS>
 	void copy_to(TO& to, ARGS&&... args) const
-	{
-		return sl::container_for<IES...>::copy(to, *this, std::forward<ARGS>(args)...);
-	}
+	{ meta::foreach<ies_types>(sl::cont_copy{}, to, *this, std::forward<ARGS>(args)...); }
+
 
 protected:
-	template <class...>
-	friend struct sl::container_for;
+	friend struct sl::cont_copy;
 
 	struct ies_t : IES...
 	{
 		template <class FIELD>
 		decltype(auto) as() const
 		{
-			using IE = typename ies<IES...>::template at<FIELD>;
-			static_assert(!std::is_same<void, IE>(), "NO SUCH FIELD");
+			using IE = meta::find<ies_types, sl::cont_at<FIELD>>;
+			static_assert(!std::is_void<IE>(), "NO SUCH FIELD");
 			return static_cast<IE const&>(*this);
 		}
 
 		template <class FIELD>
 		decltype(auto) as()
 		{
-			using IE = typename ies<IES...>::template at<FIELD>;
-			static_assert(!std::is_same<void, IE>(), "NO SUCH FIELD");
+			using IE = meta::find<ies_types, sl::cont_at<FIELD>>;
+			static_assert(!std::is_void<IE>(), "NO SUCH FIELD");
 			return static_cast<IE&>(*this);
 		}
 	};

@@ -16,6 +16,7 @@ Distributed under the MIT License
 #include "decode.hpp"
 #include "debug.hpp"
 #include "meta/typelist.hpp"
+#include "meta/foreach.hpp"
 
 namespace med {
 
@@ -69,6 +70,10 @@ inline void encode_multi(FUNC& func, IE const& ie)
 	}
 }
 
+struct seq_enc
+{
+
+};
 
 template <class... IES>
 struct seq_for;

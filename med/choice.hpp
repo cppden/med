@@ -62,20 +62,17 @@ struct choice_len : choice_if
 
 struct choice_copy : choice_if
 {
-	template <class IE, class TO, class FROM>
-	static void apply(TO& to, FROM const& from)
+	template <class IE, class TO, class FROM, class... ARGS>
+	static void apply(TO& to, FROM const& from, ARGS&&... args)
 	{
 		using value_type = typename IE::case_type;
 		void const* store_p = &from.m_storage;
-		to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p));
-		to.header().copy(from.get_header());
+		to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p), std::forward<ARGS>(args)...);
+		to.header().copy(from.get_header(), std::forward<ARGS>(args)...);
 	}
 
-	template <class TO, class FROM>
-	static void apply(TO& to, FROM const&)
-	{
-		to.clear();
-	}
+	template <class TO, class FROM, class... ARGS>
+	static constexpr void apply(TO&, FROM const&, ARGS&&...) { }
 };
 
 struct choice_name
@@ -217,10 +214,13 @@ public:
 		return IE::tag_type::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
 	}
 
-	template <class FROM>
-	void copy(FROM const& from)             { meta::for_if<ies_types>(sl::choice_copy{}, *this, from); }
-	template <class TO>
-	void copy_to(TO& to) const              { meta::for_if<ies_types>(sl::choice_copy{}, to, *this); }
+	template <class FROM, class... ARGS>
+	void copy(FROM const& from, ARGS&&... args)
+	{ meta::for_if<ies_types>(sl::choice_copy{}, *this, from, std::forward<ARGS>(args)...); }
+
+	template <class TO, class... ARGS>
+	void copy_to(TO& to, ARGS&&... args) const
+	{ meta::for_if<ies_types>(sl::choice_copy{}, to, *this, std::forward<ARGS>(args)...); }
 
 	template <class ENCODER>
 	void encode(ENCODER&& encoder) const    { meta::for_if<ies_types>(sl::choice_enc{}, *this, std::move(encoder)); }
