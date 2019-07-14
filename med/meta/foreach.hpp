@@ -9,6 +9,8 @@ Distributed under the MIT License
 */
 #include <functional>
 
+#include "typelist.hpp"
+
 namespace med::meta {
 
 namespace detail {
@@ -20,10 +22,17 @@ template <class T0, class... Ts>
 struct foreach<T0, Ts...>
 {
 	template <class F, class... Args>
-	static constexpr auto apply(F f, Args&&... args)
+	static constexpr auto exec(F f, Args&&... args)
 	{
 		f.template apply<T0>(std::forward<Args>(args)...);
-		return foreach<Ts...>::template apply(f, std::forward<Args>(args)...);
+		return foreach<Ts...>::template exec(f, std::forward<Args>(args)...);
+	}
+
+	template <class PREV, class F, class... Args>
+	static constexpr auto exec(F f, Args&&... args)
+	{
+		f.template apply<PREV, T0>(std::forward<Args>(args)...);
+		return foreach<Ts...>::template exec<T0>(f, std::forward<Args>(args)...);
 	}
 };
 
@@ -31,16 +40,28 @@ template <>
 struct foreach<>
 {
 	template <class F, class... Args>
-	static constexpr auto apply(F f, Args&&... args)
+	static constexpr auto exec(F f, Args&&... args)
 	{
 		return f.template apply(std::forward<Args>(args)...);
+	}
+
+	template <class PREV, class F, class... Args>
+	static constexpr auto exec(F f, Args&&... args)
+	{
+		return f.template apply<PREV>(std::forward<Args>(args)...);
 	}
 };
 
 template <template<class...> class L, class... Elems, class F, class... Args>
 constexpr auto foreach_impl(L<Elems...>&&, F f, Args&&... args)
 {
-	return foreach<Elems...>::apply(f, std::forward<Args>(args)...);
+	return foreach<Elems...>::exec(f, std::forward<Args>(args)...);
+}
+
+template <template<class...> class L, class... Elems, class F, class... Args>
+constexpr auto foreach_impl_prev(L<Elems...>&&, F f, Args&&... args)
+{
+	return foreach<Elems...>::template exec<void>(f, std::forward<Args>(args)...);
 }
 
 } //end: namespace detail
@@ -49,6 +70,12 @@ template <class L, class F, class... Args>
 constexpr auto foreach(F f, Args&&... args)
 {
 	return detail::foreach_impl(L{}, f, std::forward<Args>(args)...);
+}
+
+template <class L, class F, class... Args>
+constexpr auto foreach_prev(F f, Args&&... args)
+{
+	return detail::foreach_impl_prev(L{}, f, std::forward<Args>(args)...);
 }
 
 /////////////////////////////////////////////
@@ -62,10 +89,10 @@ template <class T0, class... Ts>
 struct fold<T0, Ts...>
 {
 	template <class F, class... Args>
-	static constexpr auto apply(F f, Args&&... args)
+	static constexpr auto exec(F f, Args&&... args)
 	{
 		auto const r1 = f.template apply<T0>(std::forward<Args>(args)...);
-		auto const r2 = fold<Ts...>::template apply(f, std::forward<Args>(args)...);
+		auto const r2 = fold<Ts...>::template exec(f, std::forward<Args>(args)...);
 		return f.op(r1, r2);
 	}
 };
@@ -74,7 +101,7 @@ template <>
 struct fold<>
 {
 	template <class F, class... Args>
-	static constexpr auto apply(F f, Args&&... args)
+	static constexpr auto exec(F f, Args&&... args)
 	{
 		return f.template apply(std::forward<Args>(args)...);
 	}
@@ -83,7 +110,7 @@ struct fold<>
 template <template<class...> class L, class... Elems, class F, class... Args>
 constexpr auto fold_impl(L<Elems...>&&, F f, Args&&... args)
 {
-	return fold<Elems...>::apply(f, std::forward<Args>(args)...);
+	return fold<Elems...>::exec(f, std::forward<Args>(args)...);
 }
 
 } //end: namespace detail
@@ -105,7 +132,7 @@ template <class T0, class... Ts>
 struct for_if<T0, Ts...>
 {
 	template <class F, class... Args>
-	static constexpr auto apply(F f, Args&&... args)
+	static constexpr auto exec(F f, Args&&... args)
 	{
 		if (f.template check<T0>(std::forward<Args>(args)...))
 		{
@@ -113,7 +140,20 @@ struct for_if<T0, Ts...>
 		}
 		else
 		{
-			return for_if<Ts...>::template apply(f, std::forward<Args>(args)...);
+			return for_if<Ts...>::template exec(f, std::forward<Args>(args)...);
+		}
+	}
+
+	template <class PREV, class F, class... Args>
+	static constexpr auto exec(F f, Args&&... args)
+	{
+		if (f.template check<PREV, T0>(std::forward<Args>(args)...))
+		{
+			return f.template apply<PREV, T0>(std::forward<Args>(args)...);
+		}
+		else
+		{
+			return for_if<Ts...>::template exec<T0>(f, std::forward<Args>(args)...);
 		}
 	}
 };
@@ -122,16 +162,28 @@ template <>
 struct for_if<>
 {
 	template <class F, class... Args>
-	static constexpr auto apply(F f, Args&&... args)
+	static constexpr auto exec(F f, Args&&... args)
 	{
 		return f.template apply(std::forward<Args>(args)...);
+	}
+
+	template <class PREV, class F, class... Args>
+	static constexpr auto exec(F f, Args&&... args)
+	{
+		return f.template apply<PREV>(std::forward<Args>(args)...);
 	}
 };
 
 template <template<class...> class L, class... Elems, class F, class... Args>
 constexpr auto for_if_impl(L<Elems...>&&, F f, Args&&... args)
 {
-	return for_if<Elems...>::apply(f, std::forward<Args>(args)...);
+	return for_if<Elems...>::exec(f, std::forward<Args>(args)...);
+}
+
+template <template<class...> class L, class... Elems, class F, class... Args>
+constexpr auto for_if_impl_prev(L<Elems...>&&, F f, Args&&... args)
+{
+	return for_if<Elems...>::template exec<void>(f, std::forward<Args>(args)...);
 }
 
 } //end: namespace detail
@@ -140,6 +192,12 @@ template <class L, class F, class... Args>
 constexpr auto for_if(F f, Args&&... args)
 {
 	return detail::for_if_impl(L{}, f, std::forward<Args>(args)...);
+}
+
+template <class L, class F, class... Args>
+constexpr auto for_if_prev(F f, Args&&... args)
+{
+	return detail::for_if_impl_prev(L{}, f, std::forward<Args>(args)...);
 }
 
 namespace detail {

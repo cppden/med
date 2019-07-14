@@ -101,7 +101,7 @@ struct choice_name
 struct choice_enc : choice_if
 {
 	template <class IE, class TO, class ENCODER>
-	static void apply(TO const& to, ENCODER&& encoder)
+	static void apply(TO const& to, ENCODER& encoder)
 	{
 		using case_t = typename IE::case_type;
 		CODEC_TRACE("CASE[%s]", name<case_t>());
@@ -112,7 +112,7 @@ struct choice_enc : choice_if
 	}
 
 	template <class TO, class ENCODER>
-	static void apply(TO const& to, ENCODER&&)
+	static void apply(TO const& to, ENCODER&)
 	{
 		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(to.get_header()));
 	}
@@ -121,19 +121,19 @@ struct choice_enc : choice_if
 struct choice_dec : choice_if
 {
 	template <class IE, class TO, class DECODER, class UNEXP>
-	static void apply(TO& to, DECODER&& decoder, UNEXP& unexp)
+	static void apply(TO& to, DECODER& decoder, UNEXP& unexp)
 	{
 		using case_t = typename IE::case_type;
 		CODEC_TRACE("->CASE[%s]", name<case_t>());
 		case_t* case_p = new (&to.m_storage) case_t{};
-		return med::decode(decoder, *case_p, unexp);
+		med::decode(decoder, *case_p, unexp);
 	}
 
 	template <class TO, class DECODER, class UNEXP>
-	static void apply(TO& to, DECODER&& decoder, UNEXP& unexp)
+	static void apply(TO& to, DECODER& decoder, UNEXP& unexp)
 	{
 		CODEC_TRACE("unexp CASE[%s] tag=%zu", name<TO>(), std::size_t(get_tag(to.get_header())));
-		return unexp(decoder, to, to.get_header());
+		unexp(decoder, to, to.get_header());
 	}
 };
 
@@ -223,14 +223,14 @@ public:
 	{ meta::for_if<ies_types>(sl::choice_copy{}, to, *this, std::forward<ARGS>(args)...); }
 
 	template <class ENCODER>
-	void encode(ENCODER&& encoder) const    { meta::for_if<ies_types>(sl::choice_enc{}, *this, std::move(encoder)); }
+	void encode(ENCODER& encoder) const    { meta::for_if<ies_types>(sl::choice_enc{}, *this, encoder); }
 
 	template <class DECODER, class UNEXP>
-	void decode(DECODER&& decoder, UNEXP& unexp)
+	void decode(DECODER& decoder, UNEXP& unexp)
 	{
 		static_assert(std::is_void_v<meta::tag_unique_t<ies_types>>, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 		med::decode(decoder, header(), unexp);
-		meta::for_if<ies_types>(sl::choice_dec{}, *this, std::move(decoder), unexp);
+		meta::for_if<ies_types>(sl::choice_dec{}, *this, decoder, unexp);
 	}
 
 private:
