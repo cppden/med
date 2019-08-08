@@ -30,6 +30,8 @@ struct ADVANCE_STATE
 	int    bits;
 };
 
+//Get length of IE in codec units
+struct GET_LENGTH {};
 //Set end of buffer (its size).
 struct PUSH_SIZE
 {

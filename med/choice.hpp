@@ -44,17 +44,17 @@ struct choice_if
 
 struct choice_len : choice_if
 {
-	template <class IE, class TO>
-	static std::size_t apply(TO const& to)
+	template <class IE, class TO, class ENCODER>
+	static std::size_t apply(TO const& to, ENCODER& encoder)
 	{
 		using case_t = typename IE::case_type;
 		void const* store_p = &to.m_storage;
-		return field_length(to.get_header())
-			+ field_length(*static_cast<case_t const*>(store_p));
+		return field_length(to.get_header(), encoder)
+			+ field_length(*static_cast<case_t const*>(store_p), encoder);
 	}
 
-	template <class TO>
-	static constexpr std::size_t apply(TO const&)
+	template <class TO, class ENCODER>
+	static constexpr std::size_t apply(TO const&, ENCODER&)
 	{
 		return 0;
 	}
@@ -183,7 +183,8 @@ public:
 
 	void clear()                            { header().clear(); }
 	bool is_set() const                     { return header().is_set(); }
-	std::size_t calc_length() const         { return meta::for_if<ies_types>(sl::choice_len{}, *this); }
+	template <class ENC>
+	std::size_t calc_length(ENC& enc) const { return meta::for_if<ies_types>(sl::choice_len{}, *this, enc); }
 
 	auto select()                           { return make_selector(this); }
 	auto select() const                     { return make_selector(this); }

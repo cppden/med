@@ -23,18 +23,19 @@ TEST(choice, plain)
 {
 	uint8_t buffer[32];
 	med::encoder_context<> ctx{ buffer };
+	med::octet_encoder encoder{ctx};
 
 	using namespace cho;
 	using namespace cmp;
 	PLAIN msg;
-	EXPECT_EQ(0, msg.calc_length());
+	EXPECT_EQ(0, msg.calc_length(encoder));
 	msg.ref<cmp::U8>().set(0);
-	EXPECT_EQ(2, msg.calc_length());
+	EXPECT_EQ(2, msg.calc_length(encoder));
 	msg.ref<cmp::U16>().set(0);
-	EXPECT_EQ(3, msg.calc_length());
+	EXPECT_EQ(3, msg.calc_length(encoder));
 
 	msg.ref<U16>().set(0x1234);
-	encode(med::octet_encoder{ctx}, msg);
+	encode(encoder, msg);
 	EXPECT_STRCASEEQ("02 12 34 ", as_string(ctx.buffer()));
 
 	decltype(msg) dmsg;

@@ -220,15 +220,15 @@ inline void encode_ie(FUNC& func, IE const& ie, PRIMITIVE)
 	}
 }
 
-template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, IE_LV)
+template <class WRAPPER, class ENCODER, class IE>
+inline void encode_ie(ENCODER& encoder, IE const& ie, IE_LV)
 {
 	typename WRAPPER::length_type len_ie{};
-	std::size_t len_value = field_length(ref_field(ie));
+	std::size_t len_value = field_length(ref_field(ie), encoder);
 	length_to_value(len_ie, len_value);
 	CODEC_TRACE("L=%zx<%s>{%s}", std::size_t(len_ie.get()), name<WRAPPER>(), name<IE>());
-	encode(func, len_ie);
-	encode_ie<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
+	encode(encoder, len_ie);
+	encode_ie<typename WRAPPER::field_type>(encoder, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }
 
 template <class WRAPPER, class FUNC, class IE>

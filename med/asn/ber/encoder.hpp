@@ -37,13 +37,14 @@ struct encoder
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
-			if (ss.validate_length(field_length(ie)))
+			auto const len = field_length(ie, *this);
+			if (ss.validate_length(len))
 			{
 				ctx.buffer().set_state(ss);
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), field_length(ie), ctx.buffer())
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer())
 			}
 		}
 		else
@@ -57,6 +58,22 @@ struct encoder
 	void operator() (POP_STATE)                         { ctx.buffer().pop_state(); }
 	void operator() (ADVANCE_STATE const& ss)           { ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity); }
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
+
+	template <class IE>
+	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
+	{
+		if constexpr (med::detail::has_size<IE>::value)
+		{
+			CODEC_TRACE("length(%s) = %zu", name<IE>(), std::size_t(ie.size()));
+			return ie.size();
+		}
+		else
+		{
+			std::size_t const len = bits_to_bytes(IE::traits::bits);
+			CODEC_TRACE("length(%s) = %zu", name<IE>(), len);
+			return len;
+		}
+	}
 
 	//IE_NULL
 	template <class IE>
@@ -152,7 +169,7 @@ struct encoder
 		using tv = tag_value<typename IE::traits, true>;
 		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
 		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
-		auto const len = ie.calc_length();
+		auto const len = ie.calc_length(*this);
 		put_length<IE>(len);
 		CODEC_TRACE("entry [%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
 		//TODO: need to encode length...

@@ -35,13 +35,14 @@ struct encoder
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
-			if (ss.validate_length(field_length(ie)))
+			auto const len = field_length(ie, *this);
+			if (ss.validate_length(len))
 			{
 				ctx.buffer().set_state(ss);
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), field_length(ie))
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer())
 			}
 		}
 		else

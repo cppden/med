@@ -34,13 +34,14 @@ struct octet_encoder
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
-			if (ss.validate_length(field_length(ie)))
+			auto const len = field_length(ie, *this);
+			if (ss.validate_length(len))
 			{
 				ctx.buffer().set_state(ss);
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), field_length(ie))
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer())
 			}
 		}
 		else
@@ -61,6 +62,22 @@ struct octet_encoder
 		ctx.buffer().template fill<ADD_PADDING>(pad.bits/granularity, pad.filler);
 	}
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
+
+	template <class IE>
+	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
+	{
+		if constexpr (detail::has_size<IE>::value)
+		{
+			CODEC_TRACE("length(%s) = %zu", name<IE>(), std::size_t(ie.size()));
+			return ie.size();
+		}
+		else
+		{
+			std::size_t const len = bits_to_bytes(IE::traits::bits);
+			CODEC_TRACE("length(%s) = %zu", name<IE>(), len);
+			return len;
+		}
+	}
 
 	//IE_NULL
 	template <class IE>

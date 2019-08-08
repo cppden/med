@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include "exception.hpp"
 #include "ie_type.hpp"
+#include "state.hpp"
 #include "value_traits.hpp"
 #include "name.hpp"
 
@@ -55,16 +56,16 @@ template <class T>
 constexpr bool is_length_v = detail::has_length_type<T>::value;
 
 
-template <class FIELD>
-constexpr std::size_t field_length(FIELD const& field)
+template <class FIELD, class ENCODER>
+constexpr std::size_t field_length(FIELD const& field, ENCODER& encoder)
 {
-	return detail::length_getter<FIELD>::get(field);
+	return detail::length_getter<FIELD>::get(field, encoder);
 }
 //wrapper is med::mandatory or med::optional
-template <class WRAPPER, class FIELD, typename Enable = std::enable_if_t<!std::is_same_v<WRAPPER, FIELD>>>
-constexpr std::size_t field_length(FIELD const& field)
+template <class WRAPPER, class FIELD, class ENCODER, typename Enable = std::enable_if_t<!std::is_same_v<WRAPPER, FIELD>>>
+constexpr std::size_t field_length(FIELD const& field, ENCODER& encoder)
 {
-	return detail::length_getter<WRAPPER>::get(field);
+	return detail::length_getter<WRAPPER>::get(field, encoder);
 }
 
 namespace detail {
@@ -72,8 +73,8 @@ namespace detail {
 template <class WRAPPER>
 struct length_getter
 {
-	template <class FIELD>
-	static constexpr std::size_t get(FIELD const& field)
+	template <class FIELD, class ENCODER>
+	static constexpr std::size_t get(FIELD const& field, ENCODER& encoder)
 	{
 		if constexpr (is_peek_v<WRAPPER>)
 		{
@@ -84,33 +85,23 @@ struct length_getter
 			if constexpr (std::is_base_of_v<CONTAINER, typename WRAPPER::ie_type>)
 			{
 				CODEC_TRACE("%s(%s)...", __FUNCTION__, name<FIELD>());
-				return field.calc_length();
-			}
-			else if constexpr (std::is_base_of_v<PRIMITIVE, typename WRAPPER::ie_type>)
-			{
-				if constexpr (detail::has_size<FIELD>::value)
-				{
-					CODEC_TRACE("length(%s) = %zu", name<FIELD>(), std::size_t(field.size()));
-					return field.size();
-				}
-				else
-				{
-					//TODO: assuming length in bytes if IE is not customized
-					CODEC_TRACE("length(%s) = %zu", name<FIELD>(), bits_to_bytes(FIELD::traits::bits));
-					return bits_to_bytes(FIELD::traits::bits);
-				}
+				return field.calc_length(encoder);
 			}
 			else if constexpr (std::is_base_of_v<IE_TV, typename WRAPPER::ie_type>)
 			{
 				using tag_t = typename WRAPPER::tag_type;
 				CODEC_TRACE("%s(%s) : TV", __FUNCTION__, name<FIELD>());
-				return field_length(tag_t{}) + field_length<FIELD>(ref_field(field));
+				return field_length(tag_t{}, encoder) + field_length<FIELD>(ref_field(field), encoder);
 			}
 			else if constexpr (std::is_base_of_v<IE_LV, typename WRAPPER::ie_type>)
 			{
 				using len_t = typename WRAPPER::length_type;
 				CODEC_TRACE("%s(%s) : LV", __FUNCTION__, name<FIELD>());
-				return field_length(len_t{}) + field_length<FIELD>(ref_field(field));
+				return field_length(len_t{}, encoder) + field_length<FIELD>(ref_field(field), encoder);
+			}
+			else if constexpr (std::is_base_of_v<PRIMITIVE, typename WRAPPER::ie_type>)
+			{
+				return encoder(GET_LENGTH{}, field);
 			}
 			else
 			{
