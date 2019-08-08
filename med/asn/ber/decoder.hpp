@@ -63,12 +63,12 @@ struct decoder
 		{
 			if (uint8_t const length = ctx.buffer().template pop<IE>())
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), length, ctx.buffer());
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), length, ctx.buffer())
 			}
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer())
 		}
 	}
 
@@ -91,7 +91,7 @@ struct decoder
 				{
 					return ie.set_encoded(input[1] != 0);
 				}
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer());
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer())
 			}
 			else if constexpr (std::is_integral_v<typename IE::value_type>)
 			{
@@ -105,7 +105,7 @@ struct decoder
 				}
 				else
 				{
-					MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer());
+					MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer())
 				}
 			}
 			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
@@ -114,7 +114,7 @@ struct decoder
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer())
 		}
 	}
 
@@ -129,7 +129,7 @@ struct decoder
 		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
 		if (tv::value() == vtag)
 		{
-			auto const bytes = get_length<IE>() - 1;
+			auto const bytes = ber_length<IE>() - 1;
 			input = ctx.buffer().template advance<IE, 1>(); //num of unused bits [0..7]
 			std::size_t unused_bits = 0;
 			get_bytes_impl(input, unused_bits, std::make_index_sequence<1>{});
@@ -141,12 +141,12 @@ struct decoder
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), num_bits, ctx.buffer());
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), num_bits, ctx.buffer())
 			}
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer())
 		}
 	}
 
@@ -161,17 +161,17 @@ struct decoder
 		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
 		if (tv::value() == vtag)
 		{
-			auto const len = get_length<IE>();
+			auto const len = ber_length<IE>();
 			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), std::size_t(len), ctx.buffer().toString());
 			if (!ie.set_encoded(len, ctx.buffer().begin()))
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer());
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer())
 			}
 			ctx.buffer().template advance<IE>(len);
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer())
 		}
 	}
 
@@ -186,11 +186,11 @@ struct decoder
 		CODEC_TRACE("tag=%zX(%zX) bits=%zu", tv::value(), vtag, tv::num_bits());
 		if (tv::value() == vtag)
 		{
-			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), get_length<IE>(), ctx.buffer().toString());
+			CODEC_TRACE("\tSTR[%s] %zu octets: %s", name<IE>(), ber_length<IE>(), ctx.buffer().toString());
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer());
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer())
 		}
 		//CODEC_TRACE("entry [%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
 		//TODO: need to encode length...
@@ -201,7 +201,7 @@ private:
 #endif
 
 	template <class IE>
-	std::size_t get_length()
+	std::size_t ber_length()
 	{
 		uint8_t bytes = ctx.buffer().template pop<IE>();
 		//short form
@@ -212,9 +212,11 @@ private:
 		{
 			return get_bytes<std::size_t>(ctx.buffer().template advance<IE>(bytes), bytes);
 		}
-		else //indefinite form (X.690 8.1.3.6.1)
+		else //indefinite form (X.690 8.1.3.6)
+		//8.1.3.6 length octets indicate that the contents octets are terminated by end-of-contents octets
+		//(two zero octets), and shall consist of a single octet.
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), 0x80, ctx.buffer());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), 0x80, ctx.buffer())
 		}
 	}
 

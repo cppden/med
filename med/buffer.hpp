@@ -162,14 +162,14 @@ public:
 	void push(value_type v)
 	{
 		if (not empty()) { *m_state.cursor++ = v; }
-		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this); }
+		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this) }
 	}
 
 	template <class IE>
 	value_type pop()
 	{
 		if (not empty()) { return *m_state.cursor++; }
-		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this); }
+		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this) }
 	}
 
 	template <class IE, int DELTA>
@@ -185,7 +185,7 @@ public:
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this);
+				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this)
 			}
 		}
 		else if constexpr (DELTA < 0)
@@ -197,7 +197,7 @@ public:
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this);
+				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this)
 			}
 		}
 		return p;
@@ -219,7 +219,7 @@ public:
 		}
 		else if constexpr (not std::is_void_v<IE>)
 		{
-			MED_THROW_EXCEPTION(overflow, name<IE>(), delta, *this);
+			MED_THROW_EXCEPTION(overflow, name<IE>(), delta, *this)
 		}
 		return p;
 	}
@@ -237,7 +237,7 @@ public:
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(overflow, name<IE>(), count, *this);
+			MED_THROW_EXCEPTION(overflow, name<IE>(), count, *this)
 		}
 	}
 

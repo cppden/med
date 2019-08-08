@@ -69,7 +69,7 @@ struct octet_decoder
 		{
 			if (not ie.set_encoded(val))
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer());
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer())
 			}
 		}
 		else
@@ -91,7 +91,7 @@ struct octet_decoder
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer())
 		}
 	}
 

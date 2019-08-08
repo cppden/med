@@ -35,18 +35,18 @@ struct encoder
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
-			if (ss.validate_length(get_length(ie)))
+			if (ss.validate_length(field_length(ie)))
 			{
 				ctx.buffer().set_state(ss);
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), get_length(ie));
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), field_length(ie))
 			}
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0, ctx.buffer())
 		}
 	}
 

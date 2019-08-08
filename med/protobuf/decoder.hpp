@@ -75,7 +75,7 @@ struct decoder
 				}
 				else
 				{
-					MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer());
+					MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer())
 				}
 			};
 		}
@@ -84,7 +84,7 @@ struct decoder
 		{
 			if (not ie.set_encoded(val))
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer());
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer())
 			}
 		}
 		else
@@ -106,7 +106,7 @@ struct decoder
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer())
 		}
 	}
 

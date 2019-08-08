@@ -47,12 +47,12 @@ inline void check_n_arity(FUNC&, IE const&, std::size_t count)
 	{
 		if (count > IE::max)
 		{
-			MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, count);
+			MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, count)
 		}
 	}
 	else
 	{
-		MED_THROW_EXCEPTION(missing_ie, name<IE>(), IE::min, count);
+		MED_THROW_EXCEPTION(missing_ie, name<IE>(), IE::min, count)
 	}
 }
 

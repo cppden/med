@@ -101,7 +101,7 @@ struct set_enc
 			for (auto& field : ie)
 			{
 				//field was pushed but not set... do we need a new error?
-				if (not field.is_set()) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1); }
+				if (not field.is_set()) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1) }
 				if (not first) { call_if<is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to); }
 				if constexpr (not do_hdr) { encode_header<header_type, IE>(encoder); }
 				med::encode(encoder, field);
@@ -121,7 +121,7 @@ struct set_enc
 			}
 			else if constexpr (!is_optional_v<IE>)
 			{
-				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
+				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
 			}
 		}
 	}
@@ -162,7 +162,7 @@ struct set_dec
 						decoder(NEXT_CONTAINER_ELEMENT{}, ie);
 						if (num >= IE::max)
 						{
-							MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, num);
+							MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, num)
 						}
 					}
 					auto* field = ie.push_back(decoder);
@@ -173,7 +173,7 @@ struct set_dec
 			{
 				if (ie.count() >= IE::max)
 				{
-					MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count());
+					MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 				}
 				auto* field = ie.push_back(decoder);
 				med::decode(decoder, *field, unexp);
@@ -188,7 +188,7 @@ struct set_dec
 			{
 				return med::decode(decoder, ie.ref_field(), unexp);
 			}
-			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1);
+			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)
 		}
 	}
 
@@ -214,7 +214,7 @@ struct set_check
 		{
 			if (not (is_optional_v<IE> || ie.ref_field().is_set()))
 			{
-				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
+				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
 			}
 		}
 	}

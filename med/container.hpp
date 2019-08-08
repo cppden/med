@@ -79,13 +79,13 @@ struct cont_len
 			IE const& ie = seq;
 			CODEC_TRACE("%s[%s]*", __FUNCTION__, name<IE>());
 			std::size_t len = 0;
-			for (auto& v : ie) { len += get_length<IE>(v); }
+			for (auto& v : ie) { len += field_length<IE>(v); }
 			return len;
 		}
 		else
 		{
 			IE const& ie = seq;
-			return (has_setter_type_v<IE> || ie.ref_field().is_set() ? get_length<IE>(ie.ref_field()) : 0);
+			return (has_setter_type_v<IE> || ie.ref_field().is_set() ? field_length<IE>(ie.ref_field()) : 0);
 		}
 	}
 

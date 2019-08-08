@@ -127,7 +127,7 @@ public:
 		{
 			return inplace_push_back();
 		}
-		MED_THROW_EXCEPTION(out_of_memory, name<field_type>(), sizeof(field_type));
+		MED_THROW_EXCEPTION(out_of_memory, name<field_type>(), sizeof(field_type))
 	}
 
 	//uses inplace or external storage

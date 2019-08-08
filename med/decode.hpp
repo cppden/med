@@ -31,7 +31,7 @@ struct default_handler
 	template <class FUNC, class IE, class HEADER>
 	constexpr void operator()(FUNC&, IE const&, HEADER const& header) const
 	{
-		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), get_tag(header));
+		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), get_tag(header))
 	}
 };
 
@@ -80,7 +80,7 @@ inline void decode_ie(FUNC& func, IE& ie, IE_TV, UNEXP& unexp)
 		return decode(func, ref_field(ie), unexp);
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-	MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag.get_encoded());
+	MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag.get_encoded())
 }
 
 //Length-Value
@@ -100,13 +100,13 @@ inline void decode_ie(FUNC& func, IE& ie, IE_LV, UNEXP& unexp)
 		if (0 != end.size())
 		{
 			CODEC_TRACE("%s: end-size=%zu", name<IE>(), end.size());
-			MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value);
+			MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value)
 		}
 	}
 	else
 	{
 		//TODO: something more informative: tried to set length beyond data end
-		MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value);
+		MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value)
 	}
 }
 
@@ -187,12 +187,12 @@ protected:
 		value_to_length(len_ie, len_value);
 		if (not calc_buf_len<DELTA>(len_value))
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/);
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
 		}
 		m_size_state = m_decoder(PUSH_SIZE{len_value});
 		if (not m_size_state)
 		{
-			MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/);
+			MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
 		}
 	}
 
@@ -266,7 +266,7 @@ inline void decode_ie(FUNC& func, IE& ie, CONTAINER, UNEXP& unexp)
 			}
 			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
 			//if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
-			//MED_THROW_EXCEPTION(overflow, name<IE>(), left);
+			//MED_THROW_EXCEPTION(overflow, name<IE>(), left)
 		}
 		else
 		{

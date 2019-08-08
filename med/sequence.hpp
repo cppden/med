@@ -65,7 +65,7 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count() - 1);
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count() - 1)
 		}
 	}
 }
@@ -342,7 +342,7 @@ struct seq_enc
 					{
 						if (not setter(ie, to))
 						{
-							MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.get());
+							MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.get())
 						}
 					}
 					else
@@ -378,7 +378,7 @@ struct seq_enc
 					{
 						if (not setter(ie, to))
 						{
-							MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.get());
+							MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.get())
 						}
 					}
 					else
@@ -391,7 +391,7 @@ struct seq_enc
 					}
 					else
 					{
-						MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
+						MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
 					}
 				}
 				else //w/o setter
@@ -404,7 +404,7 @@ struct seq_enc
 					}
 					else
 					{
-						MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0);
+						MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
 					}
 				}
 			}

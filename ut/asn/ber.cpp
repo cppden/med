@@ -222,7 +222,7 @@ TEST(asn_ber, len_decode)
 		med::decoder_context<> ctx{ bytes.begin(), bytes.size() };
 		med::asn::ber::decoder dec{ctx};
 
-		return dec.get_length<med::asn::null>();
+		return dec.ber_length<med::asn::null>();
 	};
 
 	EXPECT_EQ(0, dec_len({0}));

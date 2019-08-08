@@ -37,18 +37,18 @@ struct encoder
 	{
 		if (auto const ss = ctx.snapshot(ie))
 		{
-			if (ss.validate_length(get_length(ie)))
+			if (ss.validate_length(field_length(ie)))
 			{
 				ctx.buffer().set_state(ss);
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), get_length(ie), ctx.buffer());
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), field_length(ie), ctx.buffer())
 			}
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0, ctx.buffer());
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0, ctx.buffer())
 		}
 	}
 
@@ -102,11 +102,11 @@ struct encoder
 		else if constexpr (std::is_floating_point_v<typename IE::value_type>)
 		{
 			//TODO: implement
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer());
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer());
+			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
 		}
 	}
 

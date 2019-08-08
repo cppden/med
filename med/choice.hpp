@@ -49,8 +49,8 @@ struct choice_len : choice_if
 	{
 		using case_t = typename IE::case_type;
 		void const* store_p = &to.m_storage;
-		return med::get_length(to.get_header())
-			+ med::get_length(*static_cast<case_t const*>(store_p));
+		return field_length(to.get_header())
+			+ field_length(*static_cast<case_t const*>(store_p));
 	}
 
 	template <class TO>
@@ -114,7 +114,7 @@ struct choice_enc : choice_if
 	template <class TO, class ENCODER>
 	static void apply(TO const& to, ENCODER&)
 	{
-		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(to.get_header()));
+		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(to.get_header()))
 	}
 };
 

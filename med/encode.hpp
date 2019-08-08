@@ -168,12 +168,12 @@ struct container_encoder
 				if constexpr (pad_t::pad_traits::inclusive)
 				{
 					pad.add();
-					return le.set_length_ie();
+					le.set_length_ie();
 				}
 				else
 				{
 					le.set_length_ie();
-					return pad.add();
+					pad.add();
 				}
 			}
 			else
@@ -181,13 +181,13 @@ struct container_encoder
 				CODEC_TRACE("start %s with len_type=%s...:", name<IE>(), name<length_type>());
 				length_encoder<IE::template has<length_type>(), FUNC, length_type> le{ func };
 				ie.encode(le);
-				return le.set_length_ie();
+				le.set_length_ie();
 			}
 		}
 		else
 		{
 			CODEC_TRACE("%s...:", name<IE>());
-			return ie.encode(func);
+			ie.encode(func);
 		}
 	}
 };
@@ -224,18 +224,18 @@ template <class WRAPPER, class FUNC, class IE>
 inline void encode_ie(FUNC& func, IE const& ie, IE_LV)
 {
 	typename WRAPPER::length_type len_ie{};
-	std::size_t len_value = get_length(ref_field(ie));
-	CODEC_TRACE("L=%zx[%s]:", std::size_t(len_ie.get()), name<IE>());
+	std::size_t len_value = field_length(ref_field(ie));
 	length_to_value(len_ie, len_value);
+	CODEC_TRACE("L=%zx<%s>{%s}", std::size_t(len_ie.get()), name<WRAPPER>(), name<IE>());
 	encode(func, len_ie);
-	encode(func, ref_field(ie));
+	encode_ie<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }
 
 template <class WRAPPER, class FUNC, class IE>
 inline void encode_ie(FUNC& func, IE const& ie, IE_TV)
 {
 	typename WRAPPER::tag_type const tag_ie{};
-	CODEC_TRACE("T%zx<%s>{%s}", std::size_t(tag_ie.get()), name<WRAPPER>(), name<IE>());
+	CODEC_TRACE("T=%zx<%s>{%s}", std::size_t(tag_ie.get()), name<WRAPPER>(), name<IE>());
 	encode(func, tag_ie);
 	encode_ie<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }

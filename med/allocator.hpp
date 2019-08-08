@@ -102,7 +102,7 @@ public:
 			this->begin(result + 1);
 			return result;
 		}
-		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T));
+		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T))
 	}
 };
 
@@ -131,7 +131,7 @@ public:
 			m_buffer.end(static_cast<typename BUFFER::pointer>(p));
 			return result;
 		}
-		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T));
+		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T))
 	}
 
 private:
