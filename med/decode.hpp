@@ -119,7 +119,6 @@ struct len_dec_impl
 	using state_type = typename FUNC::state_type;
 	using size_state = typename FUNC::size_state;
 	using allocator_type = typename FUNC::allocator_type;
-	static constexpr std::size_t granularity = FUNC::granularity;
 
 	using length_type = typename IE::length_type;
 
@@ -185,14 +184,17 @@ protected:
 		decode(m_decoder, len_ie, m_unexp);
 		std::size_t len_value = 0;
 		value_to_length(len_ie, len_value);
-		if (not calc_buf_len<DELTA>(len_value))
+		if (calc_buf_len<DELTA>(len_value))
+		{
+			m_size_state = m_decoder(PUSH_SIZE{len_value});
+			if (not m_size_state)
+			{
+				MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
+			}
+		}
+		else
 		{
 			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
-		}
-		m_size_state = m_decoder(PUSH_SIZE{len_value});
-		if (not m_size_state)
-		{
-			MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
 		}
 	}
 
@@ -234,7 +236,8 @@ struct length_decoder<true, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
 	{
 		CODEC_TRACE("len_dec[%s] by IE", name<length_type>());
 		//don't count the size of length IE itself just like with regular LV
-		return this->template decode_len_ie<length_type::traits::bits/FUNC::granularity>(len_ie.ref_field());
+		constexpr auto len_ie_size = +FUNC::template size_of<length_type>();
+		return this->template decode_len_ie<len_ie_size>(len_ie.ref_field());
 	}
 };
 

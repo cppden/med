@@ -24,7 +24,6 @@ struct octet_decoder
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
-	static constexpr std::size_t granularity = 8;
 
 	DEC_CTX& ctx;
 
@@ -40,15 +39,15 @@ struct octet_decoder
 	auto operator() (GET_STATE)                 { return ctx.buffer().get_state(); }
 	template <class IE>
 	bool operator() (CHECK_STATE, IE const&)    { return !ctx.buffer().empty(); }
-	void operator() (ADVANCE_STATE const& ss)
-	{
-		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
-	}
+	void operator() (ADVANCE_STATE const& ss)   { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 	void operator() (ADD_PADDING const& pad)
 	{
-		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
-		ctx.buffer().template advance<ADD_PADDING>(pad.bits/granularity);
+		CODEC_TRACE("padding %zu bytes", pad.pad_size);
+		ctx.buffer().template advance<ADD_PADDING>(pad.pad_size);
 	}
+
+	template <class IE>
+	static constexpr std::size_t size_of()      { return bits_to_bytes(IE::traits::bits); }
 
 	//IE_NULL
 	template <class IE>
@@ -61,9 +60,9 @@ struct octet_decoder
 	template <class IE>
 	void operator() (IE& ie, IE_VALUE)
 	{
-		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
+		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
-		uint8_t const* pval = ctx.buffer().template advance<IE, IE::traits::bits / granularity>();
+		uint8_t const* pval = ctx.buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
 		auto const val = get_bytes<IE>(pval);
 		if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
 		{
@@ -102,7 +101,7 @@ private:
 	template <typename VALUE, std::size_t OFS, std::size_t... Is>
 	static void get_byte(uint8_t const* input, VALUE& value)
 	{
-		value = (value << granularity) | *input;
+		value = (value << 8) | *input;
 		get_byte<VALUE, Is...>(++input, value);
 	}
 
@@ -115,7 +114,7 @@ private:
 	template <class IE>
 	static auto get_bytes(uint8_t const* input)
 	{
-		constexpr std::size_t NUM_BYTES = IE::traits::bits / granularity;
+		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
 		typename IE::value_type value{};
 		get_bytes_impl(input, value, std::make_index_sequence<NUM_BYTES>{});
 		return value;

@@ -36,7 +36,6 @@ struct decoder
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
-	static constexpr std::size_t granularity = 8;
 
 	DEC_CTX& ctx;
 
@@ -226,7 +225,7 @@ private:
 	template <typename VALUE, std::size_t OFS, std::size_t... Is>
 	static void get_byte(uint8_t const* input, VALUE& value)
 	{
-		value = (value << granularity) | *input;
+		value = (value << 8) | *input;
 		get_byte<VALUE, Is...>(++input, value);
 	}
 
@@ -239,7 +238,7 @@ private:
 	template <class IE>
 	static auto get_bytes(uint8_t const* input)
 	{
-		constexpr std::size_t NUM_BYTES = IE::traits::bits / granularity;
+		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
 		typename IE::value_type value{};
 		get_bytes_impl(input, value, std::make_index_sequence<NUM_BYTES>{});
 		return value;

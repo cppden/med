@@ -9,19 +9,22 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <type_traits>
+
 #include "config.hpp"
 #include "units.hpp"
 #include "debug.hpp"
+#include "state.hpp"
 
 namespace med {
 
 namespace detail {
 
-template <std::size_t BITS, bool INCLUSIVE, uint8_t FILLER>
+template <std::size_t SIZE, bool INCLUSIVE, uint8_t FILLER>
 struct pad
 {
 	static constexpr bool inclusive = INCLUSIVE;
-	static constexpr std::size_t bits = BITS;
+	static constexpr std::size_t pad_size = SIZE;
 	static constexpr uint8_t filler = FILLER;
 };
 
@@ -36,11 +39,11 @@ struct padding<bits<BITS>, INCLUSIVE, FILLER, void>
 
 template <uint8_t BYTES, bool INCLUSIVE, uint8_t FILLER>
 struct padding<bytes<BYTES>, INCLUSIVE, FILLER, void>
-	: detail::pad<BYTES*8, INCLUSIVE, FILLER> {};
+	: detail::pad<BYTES, INCLUSIVE, FILLER> {};
 
 template <typename INT, bool INCLUSIVE, uint8_t FILLER>
 struct padding<INT, INCLUSIVE, FILLER, std::enable_if_t<std::is_integral<INT>::value>>
-	: detail::pad<sizeof(INT)*8, INCLUSIVE, FILLER> {};
+	: detail::pad<sizeof(INT), INCLUSIVE, FILLER> {};
 
 template <class, class Enable = void>
 struct has_padding : std::false_type { };
@@ -59,24 +62,24 @@ struct padder
 	{}
 
 	void enable(bool v) const           { m_enable = v; }
-	//current padding size in bits
+	//current padding size in units of codec
 	std::size_t size() const
 	{
 		if (m_enable)
 		{
-			auto const total_bits = (m_func(GET_STATE{}) - m_start) * FUNC::granularity;
+			auto const total_size = (m_func(GET_STATE{}) - m_start);
 			//CODEC_TRACE("PADDING %zu bits for %zd = %zu\n", pad_bits, total_bits, pad_bits + total_bits);
-			return (pad_traits::bits - (total_bits % pad_traits::bits)) % pad_traits::bits;
+			return (pad_traits::pad_size - (total_size % pad_traits::pad_size)) % pad_traits::pad_size;
 		}
 		return 0;
 	}
 
 	void add() const
 	{
-		if (auto const pad_bits = size())
+		if (auto const pad_size = size())
 		{
-			CODEC_TRACE("PADDING %zu bits", pad_bits);
-			m_func(ADD_PADDING{pad_bits, IE::padding::filler});
+			CODEC_TRACE("PADDING %zu", pad_size);
+			m_func(ADD_PADDING{pad_size, IE::padding::filler});
 		}
 	}
 

@@ -33,8 +33,8 @@ public:
 	{
 	public:
 		explicit operator bool() const  { return nullptr != cursor; }
-		void reset(PTR p = nullptr)     { cursor = p; }
-		operator PTR() const            { return cursor; }
+		void reset(pointer p = nullptr) { cursor = p; }
+		operator pointer() const        { return cursor; }
 
 		friend std::ptrdiff_t operator- (state_type const& rhs, state_type const lhs)
 		{
@@ -44,7 +44,7 @@ public:
 	private:
 		friend class buffer;
 
-		PTR cursor {nullptr};
+		pointer cursor {nullptr};
 	};
 
 	class size_state
@@ -109,7 +109,7 @@ public:
 		size_state& operator= (size_state const&) = delete;
 
 		buffer* m_buf;
-		PTR     m_end;
+		pointer m_end;
 	};
 
 

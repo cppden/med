@@ -15,6 +15,7 @@ Distributed under the MIT License
 #include "state.hpp"
 #include "name.hpp"
 #include "ie_type.hpp"
+#include "protobuf.hpp"
 
 namespace med::protobuf {
 
@@ -24,7 +25,6 @@ struct decoder
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
-	static constexpr std::size_t granularity = 8;
 
 	DEC_CTX& ctx;
 
@@ -43,22 +43,14 @@ struct decoder
 	auto operator() (GET_STATE)                  { return ctx.buffer().get_state(); }
 	template <class IE>
 	bool operator() (CHECK_STATE, IE const&)     { return !ctx.buffer().empty(); }
-	void operator() (ADVANCE_STATE const& ss)
-	{
-		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
-	}
-	void operator() (ADD_PADDING const& pad)
-	{
-		CODEC_TRACE("padding %zu bytes", pad.bits/granularity);
-		ctx.buffer().template advance<ADD_PADDING>(pad.bits/granularity);
-	}
+	void operator() (ADVANCE_STATE const& ss)    { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 
 	//IE_VALUE
 	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
 	template <class IE>
 	void operator() (IE& ie, IE_VALUE)
 	{
-		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
+		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
 		typename IE::value_type val = ctx.buffer().template pop<IE>();
 		if (val & 0x80)

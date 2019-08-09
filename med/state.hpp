@@ -24,10 +24,10 @@ struct CHECK_STATE {};
 struct GET_STATE {};
 //Reset state of buffer to the given one passed as argument.
 struct SET_STATE {};
-//Advance the buffer state to relative number of bits
+//Advance the buffer state by relative number of codec units
 struct ADVANCE_STATE
 {
-	int    bits;
+	int    delta;
 };
 
 //Get length of IE in codec units
@@ -35,13 +35,13 @@ struct GET_LENGTH {};
 //Set end of buffer (its size).
 struct PUSH_SIZE
 {
-	std::size_t  size;
+	std::size_t  size; //in codec units
 };
 
 //Pad buffer with specfied number of bits using filler value.
 struct ADD_PADDING
 {
-	std::size_t  bits;
+	std::size_t  pad_size; //in codec units
 	uint8_t      filler;
 };
 

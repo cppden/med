@@ -20,7 +20,6 @@ struct octet_encoder
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
-	static constexpr std::size_t granularity = 8;
 
 	ENC_CTX& ctx;
 
@@ -53,15 +52,12 @@ struct octet_encoder
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)           { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE)                       { ctx.buffer().pop_state(); }
-	void operator() (ADVANCE_STATE const& ss)
-	{
-		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
-	}
-	void operator() (ADD_PADDING const& pad)
-	{
-		ctx.buffer().template fill<ADD_PADDING>(pad.bits/granularity, pad.filler);
-	}
-	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
+	void operator() (ADVANCE_STATE const& ss)         { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	void operator() (ADD_PADDING const& pad)          { ctx.buffer().template fill<ADD_PADDING>(pad.pad_size, pad.filler); }
+	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
+
+	template <class IE>
+	static constexpr std::size_t size_of()            { return bits_to_bytes(IE::traits::bits); }
 
 	template <class IE>
 	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
@@ -90,9 +86,9 @@ struct octet_encoder
 	template <class IE>
 	void operator() (IE const& ie, IE_VALUE)
 	{
-		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
+		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("VAL[%s]=%#zx %zu bits: %s", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits, ctx.buffer().toString());
-		uint8_t* out = ctx.buffer().template advance<IE, IE::traits::bits / granularity>();
+		uint8_t* out = ctx.buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
 		put_bytes(ie, out);
 	}
 
@@ -125,7 +121,7 @@ private:
 	template <class IE>
 	static void put_bytes(IE const& ie, uint8_t* output)
 	{
-		constexpr std::size_t NUM_BYTES = IE::traits::bits / granularity;
+		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
 		put_bytes_impl<NUM_BYTES>(output, ie.get_encoded(), std::make_index_sequence<NUM_BYTES>{});
 	}
 };

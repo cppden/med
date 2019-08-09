@@ -63,7 +63,6 @@ struct decoder
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
-	enum : std::size_t { granularity = 1 };
 
 	DEC_CTX& ctx;
 

@@ -21,7 +21,6 @@ struct encoder
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
-	enum : std::size_t { granularity = 1 };
 
 	ENC_CTX& ctx;
 

@@ -23,7 +23,6 @@ struct encoder
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
-	static constexpr std::size_t granularity = 8;
 
 	ENC_CTX& ctx;
 
@@ -56,7 +55,7 @@ struct encoder
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)             { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE)                         { ctx.buffer().pop_state(); }
-	void operator() (ADVANCE_STATE const& ss)           { ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity); }
+	void operator() (ADVANCE_STATE const& ss)           { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
 
 	template <class IE>
@@ -92,7 +91,6 @@ struct encoder
 	template <class IE>
 	void operator() (IE const& ie, IE_VALUE)
 	{
-		//static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
 		using tv = tag_value<typename IE::traits, false>;
 		CODEC_TRACE("VAL[%s]=%#zx %zu bits", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits);
 		//CODEC_TRACE("tag=%zX bits=%zu", tv::value(), tv::tag_num_bits());
@@ -223,7 +221,7 @@ private:
 	template <class IE>
 	static void put_bytes(IE const& ie, uint8_t* output)
 	{
-		constexpr std::size_t NUM_BYTES = IE::traits::bits / granularity;
+		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
 		put_bytes_impl<NUM_BYTES>(output, ie.get_encoded(), std::make_index_sequence<NUM_BYTES>{});
 	}
 

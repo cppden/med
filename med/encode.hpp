@@ -34,7 +34,6 @@ struct len_enc_impl
 {
 	using state_type = typename FUNC::state_type;
 	using length_type = LEN;
-	static constexpr std::size_t granularity = FUNC::granularity;
 
 	explicit len_enc_impl(FUNC& encoder) noexcept
 		: m_encoder{ encoder }
@@ -50,7 +49,10 @@ struct len_enc_impl
 #endif
 
 	//check if placeholder was visited
-	explicit operator bool() const                       { return static_cast<bool>(m_lenpos); }
+	explicit operator bool() const                    { return static_cast<bool>(m_lenpos); }
+
+	template <class IE>
+	static constexpr std::size_t size_of()            { return FUNC::template size_of<IE>(); }
 
 	//forward regular types to encoder
 	template <class... Args> //NOTE: decltype is needed to expose actually defined operators
@@ -83,7 +85,7 @@ struct length_encoder<false, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		m_delta = DELTA;
 		//save position in encoded buffer to update with correct length
 		this->m_lenpos = this->m_encoder(GET_STATE{});
-		return this->m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
+		return this->m_encoder(ADVANCE_STATE{+FUNC::template size_of<length_type>()});
 	}
 
 	//update the length with final value
@@ -124,7 +126,7 @@ struct length_encoder<true, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		this->m_lenpos = this->m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
 		//TODO: trigger setters if any?
 		m_len_ie.copy(len_ie.ref_field());
-		return this->m_encoder(ADVANCE_STATE{int(length_type::traits::bits)});
+		return this->m_encoder(ADVANCE_STATE{+FUNC::template size_of<length_type>()});
 	}
 
 	//update the length with final value

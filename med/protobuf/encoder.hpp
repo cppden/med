@@ -21,7 +21,6 @@ struct encoder
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
-	static constexpr std::size_t granularity = 8;
 
 	ENC_CTX& ctx;
 
@@ -54,14 +53,7 @@ struct encoder
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)           { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE)                       { ctx.buffer().pop_state(); }
-	void operator() (ADVANCE_STATE const& ss)
-	{
-		ctx.buffer().template advance<ADVANCE_STATE>(ss.bits/granularity);
-	}
-	void operator() (ADD_PADDING const& pad)
-	{
-		ctx.buffer().template fill<ADD_PADDING>(pad.bits/granularity, pad.filler);
-	}
+	void operator() (ADVANCE_STATE const& ss)         { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
 
 	//IE_VALUE
@@ -69,7 +61,7 @@ struct encoder
 	template <class IE>
 	void operator() (IE const& ie, IE_VALUE)
 	{
-		static_assert(0 == (IE::traits::bits % granularity), "OCTET VALUE EXPECTED");
+		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
 		auto value = ie.get_encoded();
 		CODEC_TRACE("VAL[%s]=%#zx(%zu) %zu bits: %s", name<IE>(), std::size_t(value), std::size_t(value), IE::traits::bits, ctx.buffer().toString());
 		//TODO: estimate exact size needed? will it be faster?
