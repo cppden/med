@@ -7,7 +7,6 @@ ASN.1 BER encoder definition
 Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
-
 #include "debug.hpp"
 #include "name.hpp"
 #include "state.hpp"
@@ -61,16 +60,56 @@ struct encoder
 	template <class IE>
 	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
 	{
-		if constexpr (med::detail::has_size<IE>::value)
+		using tv = tag_value<typename IE::traits, false>; //constructed or not doesn't affect the tag size
+
+		if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
 		{
-			CODEC_TRACE("length(%s) = %zu", name<IE>(), std::size_t(ie.size()));
-			return ie.size();
+			std::size_t const val_size = ie.calc_length(*this);
+			std::size_t const len_size = length::bytes(val_size);
+			CODEC_TRACE("SEQ[%s] len=%zu", name<IE>(), tv::num_bytes() + len_size + val_size);
+			return tv::num_bytes() + len_size + val_size;
 		}
-		else
+		else if constexpr (std::is_base_of_v<IE_NULL, typename IE::ie_type>)
 		{
-			std::size_t const len = bits_to_bytes(IE::traits::bits);
-			CODEC_TRACE("length(%s) = %zu", name<IE>(), len);
-			return len;
+			constexpr std::size_t len_size = 1;
+			constexpr std::size_t val_size = 0;
+			CODEC_TRACE("NULL[%s] len=%zu+%zu+%zu=%zu", name<IE>(), tv::num_bytes(), len_size, val_size, tv::num_bytes() + len_size + val_size);
+			return tv::num_bytes() + len_size + val_size;
+		}
+		else if constexpr (std::is_base_of_v<IE_VALUE, typename IE::ie_type>)
+		{
+			if constexpr (std::is_same_v<bool, typename IE::value_type>)
+			{
+				constexpr std::size_t len_size = 1;
+				constexpr std::size_t val_size = 1;
+				CODEC_TRACE("BOOL[%s] len=%zu+%zu+%zu=%zu", name<IE>(), tv::num_bytes(), len_size, val_size, tv::num_bytes() + len_size + val_size);
+				return tv::num_bytes() + len_size + val_size;
+			}
+			else if constexpr (std::is_integral_v<typename IE::value_type>)
+			{
+				constexpr std::size_t len_size = 1;
+				std::size_t const val_size = length::bytes<typename IE::value_type>(ie.get_encoded());
+				CODEC_TRACE("INT[%s] len=%zu+%zu+%zu=%zu", name<IE>(), tv::num_bytes(), len_size, val_size, tv::num_bytes() + len_size + val_size);
+				return tv::num_bytes() + len_size + val_size;
+			}
+			else
+			{
+				static_assert(std::is_void_v<typename IE::value_type>(), "NOT IMPLEMENTED?");
+			}
+		}
+		else if constexpr (std::is_base_of_v<IE_OCTET_STRING, typename IE::ie_type>)
+		{
+			std::size_t const val_size = ie.size();
+			std::size_t const len_size = length::bytes(val_size);
+			CODEC_TRACE("OSTR[%s] len=%zu+%zu+%zu=%zu", name<IE>(), tv::num_bytes(), len_size, val_size, tv::num_bytes() + len_size + val_size);
+			return tv::num_bytes() + len_size + val_size;
+		}
+		else if constexpr (std::is_base_of_v<IE_BIT_STRING, typename IE::ie_type>)
+		{
+			std::size_t const val_size = ie.size() + 1;
+			std::size_t const len_size = length::bytes(val_size);
+			CODEC_TRACE("BSTR[%s] len=%zu+%zu+%zu=%zu", name<IE>(), tv::num_bytes(), len_size, val_size, tv::num_bytes() + len_size + val_size);
+			return tv::num_bytes() + len_size + val_size;
 		}
 	}
 
@@ -78,9 +117,7 @@ struct encoder
 	template <class IE>
 	void operator() (IE const&, IE_NULL)
 	{
-		using tv = tag_value<typename IE::traits, false>;
-		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
-		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+		put_tag<IE, false>();
 		//X.690 8.8 Encoding of a null value
 		//8.8.2 The contents octets shall not contain any octets.
 		//NOTE – The length octet is zero.
@@ -91,12 +128,8 @@ struct encoder
 	template <class IE>
 	void operator() (IE const& ie, IE_VALUE)
 	{
-		using tv = tag_value<typename IE::traits, false>;
-		CODEC_TRACE("VAL[%s]=%#zx %zu bits", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits);
-		//CODEC_TRACE("tag=%zX bits=%zu", tv::value(), tv::tag_num_bits());
-		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
-
-		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+		put_tag<IE, false>();
+		CODEC_TRACE("VAL[%s]=%#zx", name<IE>(), std::size_t(ie.get_encoded()));
 		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
 			//X.690 8.2 Encoding of a boolean value
@@ -121,7 +154,7 @@ struct encoder
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
+			static_assert(std::is_void_v<typename IE::value_type>, "NOT IMPLEMENTED?");
 		}
 	}
 
@@ -130,9 +163,7 @@ struct encoder
 	void operator() (IE const& ie, IE_BIT_STRING)
 	{
 		//X.690 8.6 Encoding of a bitstring value (not segmented only)
-		using tv = tag_value<typename IE::traits, false>;
-		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
-		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+		put_tag<IE, false>();
 
 		//8.6.2.2 The initial octet shall encode, as an unsigned binary integer,
 		// the number of unused bits in the final subsequent octet in the range [0..7].
@@ -140,8 +171,8 @@ struct encoder
 		// octet shall be zero.
 		put_length<IE>(ie.size() + 1);
 		ctx.buffer().template push<IE>( uint8_t(8 - uint8_t(ie.get().least_bits())) );
-		out = ctx.buffer().template advance<IE>(ie.size());
-		octets<IE::traits::min_bits*8, IE::traits::max_bits*8>::copy(out, ie.data(), ie.size());
+		auto* out = ctx.buffer().template advance<IE>(ie.size());
+		octets<IE::traits::min_bits/8, IE::traits::max_bits/8>::copy(out, ie.data(), ie.size());
 		CODEC_TRACE("STR[%s] %zu bits: %s", name<IE>(), std::size_t(ie.get().num_of_bits()), ctx.buffer().toString());
 	}
 
@@ -150,12 +181,9 @@ struct encoder
 	void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		//X.690 8.7 Encoding of an octetstring value (not segmented only)
-		using tv = tag_value<typename IE::traits, false>;
-		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
-		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
-
+		put_tag<IE, false>();
 		put_length<IE>(ie.size());
-		out = ctx.buffer().template advance<IE>(ie.size());
+		auto* out = ctx.buffer().template advance<IE>(ie.size());
 		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());
 		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 	}
@@ -164,13 +192,10 @@ struct encoder
 	void operator() (ENTRY_CONTAINER, IE const& ie)
 	{
 		//X.690 8.9 Encoding of a sequence value (not segmented only)
-		using tv = tag_value<typename IE::traits, true>;
-		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
-		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
+		put_tag<IE, true>(); //8.9.1 ...shall be constructed
 		auto const len = ie.calc_length(*this);
 		put_length<IE>(len);
-		CODEC_TRACE("entry [%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
-		//TODO: need to encode length...
+		CODEC_TRACE("entry[%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
 	}
 
 #ifndef UNIT_TEST
@@ -256,6 +281,15 @@ private:
 			}
 			break;
 		}
+	}
+
+	template <class IE, bool CONSTRUCTED>
+	void put_tag()
+	{
+		using tv = tag_value<typename IE::traits, CONSTRUCTED>;
+		uint8_t* out = ctx.buffer().template advance<IE, tv::num_bytes()>();
+		CODEC_TRACE("tag[%s]=%zXh %zu bytes", name<IE>(), tv::value(), tv::num_bytes());
+		put_bytes_impl<tv::num_bytes()>(out, tv::value(), std::make_index_sequence<tv::num_bytes()>{});
 	}
 };
 

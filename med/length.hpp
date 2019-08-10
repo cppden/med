@@ -84,23 +84,24 @@ struct length_getter
 		{
 			if constexpr (std::is_base_of_v<CONTAINER, typename WRAPPER::ie_type>)
 			{
-				CODEC_TRACE("%s(%s)...", __FUNCTION__, name<FIELD>());
+				CODEC_TRACE("%s[%s] : SEQ", __FUNCTION__, name<FIELD>());
 				return field.calc_length(encoder);
 			}
 			else if constexpr (std::is_base_of_v<IE_TV, typename WRAPPER::ie_type>)
 			{
 				using tag_t = typename WRAPPER::tag_type;
-				CODEC_TRACE("%s(%s) : TV", __FUNCTION__, name<FIELD>());
+				CODEC_TRACE("%s[%s] : TV", __FUNCTION__, name<FIELD>());
 				return field_length(tag_t{}, encoder) + field_length<FIELD>(ref_field(field), encoder);
 			}
 			else if constexpr (std::is_base_of_v<IE_LV, typename WRAPPER::ie_type>)
 			{
 				using len_t = typename WRAPPER::length_type;
-				CODEC_TRACE("%s(%s) : LV", __FUNCTION__, name<FIELD>());
+				CODEC_TRACE("%s[%s] : LV", __FUNCTION__, name<FIELD>());
 				return field_length(len_t{}, encoder) + field_length<FIELD>(ref_field(field), encoder);
 			}
 			else if constexpr (std::is_base_of_v<PRIMITIVE, typename WRAPPER::ie_type>)
 			{
+				CODEC_TRACE("%s[%s] : PRIMITIVE", __FUNCTION__, name<FIELD>());
 				return encoder(GET_LENGTH{}, field);
 			}
 			else

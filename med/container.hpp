@@ -77,17 +77,19 @@ struct cont_len
 		if constexpr (is_multi_field_v<IE>)
 		{
 			IE const& ie = seq;
-			CODEC_TRACE("%s[%s]*", __FUNCTION__, name<IE>());
 			std::size_t len = 0;
 			for (auto& v : ie) { len += field_length<IE>(v, encoder); }
+			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
 		}
 		else
 		{
 			IE const& ie = seq;
-			return has_setter_type_v<IE> || ie.ref_field().is_set()
+			std::size_t const len = has_setter_type_v<IE> || ie.ref_field().is_set()
 					? field_length<IE>(ie.ref_field(), encoder)
 					: 0;
+			CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
+			return len;
 		}
 	}
 
