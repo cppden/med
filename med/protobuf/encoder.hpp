@@ -13,11 +13,12 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "state.hpp"
 #include "octet_string.hpp"
+#include "sl/octet_info.hpp"
 
 namespace med::protobuf {
 
 template <class ENC_CTX>
-struct encoder
+struct encoder : sl::octet_info
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;

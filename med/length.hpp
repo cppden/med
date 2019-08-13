@@ -14,6 +14,7 @@ Distributed under the MIT License
 #include "state.hpp"
 #include "value_traits.hpp"
 #include "name.hpp"
+#include "meta/typelist.hpp"
 
 
 namespace med {
@@ -89,9 +90,9 @@ struct length_getter
 			}
 			else if constexpr (std::is_base_of_v<IE_TV, typename WRAPPER::ie_type>)
 			{
-				using tag_t = typename WRAPPER::tag_type;
+				using tag_type = meta::unwrap_t<decltype(ENCODER::template get_tag_type<WRAPPER>())>;
 				CODEC_TRACE("%s[%s] : TV", __FUNCTION__, name<FIELD>());
-				return field_length(tag_t{}, encoder) + field_length<FIELD>(ref_field(field), encoder);
+				return field_length(tag_type{}, encoder) + field_length<FIELD>(ref_field(field), encoder);
 			}
 			else if constexpr (std::is_base_of_v<IE_LV, typename WRAPPER::ie_type>)
 			{

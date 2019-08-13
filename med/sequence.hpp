@@ -26,7 +26,8 @@ namespace sl {
 template <class IE, class FUNC, class TAG>
 inline void clear_tag(FUNC& func, TAG& vtag)
 {
-	if constexpr (is_peek_v<typename IE::tag_type>)
+	using tag_type = med::meta::unwrap_t<decltype(FUNC::template get_tag_type<IE>())>;
+	if constexpr (is_peek_v<tag_type>)
 	{
 		func(POP_STATE{});
 		vtag.clear();
@@ -88,9 +89,8 @@ struct seq_dec
 				if (!vtag && decoder(PUSH_STATE{}, ie))
 				{
 					//convert const to writable
-					using TAG_IE = typename IE::tag_type::writable;
-					TAG_IE tag;
-					decoder(tag, typename TAG_IE::ie_type{});
+					typename tag_type::writable tag;
+					decoder(tag, typename tag_type::writable::ie_type{});
 					vtag.set_encoded(tag.get_encoded());
 					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 				}
@@ -104,9 +104,8 @@ struct seq_dec
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
 						//convert const to writable
-						using TAG_IE = typename IE::tag_type::writable;
-						TAG_IE tag;
-						decoder(tag, typename TAG_IE::ie_type{});
+						typename tag_type::writable tag;
+						decoder(tag, typename tag_type::writable::ie_type{});
 						vtag.set_encoded(tag.get_encoded());
 						CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 					}

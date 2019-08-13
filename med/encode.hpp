@@ -19,6 +19,7 @@ Distributed under the MIT License
 #include "length.hpp"
 #include "name.hpp"
 #include "placeholder.hpp"
+#include "meta/typelist.hpp"
 
 
 namespace med {
@@ -238,7 +239,8 @@ inline void encode_ie(ENCODER& encoder, IE const& ie, IE_LV)
 template <class WRAPPER, class FUNC, class IE>
 inline void encode_ie(FUNC& func, IE const& ie, IE_TV)
 {
-	typename WRAPPER::tag_type const tag_ie{};
+	using tag_type = meta::unwrap_t<decltype(FUNC::template get_tag_type<WRAPPER>())>;
+	tag_type const tag_ie{};
 	CODEC_TRACE("T=%zx<%s>{%s}", std::size_t(tag_ie.get()), name<WRAPPER>(), name<IE>());
 	encode(func, tag_ie);
 	encode_ie<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});

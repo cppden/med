@@ -71,12 +71,12 @@ template <class WRAPPER, class FUNC, class IE, class UNEXP>
 inline void decode_ie(FUNC& func, IE& ie, IE_TV, UNEXP& unexp)
 {
 	CODEC_TRACE("TV %s", name<IE>());
+	using tag_type = meta::unwrap_t<decltype(FUNC::template get_tag_type<WRAPPER>())>;
 	//convert const to writable
-	using TAG = typename WRAPPER::tag_type::writable;
+	using TAG = typename tag_type::writable;
 	TAG tag;
 	func(tag, typename TAG::ie_type{});
 
-	using tag_type = meta::unwrap_t<decltype(FUNC::template get_tag_type<WRAPPER>())>;
 	if (tag_type::match(tag.get_encoded()))
 	{
 		CODEC_TRACE("TV[%zu : %s]", std::size_t(tag.get()), name<WRAPPER>());

@@ -17,7 +17,6 @@ TEST(unique, typed)
 		med::tag<C<0x03>, FLD_UC>,
 		med::tag<C<0x04>, FLD_U8>
 	>;
-//	med::meta::clash<med::meta::tag_unique_t<s1>>::none();
 	static_assert(std::is_void_v<med::meta::tag_unique_t<med::meta::tag_getter<med::sl::octet_info>, s1>>);
 }
 

@@ -43,22 +43,6 @@ struct tag : tag_t<TAG_TYPE>
 };
 
 
-//template <class IE, typename Enable = void>
-//struct tag_type;
-
-//template <class IE>
-//struct tag_type<IE, std::enable_if_t<sl::detail::has_tag_type<IE>::value>>
-//{
-//	using type = typename IE::tag_type;
-//};
-
-//template <class IE>
-//struct tag_type<IE, std::enable_if_t<!sl::detail::has_tag_type<IE>::value && sl::detail::has_tag_type<typename IE::field_type>::value>>
-//{
-//	using type = typename IE::field_type::tag_type;
-//};
-
-
 namespace detail {
 
 template <class, class Enable = void>

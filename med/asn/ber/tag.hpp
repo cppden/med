@@ -23,7 +23,7 @@ constexpr std::size_t TAG_INVALID = std::size_t(~0);
 	a) bits 8 and 7 represent the class of the tag as specified in Table 1;
 	b) bit 6 shall be a zero or a one according to the rules of 8.1.2.5;
 	c) bits 5 to 1 encode the number of the tag as a binary integer with bit 5 as MSB.
-8.1.2.4 For tags >= 31, the identifier comprise a leading octet followed by 1+ subsequent octets.
+8.1.2.4 For tags > 30, the identifier comprise a leading octet followed by 1+ subsequent octets.
 8.1.2.4.1 The leading octet shall be encoded as follows:
 	a) bits 8 and 7 represent the class of the tag as listed in Table 1;
 	b) bit 6 shall be a zero or a one according to the rules of 8.1.2.5;
