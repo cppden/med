@@ -47,19 +47,30 @@ struct octet_decoder : sl::octet_info
 		ctx.buffer().template advance<ADD_PADDING>(pad.pad_size);
 	}
 
+	//IE_TAG
+	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
+	{
+		typename IE::writable ie;
+		(*this)(ie, typename IE::writable::ie_type{});
+		return ie.get_encoded();
+	}
+	//IE_LEN
+	template <class IE> void operator() (IE& ie, IE_LEN)
+	{
+		(*this)(ie, typename IE::ie_type{});
+	}
+
 	//IE_NULL
-	template <class IE>
-	void operator() (IE&, IE_NULL)
+	template <class IE> void operator() (IE&, IE_NULL)
 	{
 		CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString());
 	}
 
 	//IE_VALUE
-	template <class IE>
-	void operator() (IE& ie, IE_VALUE)
+	template <class IE> void operator() (IE& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
-		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
+		//CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
 		uint8_t const* pval = ctx.buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
 		auto const val = get_bytes<IE>(pval);
 		if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
@@ -73,12 +84,11 @@ struct octet_decoder : sl::octet_info
 		{
 			ie.set_encoded(val);
 		}
-		CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
+		CODEC_TRACE("V=%zxh [%s]: %s", std::size_t(val), name<IE>(), ctx.buffer().toString());
 	}
 
 	//IE_OCTET_STRING
-	template <class IE>
-	void operator() (IE& ie, IE_OCTET_STRING)
+	template <class IE> void operator() (IE& ie, IE_OCTET_STRING)
 	{
 		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
 		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))

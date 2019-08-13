@@ -26,8 +26,11 @@ struct IE_VALUE        : PRIMITIVE {};
 struct IE_OCTET_STRING : PRIMITIVE {};
 struct IE_BIT_STRING   : PRIMITIVE {};
 
+//structure layer selectors
 struct IE_TV {}; //tag-value
 struct IE_LV {}; //length-value
+struct IE_TAG {}; //tag
+struct IE_LEN {}; //length
 
 //for structured codecs
 struct ENTRY_CONTAINER{};
@@ -68,15 +71,5 @@ struct peek : T, peek_t {};
 
 template <class T>
 constexpr bool is_peek_v = std::is_base_of<peek_t, T>::value;
-
-//skip IE during both decode and encode
-//can be used to define more efficient complex header for set
-struct skip_t {};
-
-template <class T>
-struct skip : T, skip_t {};
-
-template <class T>
-constexpr bool is_skip_v = std::is_base_of<skip_t, T>::value;
 
 }	//end: namespace med

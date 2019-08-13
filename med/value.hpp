@@ -124,7 +124,7 @@ private:
  * gives error if decoded value doesn't match the fixed one
  */
 template <class TRAITS>
-struct const_integer : IE<const IE_VALUE>
+struct const_integer : IE<IE_VALUE>
 {
 	using traits     = TRAITS;
 	using value_type = typename traits::value_type;

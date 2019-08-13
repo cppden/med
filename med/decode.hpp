@@ -29,76 +29,110 @@ namespace sl {
 
 struct default_handler
 {
-	template <class FUNC, class IE, class HEADER>
-	constexpr void operator()(FUNC&, IE const&, HEADER const& header) const
+	template <class DECODER, class IE, class HEADER>
+	constexpr void operator()(DECODER&, IE const&, HEADER const& header) const
 	{
 		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), get_tag(header))
 	}
 };
 
-template <class WRAPPER, class FUNC, class IE, class UNEXP>
-constexpr void decode_ie(FUNC& func, IE& ie, IE_NULL, UNEXP&)
+template <class WRAPPER, class DECODER, class IE, class UNEXP>
+constexpr void decode_ie(DECODER& decoder, IE& ie, IE_NULL, UNEXP&)
 {
-	func(ie, typename WRAPPER::ie_type{});
-	//ie.set();
+	decoder(ie, typename WRAPPER::ie_type{});
 }
 
-template <class WRAPPER, class FUNC, class IE, class UNEXP>
-constexpr void decode_ie(FUNC& func, IE& ie, PRIMITIVE, UNEXP&)
+template <class WRAPPER, class DECODER, class IE, class UNEXP>
+constexpr void decode_ie(DECODER& decoder, IE& ie, PRIMITIVE, UNEXP&)
 {
-	CODEC_TRACE("PRIMITIVE %s", name<IE>());
 	if constexpr (is_peek_v<IE>)
 	{
-		if (func(PUSH_STATE{}, ie))
+		CODEC_TRACE("PEEK PRIMITIVE %s", name<IE>());
+		if (decoder(PUSH_STATE{}, ie))
 		{
-			func(ie, typename WRAPPER::ie_type{});
-			func(POP_STATE{});
+			decoder(ie, typename WRAPPER::ie_type{});
+			decoder(POP_STATE{});
 		}
-	}
-	else if constexpr (is_skip_v<IE>)
-	{
-		//TODO: need to support fixed octet_string here?
-		return func.template advance<IE::traits::bits>();
 	}
 	else
 	{
-		return func(ie, typename WRAPPER::ie_type{});
+		CODEC_TRACE("PRIMITIVE %s", name<IE>());
+		return decoder(ie, typename WRAPPER::ie_type{});
 	}
 }
 
-//Tag-Value
-template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline void decode_ie(FUNC& func, IE& ie, IE_TV, UNEXP& unexp)
+//Tag
+//PEEK_SAVE - to preserve state in case of peek tag or not
+template <class TAG_TYPE, bool PEEK_SAVE, class DECODER>
+inline std::size_t decode_tag(DECODER& decoder)
 {
-	CODEC_TRACE("TV %s", name<IE>());
-	using tag_type = meta::unwrap_t<decltype(FUNC::template get_tag_type<WRAPPER>())>;
-	//convert const to writable
-	using TAG = typename tag_type::writable;
-	TAG tag;
-	func(tag, typename TAG::ie_type{});
-
-	if (tag_type::match(tag.get_encoded()))
+	TAG_TYPE ie;
+	std::size_t value{};
+	if constexpr (PEEK_SAVE && is_peek_v<TAG_TYPE>)
 	{
-		CODEC_TRACE("TV[%zu : %s]", std::size_t(tag.get()), name<WRAPPER>());
-		return decode(func, ref_field(ie), unexp);
+		CODEC_TRACE("PEEK TAG %s", name<TAG_TYPE>());
+		if (decoder(PUSH_STATE{}, ie))
+		{
+			value = decoder(ie, IE_TAG{});
+			decoder(POP_STATE{});
+		}
+	}
+	else
+	{
+		value = decoder(ie, IE_TAG{});
+	}
+	CODEC_TRACE("TAG=%zxh [%s]", value, name<TAG_TYPE>());
+	return value;
+}
+//Tag-Value
+template <class WRAPPER, class DECODER, class IE, class UNEXP>
+inline void decode_ie(DECODER& decoder, IE& ie, IE_TV, UNEXP& unexp)
+{
+	CODEC_TRACE("TV[%s]", name<WRAPPER>());
+	using tag_type = typename meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+	auto const tag = decode_tag<tag_type, true>(decoder);
+	if (tag_type::match(tag))
+	{
+		CODEC_TRACE("T=%zxh V[%s]", std::size_t(tag), name<WRAPPER>());
+		return decode(decoder, ref_field(ie), unexp);
 	}
 	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-	MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag.get_encoded())
+	MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag)
 }
 
-//Length-Value
-template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline void decode_ie(FUNC& func, IE& ie, IE_LV, UNEXP& unexp)
+//Length
+template <class LEN_TYPE, class DECODER>
+inline std::size_t decode_len(DECODER& decoder)
 {
-	typename WRAPPER::length_type len_ie;
-	CODEC_TRACE("LV[%s]", name<WRAPPER>());
-	decode(func, len_ie, unexp);
-	std::size_t len_value = len_ie.get_encoded();
-	CODEC_TRACE("raw len=%zu", len_value);
-	value_to_length(len_ie, len_value);
-	if (auto end = func(PUSH_SIZE{len_value}))
+	LEN_TYPE ie;
+	if constexpr (is_peek_v<LEN_TYPE>)
 	{
-		decode(func, ref_field(ie), unexp);
+		CODEC_TRACE("PEEK LEN %s", name<LEN_TYPE>());
+		if (decoder(PUSH_STATE{}, ie))
+		{
+			decoder(ie, IE_LEN{});
+			decoder(POP_STATE{});
+		}
+	}
+	else
+	{
+		decoder(ie, IE_LEN{});
+	}
+	std::size_t value = ie.get_encoded();
+	CODEC_TRACE("LEN[%s]=%zxh", name<LEN_TYPE>(), value);
+	value_to_length(ie, value);
+	return value;
+}
+//Length-Value
+template <class WRAPPER, class DECODER, class IE, class UNEXP>
+inline void decode_ie(DECODER& decoder, IE& ie, IE_LV, UNEXP& unexp)
+{
+	CODEC_TRACE("LV[%s]", name<WRAPPER>());
+	using len_type = typename WRAPPER::length_type;
+	auto const len_value = decode_len<len_type>(decoder);
+	if (auto end = decoder(PUSH_SIZE{len_value}))
+	{
+		decode(decoder, ref_field(ie), unexp);
 		//TODO: ??? as warning not error
 		if (0 != end.size())
 		{
@@ -113,19 +147,19 @@ inline void decode_ie(FUNC& func, IE& ie, IE_LV, UNEXP& unexp)
 	}
 }
 
-template <bool BY_IE, class FUNC, class IE, class UNEXP>
+template <bool BY_IE, class DECODER, class IE, class UNEXP>
 struct length_decoder;
 
-template <class FUNC, class IE, class UNEXP>
+template <class DECODER, class IE, class UNEXP>
 struct len_dec_impl
 {
-	using state_type = typename FUNC::state_type;
-	using size_state = typename FUNC::size_state;
-	using allocator_type = typename FUNC::allocator_type;
+	using state_type = typename DECODER::state_type;
+	using size_state = typename DECODER::size_state;
+	using allocator_type = typename DECODER::allocator_type;
 
 	using length_type = typename IE::length_type;
 
-	len_dec_impl(FUNC& decoder, IE& ie, UNEXP& unexp) noexcept
+	len_dec_impl(DECODER& decoder, IE& ie, UNEXP& unexp) noexcept
 		: m_decoder{ decoder }
 		, m_ie{ ie }
 		, m_start{ m_decoder(GET_STATE{}) }
@@ -149,13 +183,13 @@ struct len_dec_impl
 
 	//forward regular types to decoder
 	template <class... Args> //NOTE: decltype is needed to expose actually defined operators
-	auto operator() (Args&&... args) -> decltype(std::declval<FUNC>()(std::forward<Args>(args)...))
+	auto operator() (Args&&... args) -> decltype(std::declval<DECODER>()(std::forward<Args>(args)...))
 	{
 		return m_decoder(std::forward<Args>(args)...);
 	}
 
 	template <class T>
-	static constexpr auto get_tag_type()               { return FUNC::template get_tag_type<T>(); }
+	static constexpr auto get_tag_type()               { return DECODER::template get_tag_type<T>(); }
 
 	allocator_type& get_allocator()                    { return m_decoder.get_allocator(); }
 
@@ -205,19 +239,19 @@ protected:
 	}
 
 
-	FUNC&            m_decoder;
+	DECODER&         m_decoder;
 	IE&              m_ie;
 	state_type const m_start;
 	size_state       m_size_state; //to switch end of buffer for this IE
 	UNEXP&           m_unexp;
 };
 
-template <class FUNC, class IE, class UNEXP>
-struct length_decoder<false, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
+template <class DECODER, class IE, class UNEXP>
+struct length_decoder<false, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEXP>
 {
 	using length_type = typename IE::length_type;
-	using len_dec_impl<FUNC, IE, UNEXP>::len_dec_impl;
-	using len_dec_impl<FUNC, IE, UNEXP>::operator();
+	using len_dec_impl<DECODER, IE, UNEXP>::len_dec_impl;
+	using len_dec_impl<DECODER, IE, UNEXP>::operator();
 
 	template <int DELTA>
 	void operator() (placeholder::_length<DELTA>&)
@@ -228,12 +262,12 @@ struct length_decoder<false, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
 	}
 };
 
-template <class FUNC, class IE, class UNEXP>
-struct length_decoder<true, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
+template <class DECODER, class IE, class UNEXP>
+struct length_decoder<true, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEXP>
 {
 	using length_type = typename IE::length_type;
-	using len_dec_impl<FUNC, IE, UNEXP>::len_dec_impl;
-	using len_dec_impl<FUNC, IE, UNEXP>::operator();
+	using len_dec_impl<DECODER, IE, UNEXP>::len_dec_impl;
+	using len_dec_impl<DECODER, IE, UNEXP>::operator();
 
 	//length position by exact type match
 	template <class T, class ...ARGS>
@@ -242,23 +276,23 @@ struct length_decoder<true, FUNC, IE, UNEXP> : len_dec_impl<FUNC, IE, UNEXP>
 	{
 		CODEC_TRACE("len_dec[%s] by IE", name<length_type>());
 		//don't count the size of length IE itself just like with regular LV
-		constexpr auto len_ie_size = +FUNC::template size_of<length_type>();
+		constexpr auto len_ie_size = +DECODER::template size_of<length_type>();
 		return this->template decode_len_ie<len_ie_size>(len_ie.ref_field());
 	}
 };
 
-template <class WRAPPER, class FUNC, class IE, class UNEXP>
-inline void decode_ie(FUNC& func, IE& ie, CONTAINER, UNEXP& unexp)
+template <class WRAPPER, class DECODER, class IE, class UNEXP>
+inline void decode_ie(DECODER& decoder, IE& ie, CONTAINER, UNEXP& unexp)
 {
-	call_if<is_callable_with_v<FUNC, ENTRY_CONTAINER>>::call(func, ENTRY_CONTAINER{}, ie);
+	call_if<is_callable_with_v<DECODER, ENTRY_CONTAINER>>::call(decoder, ENTRY_CONTAINER{}, ie);
 
 	if constexpr (is_length_v<IE>)
 	{
 		if constexpr (has_padding<IE>::value)
 		{
-			using pad_t = padder<IE, FUNC>;
-			pad_t pad{func};
-			length_decoder<IE::template has<typename IE::length_type>(), FUNC, IE, UNEXP> ld{ func, ie, unexp };
+			using pad_t = padder<IE, DECODER>;
+			pad_t pad{decoder};
+			length_decoder<IE::template has<typename IE::length_type>(), DECODER, IE, UNEXP> ld{ decoder, ie, unexp };
 			ie.decode(ld, unexp);
 			//special case for empty elements w/o length placeholder
 			pad.enable(static_cast<bool>(ld));
@@ -274,12 +308,12 @@ inline void decode_ie(FUNC& func, IE& ie, CONTAINER, UNEXP& unexp)
 				return pad.add();
 			}
 			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
-			//if (std::size_t const left = ld.size() * FUNC::granularity - padding_size(pad))
+			//if (std::size_t const left = ld.size() - padding_size(pad))
 			//MED_THROW_EXCEPTION(overflow, name<IE>(), left)
 		}
 		else
 		{
-			length_decoder<IE::template has<typename IE::length_type>(), FUNC, IE, UNEXP> ld{ func, ie, unexp };
+			length_decoder<IE::template has<typename IE::length_type>(), DECODER, IE, UNEXP> ld{ decoder, ie, unexp };
 			ie.decode(ld, unexp);
 			ld.restore_end();
 		}
@@ -287,24 +321,24 @@ inline void decode_ie(FUNC& func, IE& ie, CONTAINER, UNEXP& unexp)
 	else
 	{
 		CODEC_TRACE("%s w/o length...:", name<IE>());
-		ie.decode(func, unexp);
+		ie.decode(decoder, unexp);
 	}
 
-	call_if<is_callable_with_v<FUNC, EXIT_CONTAINER>>::call(func, EXIT_CONTAINER{}, ie);
+	call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
 }
 
 }	//end: namespace sl
 
-template <class FUNC, class IE, class UNEXP = sl::default_handler>
-constexpr void decode(FUNC&& func, IE& ie, UNEXP&& unexp = sl::default_handler{})
+template <class DECODER, class IE, class UNEXP = sl::default_handler>
+constexpr void decode(DECODER&& decoder, IE& ie, UNEXP&& unexp = sl::default_handler{})
 {
 	if constexpr (has_ie_type<IE>::value)
 	{
-		return sl::decode_ie<IE>(func, ie, typename IE::ie_type{}, unexp);
+		return sl::decode_ie<IE>(decoder, ie, typename IE::ie_type{}, unexp);
 	}
-	else
+	else //special cases like passing a placeholder
 	{
-		return func(ie);
+		return decoder(ie);
 	}
 }
 

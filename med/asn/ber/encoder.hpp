@@ -10,15 +10,16 @@ Distributed under the MIT License
 #include "debug.hpp"
 #include "name.hpp"
 #include "state.hpp"
-#include "tag.hpp"
-#include "length.hpp"
 #include "octet_string.hpp"
+#include "asn/ber/tag.hpp"
+#include "asn/ber/length.hpp"
+#include "asn/ber/info.hpp"
 
 
 namespace med::asn::ber {
 
 template <class ENC_CTX>
-struct encoder
+struct encoder : info
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
@@ -117,7 +118,7 @@ struct encoder
 	template <class IE>
 	void operator() (IE const&, IE_NULL)
 	{
-		put_tag<IE, false>();
+		//put_tag<IE, false>();
 		//X.690 8.8 Encoding of a null value
 		//8.8.2 The contents octets shall not contain any octets.
 		//NOTE – The length octet is zero.
@@ -163,7 +164,7 @@ struct encoder
 	void operator() (IE const& ie, IE_BIT_STRING)
 	{
 		//X.690 8.6 Encoding of a bitstring value (not segmented only)
-		put_tag<IE, false>();
+		//put_tag<IE, false>();
 
 		//8.6.2.2 The initial octet shall encode, as an unsigned binary integer,
 		// the number of unused bits in the final subsequent octet in the range [0..7].
@@ -181,7 +182,7 @@ struct encoder
 	void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		//X.690 8.7 Encoding of an octetstring value (not segmented only)
-		put_tag<IE, false>();
+		//put_tag<IE, false>();
 		put_length<IE>(ie.size());
 		auto* out = ctx.buffer().template advance<IE>(ie.size());
 		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());
@@ -192,7 +193,7 @@ struct encoder
 	void operator() (ENTRY_CONTAINER, IE const& ie)
 	{
 		//X.690 8.9 Encoding of a sequence value (not segmented only)
-		put_tag<IE, true>(); //8.9.1 ...shall be constructed
+		//put_tag<IE, true>(); //8.9.1 ...shall be constructed
 		auto const len = ie.calc_length(*this);
 		put_length<IE>(len);
 		CODEC_TRACE("entry[%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());

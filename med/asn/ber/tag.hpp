@@ -8,7 +8,7 @@ Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
-#include "../ids.hpp"
+#include "asn/ids.hpp"
 
 
 namespace med::asn::ber {

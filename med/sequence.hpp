@@ -30,12 +30,8 @@ inline void clear_tag(FUNC& func, TAG& vtag)
 	if constexpr (is_peek_v<tag_type>)
 	{
 		func(POP_STATE{});
-		vtag.clear();
 	}
-	else
-	{
-		vtag.clear();
-	}
+	vtag.clear();
 }
 
 template <class FUNC, class TAG>
@@ -79,19 +75,16 @@ struct seq_dec
 		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
 		{
+			CODEC_TRACE("[%s]*", name<IE>());
 			using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
 			if constexpr (not std::is_void_v<tag_type>) //multi-field with tag
 			{
-
 				//multi-instance optional or mandatory field w/ tag w/o counter
 				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !has_condition_v<IE>, "TO IMPLEMENT!");
 
 				if (!vtag && decoder(PUSH_STATE{}, ie))
 				{
-					//convert const to writable
-					typename tag_type::writable tag;
-					decoder(tag, typename tag_type::writable::ie_type{});
-					vtag.set_encoded(tag.get_encoded());
+					vtag.set_encoded(decode_tag<tag_type, false>(decoder));
 					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 				}
 
@@ -103,10 +96,7 @@ struct seq_dec
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
-						//convert const to writable
-						typename tag_type::writable tag;
-						decoder(tag, typename tag_type::writable::ie_type{});
-						vtag.set_encoded(tag.get_encoded());
+						vtag.set_encoded(decode_tag<tag_type, false>(decoder));
 						CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 					}
 					else //end is reached
@@ -147,7 +137,7 @@ struct seq_dec
 					typename IE::counter_type counter_ie;
 					med::decode(decoder, counter_ie);
 					auto count = counter_ie.get_encoded();
-					CODEC_TRACE("[%s] = %zu", name<IE>(), std::size_t(count));
+					CODEC_TRACE("[%s] CNT=%zu", name<IE>(), std::size_t(count));
 					check_arity(decoder, ie, count);
 					while (count--)
 					{
@@ -201,18 +191,16 @@ struct seq_dec
 				using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
 				if constexpr (not std::is_void_v<tag_type>) //optional field with tag
 				{
+					CODEC_TRACE("O<%s> w/TAG", name<IE>());
 					//read a tag or use the tag read before
 					if (!vtag)
 					{
 						//save state before decoding a tag
 						if (decoder(PUSH_STATE{}, ie))
 						{
-							//convert const to writable
-							using TAG_IE = typename IE::tag_type::writable;
-							TAG_IE tag;
-							decoder(tag, typename TAG_IE::ie_type{});
-							vtag.set_encoded(tag.get_encoded());
-							CODEC_TRACE("pop tag=%zx", std::size_t(tag.get_encoded()));
+							//don't save state as we just did it already
+							vtag.set_encoded(decode_tag<tag_type, false>(decoder));
+							CODEC_TRACE("pop tag=%zx", std::size_t(vtag.get_encoded()));
 						}
 						else
 						{
@@ -230,6 +218,7 @@ struct seq_dec
 				}
 				else //optional w/o tag
 				{
+					CODEC_TRACE("O<%s> w/o TAG", name<IE>());
 					//discard tag if needed
 					using prev_tag_type = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
 					if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_type>)
@@ -271,7 +260,7 @@ struct seq_dec
 			}
 			else //mandatory field
 			{
-				CODEC_TRACE("{%s}...", name<IE>());
+				CODEC_TRACE("M<%s>...", name<IE>());
 
 				//if switched from optional with tag then discard it since mandatory is read as whole
 				using prev_tag_type = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;

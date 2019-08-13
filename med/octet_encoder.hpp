@@ -57,8 +57,7 @@ struct octet_encoder : sl::octet_info
 	void operator() (ADD_PADDING const& pad)          { ctx.buffer().template fill<ADD_PADDING>(pad.pad_size, pad.filler); }
 	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
 
-	template <class IE>
-	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
+	template <class IE> constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
 	{
 		if constexpr (detail::has_size<IE>::value)
 		{
@@ -73,16 +72,18 @@ struct octet_encoder : sl::octet_info
 		}
 	}
 
+	//IE_TAG/IE_LEN
+	template <class IE> void operator() (IE const& ie, IE_TAG)
+		{ (*this)(ie, typename IE::ie_type{}); }
+	template <class IE> void operator() (IE const& ie, IE_LEN)
+		{ (*this)(ie, typename IE::ie_type{}); }
+
 	//IE_NULL
-	template <class IE>
-	void operator() (IE const&, IE_NULL)
-	{
-		CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString());
-	}
+	template <class IE> void operator() (IE const&, IE_NULL)
+		{ CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString()); }
 
 	//IE_VALUE
-	template <class IE>
-	void operator() (IE const& ie, IE_VALUE)
+	template <class IE> void operator() (IE const& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
 		CODEC_TRACE("VAL[%s]=%#zx %zu bits: %s", name<IE>(), std::size_t(ie.get_encoded()), IE::traits::bits, ctx.buffer().toString());
@@ -91,8 +92,7 @@ struct octet_encoder : sl::octet_info
 	}
 
 	//IE_OCTET_STRING
-	template <class IE>
-	void operator() (IE const& ie, IE_OCTET_STRING)
+	template <class IE> void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		uint8_t* out = ctx.buffer().template advance<IE>(ie.size());
 		octets<IE::traits::min_octets, IE::traits::max_octets>::copy(out, ie.data(), ie.size());

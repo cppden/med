@@ -12,8 +12,8 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "state.hpp"
 #include "octet_string.hpp"
-#include "tag.hpp"
-#include "info.hpp"
+#include "asn/ber/tag.hpp"
+#include "asn/ber/info.hpp"
 
 namespace med::asn::ber {
 
@@ -41,20 +41,37 @@ struct decoder : info
 	DEC_CTX& ctx;
 
 	explicit decoder(DEC_CTX& ctx_) : ctx{ ctx_ } { }
-	allocator_type& get_allocator()                    { return ctx.get_allocator(); }
+	allocator_type& get_allocator()             { return ctx.get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE const& ps)              { return ctx.buffer().push_size(ps.size); }
-	bool operator() (POP_STATE)                        { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE)                        { return ctx.buffer().get_state(); }
+	auto operator() (PUSH_SIZE const& ps)       { return ctx.buffer().push_size(ps.size); }
 	template <class IE>
-	bool operator() (CHECK_STATE, IE const&)           { return !ctx.buffer().empty(); }
+	bool operator() (PUSH_STATE, IE const&)     { return ctx.buffer().push_state(); }
+	bool operator() (POP_STATE)                 { return ctx.buffer().pop_state(); }
+	auto operator() (GET_STATE)                 { return ctx.buffer().get_state(); }
+	template <class IE>
+	bool operator() (CHECK_STATE, IE const&)    { return !ctx.buffer().empty(); }
+
+	//IE_TAG
+	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
+	{
+		CODEC_TRACE("TAG[%s]: %s", name<IE>(), ctx.buffer().toString());
+		typename IE::writable ie;
+		(*this)(ie, typename IE::writable::ie_type{});
+		return ie.get_encoded();
+	}
+	//IE_LEN
+	template <class IE> void operator() (IE& ie, IE_LEN)
+	{
+		CODEC_TRACE("LEN[%s]: %s", name<IE>(), ctx.buffer().toString());
+		(*this)(ie, typename IE::ie_type{});
+	}
 
 	//IE_NULL
 	template <class IE>
 	void operator() (IE&, IE_NULL)
 	{
-		check_tag<IE, false>();
+		//check_tag<IE, false>();
 		if (uint8_t const length = ctx.buffer().template pop<IE>())
 		{
 			MED_THROW_EXCEPTION(invalid_value, name<IE>(), length, ctx.buffer())
@@ -65,12 +82,12 @@ struct decoder : info
 	template <class IE>
 	void operator() (IE& ie, IE_VALUE)
 	{
-		check_tag<IE, false>();
+		//check_tag<IE, false>();
 		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
 			//X.690 8.2 Encoding of a boolean value
 			auto* input = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
-			if (input[0] == 1)
+			if (input[0] == 1) //length is always 1
 			{
 				return ie.set_encoded(input[1] != 0);
 			}
@@ -101,7 +118,7 @@ struct decoder : info
 	template <class IE>
 	void operator() (IE& ie, IE_BIT_STRING)
 	{
-		check_tag<IE, false>();
+		//check_tag<IE, false>();
 		auto const bytes = ber_length<IE>() - 1;
 		auto* input = ctx.buffer().template advance<IE, 1>(); //num of unused bits [0..7]
 		std::size_t unused_bits = 0;
@@ -122,7 +139,7 @@ struct decoder : info
 	template <class IE>
 	void operator() (IE& ie, IE_OCTET_STRING)
 	{
-		check_tag<IE, false>();
+		//check_tag<IE, false>();
 		auto const len = ber_length<IE>();
 		CODEC_TRACE("\tOSTR[%s] %zu octets: %s", name<IE>(), std::size_t(len), ctx.buffer().toString());
 		if (!ie.set_encoded(len, ctx.buffer().begin()))
@@ -136,7 +153,7 @@ struct decoder : info
 	void operator() (ENTRY_CONTAINER, IE const&)
 	{
 		//X.690 8.9 Encoding of a sequence value (not segmented only)
-		check_tag<IE, true>();
+		//check_tag<IE, true>();
 		CODEC_TRACE("\tSEQ[%s] %zu octets: %s", name<IE>(), ber_length<IE>(), ctx.buffer().toString());
 		//CODEC_TRACE("entry [%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
 		//TODO: need to encode length...
@@ -198,12 +215,16 @@ private:
 		switch (num_bytes)
 		{
 		case 1: return signextend<T, 8>(input[0]);
-		case 2: return signextend<T, 16>((T(input[0]) << 8) | input[1]);
-		case 3: return signextend<T, 24>((T(input[0]) << 16) | (T(input[1]) << 8) | input[2]);
-		case 4: return signextend<T, 32>((T(input[0]) << 24) | (T(input[1]) << 16) | (T(input[2]) << 8) | input[3]);
+		case 2: return signextend<T, 16>((T(input[0]) <<  8) | (T(input[1])) );
+		case 3: return signextend<T, 24>((T(input[0]) << 16) | (T(input[1]) <<  8) | (T(input[2])) );
+		case 4: return signextend<T, 32>((T(input[0]) << 24) | (T(input[1]) << 16) | (T(input[2]) << 8) | (T(input[3])) );
+//		case 5: return signextend<T, 40>((T(input[0]) << 32) | (T(input[1]) << 24) | (T(input[2]) << 16) | (T(input[3])<< 8) | (T(input[4])) );
+//		case 6: return signextend<T, 48>((T(input[0]) << 40) | (T(input[1]) << 32) | (T(input[2]) << 24) | (T(input[3])<<16) | (T(input[4])<< 8) | (T(input[5])) );
+//		case 7: return signextend<T, 56>((T(input[0]) << 48) | (T(input[1]) << 40) | (T(input[2]) << 32) | (T(input[3])<<24) | (T(input[4])<<16) | (T(input[5])<< 8) | (T(input[6])) );
+//		case 8: return signextend<T, 64>((T(input[0]) << 56) | (T(input[1]) << 48) | (T(input[2]) << 40) | (T(input[3])<<32) | (T(input[4])<<24) | (T(input[5])<<16) | (T(input[6])<<8) | (T(input[7])));
 		default:
 			{
-				T value = *input++;
+				std::size_t value = *input++;
 				while (--num_bytes) { value <<= 8; value |= *input++; }
 				return value;
 			}

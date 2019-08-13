@@ -27,16 +27,28 @@ namespace med {
 //structure layer
 namespace sl {
 
-template <bool BY_IE, class FUNC, class LEN>
+//Length
+template <class LEN_TYPE, class ENCODER>
+inline void encode_len(ENCODER& encoder, std::size_t len)
+{
+	if constexpr (not is_peek_v<LEN_TYPE>) //do nothing if it's a peek preview
+	{
+		LEN_TYPE ie;
+		length_to_value(ie, len);
+		encoder(ie, IE_LEN{});
+	}
+}
+
+template <bool BY_IE, class ENCODER, class LEN>
 struct length_encoder;
 
-template <class FUNC, class LEN>
+template <class ENCODER, class LEN>
 struct len_enc_impl
 {
-	using state_type = typename FUNC::state_type;
+	using state_type = typename ENCODER::state_type;
 	using length_type = LEN;
 
-	explicit len_enc_impl(FUNC& encoder) noexcept
+	explicit len_enc_impl(ENCODER& encoder) noexcept
 		: m_encoder{ encoder }
 		, m_start{ m_encoder(GET_STATE{}) }
 	{
@@ -53,32 +65,32 @@ struct len_enc_impl
 	explicit operator bool() const                    { return static_cast<bool>(m_lenpos); }
 
 	template <class T>
-	static constexpr std::size_t size_of()            { return FUNC::template size_of<T>(); }
+	static constexpr std::size_t size_of()            { return ENCODER::template size_of<T>(); }
 	template <class T>
-	static constexpr auto get_tag_type()              { return FUNC::template get_tag_type<T>(); }
+	static constexpr auto get_tag_type()              { return ENCODER::template get_tag_type<T>(); }
 
 	//forward regular types to encoder
 	template <class... Args> //NOTE: decltype is needed to expose actually defined operators
-	auto operator() (Args&&... args) -> decltype(std::declval<FUNC>()(std::forward<Args>(args)...))
+	auto operator() (Args&&... args) -> decltype(std::declval<ENCODER>()(std::forward<Args>(args)...))
 	{
 		//CODEC_TRACE("%s", __PRETTY_FUNCTION__);
 		return m_encoder(std::forward<Args>(args)...);
 	}
 
 protected:
-	FUNC&            m_encoder;
+	ENCODER&         m_encoder;
 	state_type const m_start;
 	state_type       m_lenpos { };
 };
 
 
 //by placeholder
-template <class FUNC, class LEN>
-struct length_encoder<false, FUNC, LEN> : len_enc_impl<FUNC, LEN>
+template <class ENCODER, class LEN>
+struct length_encoder<false, ENCODER, LEN> : len_enc_impl<ENCODER, LEN>
 {
 	using length_type = LEN;
-	using len_enc_impl<FUNC, LEN>::len_enc_impl;
-	using len_enc_impl<FUNC, LEN>::operator();
+	using len_enc_impl<ENCODER, LEN>::len_enc_impl;
+	using len_enc_impl<ENCODER, LEN>::operator();
 
 	//length position by placeholder
 	template <int DELTA>
@@ -88,7 +100,7 @@ struct length_encoder<false, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		m_delta = DELTA;
 		//save position in encoded buffer to update with correct length
 		this->m_lenpos = this->m_encoder(GET_STATE{});
-		return this->m_encoder(ADVANCE_STATE{+FUNC::template size_of<length_type>()});
+		return this->m_encoder(ADVANCE_STATE{+ENCODER::template size_of<length_type>()});
 	}
 
 	//update the length with final value
@@ -97,12 +109,10 @@ struct length_encoder<false, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		if (this->m_lenpos)
 		{
 			auto const end = this->m_encoder(GET_STATE{});
-			std::size_t len_value = end - this->m_start - m_delta;
-			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len_value, m_delta);
-			length_type len_ie;
-			length_to_value(len_ie, len_value);
+			std::size_t len = end - this->m_start - m_delta;
+			CODEC_TRACE("LENGTH stop: len=%zu(%+d)", len, m_delta);
 			this->m_encoder(SET_STATE{}, this->m_lenpos);
-			encode(this->m_encoder, len_ie);
+			encode_len<length_type>(this->m_encoder, len);
 			this->m_encoder(SET_STATE{}, end);
 		}
 	}
@@ -112,12 +122,12 @@ private:
 };
 
 //by exact length type
-template <class FUNC, class LEN>
-struct length_encoder<true, FUNC, LEN> : len_enc_impl<FUNC, LEN>
+template <class ENCODER, class LEN>
+struct length_encoder<true, ENCODER, LEN> : len_enc_impl<ENCODER, LEN>
 {
 	using length_type = LEN;
-	using len_enc_impl<FUNC, LEN>::len_enc_impl;
-	using len_enc_impl<FUNC, LEN>::operator();
+	using len_enc_impl<ENCODER, LEN>::len_enc_impl;
+	using len_enc_impl<ENCODER, LEN>::operator();
 
 
 	//length position by exact type match
@@ -129,7 +139,7 @@ struct length_encoder<true, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		this->m_lenpos = this->m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
 		//TODO: trigger setters if any?
 		m_len_ie.copy(len_ie.ref_field());
-		return this->m_encoder(ADVANCE_STATE{+FUNC::template size_of<length_type>()});
+		return this->m_encoder(ADVANCE_STATE{+ENCODER::template size_of<length_type>()});
 	}
 
 	//update the length with final value
@@ -139,9 +149,9 @@ struct length_encoder<true, FUNC, LEN> : len_enc_impl<FUNC, LEN>
 		{
 			auto const end = this->m_encoder(GET_STATE{});
 			std::size_t const len_value = end - this->m_start - 1;
-			length_to_value(m_len_ie, len_value);
 			this->m_encoder(SET_STATE{}, this->m_lenpos);
-			encode(this->m_encoder, m_len_ie);
+			length_to_value(m_len_ie, len_value);
+			this->m_encoder(m_len_ie, IE_LEN{});
 			this->m_encoder(SET_STATE{}, end);
 		}
 	}
@@ -154,8 +164,8 @@ private:
 template <class T, typename Enable = void>
 struct container_encoder
 {
-	template <class FUNC, class IE>
-	static constexpr void encode(FUNC& func, IE const& ie)
+	template <class ENCODER, class IE>
+	static constexpr void encode(ENCODER& encoder, IE const& ie)
 	{
 		if constexpr (is_length_v<IE>)
 		{
@@ -164,9 +174,9 @@ struct container_encoder
 			if constexpr (has_padding<IE>::value)
 			{
 				CODEC_TRACE("start %s with padded len_type=%s...:", name<IE>(), name<length_type>());
-				using pad_t = padder<IE, FUNC>;
-				pad_t pad{func};
-				length_encoder<IE::template has<length_type>(), FUNC, length_type> le{ func };
+				using pad_t = padder<IE, ENCODER>;
+				pad_t pad{encoder};
+				length_encoder<IE::template has<length_type>(), ENCODER, length_type> le{ encoder };
 				ie.encode(le);
 				//special case for empty elements w/o length placeholder
 				pad.enable(static_cast<bool>(le));
@@ -184,7 +194,7 @@ struct container_encoder
 			else
 			{
 				CODEC_TRACE("start %s with len_type=%s...:", name<IE>(), name<length_type>());
-				length_encoder<IE::template has<length_type>(), FUNC, length_type> le{ func };
+				length_encoder<IE::template has<length_type>(), ENCODER, length_type> le{ encoder };
 				ie.encode(le);
 				le.set_length_ie();
 			}
@@ -192,7 +202,7 @@ struct container_encoder
 		else
 		{
 			CODEC_TRACE("%s...:", name<IE>());
-			ie.encode(func);
+			ie.encode(encoder);
 		}
 	}
 };
@@ -200,64 +210,73 @@ struct container_encoder
 template <class T>
 struct container_encoder<T, std::void_t<typename T::container_encoder>>
 {
-	template <class FUNC, class IE>
-	static void encode(FUNC& func, IE const& ie)
+	template <class ENCODER, class IE>
+	static void encode(ENCODER& encoder, IE const& ie)
 	{
-		return typename T::container_encoder{}(func, ie);
+		return typename T::container_encoder{}(encoder, ie);
 	}
 };
 
-template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, CONTAINER)
+template <class WRAPPER, class ENCODER, class IE>
+inline void encode_ie(ENCODER& encoder, IE const& ie, CONTAINER)
 {
-	call_if<is_callable_with_v<FUNC, ENTRY_CONTAINER>>::call(func, ENTRY_CONTAINER{}, ie);
-	container_encoder<FUNC>::encode(func, ie);
-	call_if<is_callable_with_v<FUNC, EXIT_CONTAINER>>::call(func, EXIT_CONTAINER{}, ie);
-}
-
-template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, PRIMITIVE)
-{
-	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
-	{
-		snapshot(func, ie);
-		func(ie, typename WRAPPER::ie_type{});
-	}
+	call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
+	container_encoder<ENCODER>::encode(encoder, ie);
+	call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
 }
 
 template <class WRAPPER, class ENCODER, class IE>
+inline void encode_ie(ENCODER& encoder, IE const& ie, PRIMITIVE)
+{
+	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
+	{
+		snapshot(encoder, ie);
+		encoder(ie, typename WRAPPER::ie_type{});
+	}
+}
+
+//Length-Value
+template <class WRAPPER, class ENCODER, class IE>
 inline void encode_ie(ENCODER& encoder, IE const& ie, IE_LV)
 {
-	typename WRAPPER::length_type len_ie{};
-	std::size_t len_value = field_length(ref_field(ie), encoder);
-	length_to_value(len_ie, len_value);
-	CODEC_TRACE("L=%zx<%s>{%s}", std::size_t(len_ie.get()), name<WRAPPER>(), name<IE>());
-	encode(encoder, len_ie);
+	auto const len = field_length(ref_field(ie), encoder);
+	CODEC_TRACE("LV=%zxh[%s(%s)]", len, name<WRAPPER>(), name<IE>());
+	encode_len<typename WRAPPER::length_type>(encoder, len);
 	encode_ie<typename WRAPPER::field_type>(encoder, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }
 
-template <class WRAPPER, class FUNC, class IE>
-inline void encode_ie(FUNC& func, IE const& ie, IE_TV)
+//Tag
+template <class TAG_TYPE, class ENCODER>
+inline void encode_tag(ENCODER& encoder)
 {
-	using tag_type = meta::unwrap_t<decltype(FUNC::template get_tag_type<WRAPPER>())>;
-	tag_type const tag_ie{};
-	CODEC_TRACE("T=%zx<%s>{%s}", std::size_t(tag_ie.get()), name<WRAPPER>(), name<IE>());
-	encode(func, tag_ie);
-	encode_ie<typename WRAPPER::field_type>(func, ref_field(ie), typename WRAPPER::field_type::ie_type{});
+	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
+	{
+		TAG_TYPE const ie{};
+		encoder(ie, IE_TAG{});
+	}
+}
+//Tag-Value
+template <class WRAPPER, class ENCODER, class IE>
+inline void encode_ie(ENCODER& encoder, IE const& ie, IE_TV)
+{
+	using tag_type = meta::unwrap_t<decltype(ENCODER::template get_tag_type<WRAPPER>())>;
+	CODEC_TRACE("TV=%zxh[%s(%s)]", std::size_t(tag_type::get()), name<WRAPPER>(), name<IE>());
+	encode_tag<tag_type>(encoder);
+	encode_ie<typename WRAPPER::field_type>(encoder, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }
 
 }	//end: namespace sl
 
-template <class FUNC, class IE>
-constexpr void encode(FUNC&& func, IE const& ie)
+template <class ENCODER, class IE>
+constexpr void encode(ENCODER&& encoder, IE const& ie)
 {
 	if constexpr (has_ie_type_v<IE>)
 	{
-		return sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
+		return sl::encode_ie<IE>(encoder, ie, typename IE::ie_type{});
 	}
-	else
+	else //special cases like passing a placeholder
 	{
-		return func(ie);
+		return encoder(ie);
 	}
 }
 

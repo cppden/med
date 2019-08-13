@@ -57,6 +57,10 @@ struct encoder : sl::octet_info
 	void operator() (ADVANCE_STATE const& ss)         { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
 
+	//IE_TAG/IE_LEN
+	template <class IE> void operator() (IE const& ie, IE_TAG)
+		{ (*this)(ie, typename IE::ie_type{}); }
+
 	//IE_VALUE
 	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
 	template <class IE>

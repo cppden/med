@@ -46,6 +46,15 @@ struct decoder : sl::octet_info
 	bool operator() (CHECK_STATE, IE const&)     { return !ctx.buffer().empty(); }
 	void operator() (ADVANCE_STATE const& ss)    { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 
+	//IE_TAG
+	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
+	{
+		CODEC_TRACE("TAG[%s]: %s", name<IE>(), ctx.buffer().toString());
+		typename IE::writable ie;
+		(*this)(ie, typename IE::writable::ie_type{});
+		return ie.get_encoded();
+	}
+
 	//IE_VALUE
 	//Little Endian Base 128: https://en.wikipedia.org/wiki/LEB128
 	template <class IE>
@@ -70,7 +79,7 @@ struct decoder : sl::octet_info
 				{
 					MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer())
 				}
-			};
+			}
 		}
 
 		if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)

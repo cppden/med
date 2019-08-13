@@ -554,6 +554,8 @@ TEST(decode, mseq_ok)
 	PROTO proto;
 	med::decoder_context<> ctx;
 
+if (0)
+{
 	//mandatory only
 	uint8_t const encoded1[] = { 0x11
 		, 37
@@ -585,20 +587,24 @@ TEST(decode, mseq_ok)
 
 	EXPECT_EQ(0, msg->count<VFLD1>());
 	EXPECT_TRUE(msg->get<VFLD1>().empty());
+}
 
 	//with more mandatory and optionals
 	uint8_t const encoded2[] = { 0x11
-		, 37
-		, 38
-		, 0x21, 0x35, 0xD9
-		, 0x21, 0x35, 0xDA
-		, 3, 0xDA, 0xBE, 0xEF
-		, 3, 0x22, 0xBE, 0xEF
-		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA
-		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01
-		, 0x51, 0x01, 0x02, 0x03, 0x04
-		, 0x51, 0x12, 0x34, 0x56, 0x78
-		, 0,2, 3, 0x21, 0,4,  5, 0x21, 0,6
+		, 37 //M< FLD_UC, med::arity<2>>
+		, 38 //-"-
+		, 0x21, 0x35,0xD9 //M< T<0x21>, FLD_U16, med::arity<2>>
+		, 0x21, 0x35,0xDA //-"-
+		, 3, 0xDA,0xBE,0xEF //M< L, FLD_U24, med::arity<2>>
+		, 3, 0x22,0xBE,0xEF //-"-
+		, 0x42, 4, 0xFE, 0xE1, 0xAB, 0xBA //M< T<0x42>, L, FLD_IP, med::max<2>>
+		, 0x42, 4, 0xAB, 0xBA, 0xC0, 0x01 //-"-
+		, 0x51, 0x01, 0x02, 0x03, 0x04 //M< T<0x51>, FLD_DW, med::max<2>>
+		, 0x51, 0x12, 0x34, 0x56, 0x78 //-"-
+		, 0,2   //M< CNT, SEQOF_3<0>, med::max<2>>
+			, 3, 0x21, 0,4 //M< FLD_U8 >, M< T<0x21>, FLD_U16 >
+			, 5, 0x21, 0,6
+		//-none- // O< FLD_TN >,
 		, 0x60, 2, 0, 33 //O< T<0x60>, L, FLD_CHO >
 		, 0x61, 4 //O< T<0x61>, L, SEQOF_1 >
 			, 0x12,0x23, 0x34,0x45 //M< FLD_W, med::max<3> >
@@ -607,15 +613,16 @@ TEST(decode, mseq_ok)
 			, 0x06, 3, 2, 0x33,0x44 //O< T<0x06>, L, FLD_CHO >
 		, 0x62, 2 //O< T<0x62>, L, SEQOF_2, med::max<2> >
 			, 0x33,0x44 //M< FLD_W >,
-			//O< T<0x06>, L, FLD_CHO >
-
-		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's'
+			//-none- //O< T<0x06>, L, FLD_CHO >
+		//-none- // O< T<0x70>, L, FLD_NSCHO >
+		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's' // O< L, VFLD1, med::max<3> >
 		, 7, 't', 'e', 's', 't', '.', 'i', 't'
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	MSG_MSEQ const* msg = proto.select();
+	//msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
 	check_seqof<FLD_UC>(*msg, {37, 38});

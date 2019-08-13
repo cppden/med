@@ -257,17 +257,21 @@ public:
 	char const* toString() const
 	{
 		static char sz[64];
-		auto p = begin();
 		if constexpr (std::is_same_v<char, value_type>)
 		{
+			auto p = begin();
 			auto const len = int(std::min(size(), std::size_t(16)));
-			std::snprintf(sz, sizeof(sz), "[%zu]+%zu=%.*s", size(), get_offset(), len, p);
+			std::snprintf(sz, sizeof(sz), "#%zu+%zu=%.*s", size(), get_offset(), len, p);
 		}
 		else
 		{
-			std::snprintf(sz, sizeof(sz)
-					, "[%zu]+%zu=%02x%02x%02x%02x[%02x]%02x%02x%02x%02x"
-					, size(), get_offset(), p[-4],p[-3],p[-2],p[-1], p[0], p[1],p[2],p[3],p[4]);
+			int n = std::snprintf(sz, sizeof(sz), "#%zu+%zu=", size(), get_offset());
+			auto from = std::max(-int(get_offset()), -4);
+			auto p = begin() + from;
+			for (auto const to = std::min(int(size()), from+10); from < to; ++from, ++p)
+			{
+				n += std::snprintf(sz+n, sizeof(sz)-n, p == begin() ? "[%02X]":"%02X", *p);
+			}
 		}
 		return sz;
 	}
