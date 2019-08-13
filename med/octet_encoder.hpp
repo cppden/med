@@ -12,11 +12,12 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "state.hpp"
 #include "octet_string.hpp"
+#include "sl/octet_info.hpp"
 
 namespace med {
 
 template <class ENC_CTX>
-struct octet_encoder
+struct octet_encoder : sl::octet_info
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
@@ -55,9 +56,6 @@ struct octet_encoder
 	void operator() (ADVANCE_STATE const& ss)         { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 	void operator() (ADD_PADDING const& pad)          { ctx.buffer().template fill<ADD_PADDING>(pad.pad_size, pad.filler); }
 	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
-
-	template <class IE>
-	static constexpr std::size_t size_of()            { return bits_to_bytes(IE::traits::bits); }
 
 	template <class IE>
 	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)

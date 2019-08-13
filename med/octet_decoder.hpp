@@ -15,11 +15,12 @@ Distributed under the MIT License
 #include "state.hpp"
 #include "name.hpp"
 #include "ie_type.hpp"
+#include "sl/octet_info.hpp"
 
 namespace med {
 
 template <class DEC_CTX>
-struct octet_decoder
+struct octet_decoder : sl::octet_info
 {
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
@@ -45,9 +46,6 @@ struct octet_decoder
 		CODEC_TRACE("padding %zu bytes", pad.pad_size);
 		ctx.buffer().template advance<ADD_PADDING>(pad.pad_size);
 	}
-
-	template <class IE>
-	static constexpr std::size_t size_of()      { return bits_to_bytes(IE::traits::bits); }
 
 	//IE_NULL
 	template <class IE>

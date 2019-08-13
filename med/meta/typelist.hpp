@@ -13,5 +13,21 @@ namespace med::meta {
 template <class... T>
 struct typelist {};
 
+template <typename T>
+struct wrap
+{
+	using type = T;
+};
+
+template <class T>
+using unwrap_t = typename T::type;
+
+template <class FUNC>
+struct tag_getter
+{
+	template <class T>
+	using apply = unwrap_t<decltype(FUNC::template get_tag_type<T>())>;
+};
+
 } //end: namespace med::meta
 

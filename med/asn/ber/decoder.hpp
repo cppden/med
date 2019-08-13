@@ -13,6 +13,7 @@ Distributed under the MIT License
 #include "state.hpp"
 #include "octet_string.hpp"
 #include "tag.hpp"
+#include "info.hpp"
 
 namespace med::asn::ber {
 
@@ -30,7 +31,7 @@ constexpr auto signextend(T x) -> std::enable_if_t<std::is_unsigned_v<T>, T>
 }
 
 template <class DEC_CTX>
-struct decoder
+struct decoder : info
 {
 	//required for length_encoder
 	using state_type = typename DEC_CTX::buffer_type::state_type;

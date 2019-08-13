@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include "../name.hpp"
 #include "../state.hpp"
 #include "../tag_named.hpp"
+#include "sl/octet_info.hpp"
 #include "json.hpp"
 
 namespace med::json {
@@ -57,7 +58,7 @@ inline bool skip_ws_after(BUFFER& buffer, int expected)
 
 
 template <class DEC_CTX>
-struct decoder
+struct decoder : sl::octet_info
 {
 	//required for length_encoder
 	using state_type = typename DEC_CTX::buffer_type::state_type;

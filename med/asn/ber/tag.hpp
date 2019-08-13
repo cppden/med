@@ -18,24 +18,22 @@ constexpr std::size_t TAG_INVALID = std::size_t(~0);
 
 /* X.690
 8.1.2 Identifier octets
-8.1.2.1 The identifier octets shall encode the ASN.1 tag (class and number) of the type of the data value.
-8.1.2.2 For tags with a number ranging from zero to 30 (inclusive), the identifier octets shall comprise
-	a single octet encoded as follows:
-	a) bits 8 and 7 shall be encoded to represent the class of the tag as specified in Table 1;
+8.1.2.1 The identifier octets encode the ASN.1 tag (class and number) of the type of the data value.
+8.1.2.2 For tags in [0..30], the identifier octets comprise a single octet encoded as follows:
+	a) bits 8 and 7 represent the class of the tag as specified in Table 1;
 	b) bit 6 shall be a zero or a one according to the rules of 8.1.2.5;
-	c) bits 5 to 1 shall encode the number of the tag as a binary integer with bit 5 as the most significant bit.
-8.1.2.4 For tags with a number greater than or equal to 31, the identifier shall comprise a leading
-	octet followed by one or more subsequent octets.
+	c) bits 5 to 1 encode the number of the tag as a binary integer with bit 5 as MSB.
+8.1.2.4 For tags >= 31, the identifier comprise a leading octet followed by 1+ subsequent octets.
 8.1.2.4.1 The leading octet shall be encoded as follows:
-	a) bits 8 and 7 shall be encoded to represent the class of the tag as listed in Table 1;
+	a) bits 8 and 7 represent the class of the tag as listed in Table 1;
 	b) bit 6 shall be a zero or a one according to the rules of 8.1.2.5;
-	c) bits 5 to 1 shall be encoded as 11111 2 .
-8.1.2.4.2 The subsequent octets shall encode the number of the tag as follows:
-	a) bit 8 of each octet shall be set to one unless it is the last octet of the identifier octets;
+	c) bits 5 to 1 shall be encoded as 0b11111.
+8.1.2.4.2 The subsequent octets encode the number of the tag as follows:
+	a) bit 8 of each octet shall be set to 1 unless it is the last octet;
 	b) bits 7 to 1 of the first subsequent octet, followed by bits 7 to 1 of the second subsequent
 	octet, followed in turn by bits 7 to 1 of each further octet, up to and including the last
 	subsequent octet in the identifier octets shall be the encoding of an unsigned binary integer
-	equal to the tag number, with bit 7 of the first subsequent octet as the most significant bit;
+	equal to the tag number, with bit 7 of the 1st subsequent octet as the MSB;
 	c) bits 7 to 1 of the first subsequent octet shall not all be zero.
 */
 

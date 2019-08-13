@@ -138,7 +138,7 @@ struct mandatory<
 	max<MAX>,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_tagged_field<FIELD>::value>
+	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, MIN, max<MAX>>
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -153,7 +153,7 @@ struct mandatory<
 	pmax<MAX>,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_tagged_field<FIELD>::value>
+	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, MIN, pmax<MAX>>
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");

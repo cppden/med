@@ -48,12 +48,4 @@ struct is_field<T, std::enable_if_t<
 template <class T>
 constexpr bool is_field_v = is_field<T>::value;
 
-
-template <class T, class Enable = void>
-struct is_tagged_field : std::false_type {};
-template <class T>
-struct is_tagged_field<T, std::enable_if_t<is_field_v<T> && has_tag_type_v<T>>> : std::true_type {};
-template <class T>
-constexpr bool is_tagged_field_v = is_tagged_field<T>::value;
-
 }	//end: namespace med

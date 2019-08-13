@@ -19,6 +19,7 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "placeholder.hpp"
 #include "value.hpp"
+#include "meta/typelist.hpp"
 
 
 namespace med {
@@ -74,7 +75,9 @@ inline void decode_ie(FUNC& func, IE& ie, IE_TV, UNEXP& unexp)
 	using TAG = typename WRAPPER::tag_type::writable;
 	TAG tag;
 	func(tag, typename TAG::ie_type{});
-	if (WRAPPER::tag_type::match(tag.get_encoded()))
+
+	using tag_type = meta::unwrap_t<decltype(FUNC::template get_tag_type<WRAPPER>())>;
+	if (tag_type::match(tag.get_encoded()))
 	{
 		CODEC_TRACE("TV[%zu : %s]", std::size_t(tag.get()), name<WRAPPER>());
 		return decode(func, ref_field(ie), unexp);
@@ -150,6 +153,9 @@ struct len_dec_impl
 	{
 		return m_decoder(std::forward<Args>(args)...);
 	}
+
+	template <class T>
+	static constexpr auto get_tag_type()               { return FUNC::template get_tag_type<T>(); }
 
 	allocator_type& get_allocator()                    { return m_decoder.get_allocator(); }
 

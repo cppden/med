@@ -13,6 +13,7 @@ Distributed under the MIT License
 #include "encode.hpp"
 #include "exception.hpp"
 #include "name.hpp"
+#include "sl/octet_info.hpp"
 
 /*
 struct SinkSample
@@ -39,7 +40,7 @@ namespace med {
 
 //MAX_LINE - max length of a single output of IE.print
 template <class SINK, std::size_t MAX_LINE>
-class printer
+class printer : public sl::octet_info
 {
 	template <int N>
 	using int_t = std::integral_constant<int, N>;

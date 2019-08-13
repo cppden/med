@@ -7,21 +7,21 @@
 TEST(name, tag)
 {
 	PROTO proto;
+	med::encoder_context<> ctx{nullptr, 0};
+	med::octet_encoder enc{ctx};
 
-	static_assert(nullptr != PROTO::name_tag(1));
+	EXPECT_NE(nullptr, PROTO::name_tag(1, enc));
 	auto atag = 1;
-	EXPECT_STREQ(med::name<MSG_SEQ>(), PROTO::name_tag(atag));
-	static_assert(nullptr == PROTO::name_tag(0xAA));
+	EXPECT_STREQ(med::name<MSG_SEQ>(), PROTO::name_tag(atag, enc));
 	atag = 0x55;
-	EXPECT_EQ(nullptr, PROTO::name_tag(atag));
+	EXPECT_EQ(nullptr, PROTO::name_tag(atag, enc));
 
-	static_assert(nullptr != MSG_SET::name_tag(0x0b));
+	EXPECT_NE(nullptr, MSG_SET::name_tag(0x0b, enc));
 
 	atag = 0x21;
-	EXPECT_STREQ(med::name<FLD_U16>(), MSG_SET::name_tag(atag));
-	static_assert(nullptr == MSG_SET::name_tag(0xAA));
+	EXPECT_STREQ(med::name<FLD_U16>(), MSG_SET::name_tag(atag, enc));
 	atag = 0x55;
-	EXPECT_EQ(nullptr, MSG_SET::name_tag(atag));
+	EXPECT_EQ(nullptr, MSG_SET::name_tag(atag, enc));
 }
 
 constexpr std::size_t make_hash(std::size_t v) { return 137*(v + 39); }

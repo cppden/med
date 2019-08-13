@@ -51,8 +51,10 @@ struct len_enc_impl
 	//check if placeholder was visited
 	explicit operator bool() const                    { return static_cast<bool>(m_lenpos); }
 
-	template <class IE>
-	static constexpr std::size_t size_of()            { return FUNC::template size_of<IE>(); }
+	template <class T>
+	static constexpr std::size_t size_of()            { return FUNC::template size_of<T>(); }
+	template <class T>
+	static constexpr auto get_tag_type()              { return FUNC::template get_tag_type<T>(); }
 
 	//forward regular types to encoder
 	template <class... Args> //NOTE: decltype is needed to expose actually defined operators

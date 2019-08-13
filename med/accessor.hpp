@@ -11,9 +11,52 @@ Distributed under the MIT License
 
 #include <type_traits>
 
-#include "field_proxy.hpp"
+#include "multi_field.hpp"
 
 namespace med {
+
+template <class, class Enable = void>
+struct has_ref_field : std::false_type { };
+template <class T>
+struct has_ref_field<T, std::void_t<decltype(std::declval<T>().ref_field())>> : std::true_type { };
+
+//read-write access for any field returning a reference to the field
+template <class IE>
+decltype(auto) ref_field(IE& ie) //-> decltype(ie.ref_field())
+{
+	if constexpr (has_ref_field<IE>::value)
+	{
+		return ie.ref_field();
+	}
+	else
+	{
+		return ie;
+	}
+}
+
+//read-only access optional field returning a pointer or null if not set
+template <class FIELD, class IE>
+std::enable_if_t<!is_multi_field_v<IE> && is_optional_v<IE>, FIELD const*>
+inline get_field(IE const& ie)
+{
+	return ie.is_set() ? &ie.ref_field() : nullptr;
+}
+
+//read-only access mandatory field returning a reference
+template <class FIELD, class IE>
+std::enable_if_t<!is_multi_field_v<IE> && !is_optional_v<IE>, FIELD const&>
+inline get_field(IE const& ie)
+{
+	return ie.ref_field();
+}
+
+//read-only access of any multi-field
+template <class FIELD, class IE>
+std::enable_if_t<is_multi_field_v<IE>, IE const&>
+inline get_field(IE const& ie)
+{
+	return ie;
+}
 
 namespace detail {
 

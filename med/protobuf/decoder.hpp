@@ -16,11 +16,12 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "ie_type.hpp"
 #include "protobuf.hpp"
+#include "sl/octet_info.hpp"
 
 namespace med::protobuf {
 
 template <class DEC_CTX>
-struct decoder
+struct decoder : sl::octet_info
 {
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;

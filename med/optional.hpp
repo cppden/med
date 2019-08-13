@@ -332,7 +332,7 @@ struct optional<
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-//multi-instance field w/ tag-type
+//multi-instance field
 template <class FIELD, std::size_t MIN, std::size_t MAX>
 struct optional<
 	FIELD,
@@ -340,7 +340,7 @@ struct optional<
 	max<MAX>,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_tagged_field_v<FIELD>>
+	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, MIN, max<MAX>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -354,7 +354,7 @@ struct optional<
 	pmax<MAX>,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_tagged_field_v<FIELD>>
+	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, MIN, pmax<MAX>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -369,7 +369,7 @@ struct optional<
 	void,
 	min<1>,
 	max<1>,
-	std::enable_if_t<is_tagged_field_v<FIELD>>
+	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, NUM, max<NUM>>, optional_t
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");

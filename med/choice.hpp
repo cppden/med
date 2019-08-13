@@ -77,22 +77,22 @@ struct choice_copy : choice_if
 
 struct choice_name
 {
-	template <class IE, typename TAG>
-	static constexpr bool check(TAG const& tag)
+	template <class IE, typename TAG, class CODEC>
+	static constexpr bool check(TAG const& tag, CODEC&)
 	{
-		using tag_t = typename IE::tag_type;
-		return tag_t::match( tag );
+		using tag_type = med::meta::unwrap_t<decltype(CODEC::template get_tag_type<IE>())>;
+		return tag_type::match( tag );
 	}
 
-	template <class IE, typename TAG>
-	static constexpr char const* apply(TAG const&)
+	template <class IE, typename TAG, class CODEC>
+	static constexpr char const* apply(TAG const&, CODEC&)
 	{
 		using case_t = typename IE::case_type;
 		return name<case_t>();
 	}
 
-	template <typename TAG>
-	static constexpr char const* apply(TAG const&)
+	template <typename TAG, class CODEC>
+	static constexpr char const* apply(TAG const&, CODEC&)
 	{
 		return nullptr;
 	}
@@ -171,10 +171,10 @@ public:
 	using header_type = HEADER;
 	using ies_types = meta::typelist<CASES...>;
 
-	template <typename TAG>
-	static constexpr char const* name_tag(TAG const& tag)
+	template <typename TAG, class CODEC>
+	static constexpr char const* name_tag(TAG const& tag, CODEC& codec)
 	{
-		return meta::for_if<ies_types>(sl::choice_name{}, tag);
+		return meta::for_if<ies_types>(sl::choice_name{}, tag, codec);
 	}
 
 	header_type const& header() const       { return m_header; }
@@ -212,6 +212,7 @@ public:
 		using IE = meta::find<ies_types, sl::choice_at<CASE>>;
 		static_assert(!std::is_void<IE>(), "NO SUCH CASE IN CHOICE");
 		void const* store_p = &m_storage;
+		//TODO: either need to make dependent on codec or drop deps in choice above
 		return IE::tag_type::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
 	}
 
@@ -229,7 +230,8 @@ public:
 	template <class DECODER, class UNEXP>
 	void decode(DECODER& decoder, UNEXP& unexp)
 	{
-		static_assert(std::is_void_v<meta::tag_unique_t<ies_types>>, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
+		static_assert(std::is_void_v<meta::tag_unique_t<meta::tag_getter<DECODER>, ies_types>>
+			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 		med::decode(decoder, header(), unexp);
 		meta::for_if<ies_types>(sl::choice_dec{}, *this, decoder, unexp);
 	}

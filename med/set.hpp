@@ -28,7 +28,7 @@ constexpr void encode_header(ENCODER& encoder)
 {
 	if constexpr (std::is_base_of_v<PRIMITIVE, typename HEADER::ie_type>)
 	{
-		using tag_type = tag_type_t<IE>;
+		using tag_type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<IE>())>;
 		//static_assert(HEADER::traits::bits == tag_type::traits::bits);
 		if constexpr (tag_type::is_const) //encode only if tag fixed
 		{
@@ -52,20 +52,21 @@ constexpr void pop_state(DECODER& decoder)
 
 struct set_name
 {
-	template <class IE, typename TAG>
-	static constexpr bool check(TAG const& tag)
+	template <class IE, typename TAG, class CODEC>
+	static constexpr bool check(TAG const& tag, CODEC&)
 	{
-		return tag_type_t<IE>::match(tag);
+		using tag_type = meta::unwrap_t<decltype(CODEC::template get_tag_type<IE>())>;
+		return tag_type::match(tag);
 	}
 
-	template <class IE, typename TAG>
-	static constexpr char const* apply(TAG const&)
+	template <class IE, typename TAG, class CODEC>
+	static constexpr char const* apply(TAG const&, CODEC&)
 	{
 		return name<IE>();
 	}
 
-	template <typename TAG>
-	static constexpr char const* apply(TAG const&)
+	template <typename TAG, class CODEC>
+	static constexpr char const* apply(TAG const&, CODEC&)
 	{
 		return nullptr;
 	}
@@ -135,15 +136,16 @@ struct set_dec
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
 	static bool check(TO&, DECODER&, UNEXP&, HEADER const& header)
 	{
-		return tag_type_t<IE>::match( get_tag(header) );
-		//CODEC_TRACE("not [%s] = %#zx", name<IE>(), std::size_t(tag_type_t<IE>::get()));
+		using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		return tag_type::match( get_tag(header) );
 	}
 
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
 	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, HEADER const&)
 	{
 		//pop back the tag read since we have non-fixed tag inside
-		if constexpr (not tag_type_t<IE>::is_const) { decoder(POP_STATE{}); }
+		using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		if constexpr (not tag_type::is_const) { decoder(POP_STATE{}); }
 
 		IE& ie = static_cast<IE&>(to);
 		if constexpr (is_multi_field_v<IE>)
@@ -231,10 +233,10 @@ struct base_set : container<TRAITS, IEs...>
 	using header_type = HEADER;
 	using ies_types = typename container<TRAITS, IEs...>::ies_types;
 
-	template <typename TAG>
-	static constexpr char const* name_tag(TAG const& tag)
+	template <typename TAG, class CODEC>
+	static constexpr char const* name_tag(TAG const& tag, CODEC& codec)
 	{
-		return meta::for_if<ies_types>(sl::set_name{}, tag);
+		return meta::for_if<ies_types>(sl::set_name{}, tag, codec);
 	}
 
 	template <class ENCODER>
@@ -246,7 +248,8 @@ struct base_set : container<TRAITS, IEs...>
 	template <class DECODER, class UNEXP>
 	void decode(DECODER& decoder, UNEXP& unexp)
 	{
-		static_assert(std::is_void_v<meta::tag_unique_t<ies_types>>, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
+		static_assert(std::is_void_v<meta::tag_unique_t<meta::tag_getter<DECODER>, ies_types>>
+			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 
 		//TODO: how to join 2 branches w/o having unused bool
 		bool first = true;
