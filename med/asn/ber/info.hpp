@@ -19,7 +19,9 @@ struct info
 		{
 			constexpr bool constructed = std::is_base_of_v<CONTAINER, typename IE::ie_type>;
 			using tv = tag_value<typename IE::traits, constructed>;
-			using tag_type = med::value<med::fixed<tv::value(), med::bytes<tv::num_bytes()>>>;
+			using tag_type = med::value<
+				med::fixed< tv::value(), med::bytes<tv::num_bytes()>/*, typename IE::traits*/ >
+			>;
 			return meta::wrap<tag_type>{};
 		}
 	}

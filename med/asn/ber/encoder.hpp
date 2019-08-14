@@ -114,9 +114,21 @@ struct encoder : info
 		}
 	}
 
+	//IE_TAG/IE_LEN
+	template <class IE> void operator() (IE const& ie, IE_TAG)
+	{
+		//constexpr auto nbytes = IE::traits::num_bytes(); TODO: expose asn traits directly
+		constexpr std::size_t nbytes = bits_to_bytes(IE::traits::bits);
+		uint8_t* out = ctx.buffer().template advance<IE, nbytes>();
+		CODEC_TRACE("tag[%s]=%zXh %zu bytes: %s", name<IE>(), std::size_t(ie.get()), nbytes, ctx.buffer().toString());
+		put_bytes_impl<nbytes>(out, ie.get(), std::make_index_sequence<nbytes>{});
+	}
+//	template <class IE> void operator() (IE const& ie, IE_LEN)
+//		{ (*this)(ie, typename IE::ie_type{}); }
+
+
 	//IE_NULL
-	template <class IE>
-	void operator() (IE const&, IE_NULL)
+	template <class IE> void operator() (IE const&, IE_NULL)
 	{
 		//put_tag<IE, false>();
 		//X.690 8.8 Encoding of a null value
@@ -126,17 +138,16 @@ struct encoder : info
 	}
 
 	//IE_VALUE
-	template <class IE>
-	void operator() (IE const& ie, IE_VALUE)
+	template <class IE> void operator() (IE const& ie, IE_VALUE)
 	{
-		put_tag<IE, false>();
-		CODEC_TRACE("VAL[%s]=%#zx", name<IE>(), std::size_t(ie.get_encoded()));
+		//put_tag<IE, false>();
 		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
 			//X.690 8.2 Encoding of a boolean value
 			uint8_t* out = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
 			out[0] = 1; //length
 			out[1] = ie.get_encoded() ? 0xFF : 0x00; //value
+			CODEC_TRACE("BOOL[%s]=%zxh: %s", name<IE>(), std::size_t(ie.get_encoded()), ctx.buffer().toString());
 		}
 		else if constexpr (std::is_integral_v<typename IE::value_type>)
 		{
@@ -146,7 +157,7 @@ struct encoder : info
 			uint8_t* out = ctx.buffer().template advance<IE>(1 + len); //length + value
 			*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
 			put_bytes(ie.get_encoded(), out, len); //value
-			CODEC_TRACE("\t%u octets for %d: %s", len, ie.get_encoded(), ctx.buffer().toString());
+			CODEC_TRACE("INT[%s]=%d %u bytes: %s", name<IE>(), ie.get_encoded(), len, ctx.buffer().toString());
 		}
 		else if constexpr (std::is_floating_point_v<typename IE::value_type>)
 		{
@@ -160,8 +171,7 @@ struct encoder : info
 	}
 
 	//IE_BIT_STRING
-	template <class IE>
-	void operator() (IE const& ie, IE_BIT_STRING)
+	template <class IE> void operator() (IE const& ie, IE_BIT_STRING)
 	{
 		//X.690 8.6 Encoding of a bitstring value (not segmented only)
 		//put_tag<IE, false>();
@@ -178,8 +188,7 @@ struct encoder : info
 	}
 
 	//IE_OCTET_STRING
-	template <class IE>
-	void operator() (IE const& ie, IE_OCTET_STRING)
+	template <class IE> void operator() (IE const& ie, IE_OCTET_STRING)
 	{
 		//X.690 8.7 Encoding of an octetstring value (not segmented only)
 		//put_tag<IE, false>();
@@ -189,8 +198,7 @@ struct encoder : info
 		CODEC_TRACE("STR[%s] %zu octets: %s", name<IE>(), ie.size(), ctx.buffer().toString());
 	}
 
-	template <class IE>
-	void operator() (ENTRY_CONTAINER, IE const& ie)
+	template <class IE> void operator() (ENTRY_CONTAINER, IE const& ie)
 	{
 		//X.690 8.9 Encoding of a sequence value (not segmented only)
 		//put_tag<IE, true>(); //8.9.1 ...shall be constructed

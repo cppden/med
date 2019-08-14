@@ -3,6 +3,7 @@
 #include "json/encoder.hpp"
 #include "json/decoder.hpp"
 
+#if 0
 using namespace std::string_view_literals;
 
 namespace js {
@@ -110,5 +111,7 @@ TEST(json, decode)
 		}
 	}
 }
+
+#endif
 
 #endif

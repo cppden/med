@@ -181,7 +181,7 @@ void print(SINK&& sink, IE const& ie, std::size_t max_depth = 0)
 
 
 template <class SINK, std::size_t MAX_LINE>
-class dumper
+class dumper : public sl::octet_info
 {
 public:
 	struct container_encoder

@@ -225,11 +225,28 @@ inline void encode_ie(ENCODER& encoder, IE const& ie, CONTAINER)
 	call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
 }
 
+//Tag
+template <class TAG_TYPE, class ENCODER>
+inline void encode_tag(ENCODER& encoder)
+{
+	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
+	{
+		TAG_TYPE const ie{};
+		encoder(ie, IE_TAG{});
+	}
+}
+
 template <class WRAPPER, class ENCODER, class IE>
 inline void encode_ie(ENCODER& encoder, IE const& ie, PRIMITIVE)
 {
 	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
 	{
+		using tag_type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<IE>())>;
+		if constexpr (not std::is_void_v<tag_type>)
+		{
+			encode_tag<tag_type>(encoder);
+		}
+
 		snapshot(encoder, ie);
 		encoder(ie, typename WRAPPER::ie_type{});
 	}
@@ -245,16 +262,6 @@ inline void encode_ie(ENCODER& encoder, IE const& ie, IE_LV)
 	encode_ie<typename WRAPPER::field_type>(encoder, ref_field(ie), typename WRAPPER::field_type::ie_type{});
 }
 
-//Tag
-template <class TAG_TYPE, class ENCODER>
-inline void encode_tag(ENCODER& encoder)
-{
-	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
-	{
-		TAG_TYPE const ie{};
-		encoder(ie, IE_TAG{});
-	}
-}
 //Tag-Value
 template <class WRAPPER, class ENCODER, class IE>
 inline void encode_ie(ENCODER& encoder, IE const& ie, IE_TV)
