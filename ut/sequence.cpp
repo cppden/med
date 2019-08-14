@@ -554,8 +554,6 @@ TEST(decode, mseq_ok)
 	PROTO proto;
 	med::decoder_context<> ctx;
 
-if (0)
-{
 	//mandatory only
 	uint8_t const encoded1[] = { 0x11
 		, 37
@@ -587,7 +585,6 @@ if (0)
 
 	EXPECT_EQ(0, msg->count<VFLD1>());
 	EXPECT_TRUE(msg->get<VFLD1>().empty());
-}
 
 	//with more mandatory and optionals
 	uint8_t const encoded2[] = { 0x11
@@ -621,8 +618,7 @@ if (0)
 	ctx.reset(encoded2, sizeof(encoded2));
 	decode(med::octet_decoder{ctx}, proto);
 
-	MSG_MSEQ const* msg = proto.select();
-	//msg = proto.select();
+	msg = proto.select();
 	ASSERT_NE(nullptr, msg);
 
 	check_seqof<FLD_UC>(*msg, {37, 38});

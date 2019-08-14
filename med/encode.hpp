@@ -231,6 +231,7 @@ inline void encode_tag(ENCODER& encoder)
 {
 	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
 	{
+		CODEC_TRACE("%s[%s]", __FUNCTION__, name<TAG_TYPE>());
 		TAG_TYPE const ie{};
 		encoder(ie, IE_TAG{});
 	}
@@ -241,6 +242,7 @@ inline void encode_ie(ENCODER& encoder, IE const& ie, PRIMITIVE)
 {
 	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
 	{
+		CODEC_TRACE("%s[%s(%s)]", __FUNCTION__, name<WRAPPER>(), name<IE>());
 		using tag_type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<IE>())>;
 		if constexpr (not std::is_void_v<tag_type>)
 		{

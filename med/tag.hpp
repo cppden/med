@@ -12,8 +12,7 @@ Distributed under the MIT License
 #include <type_traits>
 
 #include "ie_type.hpp"
-//TODO: remove
-#include "sl/octet_info.hpp"
+#include "meta/typelist.hpp"
 
 
 namespace med {
@@ -26,20 +25,36 @@ struct is_tag<T, std::enable_if_t<std::is_same_v<bool, decltype(((T const*)0)->m
 template <class T>
 constexpr bool is_tag_v = is_tag<T>::value;
 
-template <class TAG>
+//define tag_type with assertion on type
+template <class TAG_TYPE>
 struct tag_t
 {
-	using tag_type = TAG;
-	static_assert(is_tag_v<TAG>, "TAG IS REQUIRED");
+	using tag_type = TAG_TYPE;
+	static_assert(is_tag_v<TAG_TYPE>, "TAG IS REQUIRED");
+};
+
+template <class FUNC>
+struct tag_getter
+{
+	template <class T>
+	using apply = meta::unwrap_t<decltype(FUNC::template get_tag_type<T>())>;
 };
 
 
 //for choice
-template <class TAG_TYPE, class CASE>
-struct tag : tag_t<TAG_TYPE>
+template <class CASE_VALUE, class CASE_TYPE>
+struct option
 {
-	static_assert(std::is_class_v<CASE>, "CASE IS REQUIRED TO BE A CLASS");
-	using case_type = CASE;
+	static_assert(is_tag_v<CASE_VALUE>, "TAG IS REQUIRED");
+	static_assert(std::is_class_v<CASE_TYPE>, "CASE IS REQUIRED TO BE A CLASS");
+	using case_value = CASE_VALUE;
+	using case_type = CASE_TYPE;
+};
+
+struct option_getter
+{
+	template <class T>
+	using apply = typename T::case_value;
 };
 
 

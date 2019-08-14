@@ -248,7 +248,7 @@ struct base_set : container<TRAITS, IEs...>
 	template <class DECODER, class UNEXP>
 	void decode(DECODER& decoder, UNEXP& unexp)
 	{
-		static_assert(std::is_void_v<meta::tag_unique_t<meta::tag_getter<DECODER>, ies_types>>
+		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
 			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 
 		//TODO: how to join 2 branches w/o having unused bool

@@ -12,12 +12,27 @@
 
 TEST(unique, typed)
 {
-	using s1 = med::meta::typelist<
-		med::tag<C<0x02>, FLD_U16>,
-		med::tag<C<0x03>, FLD_UC>,
-		med::tag<C<0x04>, FLD_U8>
+	//checking tag uniqueness
+	using tags = med::meta::typelist<
+		med::tag_t<C<0x02>>,
+		med::tag_t<C<0x03>>,
+		med::tag_t<C<0x04>>
 	>;
-	static_assert(std::is_void_v<med::meta::tag_unique_t<med::meta::tag_getter<med::sl::octet_info>, s1>>);
+	static_assert(std::is_void_v<med::meta::unique_t<med::tag_getter<med::sl::octet_info>, tags>>);
+
+//	using dup_tags = med::meta::typelist<
+//		med::tag_t<C<0x02>>,
+//		med::tag_t<C<0x03>>,
+//		med::tag_t<C<0x02>>
+//	>;
+//	static_assert(not std::is_void_v<med::meta::unique_t<med::tag_getter<med::sl::octet_info>, dup_tags>>);
+
+	using opts = med::meta::typelist<
+		med::option<C<0x02>, FLD_U16>,
+		med::option<C<0x03>, FLD_UC>,
+		med::option<C<0x04>, FLD_U8>
+	>;
+	static_assert(std::is_void_v<med::meta::unique_t<med::option_getter, opts>>);
 }
 
 TEST(unique, static_odd)

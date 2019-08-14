@@ -98,10 +98,10 @@ struct NO_THING : med::empty<>
 };
 
 struct FLD_CHO : med::choice< med::value<uint8_t>
-	, med::tag<C<0x00>, FLD_U8>
-	, med::tag<C<0x02>, FLD_U16>
-	, med::tag<C<0x04>, FLD_IP>
-	, med::tag<C<0x06>, NO_THING>
+	, med::option<C<0x00>, FLD_U8>
+	, med::option<C<0x02>, FLD_U16>
+	, med::option<C<0x04>, FLD_IP>
+	, med::option<C<0x06>, NO_THING>
 >
 {};
 
@@ -173,7 +173,7 @@ template <uint8_t tag>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 {
 	//NOTE: low nibble of 1st octet is a tag
-	using tag_type = med::value<med::fixed<tag, uint8_t>>;
+	using case_value = med::value<med::fixed<tag, uint8_t>>;
 
 	template <std::size_t N>
 	void print(char (&sz)[N]) const
@@ -209,7 +209,7 @@ struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 			uint8_t* p = m_value.data();
 			uint8_t const* in = static_cast<uint8_t const*>(data);
 
-			*p++ = (*in & 0xF0) | tag_type::get_encoded();
+			*p++ = (*in & 0xF0) | case_value::get_encoded();
 			uint8_t o = (*in++ << 4);
 			for (; len > 1; --len)
 			{
@@ -234,8 +234,8 @@ struct BCD_2 : BCD<2>
 
 //nibble selected choice field
 struct FLD_NSCHO : med::choice<LT
-	, med::tag<BCD_1::tag_type, BCD_1>
-	, med::tag<BCD_2::tag_type, BCD_2>
+	, med::option<BCD_1::case_value, BCD_1>
+	, med::option<BCD_2::case_value, BCD_2>
 >
 {
 };
@@ -388,11 +388,11 @@ struct MSG_FUNC : med::sequence<
 
 
 struct PROTO : med::choice< med::value<uint8_t>
-	, med::tag<C<0x01>, MSG_SEQ>
-	, med::tag<C<0x11>, MSG_MSEQ>
-	, med::tag<C<0x04>, MSG_SET>
-	, med::tag<C<0x14>, MSG_MSET>
-	, med::tag<C<0xFF>, MSG_FUNC>
+	, med::option<C<0x01>, MSG_SEQ>
+	, med::option<C<0x11>, MSG_MSEQ>
+	, med::option<C<0x04>, MSG_SET>
+	, med::option<C<0x14>, MSG_MSET>
+	, med::option<C<0xFF>, MSG_FUNC>
 >
 {
 };

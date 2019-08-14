@@ -12,8 +12,6 @@ Distributed under the MIT License
 #include <utility>
 #include <type_traits>
 
-#include "../tag.hpp"
-
 namespace med::meta {
 
 namespace detail {
@@ -102,18 +100,18 @@ constexpr bool are_unique(T... vals)
 
 namespace detail {
 
-template <class tag_getter, class IE1, class IE2, typename E = void>
+template <class getter, class IE1, class IE2, typename E = void>
 struct is_duplicate
 {
 	static constexpr auto value = false;
 	using type = void;
 };
 
-template <class tag_getter, class IE1, class IE2>
-struct is_duplicate<tag_getter, IE1, IE2,
-		std::void_t<decltype(tag_getter::template apply<IE1>::get()), decltype(tag_getter::template apply<IE2>::get())>>
+template <class getter, class IE1, class IE2>
+struct is_duplicate<getter, IE1, IE2,
+		std::void_t<decltype(getter::template apply<IE1>::get()), decltype(getter::template apply<IE2>::get())>>
 {
-	static constexpr auto value = tag_getter::template apply<IE1>::get() == tag_getter::template apply<IE2>::get();
+	static constexpr auto value = getter::template apply<IE1>::get() == getter::template apply<IE2>::get();
 	using type = std::pair<IE1, IE2>;
 };
 
@@ -123,38 +121,38 @@ struct fallback
 	using type = void;
 };
 
-template <class tag_getter, class IE, class TL>
-struct same_tag;
+template <class getter, class IE, class TL>
+struct same;
 
-template <class tag_getter, class IE, template<class...> class L, class... IEs>
-struct same_tag<tag_getter, IE, L<IEs...>> : std::disjunction<is_duplicate<tag_getter, IE, IEs>..., fallback>
+template <class getter, class IE, template<class...> class L, class... IEs>
+struct same<getter, IE, L<IEs...>> : std::disjunction<is_duplicate<getter, IE, IEs>..., fallback>
 {};
 
-template <class T> struct tag_clash;
-template <> struct tag_clash<void>
+template <class T> struct clash;
+template <> struct clash<void>
 {
 	static constexpr void error() {}
 };
 
 } //end: namespace detail
 
-template <class tag_getter, class L>
-struct tag_unique;
-template <class tag_getter, class L>
-using tag_unique_t = typename tag_unique<tag_getter, L>::type;
+template <class getter, class L>
+struct unique;
+template <class getter, class L>
+using unique_t = typename unique<getter, L>::type;
 
-template <class tag_getter, template<class...> class L>
-struct tag_unique<tag_getter, L<>>
+template <class getter, template<class...> class L>
+struct unique<getter, L<>>
 {
 	using type = void;
 };
 
 
-template <class tag_getter, template<class...> class L, class T1, class... T>
-struct tag_unique<tag_getter, L<T1, T...>>
+template <class getter, template<class...> class L, class T1, class... T>
+struct unique<getter, L<T1, T...>>
 {
-	using clashed_tags = decltype(detail::tag_clash<typename detail::same_tag<tag_getter, T1, L<T...>>::type>::error());
-	using type = std::enable_if_t<std::is_void_v<clashed_tags>, tag_unique_t<tag_getter, L<T...>>>;
+	using clashed_tags = decltype(detail::clash<typename detail::same<getter, T1, L<T...>>::type>::error());
+	using type = std::enable_if_t<std::is_void_v<clashed_tags>, unique_t<getter, L<T...>>>;
 };
 
 } //namespace med::meta

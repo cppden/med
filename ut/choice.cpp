@@ -1,19 +1,20 @@
 #include "compound.hpp"
+#include "ut_proto.hpp"
 
 namespace cho {
 
 //choice based on plain value selector
 struct PLAIN : med::choice< med::value<uint8_t>
-	, med::tag<C<0x00>, cmp::U8>
-	, med::tag<C<0x02>, cmp::U16>
-	, med::tag<C<0x04>, cmp::U32>
+	, med::option<C<0x00>, cmp::U8>
+	, med::option<C<0x02>, cmp::U16>
+	, med::option<C<0x04>, cmp::U32>
 >
 {};
 
 //choice based on compound selector
 struct CMP : med::choice< cmp::hdr<>
-	, cmp::string
-	, cmp::number
+	, med::option<cmp::string::tag_type, cmp::string>
+	, med::option<cmp::number::tag_type, cmp::number>
 >
 {};
 
@@ -46,7 +47,27 @@ TEST(choice, plain)
 	EXPECT_EQ(msg.get<U16>()->get(), dmsg.get<U16>()->get());
 }
 
-#if 0
+TEST(choice, peek)
+{
+	uint8_t buffer[32];
+	med::encoder_context<> ctx{ buffer };
+	med::octet_encoder encoder{ctx};
+
+	uint8_t const bcd[] = {0x34, 0x56};
+	FLD_NSCHO msg;
+	msg.ref<BCD_1>().set(2, bcd);
+	encode(encoder, msg);
+	EXPECT_STRCASEEQ("31 45 6F ", as_string(ctx.buffer()));
+
+	decltype(msg) dmsg;
+	med::decoder_context<> dctx;
+	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+	decode(med::octet_decoder{dctx}, dmsg);
+	ASSERT_NE(nullptr, dmsg.get<BCD_1>());
+	EXPECT_EQ(msg.get<BCD_1>()->size(), dmsg.get<BCD_1>()->size());
+}
+
+#if 0 //compound choice header seems not needed
 TEST(choice, compound)
 {
 	using namespace std::string_view_literals;

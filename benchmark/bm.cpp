@@ -100,7 +100,7 @@ struct MSG_SEQ : med::sequence<
 
 
 struct PROTO : med::choice< med::value<uint8_t>
-	, med::tag<C<0x01>, MSG_SEQ>
+	, med::option<C<0x01>, MSG_SEQ>
 >
 {
 };

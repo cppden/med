@@ -19,9 +19,9 @@ struct word : med::value<uint16_t> {};
 struct dword : med::value<uint32_t> {};
 
 struct cho : med::choice< byte
-	, med::tag<C<1>, byte>
-	, med::tag<C<2>, word>
-	, med::tag<C<4>, dword>
+	, med::option<C<1>, byte>
+	, med::option<C<2>, word>
+	, med::option<C<4>, dword>
 >{};
 
 struct seq : med::sequence<

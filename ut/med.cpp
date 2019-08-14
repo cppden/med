@@ -10,11 +10,11 @@ TEST(name, tag)
 	med::encoder_context<> ctx{nullptr, 0};
 	med::octet_encoder enc{ctx};
 
-	EXPECT_NE(nullptr, PROTO::name_tag(1, enc));
+	EXPECT_NE(nullptr, PROTO::name_tag(1));
 	auto atag = 1;
-	EXPECT_STREQ(med::name<MSG_SEQ>(), PROTO::name_tag(atag, enc));
+	EXPECT_STREQ(med::name<MSG_SEQ>(), PROTO::name_tag(atag));
 	atag = 0x55;
-	EXPECT_EQ(nullptr, PROTO::name_tag(atag, enc));
+	EXPECT_EQ(nullptr, PROTO::name_tag(atag));
 
 	EXPECT_NE(nullptr, MSG_SET::name_tag(0x0b, enc));
 

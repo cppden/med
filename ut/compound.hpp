@@ -36,8 +36,8 @@ struct hdr<0, med::empty<>> :
 };
 
 
-template <code::value_type CODE, class BODY, class DERIVED>
-struct avp : hdr<CODE, BODY>, med::tag<med::value<med::fixed<CODE, code::value_type>>, DERIVED>
+template <code::value_type CODE, class BODY>
+struct avp : hdr<CODE, BODY>, med::tag_t<med::value<med::fixed<CODE, code::value_type>>>
 {
 	using length_type = length;
 
@@ -48,8 +48,8 @@ struct avp : hdr<CODE, BODY>, med::tag<med::value<med::fixed<CODE, code::value_t
 	auto set(ARGS&&... args)              { return this->body().set(std::forward<ARGS>(args)...); }
 };
 
-struct string : avp<0x1, med::ascii_string<>, string> {};
-struct number : avp<0x2, med::value<uint32_t>, number> {};
+struct string : avp<0x1, med::ascii_string<>> {};
+struct number : avp<0x2, med::value<uint32_t>> {};
 
 } //end: namespace cmp
 

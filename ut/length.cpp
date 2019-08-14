@@ -27,9 +27,9 @@ struct U32 : med::value<uint32_t>
 };
 
 struct CHOICE : med::choice< med::value<uint32_t>
-	, med::tag<T<1>, U8>
-	, med::tag<T<2>, U16>
-	, med::tag<T<4>, U32>
+	, med::option<T<1>, U8>
+	, med::option<T<2>, U16>
+	, med::option<T<4>, U32>
 >{};
 
 struct SEQ2 : med::sequence<
@@ -238,8 +238,8 @@ struct response : med::sequence<
 };
 
 struct proto : med::choice< hdr
-	, med::tag<T<1>, challenge>
-	, med::tag<T<2>, response>
+	, med::option<T<1>, challenge>
+	, med::option<T<2>, response>
 >
 {
 	using length_type = med::value<uint16_t>;
