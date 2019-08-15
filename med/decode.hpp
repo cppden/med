@@ -36,30 +36,11 @@ struct default_handler
 	}
 };
 
-template <class WRAPPER, class DECODER, class IE, class UNEXP>
-constexpr void decode_ie(DECODER& decoder, IE& ie, IE_NULL, UNEXP&)
-{
-	decoder(ie, typename WRAPPER::ie_type{});
-}
-
-template <class WRAPPER, class DECODER, class IE, class UNEXP>
-constexpr void decode_ie(DECODER& decoder, IE& ie, PRIMITIVE, UNEXP&)
-{
-	if constexpr (is_peek_v<IE>)
-	{
-		CODEC_TRACE("PEEK PRIMITIVE %s", name<IE>());
-		if (decoder(PUSH_STATE{}, ie))
-		{
-			decoder(ie, typename WRAPPER::ie_type{});
-			decoder(POP_STATE{});
-		}
-	}
-	else
-	{
-		CODEC_TRACE("PRIMITIVE %s", name<IE>());
-		return decoder(ie, typename WRAPPER::ie_type{});
-	}
-}
+//template <class WRAPPER, class DECODER, class IE, class UNEXP>
+//constexpr void decode_ie(DECODER& decoder, IE& ie, IE_NULL, UNEXP&)
+//{
+//	decoder(ie, typename WRAPPER::ie_type{});
+//}
 
 //Tag
 //PEEK_SAVE - to preserve state in case of peek tag or not
@@ -84,6 +65,37 @@ inline std::size_t decode_tag(DECODER& decoder)
 	CODEC_TRACE("TAG=%zxh [%s]", value, name<TAG_TYPE>());
 	return value;
 }
+
+template <class WRAPPER, class DECODER, class IE, class UNEXP>
+constexpr void decode_ie(DECODER& decoder, IE& ie, PRIMITIVE, UNEXP&)
+{
+	if constexpr (is_peek_v<IE>)
+	{
+		CODEC_TRACE("PEEK PRIMITIVE %s[%s(%s)]", __FUNCTION__, name<WRAPPER>(), name<IE>());
+		if (decoder(PUSH_STATE{}, ie))
+		{
+			decoder(ie, typename WRAPPER::ie_type{});
+			decoder(POP_STATE{});
+		}
+	}
+	else
+	{
+		using tag_type = typename meta::unwrap_t<decltype(DECODER::template get_tag_type<WRAPPER>())>;
+		if constexpr (not std::is_void_v<tag_type>)
+		{
+			auto const tag = decode_tag<tag_type, true>(decoder);
+			if (not tag_type::match(tag))
+			{
+				//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
+				MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag)
+			}
+			//CODEC_TRACE("T=%zxh V[%s]", std::size_t(tag), name<WRAPPER>());
+		}
+		CODEC_TRACE("PRIMITIVE %s[%s(%s)]", __FUNCTION__, name<WRAPPER>(), name<IE>());
+		decoder(ie, typename WRAPPER::ie_type{});
+	}
+}
+
 //Tag-Value
 template <class WRAPPER, class DECODER, class IE, class UNEXP>
 inline void decode_ie(DECODER& decoder, IE& ie, IE_TV, UNEXP& unexp)

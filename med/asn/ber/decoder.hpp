@@ -55,10 +55,13 @@ struct decoder : info
 	//IE_TAG
 	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
 	{
-		CODEC_TRACE("TAG[%s]: %s", name<IE>(), ctx.buffer().toString());
-		typename IE::writable ie;
-		(*this)(ie, typename IE::writable::ie_type{});
-		return ie.get_encoded();
+		//constexpr auto nbytes = IE::traits::num_bytes(); TODO: expose asn traits directly
+		constexpr std::size_t nbytes = bits_to_bytes(IE::traits::bits);
+		uint8_t const* input = ctx.buffer().template advance<IE, nbytes>();
+		std::size_t vtag = 0;
+		get_bytes_impl(input, vtag, std::make_index_sequence<nbytes>{});
+		CODEC_TRACE("T=%zxh [%s] %zu bytes: %s", vtag, name<IE>(), nbytes, ctx.buffer().toString());
+		return vtag;
 	}
 	//IE_LEN
 	template <class IE> void operator() (IE& ie, IE_LEN)
@@ -68,8 +71,7 @@ struct decoder : info
 	}
 
 	//IE_NULL
-	template <class IE>
-	void operator() (IE&, IE_NULL)
+	template <class IE> void operator() (IE&, IE_NULL)
 	{
 		//check_tag<IE, false>();
 		if (uint8_t const length = ctx.buffer().template pop<IE>())
@@ -79,10 +81,10 @@ struct decoder : info
 	}
 
 	//IE_VALUE
-	template <class IE>
-	void operator() (IE& ie, IE_VALUE)
+	template <class IE> void operator() (IE& ie, IE_VALUE)
 	{
 		//check_tag<IE, false>();
+		CODEC_TRACE("V[%s]: %s", name<IE>(), ctx.buffer().toString());
 		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
 			//X.690 8.2 Encoding of a boolean value
@@ -115,8 +117,7 @@ struct decoder : info
 	}
 
 	//IE_BIT_STRING
-	template <class IE>
-	void operator() (IE& ie, IE_BIT_STRING)
+	template <class IE> void operator() (IE& ie, IE_BIT_STRING)
 	{
 		//check_tag<IE, false>();
 		auto const bytes = ber_length<IE>() - 1;
@@ -136,8 +137,7 @@ struct decoder : info
 	}
 
 	//IE_OCTET_STRING
-	template <class IE>
-	void operator() (IE& ie, IE_OCTET_STRING)
+	template <class IE> void operator() (IE& ie, IE_OCTET_STRING)
 	{
 		//check_tag<IE, false>();
 		auto const len = ber_length<IE>();
@@ -149,8 +149,7 @@ struct decoder : info
 		ctx.buffer().template advance<IE>(len);
 	}
 
-	template <class IE>
-	void operator() (ENTRY_CONTAINER, IE const&)
+	template <class IE> void operator() (ENTRY_CONTAINER, IE const&)
 	{
 		//X.690 8.9 Encoding of a sequence value (not segmented only)
 		//check_tag<IE, true>();
