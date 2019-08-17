@@ -113,7 +113,7 @@ struct cont_is
 		//optional or mandatory field w/ setter => can be set implicitly
 		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
 		{
-			CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
+			//CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
 			return static_cast<IE const&>(seq).is_set();
 		}
 		else //mandatory field w/o setter => s.b. set explicitly
@@ -124,7 +124,7 @@ struct cont_is
 			}
 			else
 			{
-				CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
+				//CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
 				return static_cast<IE const&>(seq).is_set();
 			}
 		}
@@ -179,16 +179,6 @@ public:
 		return get_field<FIELD>(ie);
 	}
 
-	template <class FIELD>
-	[[deprecated("inefficient, will be removed")]]
-	FIELD const* get(std::size_t index) const
-	{
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE READ W/O INDEX");
-		return ie.at(index);
-	}
-
 	template <class FIELD, class... ARGS>
 	FIELD* push_back(ARGS&&... args)
 	{
@@ -211,10 +201,6 @@ public:
 	auto field()                            { return make_accessor(*this); }
 	auto field() const                      { return make_accessor(*this); }
 	auto cfield() const                     { return make_accessor(*this); }
-	[[deprecated("inefficient, will be removed")]]
-	auto field(std::size_t index) const     { return make_accessor(*this, index); }
-	[[deprecated("inefficient, will be removed")]]
-	auto cfield(std::size_t index) const    { return make_accessor(*this, index); }
 
 	template <class FIELD>
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }

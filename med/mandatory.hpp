@@ -37,6 +37,9 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD>>
 > : field_t<FIELD>
 {
+	//NOTE: since FIELD may have meta_info already we have to override it directly
+	// w/o inheritance to avoid ambiguity
+	using meta_info = make_meta_info_t<FIELD>;
 };
 
 //M<FIELD, SETTER>
@@ -51,6 +54,7 @@ struct mandatory<
 > : field_t<FIELD>
 {
 	using setter_type = SETTER;
+	using meta_info = make_meta_info_t<FIELD>;
 };
 
 
@@ -66,6 +70,7 @@ struct mandatory<
 > : multi_field<FIELD, NUM, max<NUM>>
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
+	using meta_info = make_meta_info_t<FIELD>;
 };
 
 //M<FIELD, min<MIN>, max<MAX>, CNT_GETTER>
@@ -80,6 +85,7 @@ struct mandatory<
 > : multi_field<FIELD, MIN, max<MAX>>
 {
 	using count_getter = COUNT_GETTER;
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -95,6 +101,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNT_GETTER>>
 > : multi_field<FIELD, MIN, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	using count_getter = COUNT_GETTER;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
@@ -111,6 +118,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
 > : multi_field<FIELD, MIN, max<MAX>>, COUNTER
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -126,6 +134,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
 > : multi_field<FIELD, MIN, pmax<MAX>>, COUNTER
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -141,6 +150,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, MIN, max<MAX>>
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -156,6 +166,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, MIN, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -171,6 +182,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, 1, max<MAX>>
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -185,6 +197,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD>>
 > : multi_field<FIELD, 1, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -199,6 +212,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNT_GETTER>>
 > : multi_field<FIELD, 1, max<MAX>>
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	using count_getter = COUNT_GETTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -214,6 +228,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_count_getter_v<COUNT_GETTER>>
 > : multi_field<FIELD, 1, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	using count_getter = COUNT_GETTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -229,6 +244,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
 > : multi_field<FIELD, 1, max<MAX>>, COUNTER
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -243,6 +259,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_counter_v<COUNTER>>
 > : multi_field<FIELD, 1, pmax<MAX>>, COUNTER
 {
+	using meta_info = make_meta_info_t<FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -257,6 +274,7 @@ struct mandatory<
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
 > : tag_value_t<TAG, FIELD>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
 };
 
 //M<TAG, FIELD, arity<NUM>
@@ -270,6 +288,7 @@ struct mandatory<
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
 > : multi_tag_value<TAG, FIELD, NUM, max<NUM>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -284,6 +303,7 @@ struct mandatory<
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
 > : multi_tag_value<TAG, FIELD, 1, max<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -298,6 +318,7 @@ struct mandatory<
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
 > : multi_tag_value<TAG, FIELD, 1, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -312,6 +333,7 @@ struct mandatory<
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
 > : multi_tag_value<TAG, FIELD, MIN, max<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -327,6 +349,7 @@ struct mandatory<
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
 > : multi_tag_value<TAG, FIELD, MIN, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -342,6 +365,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
 > : length_value_t<LEN, FIELD>
 {
+	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 };
 
 //M<LEN, FIELD, arity<NUM>>
@@ -355,6 +379,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
 > : multi_length_value<LEN, FIELD, NUM, max<NUM>>
 {
+	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -369,6 +394,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
 > : tag_value_t<TAG, length_value_t<LEN, FIELD>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
 };
 
 //M<TAG, LEN, FIELD, arity<NUM>>
@@ -382,6 +408,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
 > : multi_tag_value<TAG, length_value_t<LEN, FIELD>, NUM, max<NUM>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -396,6 +423,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
 > : multi_length_value<LEN, FIELD, 1, max<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -410,6 +438,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
 > : multi_length_value<LEN, FIELD, 1, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -424,6 +453,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
 > : multi_tag_value<TAG, length_value_t<LEN, FIELD>, 1, max<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -438,6 +468,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
 > : multi_tag_value<TAG, length_value_t<LEN, FIELD>, 1, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -452,6 +483,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
 > : multi_tag_value<TAG, length_value_t<LEN, FIELD>, MIN, max<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
@@ -467,6 +499,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
 > : multi_tag_value<TAG, length_value_t<LEN, FIELD>, MIN, pmax<MAX>>
 {
+	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };

@@ -58,8 +58,8 @@ TEST(encode, set_ok)
 	encode(med::octet_encoder{ctx}, proto);
 
 	uint8_t const encoded1[] = { 4
-		, 0, 0x0b, 0x11
-		, 0, 0x21, 2, 0x35, 0xD9
+		, 0,0x0b, 0x11 //M<T16<0x0b>, UC>
+		, 0,0x21, 2, 0x35, 0xD9 //M<T16<0x21>, L, U16>
 	};
 	EXPECT_EQ(sizeof(encoded1), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded1, buffer));
@@ -129,11 +129,11 @@ TEST(encode, mset_ok)
 	encode(med::octet_encoder{ctx}, proto);
 
 	uint8_t const encoded1[] = { 0x14
-		, 0, 0x0b, 0x11
-		, 0, 0x0b, 0x12
-		, 0, 0x0c, 0x13
-		, 0, 0x21, 2, 0x35, 0xD9
-		, 0, 0x21, 2, 0x35, 0xDA
+		, 0,0x0b, 0x11 //M<T16<0x0b>, FLD_UC, med::arity<2>>
+		, 0,0x0b, 0x12 //M<T16<0x0b>, FLD_UC, med::arity<2>>
+		, 0,0x0c, 0x13 //M<T16<0x0c>, FLD_U8, med::max<2>>
+		, 0,0x21, 2, 0x35, 0xD9 //M<T16<0x21>, L, FLD_U16, med::max<3>>
+		, 0,0x21, 2, 0x35, 0xDA //M<T16<0x21>, L, FLD_U16, med::max<3>>
 	};
 	EXPECT_EQ(sizeof(encoded1), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded1, buffer));

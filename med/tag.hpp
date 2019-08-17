@@ -40,21 +40,20 @@ struct tag_getter
 	using apply = meta::unwrap_t<decltype(FUNC::template get_tag_type<T>())>;
 };
 
-
 //for choice
-template <class CASE_VALUE, class CASE_TYPE>
+template <class T_VALUE, class TYPE>
 struct option
 {
-	static_assert(is_tag_v<CASE_VALUE>, "TAG IS REQUIRED");
-	static_assert(std::is_class_v<CASE_TYPE>, "CASE IS REQUIRED TO BE A CLASS");
-	using case_value = CASE_VALUE;
-	using case_type = CASE_TYPE;
+	static_assert(is_tag_v<T_VALUE>, "TAG IS REQUIRED");
+	static_assert(std::is_class_v<TYPE>, "CASE IS REQUIRED TO BE A CLASS");
+	using option_value_type = T_VALUE;
+	using option_type = TYPE;
 };
 
 struct option_getter
 {
 	template <class T>
-	using apply = typename T::case_value;
+	using apply = typename T::option_value_type;
 };
 
 

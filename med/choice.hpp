@@ -28,7 +28,7 @@ template <class FIELD>
 struct choice_at
 {
 	template <class T>
-	using type = std::is_same<FIELD, typename T::case_type>;
+	using type = std::is_same<FIELD, typename T::option_type>;
 };
 
 struct choice_if
@@ -37,7 +37,7 @@ struct choice_if
 	static bool check(T const& v, Ts&&...)
 	{
 		auto& hdr = v.get_header();
-		return hdr.is_set() && IE::case_value::match( med::get_tag(hdr) );
+		return hdr.is_set() && IE::option_value_type::match( med::get_tag(hdr) );
 	}
 };
 
@@ -46,10 +46,10 @@ struct choice_len : choice_if
 	template <class IE, class TO, class ENCODER>
 	static std::size_t apply(TO const& to, ENCODER& encoder)
 	{
-		using case_t = typename IE::case_type;
+		using type = typename IE::option_type;
 		void const* store_p = &to.m_storage;
 		return field_length(to.get_header(), encoder)
-			+ field_length(*static_cast<case_t const*>(store_p), encoder);
+			+ field_length(*static_cast<type const*>(store_p), encoder);
 	}
 
 	template <class TO, class ENCODER>
@@ -64,7 +64,7 @@ struct choice_copy : choice_if
 	template <class IE, class TO, class FROM, class... ARGS>
 	static void apply(TO& to, FROM const& from, ARGS&&... args)
 	{
-		using value_type = typename IE::case_type;
+		using value_type = typename IE::option_type;
 		void const* store_p = &from.m_storage;
 		to.template ref<value_type>().copy(*static_cast<value_type const*>(store_p), std::forward<ARGS>(args)...);
 		to.header().copy(from.get_header(), std::forward<ARGS>(args)...);
@@ -79,14 +79,13 @@ struct choice_name
 	template <class IE, typename TAG>
 	static constexpr bool check(TAG const& tag)
 	{
-		return IE::case_value::match( tag );
+		return IE::option_value_type::match( tag );
 	}
 
 	template <class IE, typename TAG>
 	static constexpr char const* apply(TAG const&)
 	{
-		using case_t = typename IE::case_type;
-		return name<case_t>();
+		return name<typename IE::option_type>();
 	}
 
 	template <typename TAG>
@@ -101,12 +100,12 @@ struct choice_enc : choice_if
 	template <class IE, class TO, class ENCODER>
 	static void apply(TO const& to, ENCODER& encoder)
 	{
-		using case_t = typename IE::case_type;
-		CODEC_TRACE("CASE[%s]", name<case_t>());
+		using type = typename IE::option_type;
+		CODEC_TRACE("CASE[%s]", name<type>());
 		void const* store_p = &to.m_storage;
 
 		med::encode(encoder, to.get_header());
-		med::encode(encoder, *static_cast<case_t const*>(store_p));
+		med::encode(encoder, *static_cast<type const*>(store_p));
 	}
 
 	template <class TO, class ENCODER>
@@ -121,10 +120,10 @@ struct choice_dec : choice_if
 	template <class IE, class TO, class DECODER, class UNEXP>
 	static void apply(TO& to, DECODER& decoder, UNEXP& unexp)
 	{
-		using case_t = typename IE::case_type;
-		CODEC_TRACE("->CASE[%s]", name<case_t>());
-		case_t* case_p = new (&to.m_storage) case_t{};
-		med::decode(decoder, *case_p, unexp);
+		using type = typename IE::option_type;
+		CODEC_TRACE("->CASE[%s]", name<type>());
+		auto* p = new (&to.m_storage) type{};
+		med::decode(decoder, *p, unexp);
 	}
 
 	template <class TO, class DECODER, class UNEXP>
@@ -199,7 +198,7 @@ public:
 		using IE = meta::find<ies_types, sl::choice_at<CASE>>;
 		static_assert(!std::is_void<IE>(), "NO SUCH CASE IN CHOICE");
 		void* store_p = &m_storage;
-		return *(set_tag(header(), IE::case_value::get_encoded())
+		return *(set_tag(header(), IE::option_value_type::get_encoded())
 			? new (store_p) CASE{}
 			: static_cast<CASE*>(store_p));
 	}
@@ -210,7 +209,7 @@ public:
 		using IE = meta::find<ies_types, sl::choice_at<CASE>>;
 		static_assert(!std::is_void<IE>(), "NO SUCH CASE IN CHOICE");
 		void const* store_p = &m_storage;
-		return IE::case_value::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
+		return IE::option_value_type::match( get_tag(header()) ) ? static_cast<CASE const*>(store_p) : nullptr;
 	}
 
 	template <class FROM, class... ARGS>
@@ -239,7 +238,7 @@ private:
 	friend struct sl::choice_enc;
 	friend struct sl::choice_dec;
 
-	using storage_type = std::aligned_union_t<0, typename CASES::case_type...>;
+	using storage_type = std::aligned_union_t<0, typename CASES::option_type...>;
 
 	header_type  m_header;
 	storage_type m_storage;

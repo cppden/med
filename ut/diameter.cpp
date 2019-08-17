@@ -1,6 +1,5 @@
 #include "ut.hpp"
 
-
 namespace diameter {
 
 //to concat message code and request/answer bit
@@ -107,7 +106,7 @@ struct avp_code : med::value<uint32_t>
 };
 
 template <avp_code::value_type CODE>
-struct avp_code_fixed : med::value<med::fixed<CODE, uint32_t>> {};
+struct avp_code_fixed : med::value<med::fixed<CODE, typename avp_code::value_type>> {};
 
 struct avp_flags : med::value<uint8_t>
 {
@@ -155,12 +154,14 @@ struct vendor : med::value<uint32_t>
 template <class BODY, avp_code::value_type CODE, uint8_t FLAGS = 0, vendor::value_type VENDOR = 0>
 struct avp :
 		med::sequence<
+			//M< ?avp_code_fixed<CODE> >,
 			M< avp_flags >,
 			med::placeholder::_length<-4>, //include AVP Code
 			O< vendor, vendor::has >,
 			M< BODY >
-		>,
-		med::tag_t<med::value<med::fixed<CODE, avp_code::value_type>>>
+		>
+		, med::tag_t<avp_code_fixed<CODE>>
+		, med::minfo< med::mi<med::mik::TAG, med::tag_t<avp_code_fixed<CODE>>> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;
@@ -173,7 +174,6 @@ struct avp :
 	BODY& body()                                { return this->template ref<BODY>(); }
 	bool is_set() const                         { return body().is_set(); }
 
-//	decltype(auto) get() const                  { return body().get(); }
 	template <typename... ARGS>
 	auto set(ARGS&&... args)                    { return body().set(std::forward<ARGS>(args)...); }
 
@@ -350,7 +350,7 @@ TEST(diameter, padding_encode)
 	med::encoder_context<> ctx{ buffer };
 	encode(med::octet_encoder{ctx}, base);
 
-	ASSERT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
+	EXPECT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
 	ASSERT_TRUE(Matches(diameter::dpr, buffer));
 }
 
@@ -506,9 +506,10 @@ TEST(diameter, any_avp)
 	//encode
 	uint8_t buffer[1024] = {};
 	med::encoder_context<> ectx{ buffer };
+	CODEC_TRACE("\n\nENCODE: %s\n\n", ectx.buffer().toString());
 	encode(med::octet_encoder{ectx}, base);
 
-	ASSERT_EQ(sizeof(dpa_enc), ectx.buffer().get_offset());
+	EXPECT_EQ(sizeof(dpa_enc), ectx.buffer().get_offset());
 	ASSERT_TRUE(Matches(dpa_enc, buffer));
 }
 
@@ -569,9 +570,10 @@ TEST(diameter, any_msg)
 	//encode
 	uint8_t buffer[1024] = {};
 	med::encoder_context<> ectx{ buffer };
+	CODEC_TRACE("\n\nENCODE: %s\n\n", ectx.buffer().toString());
 	encode(med::octet_encoder{ectx}, base);
 
-	ASSERT_EQ(sizeof(dwa), ectx.buffer().get_offset());
+	EXPECT_EQ(sizeof(dwa), ectx.buffer().get_offset());
 	ASSERT_TRUE(Matches(dwa, buffer));
 }
 

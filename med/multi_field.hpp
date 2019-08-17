@@ -110,16 +110,6 @@ public:
 	field_type const* first() const                         { return empty() ? nullptr : &m_fields[0].value; }
 	field_type const* last() const                          { return empty() ? nullptr : &m_tail->value; }
 
-	[[deprecated("inefficient, will be removed")]]
-	field_type const* at(std::size_t index) const
-	{
-		if (index >= count()) return nullptr;
-		if (index < inplace) return &m_fields[index].value;
-		const_iterator it = begin(), ite = end();
-		while (index && it != ite) { --index; ++it; }
-		return (it && it->is_set()) ? it.get() : nullptr;
-	}
-
 	//uses inplace storage only
 	field_type* push_back()
 	{
@@ -132,8 +122,7 @@ public:
 
 	//uses inplace or external storage
 	//NOTE: check for max is done during encode/decode
-	template <class CTX>
-	field_type* push_back(CTX& ctx)
+	template <class CTX> field_type* push_back(CTX& ctx)
 	{
 		//try inplace 1st then external
 		if (count() < inplace)
@@ -164,7 +153,7 @@ public:
 			{
 				prev = prev->next;
 			}
-			CODEC_TRACE("%s: %s[%zu]=%p", __FUNCTION__, name<field_type>(), num-1, (void*)prev->next);
+			//CODEC_TRACE("%s: %s[%zu]=%p", __FUNCTION__, name<field_type>(), num-1, (void*)prev->next);
 			prev->next = nullptr;
 			m_tail = (--m_count) ? prev : nullptr;
 		}
@@ -175,7 +164,7 @@ private:
 	field_type* inplace_push_back()
 	{
 		auto* piv = m_fields + count();
-		CODEC_TRACE("%s: inplace %s[%zu]=%p", __FUNCTION__, name<field_type>(), count(), (void*)piv);
+		//CODEC_TRACE("%s: inplace %s[%zu]=%p", __FUNCTION__, name<field_type>(), count(), (void*)piv);
 		if (m_count++) { m_tail->next = piv; }
 		piv->next = nullptr;
 		m_tail = piv;

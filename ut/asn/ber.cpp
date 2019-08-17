@@ -1,5 +1,7 @@
 #include <cmath>
 
+#if 0
+
 #include "../ut.hpp"
 
 #include "asn/ids.hpp"
@@ -549,7 +551,7 @@ struct Seq : med::asn::sequence<
 }
 
 //8.9 Encoding of a sequence value
-TEST(DISABLED_asn_ber, sequence)
+TEST(asn_ber, sequence)
 {
 	ab::Seq s;
 	{
@@ -610,3 +612,5 @@ TEST(DISABLED_asn_ber, sequence)
 //8.24 Encoding for values of the unrestricted character string type
 //8.25 Encoding for values of the useful types
 //8.26 Encoding for values of the TIME type and the useful time types
+
+#endif

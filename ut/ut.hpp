@@ -25,13 +25,21 @@ using namespace std::string_view_literals;
 template<typename T>
 inline testing::AssertionResult Matches(T const* expected, void const* actual, std::size_t size)
 {
+	auto* p = static_cast<T const*>(actual);
 	for (std::size_t i = 0; i < size; ++i)
 	{
-		if (expected[i] != static_cast<T const*>(actual)[i])
+		if (expected[i] != p[i])
 		{
-			char sz[256];
-			std::snprintf(sz, sizeof(sz), "mismatch at %zu[0x%zX]: expected=0x%X, actual=0x%X"
-					, i, i, expected[i], static_cast<T const*>(actual)[i]);
+			char sz[4*1024];
+			int n = std::snprintf(sz, sizeof(sz), "\nMismatch at offsets:\noffset: expected |   actual\n");
+			while (i < size)
+			{
+				if (expected[i] != p[i])
+				{
+					n += std::snprintf(sz+n, sizeof(sz)-n, "%6zu: %8X | %8X\n", i, expected[i], p[i]);
+				}
+				++i;
+			}
 			return testing::AssertionFailure() << sz;
 		}
 	}

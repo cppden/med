@@ -3,7 +3,7 @@
 #include "json/encoder.hpp"
 #include "json/decoder.hpp"
 
-#if 0
+#if 0 //TODO: recover JSON codec when done the refactoring for BER
 using namespace std::string_view_literals;
 
 namespace js {

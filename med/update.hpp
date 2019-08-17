@@ -24,7 +24,7 @@ inline void update(FUNC&& func, IE const& ie)
 	static_assert(std::is_base_of<with_snapshot, IE>(), "IE WITH med::with_snapshot EXPECTED");
 	CODEC_TRACE("update %s", name<IE>());
 	func(SET_STATE{}, ie);
-	sl::encode_ie<IE>(func, ie, typename IE::ie_type{});
+	encode(func, ie);
 }
 
 }	//end: namespace med

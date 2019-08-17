@@ -54,7 +54,9 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			sl::encode_ie<IE>(func, field, typename IE::ie_type{});
+			//sl::encode_ie<IE>(func, field, typename IE::ie_type{});
+			//encode(func, field);
+			sl::ie_encode<get_meta_info_t<IE>>(func, field);
 			if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
 			{
 				if (ie.last() != &field) { func(NEXT_CONTAINER_ELEMENT{}, ie); }
@@ -391,7 +393,7 @@ struct seq_enc
 				else //w/o setter
 				{
 					IE const& ie = to;
-					CODEC_TRACE("%c{%s}", ie.ref_field().is_set()?'+':'-', class_name<IE>());
+					//CODEC_TRACE("%c{%s}", ie.ref_field().is_set()?'+':'-', class_name<IE>());
 					if (med::detail::has_set_length<IE>::value || ie.ref_field().is_set())
 					{
 						med::encode(encoder, ie);

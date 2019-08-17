@@ -29,7 +29,6 @@ constexpr void encode_header(ENCODER& encoder)
 	if constexpr (std::is_base_of_v<PRIMITIVE, typename HEADER::ie_type>)
 	{
 		using tag_type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<IE>())>;
-		//static_assert(HEADER::traits::bits == tag_type::traits::bits);
 		if constexpr (tag_type::is_const) //encode only if tag fixed
 		{
 			return encode(encoder, tag_type{});
@@ -93,7 +92,7 @@ struct set_enc
 			constexpr bool do_hdr = is_callable_with_v<ENCODER, HEADER_CONTAINER>;
 			if constexpr (do_hdr)
 			{
-				encode_header<header_type, IE>(encoder);
+				//encode_header<header_type, IE>(encoder);
 				encoder(HEADER_CONTAINER{}, ie);
 			}
 
@@ -104,8 +103,9 @@ struct set_enc
 				//field was pushed but not set... do we need a new error?
 				if (not field.is_set()) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1) }
 				if (not first) { call_if<is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to); }
-				if constexpr (not do_hdr) { encode_header<header_type, IE>(encoder); }
-				med::encode(encoder, field);
+				//if constexpr (not do_hdr) { encode_header<header_type, IE>(encoder); }
+				sl::ie_encode<get_meta_info_t<IE>>(encoder, field);
+				//med::encode(encoder, field);
 				first = false;
 			}
 			call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
@@ -115,10 +115,11 @@ struct set_enc
 			IE const& ie = static_cast<IE const&>(to);
 			if (ie.ref_field().is_set())
 			{
-				CODEC_TRACE("[%s]", name<IE>());
-				encode_header<header_type, IE>(encoder);
+				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<get_meta_info_t<IE>>());
+				//encode_header<header_type, IE>(encoder);
 				call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, to);
-				med::encode(encoder, ie.ref_field());
+				//med::encode(encoder, ie.ref_field());
+				sl::ie_encode<get_meta_info_t<IE>>(encoder, ie.ref_field());
 			}
 			else if constexpr (!is_optional_v<IE>)
 			{

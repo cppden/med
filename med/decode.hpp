@@ -344,7 +344,7 @@ inline void decode_ie(DECODER& decoder, IE& ie, CONTAINER, UNEXP& unexp)
 template <class DECODER, class IE, class UNEXP = sl::default_handler>
 constexpr void decode(DECODER&& decoder, IE& ie, UNEXP&& unexp = sl::default_handler{})
 {
-	if constexpr (has_ie_type<IE>::value)
+	if constexpr (has_ie_type_v<IE>)
 	{
 		return sl::decode_ie<IE>(decoder, ie, typename IE::ie_type{}, unexp);
 	}

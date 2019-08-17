@@ -34,6 +34,21 @@ decltype(auto) ref_field(IE& ie) //-> decltype(ie.ref_field())
 	}
 }
 
+//TODO: remove
+template <class IE>
+decltype(auto) rref_field(IE& ie)
+{
+	if constexpr (has_ref_field<IE>::value)
+	{
+		return rref_field(ie.ref_field());
+	}
+	else
+	{
+		return ie;
+	}
+}
+
+
 //read-only access optional field returning a pointer or null if not set
 template <class FIELD, class IE>
 std::enable_if_t<!is_multi_field_v<IE> && is_optional_v<IE>, FIELD const*>
@@ -64,7 +79,7 @@ template <class T>
 struct access
 {
 	template <class R>
-	static auto& as_mandatory(R&& ret)
+	static auto as_mandatory(R&& ret)
 	{
 		static_assert(!std::is_same<T const*, R>(), "ACCESSING OPTIONAL NOT BY POINTER");
 		return ret;
@@ -115,20 +130,6 @@ private:
 	C const& m_that;
 };
 
-template <class C>
-struct index_caccessor
-{
-	index_caccessor(C const& c, std::size_t i) noexcept : m_that{c}, m_index{i}  { }
-	template <class T> operator T const* () const
-	{
-		return m_that.template get<T>(m_index);
-	}
-
-private:
-	C const&          m_that;
-	std::size_t const m_index;
-};
-
 }	//end: namespace detail
 
 template <class C>
@@ -141,12 +142,6 @@ template <class C>
 inline auto make_accessor(C const& c)
 {
 	return detail::caccessor<C>{ c };
-}
-
-template <class C>
-inline auto make_accessor(C const& c, std::size_t index)
-{
-	return detail::index_caccessor<C>{ c, index };
 }
 
 }	//end: namespace med
