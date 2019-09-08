@@ -47,80 +47,67 @@ struct has_set_length : std::false_type { };
 template <class T>
 struct has_set_length<T, std::void_t<decltype(std::declval<T>().set_length(0))>> : std::true_type { };
 
-template <class WRAPPER>
-struct length_getter;
-
 } //end: namespace detail
 
 
-template <class T>
-constexpr bool is_length_v = detail::has_length_type<T>::value;
+template <class T> constexpr bool is_length_v = detail::has_length_type<T>::value;
 
+namespace sl {
 
-template <class FIELD, class ENCODER>
-constexpr std::size_t field_length(FIELD const& field, ENCODER& encoder)
+template <class META_INFO = meta::typelist<>, class IE, class ENCODER>
+constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 {
-	CODEC_TRACE("%s[%s]", __FUNCTION__, name<FIELD>());
-	return detail::length_getter<FIELD>::get(field, encoder);
-}
-//wrapper is med::mandatory or med::optional
-template <class WRAPPER, class FIELD, class ENCODER, typename Enable = std::enable_if_t<!std::is_same_v<WRAPPER, FIELD>>>
-constexpr std::size_t field_length(FIELD const& field, ENCODER& encoder)
-{
-	CODEC_TRACE("%s[%s]", __FUNCTION__, name<WRAPPER>());
-	return detail::length_getter<WRAPPER>::get(field, encoder);
-}
+	std::size_t len = 0;
 
-namespace detail {
-
-template <class WRAPPER>
-struct length_getter
-{
-	template <class FIELD, class ENCODER>
-	static constexpr std::size_t get(FIELD const& field, ENCODER& encoder)
+	if constexpr (not is_peek_v<IE>)
 	{
-		if constexpr (is_peek_v<WRAPPER>)
+		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
-			return 0;
+			using mi = meta::list_first_t<META_INFO>;
+			CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
+
+			if constexpr (mi::kind == mik::TAG)
+			{
+				using type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<mi>())>;
+				len = ie_length(type{}, encoder);
+			}
+			else if constexpr (mi::kind == mik::LEN)
+			{
+				//TODO: involve codec to get length type + may need to set its value like for BER
+				using type = typename mi::length_type;
+				len = ie_length(type{}, encoder);
+			}
+
+			len += ie_length<meta::list_rest_t<META_INFO>>(ie, encoder);
 		}
-		else
+		else //data itself
 		{
-			if constexpr (std::is_base_of_v<CONTAINER, typename WRAPPER::ie_type>)
+			using ie_type = typename IE::ie_type;
+			//CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
+			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				std::size_t const size = field.calc_length(encoder);
-				CODEC_TRACE("%s[%s] : SEQ = %zu", __FUNCTION__, name<FIELD>(), size);
-				return size;
-			}
-			else if constexpr (std::is_base_of_v<IE_TV, typename WRAPPER::ie_type>)
-			{
-				using tag_type = meta::unwrap_t<decltype(ENCODER::template get_tag_type<WRAPPER>())>;
-				std::size_t const tag_size = field_length(tag_type{}, encoder);
-				std::size_t const val_size = field_length<FIELD>(ref_field(field), encoder);
-				CODEC_TRACE("%s[%s] : TV=%zu+%zu=%zu", __FUNCTION__, name<FIELD>(), tag_size, val_size, tag_size + val_size);
-				return tag_size + val_size;
-			}
-			else if constexpr (std::is_base_of_v<IE_LV, typename WRAPPER::ie_type>)
-			{
-				using len_t = typename WRAPPER::length_type;
-				std::size_t const len_size = field_length(len_t{}, encoder);
-				std::size_t const val_size = field_length<FIELD>(ref_field(field), encoder);
-				CODEC_TRACE("%s[%s] : LV = %zu+%zu=%zu", __FUNCTION__, name<FIELD>(), len_size, val_size, len_size+val_size);
-				return len_size + val_size;
-			}
-			else if constexpr (std::is_base_of_v<PRIMITIVE, typename WRAPPER::ie_type>)
-			{
-				std::size_t const size = encoder(GET_LENGTH{}, field);
-				CODEC_TRACE("%s[%s] : PRIMITIVE = %zu", __FUNCTION__, name<FIELD>(), size);
-				return size;
+				len = ie.calc_length(encoder);
+				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 			}
 			else
 			{
-				static_assert (std::is_void_v<typename WRAPPER::ie_type>, "unexpected");
+				len = encoder(GET_LENGTH{}, ie);
+				CODEC_TRACE("%s[%s] : len(V) = %zu", __FUNCTION__, name<IE>(), len);
 			}
 		}
 	}
-};
+	return len;
+}
 
+} //end: namespace sl
+
+template <class IE, class ENCODER>
+constexpr std::size_t field_length(IE const& ie, ENCODER& encoder)
+{
+	return sl::ie_length<get_meta_info_t<IE>>(ie, encoder);
+}
+
+namespace detail {
 
 template<class T>
 static auto test_value_to_length(int, std::size_t val = 0) ->

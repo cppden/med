@@ -1,20 +1,80 @@
+#include "traits.hpp"
 #include "compound.hpp"
-#include "ut_proto.hpp"
+#include "ut.hpp"
 
 namespace cho {
 
+//low nibble selector
+//struct LT : med::peek<med::value<uint8_t>>
+//{
+//	void set_encoded(value_type v)            { base_t::set_encoded(v & 0xF); }
+//};
+template <std::size_t TAG>
+struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
+{
+	static_assert(0 == (TAG & 0xF0), "LOW NIBBLE TAG EXPECTED");
+	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF); }
+};
+
+//NOTE: low nibble of 1st octet is a tag
+template <uint8_t TAG>
+struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
+		, med::minfo< med::mi<med::mik::TAG, LT<TAG>> >
+{
+	bool set(std::size_t len, void const* data)
+	{
+		//need additional nibble for the tag
+		std::size_t const num_octets = (len + 1);// / 2;
+		if (num_octets >= traits::min_octets && num_octets <= traits::max_octets)
+		{
+			m_value.resize(num_octets);
+			uint8_t* p = m_value.data();
+			uint8_t const* in = static_cast<uint8_t const*>(data);
+
+			*p++ = (*in & 0xF0) | TAG;
+			uint8_t o = (*in++ << 4);
+			for (; len > 1; --len)
+			{
+				*p++ = o | (*in >> 4);
+				o = *in++ << 4;
+			}
+			*p++ = o | 0xF;
+			return true;
+		}
+		return false;
+	}
+};
+
+struct BCD_1 : BCD<1>
+{
+	static constexpr char const* name() { return "BCD-1"; }
+};
+struct BCD_2 : BCD<2>
+{
+	static constexpr char const* name() { return "BCD-2"; }
+};
+
+//nibble selected choice field
+struct FLD_NSCHO : med::choice< void
+	, M< BCD_1 >
+	, M< BCD_2 >
+>
+{
+};
+
+
 //choice based on plain value selector
-struct PLAIN : med::choice< med::value<uint8_t>
-	, med::option<C<0x00>, cmp::U8>
-	, med::option<C<0x02>, cmp::U16>
-	, med::option<C<0x04>, cmp::U32>
+struct PLAIN : med::choice< void
+	, M<C<0x00>, cmp::U8>
+	, M<C<0x02>, cmp::U16>
+	, M<C<0x04>, cmp::U32>
 >
 {};
 
 //choice based on compound selector
 struct CMP : med::choice< cmp::hdr<>
-	, med::option<cmp::string::tag_type, cmp::string>
-	, med::option<cmp::number::tag_type, cmp::number>
+	, M< cmp::string >
+	, M< cmp::number >
 >
 {};
 
@@ -28,6 +88,7 @@ TEST(choice, plain)
 
 	using namespace cho;
 	using namespace cmp;
+
 	PLAIN msg;
 	EXPECT_EQ(0, msg.calc_length(encoder));
 	msg.ref<cmp::U8>().set(0);
@@ -53,6 +114,9 @@ TEST(choice, peek)
 	med::encoder_context<> ctx{ buffer };
 	med::octet_encoder encoder{ctx};
 
+	using namespace cho;
+	using namespace cmp;
+
 	uint8_t const bcd[] = {0x34, 0x56};
 	FLD_NSCHO msg;
 	msg.ref<BCD_1>().set(2, bcd);
@@ -67,7 +131,6 @@ TEST(choice, peek)
 	EXPECT_EQ(msg.get<BCD_1>()->size(), dmsg.get<BCD_1>()->size());
 }
 
-#if 0 //compound choice header seems not needed
 TEST(choice, compound)
 {
 	using namespace std::string_view_literals;
@@ -93,5 +156,4 @@ TEST(choice, compound)
 	ASSERT_NE(nullptr, dmsg.get<cmp::string>());
 	EXPECT_EQ(msg.get<cmp::string>()->get(), dmsg.get<cmp::string>()->get());
 }
-#endif
 

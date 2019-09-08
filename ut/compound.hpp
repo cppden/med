@@ -12,11 +12,16 @@ struct U32 : med::value<uint32_t>{};
 struct code : U16 {};
 struct length : U16 {};
 
+template <uint16_t CODE>
+struct fixed : med::value<med::fixed<CODE, code::value_type>>
+{
+};
+
 template <code::value_type CODE = 0, class BODY = med::empty<>>
 struct hdr :
 	med::sequence<
 		med::placeholder::_length<0>,
-		M< med::value<med::fixed<CODE, code::value_type>> >,
+		M< fixed<CODE> >,
 		M< BODY >
 	>
 {
@@ -37,7 +42,8 @@ struct hdr<0, med::empty<>> :
 
 
 template <code::value_type CODE, class BODY>
-struct avp : hdr<CODE, BODY>, med::tag_t<med::value<med::fixed<CODE, code::value_type>>>
+struct avp : hdr<CODE, BODY>
+		, med::minfo< med::mi<med::mik::TAG, fixed<CODE>> >
 {
 	using length_type = length;
 

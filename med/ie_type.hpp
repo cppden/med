@@ -27,8 +27,6 @@ struct IE_OCTET_STRING : PRIMITIVE {};
 struct IE_BIT_STRING   : PRIMITIVE {};
 
 //structure layer selectors
-struct IE_TV {}; //tag-value
-struct IE_LV {}; //length-value
 struct IE_TAG {}; //tag
 struct IE_LEN {}; //length
 

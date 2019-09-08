@@ -201,7 +201,6 @@ struct encoder : info
 	template <class IE> void operator() (ENTRY_CONTAINER, IE const& ie)
 	{
 		//X.690 8.9 Encoding of a sequence value (not segmented only)
-		//put_tag<IE, true>(); //8.9.1 ...shall be constructed
 		auto const len = ie.calc_length(*this);
 		put_length<IE>(len);
 		CODEC_TRACE("entry[%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());

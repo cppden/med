@@ -1,37 +1,9 @@
 #pragma once
 
 #include "value_traits.hpp"
+#include "tag.hpp"
 
-namespace med {
-namespace sl {
-
-namespace detail {
-
-template <class, class = void >
-struct has_tag_type : std::false_type { };
-template <class T>
-struct has_tag_type<T, std::void_t<typename T::tag_type>> : std::true_type { };
-
-template <class IE, typename Enable = void>
-struct tag_type
-{
-	using type = void;
-};
-
-template <class IE>
-struct tag_type<IE, std::enable_if_t<sl::detail::has_tag_type<IE>::value>>
-{
-	using type = typename IE::tag_type;
-};
-
-template <class IE>
-struct tag_type<IE, std::enable_if_t<!sl::detail::has_tag_type<IE>::value && sl::detail::has_tag_type<typename IE::field_type>::value>>
-{
-	using type = typename IE::field_type::tag_type;
-};
-
-} //end: namespace detail
-
+namespace med::sl {
 
 struct octet_info
 {
@@ -39,8 +11,26 @@ struct octet_info
 	static constexpr std::size_t size_of()      { return bits_to_bytes(IE::traits::bits); }
 
 	template <class IE>
-	static constexpr auto get_tag_type()        { return typename detail::tag_type<IE>{}; }
+	static constexpr auto get_tag_type()
+	{
+		using meta_info = get_meta_info_t<IE>;
+		if constexpr (meta::list_is_empty_v<meta_info>)
+		{
+			return meta::wrap<>{};
+		}
+		else
+		{
+			using mi_1st = meta::list_first_t<meta_info>;
+			if constexpr (mi_1st::kind == mik::TAG)
+			{
+				return meta::wrap<mi_1st>{};
+			}
+			else
+			{
+				return meta::wrap<>{};
+			}
+		}
+	}
 };
 
-} //end: namespace sl
-} //end: namespace med
+} //end: namespace med::sl

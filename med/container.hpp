@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include "debug.hpp"
 #include "accessor.hpp"
+#include "length.hpp"
 #include "sl/field_copy.hpp"
 #include "meta/typelist.hpp"
 #include "meta/foreach.hpp"
@@ -18,13 +19,6 @@ Distributed under the MIT License
 namespace med {
 
 namespace sl {
-
-template <class FIELD>
-struct cont_at
-{
-	template <class T>
-	using type = std::is_same<FIELD, get_field_type_t<T>>;
-};
 
 struct cont_clear
 {
@@ -55,7 +49,7 @@ struct cont_copy
 			}
 			else
 			{
-				to_field.ref_field().copy(from_field.ref_field(), std::forward<ARGS>(args)...);
+				to_field.copy(from_field, std::forward<ARGS>(args)...);
 			}
 		}
 	}
@@ -78,15 +72,15 @@ struct cont_len
 		{
 			IE const& ie = seq;
 			std::size_t len = 0;
-			for (auto& v : ie) { len += field_length<IE>(v, encoder); }
+			for (auto& v : ie) { len += sl::ie_length<get_meta_info_t<IE>>(v, encoder); }
 			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
 		}
 		else
 		{
 			IE const& ie = seq;
-			std::size_t const len = has_setter_type_v<IE> || ie.ref_field().is_set()
-					? field_length<IE>(ie.ref_field(), encoder)
+			std::size_t const len = has_setter_type_v<IE> || ie.is_set()
+					? field_length(ie, encoder)
 					: 0;
 			CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
@@ -158,8 +152,8 @@ public:
 	using container_t = container<TRAITS, IES...>;
 	using ies_types = meta::typelist<IES...>;
 
-	template <class FIELD>
-	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::cont_at<FIELD>>>; }
+	template <class T>
+	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::field_at<T>>>; }
 
 	template <class FIELD>
 	FIELD& ref()
@@ -168,7 +162,7 @@ public:
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
 		static_assert(!is_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE WRITTEN VIA PUSH_BACK");
-		return ie.ref_field();
+		return ie;
 	}
 
 	template <class FIELD>
@@ -206,7 +200,7 @@ public:
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
 
 	template <class FIELD>
-	static constexpr std::size_t arity()    { return sl::field_arity<meta::find<ies_types, sl::cont_at<FIELD>>>(); }
+	static constexpr std::size_t arity()    { return sl::field_arity<meta::find<ies_types, sl::field_at<FIELD>>>(); }
 
 	template <class FIELD>
 	void clear()                            { m_ies.template as<FIELD>().clear(); }
@@ -232,7 +226,7 @@ protected:
 		template <class FIELD>
 		decltype(auto) as() const
 		{
-			using IE = meta::find<ies_types, sl::cont_at<FIELD>>;
+			using IE = meta::find<ies_types, sl::field_at<FIELD>>;
 			static_assert(!std::is_void<IE>(), "NO SUCH FIELD");
 			return static_cast<IE const&>(*this);
 		}
@@ -240,7 +234,7 @@ protected:
 		template <class FIELD>
 		decltype(auto) as()
 		{
-			using IE = meta::find<ies_types, sl::cont_at<FIELD>>;
+			using IE = meta::find<ies_types, sl::field_at<FIELD>>;
 			static_assert(!std::is_void<IE>(), "NO SUCH FIELD");
 			return static_cast<IE&>(*this);
 		}

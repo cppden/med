@@ -17,40 +17,40 @@ Distributed under the MIT License
 
 namespace med::asn {
 
-template <typename T, std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <typename T, std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 using value_t = med::value<T, traits<TAG, CLASS, TYPE>>;
 
-template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 using boolean_t = value_t<bool, TAG, CLASS, TYPE>;
-using boolean = boolean_t<tag_value::BOOLEAN>;
+using boolean = boolean_t<tg_value::BOOLEAN>;
 
-template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 using null_t = med::empty<traits<TAG, CLASS, TYPE>>;
-using null = null_t<tag_value::NULL_TYPE>;
+using null = null_t<tg_value::NULL_TYPE>;
 
-using integer = value_t<int, tag_value::INTEGER>;
+using integer = value_t<int, tg_value::INTEGER>;
 
-template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 using enumerated_t = value_t<int, TAG, CLASS, TYPE>;
-using enumerated = enumerated_t<tag_value::ENUMERATED>;
+using enumerated = enumerated_t<tg_value::ENUMERATED>;
 
-template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 using real_t = value_t<double, TAG, CLASS, TYPE>;
-using real = real_t<tag_value::REAL>;
+using real = real_t<tg_value::REAL>;
 
-template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 using bit_string_t = med::bit_string<traits<TAG, CLASS, TYPE>>;
-using bit_string = bit_string_t<tag_value::BIT_STRING>;
+using bit_string = bit_string_t<tg_value::BIT_STRING>;
 
-template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 using octet_string_t = med::octet_string<octets_var_extern, traits<TAG, CLASS, TYPE>>;
-using octet_string = octet_string_t<tag_value::OCTET_STRING>;
+using octet_string = octet_string_t<tg_value::OCTET_STRING>;
 
 
-template <std::size_t TAG, tag_class CLASS, tag_type TYPE, class ...IES>
+template <std::size_t TAG, tg_class CLASS, tg_type TYPE, class ...IES>
 using sequence_t = med::base_sequence<traits<TAG, CLASS, TYPE>, IES...>;
 template <class ...IES>
-using sequence = sequence_t<tag_value::SEQUENCE, tag_class::UNIVERSAL, tag_type::IMPLICIT, IES...>;
+using sequence = sequence_t<tg_value::SEQUENCE, tg_class::UNIVERSAL, tg_type::IMPLICIT, IES...>;
 
 } //end: namespace med::asn
 

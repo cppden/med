@@ -14,17 +14,13 @@
 
 namespace {
 
-template <typename ...T>
-using M = med::mandatory<T...>;
-template <typename ...T>
-using O = med::optional<T...>;
+template <typename ...T> using M = med::mandatory<T...>;
+template <typename ...T> using O = med::optional<T...>;
 
 using L = med::length_t<med::value<uint8_t>>;
 using CNT = med::counter_t<med::value<uint16_t>>;
-template <std::size_t TAG>
-using T = med::value<med::fixed<TAG, uint8_t>>;
-template <std::size_t TAG>
-using C = med::value<med::fixed<TAG, uint8_t>>;
+template <std::size_t TAG> using T = med::value<med::fixed<TAG, uint8_t>>;
+template <std::size_t TAG> using C = med::value<med::fixed<TAG, uint8_t>>;
 
 struct FLD_UC : med::value<uint8_t>
 {
@@ -100,7 +96,7 @@ struct MSG_SEQ : med::sequence<
 
 
 struct PROTO : med::choice< med::value<uint8_t>
-	, med::option<C<0x01>, MSG_SEQ>
+	, M< C<0x01>, MSG_SEQ >
 >
 {
 };

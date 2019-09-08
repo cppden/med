@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include "name.hpp"
 #include "state.hpp"
+#include "length.hpp"
 #include "octet_string.hpp"
 #include "sl/octet_info.hpp"
 

@@ -36,12 +36,6 @@ struct default_handler
 	}
 };
 
-//template <class WRAPPER, class DECODER, class IE, class UNEXP>
-//constexpr void decode_ie(DECODER& decoder, IE& ie, IE_NULL, UNEXP&)
-//{
-//	decoder(ie, typename WRAPPER::ie_type{});
-//}
-
 //Tag
 //PEEK_SAVE - to preserve state in case of peek tag or not
 template <class TAG_TYPE, bool PEEK_SAVE, class DECODER>
@@ -65,53 +59,6 @@ inline std::size_t decode_tag(DECODER& decoder)
 	CODEC_TRACE("TAG=%zxh [%s]", value, name<TAG_TYPE>());
 	return value;
 }
-
-template <class WRAPPER, class DECODER, class IE, class UNEXP>
-constexpr void decode_ie(DECODER& decoder, IE& ie, PRIMITIVE, UNEXP&)
-{
-	if constexpr (is_peek_v<IE>)
-	{
-		CODEC_TRACE("PEEK PRIMITIVE %s[%s(%s)]", __FUNCTION__, name<WRAPPER>(), name<IE>());
-		if (decoder(PUSH_STATE{}, ie))
-		{
-			decoder(ie, typename WRAPPER::ie_type{});
-			decoder(POP_STATE{});
-		}
-	}
-	else
-	{
-		using tag_type = typename meta::unwrap_t<decltype(DECODER::template get_tag_type<WRAPPER>())>;
-		if constexpr (not std::is_void_v<tag_type>)
-		{
-			auto const tag = decode_tag<tag_type, true>(decoder);
-			if (not tag_type::match(tag))
-			{
-				//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-				MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag)
-			}
-			//CODEC_TRACE("T=%zxh V[%s]", std::size_t(tag), name<WRAPPER>());
-		}
-		CODEC_TRACE("PRIMITIVE %s[%s(%s)]", __FUNCTION__, name<WRAPPER>(), name<IE>());
-		decoder(ie, typename WRAPPER::ie_type{});
-	}
-}
-
-//Tag-Value
-template <class WRAPPER, class DECODER, class IE, class UNEXP>
-inline void decode_ie(DECODER& decoder, IE& ie, IE_TV, UNEXP& unexp)
-{
-	CODEC_TRACE("TV[%s]", name<WRAPPER>());
-	using tag_type = typename meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
-	auto const tag = decode_tag<tag_type, true>(decoder);
-	if (tag_type::match(tag))
-	{
-		CODEC_TRACE("T=%zxh V[%s]", std::size_t(tag), name<WRAPPER>());
-		return decode(decoder, ref_field(ie), unexp);
-	}
-	//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-	MED_THROW_EXCEPTION(unknown_tag, name<WRAPPER>(), tag)
-}
-
 //Length
 template <class LEN_TYPE, class DECODER>
 inline std::size_t decode_len(DECODER& decoder)
@@ -134,29 +81,6 @@ inline std::size_t decode_len(DECODER& decoder)
 	CODEC_TRACE("LEN[%s]=%zxh", name<LEN_TYPE>(), value);
 	value_to_length(ie, value);
 	return value;
-}
-//Length-Value
-template <class WRAPPER, class DECODER, class IE, class UNEXP>
-inline void decode_ie(DECODER& decoder, IE& ie, IE_LV, UNEXP& unexp)
-{
-	CODEC_TRACE("LV[%s]", name<WRAPPER>());
-	using len_type = typename WRAPPER::length_type;
-	auto const len_value = decode_len<len_type>(decoder);
-	if (auto end = decoder(PUSH_SIZE{len_value}))
-	{
-		decode(decoder, ref_field(ie), unexp);
-		//TODO: ??? as warning not error
-		if (0 != end.size())
-		{
-			CODEC_TRACE("%s: end-size=%zu", name<IE>(), end.size());
-			MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value)
-		}
-	}
-	else
-	{
-		//TODO: something more informative: tried to set length beyond data end
-		MED_THROW_EXCEPTION(overflow, name<WRAPPER>(), len_value)
-	}
 }
 
 template <bool BY_IE, class DECODER, class IE, class UNEXP>
@@ -289,16 +213,16 @@ struct length_decoder<true, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEX
 		CODEC_TRACE("len_dec[%s] by IE", name<length_type>());
 		//don't count the size of length IE itself just like with regular LV
 		constexpr auto len_ie_size = +DECODER::template size_of<length_type>();
-		return this->template decode_len_ie<len_ie_size>(len_ie.ref_field());
+		return this->template decode_len_ie<len_ie_size>(len_ie);
 	}
 };
 
-template <class WRAPPER, class DECODER, class IE, class UNEXP>
-inline void decode_ie(DECODER& decoder, IE& ie, CONTAINER, UNEXP& unexp)
+template <class DECODER, class IE, class UNEXP>
+inline void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp)
 {
 	call_if<is_callable_with_v<DECODER, ENTRY_CONTAINER>>::call(decoder, ENTRY_CONTAINER{}, ie);
 
-	if constexpr (is_length_v<IE>)
+	if constexpr (is_length_v<IE>) //container with length_type defined
 	{
 		if constexpr (has_padding<IE>::value)
 		{
@@ -339,6 +263,74 @@ inline void decode_ie(DECODER& decoder, IE& ie, CONTAINER, UNEXP& unexp)
 	call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
 }
 
+template <class META_INFO, class DECODER, class IE, class UNEXP>
+inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp)
+{
+	if constexpr (not meta::list_is_empty_v<META_INFO>)
+	{
+		using mi = meta::list_first_t<META_INFO>;
+		CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
+
+		if constexpr (mi::kind == mik::TAG)
+		{
+			using type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<mi>())>;
+			auto const tag = decode_tag<type, true>(decoder);
+			if (not type::match(tag))
+			{
+				//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
+				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), tag)
+			}
+		}
+		else if constexpr (mi::kind == mik::LEN)
+		{
+			auto const len_value = decode_len<typename mi::length_type>(decoder);
+			if (auto end = decoder(PUSH_SIZE{len_value}))
+			{
+				ie_decode<meta::list_rest_t<META_INFO>>(decoder, ie, unexp);
+				if (0 != end.size()) //TODO: ??? as warning not error
+				{
+					CODEC_TRACE("%s: end-size=%zu", name<IE>(), end.size());
+					MED_THROW_EXCEPTION(overflow, name<IE>(), len_value)
+				}
+				return;
+			}
+			else
+			{
+				//TODO: something more informative: tried to set length beyond data end
+				MED_THROW_EXCEPTION(overflow, name<IE>(), len_value)
+			}
+		}
+
+		ie_decode<meta::list_rest_t<META_INFO>>(decoder, ie, unexp);
+	}
+	else
+	{
+		using ie_type = typename IE::ie_type;
+		CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
+		if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
+		{
+			decode_container(decoder, ie, unexp);
+		}
+		else
+		{
+			if constexpr (is_peek_v<IE>)
+			{
+				CODEC_TRACE("PEEK %s[%s]", __FUNCTION__, name<IE>());
+				if (decoder(PUSH_STATE{}, ie))
+				{
+					decoder(ie, ie_type{});
+					decoder(POP_STATE{});
+				}
+			}
+			else
+			{
+				CODEC_TRACE("PRIMITIVE %s[%s]", __FUNCTION__, name<IE>());
+				decoder(ie, ie_type{});
+			}
+		}
+	}
+}
+
 }	//end: namespace sl
 
 template <class DECODER, class IE, class UNEXP = sl::default_handler>
@@ -346,11 +338,11 @@ constexpr void decode(DECODER&& decoder, IE& ie, UNEXP&& unexp = sl::default_han
 {
 	if constexpr (has_ie_type_v<IE>)
 	{
-		return sl::decode_ie<IE>(decoder, ie, typename IE::ie_type{}, unexp);
+		sl::ie_decode<get_meta_info_t<IE>>(decoder, ie, unexp);
 	}
 	else //special cases like passing a placeholder
 	{
-		return decoder(ie);
+		decoder(ie);
 	}
 }
 

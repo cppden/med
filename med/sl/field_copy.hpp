@@ -9,7 +9,7 @@ Distributed under the MIT License
 (See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 
-#include "../multi_field.hpp"
+#include "field.hpp"
 
 namespace med::sl {
 
@@ -29,7 +29,7 @@ inline void field_copy(IE& to, IE const& from, ARGS&&... args)
 		}
 		else
 		{
-			return to.ref_field().copy(from.ref_field(), std::forward<ARGS>(args)...);
+			return to.copy(from, std::forward<ARGS>(args)...);
 		}
 	}
 }

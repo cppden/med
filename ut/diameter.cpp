@@ -160,8 +160,7 @@ struct avp :
 			O< vendor, vendor::has >,
 			M< BODY >
 		>
-		, med::tag_t<avp_code_fixed<CODE>>
-		, med::minfo< med::mi<med::mik::TAG, med::tag_t<avp_code_fixed<CODE>>> >
+		, med::minfo< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;
@@ -227,14 +226,14 @@ struct failed_avp : avp<med::octet_string<>, 279, avp_flags::M>
 };
 
 struct any_avp :
-		med::sequence<
-			M< avp_code >,
-			M< avp_flags >,
-			med::placeholder::_length<>,
-			O< vendor, vendor::has >,
-			M< med::octet_string<> >
-		>,
-		med::tag_t<avp_code>
+	med::sequence<
+		M< avp_code >,
+		M< avp_flags >,
+		med::placeholder::_length<>,
+		O< vendor, vendor::has >,
+		M< med::octet_string<> >
+	>
+	, med::minfo< med::mi<med::mik::TAG, avp_code> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;

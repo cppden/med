@@ -1,4 +1,5 @@
 #pragma once
+#include "tag.hpp"
 
 struct FLD_UC : med::value<uint8_t>
 {
@@ -151,7 +152,8 @@ struct LT : med::peek<med::value<uint8_t>>
 };
 
 //tagged nibble
-struct FLD_TN : med::value<uint8_t>, med::tag_t<HT<0xE0>>
+struct FLD_TN : med::value<uint8_t>
+		, med::minfo< med::mi<med::mik::TAG, HT<0xE0>> >
 {
 	enum : value_type
 	{
@@ -160,7 +162,7 @@ struct FLD_TN : med::value<uint8_t>, med::tag_t<HT<0xE0>>
 	};
 
 	value_type get() const                { return base_t::get() & mask; }
-	void set(value_type v)                { set_encoded( tag_type::get() | (v & mask) ); }
+	void set(value_type v)                { set_encoded( med::meta::list_first_t<meta_info>::get() | (v & mask) ); }
 
 	static constexpr char const* name()   { return "Tagged-Bits"; }
 	template <std::size_t N>
@@ -234,8 +236,8 @@ struct BCD_2 : BCD<2>
 
 //nibble selected choice field
 struct FLD_NSCHO : med::choice<LT
-	, med::option<BCD_1::case_value, BCD_1>
-	, med::option<BCD_2::case_value, BCD_2>
+	, M< BCD_1 >
+	, M< BCD_2 >
 >
 {
 };

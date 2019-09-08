@@ -83,7 +83,7 @@ struct tag_named
 	using ie_type = IE_OCTET_STRING;
 	using name_type = std::string_view;
 	using value_type = uint64_t;
-	using tag_type = tag_named<NAME>;
+	//using matching_type = tag_named<NAME>;
 
 	static constexpr name_type   name_value{ NAME::data(), NAME::size() };
 	static constexpr value_type get()          { return hash<value_type>::compute(name_value); }

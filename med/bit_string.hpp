@@ -137,7 +137,7 @@ template <class TRAITS>
 struct bit_string_impl : IE<IE_BIT_STRING>
 {
 	using traits     = TRAITS;
-	using value_type = std::conditional_t<traits::min_bits == traits::max_bits, bits_fixed<traits::min_bits>, bits_variable>;
+	using value_type = med::conditional_t<traits::min_bits == traits::max_bits, bits_fixed<traits::min_bits>, bits_variable>;
 	using base_t = bit_string_impl;
 
 	constexpr std::size_t size() const      { return m_value.size(); }

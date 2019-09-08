@@ -32,7 +32,7 @@ namespace med::asn {
 	tag numbers.
 */
 //NOTE: natural numbering to match the canonical order and X.690:Table 1 - Encoding of class of tag
-enum class tag_class : uint8_t
+enum class tg_class : uint8_t
 {
 	UNIVERSAL        = 0b00,
 	APPLICATION      = 0b01,
@@ -71,7 +71,7 @@ enum class tag_class : uint8_t
 	Tagging also differs syntactically from assignment of encoding instructions: the specification
 	that tagging is EXPLICIT or IMPLICIT occurs following the closing "]" of the tag.
 */
-enum class tag_type : uint8_t
+enum class tg_type : uint8_t
 {
 	EXPLICIT,
 	IMPLICIT,
@@ -79,7 +79,7 @@ enum class tag_type : uint8_t
 };
 
 //Table 1 – Universal class tag assignments
-enum tag_value : uint8_t
+enum tg_value : uint8_t
 {
 	BOOLEAN = 1,
 	INTEGER = 2,
@@ -121,12 +121,12 @@ enum tag_value : uint8_t
 };
 
 
-template <std::size_t TAG, tag_class CLASS = tag_class::UNIVERSAL, tag_type TYPE = tag_type::IMPLICIT>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
 struct traits : med::base_traits
 {
-	static constexpr auto asn_tag_type = TYPE;
-	static constexpr auto asn_tag_class = CLASS;
-	static constexpr auto asn_tag_value = TAG;
+	static constexpr auto AsnTagType = TYPE; //not used at all?
+	static constexpr auto AsnTagClass = CLASS;
+	static constexpr auto AsnTagValue = TAG;
 };
 
 

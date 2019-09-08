@@ -9,7 +9,8 @@ Distributed under the MIT License
 
 #pragma once
 
-#include "multi_field.hpp"
+#include "field.hpp"
+#include "tag.hpp"
 #include "length.hpp"
 #include "count.hpp"
 
@@ -306,9 +307,9 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
-> : tag_value_t<TAG, FIELD>, optional_t
+> : field_t<FIELD>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, FIELD>;
 };
 
 //multi-instance field w/ tag
@@ -320,9 +321,9 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, FIELD, 1, max<MAX>>, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -334,9 +335,9 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, FIELD, 1, pmax<MAX>>, optional_t
+> : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -349,9 +350,9 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, FIELD, NUM, max<NUM>>, optional_t
+> : multi_field<FIELD, NUM, max<NUM>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, FIELD>;
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -412,9 +413,9 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : tag_value_t<TAG, length_value_t<LEN, FIELD>>, optional_t
+> : field_t<FIELD>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, mi<mik::LEN, LEN>, FIELD>;
 };
 
 template <class TAG, class LEN, class FIELD, std::size_t NUM>
@@ -425,9 +426,9 @@ struct optional<
 	arity<NUM>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, NUM, max<NUM>>, optional_t
+> : multi_field<FIELD, NUM, max<NUM>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -439,9 +440,9 @@ struct optional<
 	max<MAX>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, 1, max<MAX>>, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -453,9 +454,9 @@ struct optional<
 	pmax<MAX>,
 	max<1>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, 1, pmax<MAX>>, optional_t
+> : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
@@ -467,9 +468,9 @@ struct optional<
 	min<MIN>,
 	max<MAX>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, MIN, max<MAX>>, optional_t
+> : multi_field<FIELD, MIN, max<MAX>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
@@ -482,9 +483,9 @@ struct optional<
 	min<MIN>,
 	pmax<MAX>,
 	std::enable_if_t<is_tag_v<TAG> && is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_tag_value<TAG, length_value_t<LEN, FIELD>, MIN, pmax<MAX>>, optional_t
+> : multi_field<FIELD, MIN, pmax<MAX>>, optional_t
 {
-	using meta_info = make_meta_info_t<mi<mik::TAG, tag_t<TAG>>, mi<mik::LEN, LEN>, FIELD>;
+	using meta_info = make_meta_info_t<mi<mik::TAG, TAG>, mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
@@ -500,7 +501,7 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
-> : length_value_t<LEN, FIELD>, optional_t
+> : field_t<FIELD>, optional_t
 {
 	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 };
@@ -514,7 +515,7 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN> && is_condition_v<CONDITION>>
-> : length_value_t<LEN, FIELD>, optional_t
+> : field_t<FIELD>, optional_t
 {
 	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	using condition = CONDITION;
@@ -528,7 +529,7 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_length_value<LEN, FIELD, 1, max<MAX>>, optional_t
+> : multi_field<FIELD, 1, max<MAX>>, optional_t
 {
 	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -542,7 +543,7 @@ struct optional<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_length_value<LEN, FIELD, 1, pmax<MAX>>, optional_t
+> : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -556,7 +557,7 @@ struct optional<
 	max<MAX>,
 	max<1>,
 	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_length_value<LEN, FIELD, MIN, max<MAX>>, optional_t
+> : multi_field<FIELD, MIN, max<MAX>>, optional_t
 {
 	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -571,7 +572,7 @@ struct optional<
 	pmax<MAX>,
 	max<1>,
 	std::enable_if_t<is_length_v<LEN> && is_field_v<FIELD>>
-> : multi_length_value<LEN, FIELD, MIN, pmax<MAX>>, optional_t
+> : multi_field<FIELD, MIN, pmax<MAX>>, optional_t
 {
 	using meta_info = make_meta_info_t<mi<mik::LEN, LEN>, FIELD>;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");

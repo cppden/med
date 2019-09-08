@@ -27,6 +27,18 @@ namespace med {
 //structure layer
 namespace sl {
 
+//Tag
+template <class TAG_TYPE, class ENCODER>
+inline void encode_tag(ENCODER& encoder)
+{
+	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
+	{
+		CODEC_TRACE("%s[%s]", __FUNCTION__, name<TAG_TYPE>());
+		TAG_TYPE const ie{};
+		encoder(ie, IE_TAG{});
+	}
+}
+
 //Length
 template <class LEN_TYPE, class ENCODER>
 inline void encode_len(ENCODER& encoder, std::size_t len)
@@ -138,7 +150,7 @@ struct length_encoder<true, ENCODER, LEN> : len_enc_impl<ENCODER, LEN>
 		CODEC_TRACE("len_enc[%s] by IE", name<length_type>());
 		this->m_lenpos = this->m_encoder(GET_STATE{}); //save position in encoded buffer to update with correct length
 		//TODO: trigger setters if any?
-		m_len_ie.copy(ref_field(len_ie));
+		m_len_ie.copy(len_ie);
 		return this->m_encoder(ADVANCE_STATE{+ENCODER::template size_of<length_type>()});
 	}
 
@@ -218,37 +230,25 @@ struct container_encoder<T, std::void_t<typename T::container_encoder>>
 	}
 };
 
-//Tag
-template <class TAG_TYPE, class ENCODER>
-inline void encode_tag(ENCODER& encoder)
-{
-	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
-	{
-		CODEC_TRACE("%s[%s]", __FUNCTION__, name<TAG_TYPE>());
-		TAG_TYPE const ie{};
-		encoder(ie, IE_TAG{});
-	}
-}
-
 template <class META_INFO, class ENCODER, class IE>
 inline void ie_encode(ENCODER& encoder, IE const& ie)
 {
 	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
 	{
-		if constexpr (not meta::is_list_empty_v<META_INFO>)
+		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
 			using mi = meta::list_first_t<META_INFO>;
 			CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				using tag_type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<mi>())>;
-				encode_tag<tag_type>(encoder);
+				using type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<mi>())>;
+				encode_tag<type>(encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				CODEC_TRACE("LV=? [%s]", name<IE>());
-				auto const len = field_length(rref_field(ie), encoder);
+				auto const len = field_length(ie, encoder);
 				CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
 				encode_len<typename mi::length_type>(encoder, len);
 			}
@@ -257,21 +257,18 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 		}
 		else
 		{
-			auto const& field = rref_field(ie);
-			//using ie_type = typename std::remove_reference_t<decltype(rref_field(ie))>::ie_type;
-			using field_type = remove_cref_t<decltype(field)>;
-			using ie_type = typename field_type::ie_type;
-			CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<field_type>(), class_name<ie_type>());
+			using ie_type = typename IE::ie_type;
+			CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, field);
-				container_encoder<ENCODER>::encode(encoder, field);
-				call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, field);
+				call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
+				container_encoder<ENCODER>::encode(encoder, ie);
+				call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
 			}
 			else
 			{
-				snapshot(encoder, field);
-				encoder(field, ie_type{});
+				snapshot(encoder, ie);
+				encoder(ie, ie_type{});
 			}
 		}
 	}

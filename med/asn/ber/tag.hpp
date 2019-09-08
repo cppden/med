@@ -46,19 +46,19 @@ struct tag_value
 
 	static constexpr std::size_t num_bits()
 	{
-		if constexpr (TRAITS::asn_tag_value < MAX_IN_BYTE)
+		if constexpr (TRAITS::AsnTagValue < MAX_IN_BYTE)
 		{
 			return 8;
 		}
 		else
 		{
-			return sizeof(long long) * 8 - __builtin_clzll(TRAITS::asn_tag_value);
+			return sizeof(long long) * 8 - __builtin_clzll(TRAITS::AsnTagValue);
 		}
 	}
 
 	static constexpr std::size_t num_bytes()
 	{
-		if constexpr (TRAITS::asn_tag_value < MAX_IN_BYTE)
+		if constexpr (TRAITS::AsnTagValue < MAX_IN_BYTE)
 		{
 			return 1;
 		}
@@ -70,17 +70,17 @@ struct tag_value
 
 	static constexpr std::size_t value()
 	{
-		std::size_t tag = uint8_t(TRAITS::asn_tag_class) << CLASS_SHIFT;
+		std::size_t tag = uint8_t(TRAITS::AsnTagClass) << CLASS_SHIFT;
 		if constexpr (CONSTRUCTED) { tag |= PC_BIT; }
-		if constexpr (TRAITS::asn_tag_value < MAX_IN_BYTE)
+		if constexpr (TRAITS::AsnTagValue < MAX_IN_BYTE)
 		{
-			tag |= TRAITS::asn_tag_value;
+			tag |= TRAITS::AsnTagValue;
 		}
 		else
 		{
 			tag |= MAX_IN_BYTE;
 
-			for (std::size_t v = TRAITS::asn_tag_value << (sizeof(std::size_t) * 8 - num_bits()), //bits value to write out
+			for (std::size_t v = TRAITS::AsnTagValue << (sizeof(std::size_t) * 8 - num_bits()), //bits value to write out
 				 bits = num_bits(), //total number of bits in value to write
 				 step = (bits % 7) ? (bits % 7) : 7; //number of bits in single step
 				 bits;

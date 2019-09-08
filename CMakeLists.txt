@@ -51,7 +51,8 @@ endif ()
 set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 
 file(GLOB_RECURSE MED_SRCS med/*.hpp)
-file(GLOB_RECURSE UT_SRCS ut/*.cpp)
+# file(GLOB_RECURSE UT_SRCS ut/*.cpp)
+set(UT_SRCS ut/choice.cpp)
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
 
 #expose private for UTs

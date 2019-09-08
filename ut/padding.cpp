@@ -9,7 +9,7 @@ struct u24 : med::value<med::bytes<3>> {};
 struct u32 : med::value<uint32_t> {};
 
 template <class T>
-using CASE = med::option<med::value<med::fixed<T::id, uint8_t>>, T>;
+using CASE = M< med::value<med::fixed<T::id, uint8_t>>, T>;
 
 struct flag : med::sequence<
 	med::placeholder::_length<>,

@@ -26,8 +26,8 @@ namespace sl {
 template <class IE, class FUNC, class TAG>
 inline void clear_tag(FUNC& func, TAG& vtag)
 {
-	using tag_type = med::meta::unwrap_t<decltype(FUNC::template get_tag_type<IE>())>;
-	if constexpr (is_peek_v<tag_type>)
+	using type = meta::unwrap_t<decltype(FUNC::template get_tag_type<IE>())>;
+	if constexpr (is_peek_v<type>)
 	{
 		func(POP_STATE{});
 	}
@@ -54,8 +54,6 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			//sl::encode_ie<IE>(func, field, typename IE::ie_type{});
-			//encode(func, field);
 			sl::ie_encode<get_meta_info_t<IE>>(func, field);
 			if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
 			{
@@ -75,22 +73,24 @@ struct seq_dec
 	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, TAG& vtag)
 	{
 		IE& ie = to;
+		//using meta_info = get_meta_info_t<IE>;
+		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+
 		if constexpr (is_multi_field_v<IE>)
 		{
 			CODEC_TRACE("[%s]*", name<IE>());
-			using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
-			if constexpr (not std::is_void_v<tag_type>) //multi-field with tag
+			if constexpr (not std::is_void_v<type>) //multi-field with tag
 			{
 				//multi-instance optional or mandatory field w/ tag w/o counter
 				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !has_condition_v<IE>, "TO IMPLEMENT!");
 
 				if (!vtag && decoder(PUSH_STATE{}, ie))
 				{
-					vtag.set_encoded(decode_tag<tag_type, false>(decoder));
+					vtag.set_encoded(decode_tag<type, false>(decoder));
 					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 				}
 
-				while (tag_type::match(vtag.get_encoded()))
+				while (type::match(vtag.get_encoded()))
 				{
 					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count());
 					auto* field = ie.push_back(decoder);
@@ -98,7 +98,7 @@ struct seq_dec
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
-						vtag.set_encoded(decode_tag<tag_type, false>(decoder));
+						vtag.set_encoded(decode_tag<type, false>(decoder));
 						CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
 					}
 					else //end is reached
@@ -117,8 +117,8 @@ struct seq_dec
 			}
 			else //multi-field w/o tag
 			{
-				using prev_tag_type = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
-				if constexpr (not std::is_void_v<prev_tag_type>)
+				using prev_tag_t = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
+				if constexpr (not std::is_void_v<prev_tag_t>)
 				{
 					discard(decoder, vtag);
 				}
@@ -178,7 +178,7 @@ struct seq_dec
 						{
 							if (count > 0) { decoder(NEXT_CONTAINER_ELEMENT{}, ie); }
 						}
-						sl::decode_ie<IE>(decoder, *field, typename IE::ie_type{}, unexp);
+						sl::ie_decode<get_meta_info_t<IE>>(decoder, *field, unexp);
 						++count;
 					}
 
@@ -190,10 +190,10 @@ struct seq_dec
 		{
 			if constexpr (is_optional_v<IE>)
 			{
-				using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
-				if constexpr (not std::is_void_v<tag_type>) //optional field with tag
+				if constexpr (not std::is_void_v<IE>) //optional field with tag
 				{
-					CODEC_TRACE("O<%s> w/TAG", name<IE>());
+					using type = typename IE::matching_type;
+					CODEC_TRACE("O<%s> w/TAG %s", name<IE>(), class_name<type>());
 					//read a tag or use the tag read before
 					if (!vtag)
 					{
@@ -201,8 +201,8 @@ struct seq_dec
 						if (decoder(PUSH_STATE{}, ie))
 						{
 							//don't save state as we just did it already
-							vtag.set_encoded(decode_tag<tag_type, false>(decoder));
-							CODEC_TRACE("pop tag=%zx", std::size_t(vtag.get_encoded()));
+							vtag.set_encoded(decode_tag<type, false>(decoder));
+							CODEC_TRACE("read tag=%zx", std::size_t(vtag.get_encoded()));
 						}
 						else
 						{
@@ -211,19 +211,19 @@ struct seq_dec
 						}
 					}
 
-					if (tag_type::match(vtag.get_encoded())) //check tag decoded
+					if (type::match(vtag.get_encoded())) //check tag decoded
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						med::decode(decoder, ie.ref_field(), unexp);
+						med::decode(decoder, ie, unexp);
 					}
 				}
 				else //optional w/o tag
 				{
 					CODEC_TRACE("O<%s> w/o TAG", name<IE>());
 					//discard tag if needed
-					using prev_tag_type = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
-					if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_type>)
+					using prev_tag_t = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
+					if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_t>)
 					{
 						discard(decoder, vtag);
 					}
@@ -237,7 +237,7 @@ struct seq_dec
 							med::decode(decoder, ie, unexp);
 							if constexpr (has_default_value_v<IE>)
 							{
-								if (not was_set) { ie.ref_field().clear(); } //discard since it's a default
+								if (not was_set) { ie.clear(); } //discard since it's a default
 							}
 						}
 						else
@@ -265,8 +265,8 @@ struct seq_dec
 				CODEC_TRACE("M<%s>...", name<IE>());
 
 				//if switched from optional with tag then discard it since mandatory is read as whole
-				using prev_tag_type = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
-				if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_type>)
+				using prev_tag_t = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
+				if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_t>)
 				{
 					discard(decoder, vtag);
 				}
@@ -288,7 +288,6 @@ struct seq_enc
 		{
 			if constexpr (is_counter_v<IE>)
 			{
-				//static_assert(!ENCODER::template has_tag_type<IE>(), "missed case");
 				//optional multi-field w/ counter w/o tag
 				if constexpr (is_optional_v<IE>)
 				{
@@ -346,7 +345,7 @@ struct seq_enc
 						setter(ie, to);
 					}
 
-					if (ie.ref_field().is_set())
+					if (ie.is_set())
 					{
 						med::encode(encoder, ie);
 					}
@@ -354,8 +353,8 @@ struct seq_enc
 				else //w/o setter
 				{
 					IE const& ie = to;
-					CODEC_TRACE("%c[%s]", ie.ref_field().is_set()?'+':'-', name<IE>());
-					if (ie.ref_field().is_set() || has_default_value_v<IE>)
+					CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
+					if (ie.is_set() || has_default_value_v<IE>)
 					{
 						med::encode(encoder, ie);
 					}
@@ -381,7 +380,7 @@ struct seq_enc
 					{
 						setter(ie, to);
 					}
-					if (ie.ref_field().is_set())
+					if (ie.is_set())
 					{
 						med::encode(encoder, ie);
 					}
@@ -393,8 +392,8 @@ struct seq_enc
 				else //w/o setter
 				{
 					IE const& ie = to;
-					//CODEC_TRACE("%c{%s}", ie.ref_field().is_set()?'+':'-', class_name<IE>());
-					if (med::detail::has_set_length<IE>::value || ie.ref_field().is_set())
+					//CODEC_TRACE("%c{%s}", ie.is_set()?'+':'-', class_name<IE>());
+					if (detail::has_set_length<IE>::value || ie.is_set())
 					{
 						med::encode(encoder, ie);
 					}

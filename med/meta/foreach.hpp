@@ -193,30 +193,19 @@ constexpr auto for_if(F f, Args&&... args)
 {
 	return detail::for_if_impl(L{}, f, std::forward<Args>(args)...);
 }
+template <class L, class F, class... Args>
+constexpr auto for_if(bool cond, F f, Args&&... args)
+{
+	return cond
+			? detail::for_if_impl(L{}, f, std::forward<Args>(args)...)
+			: detail::for_if_impl(typelist{}, f, std::forward<Args>(args)...);
+}
 
 template <class L, class F, class... Args>
 constexpr auto for_if_prev(F f, Args&&... args)
 {
 	return detail::for_if_impl_prev(L{}, f, std::forward<Args>(args)...);
 }
-
-namespace detail {
-
-template<bool C> struct if_t;
-template<> struct if_t<true>
-{
-	template<typename THEN, typename ELSE> using type = THEN;
-};
-template<> struct if_t<false>
-{
-	template<typename THEN, typename ELSE> using type = ELSE;
-};
-
-} //end: namespace detail
-
-template<bool C, typename THEN, typename ELSE>
-using conditional_t = typename detail::if_t<C>::template type<THEN, ELSE>;
-
 
 namespace detail {
 

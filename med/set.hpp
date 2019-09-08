@@ -23,23 +23,6 @@ namespace med {
 
 namespace sl {
 
-template <class HEADER, class IE, class ENCODER>
-constexpr void encode_header(ENCODER& encoder)
-{
-	if constexpr (std::is_base_of_v<PRIMITIVE, typename HEADER::ie_type>)
-	{
-		using tag_type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<IE>())>;
-		if constexpr (tag_type::is_const) //encode only if tag fixed
-		{
-			return encode(encoder, tag_type{});
-		}
-	}
-	else
-	{
-		static_assert(std::is_base_of_v<CONTAINER, typename HEADER::ie_type>, "unexpected aggregate?");
-	}
-}
-
 template <class T, class DECODER>
 constexpr void pop_state(DECODER& decoder)
 {
@@ -54,8 +37,8 @@ struct set_name
 	template <class IE, typename TAG, class CODEC>
 	static constexpr bool check(TAG const& tag, CODEC&)
 	{
-		using tag_type = meta::unwrap_t<decltype(CODEC::template get_tag_type<IE>())>;
-		return tag_type::match(tag);
+		using type = meta::unwrap_t<decltype(CODEC::template get_tag_type<IE>())>;
+		return type::match(tag);
 	}
 
 	template <class IE, typename TAG, class CODEC>
@@ -88,24 +71,17 @@ struct set_enc
 			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
 
 			check_arity(encoder, ie);
-			//TODO: ugly indeed :(
-			constexpr bool do_hdr = is_callable_with_v<ENCODER, HEADER_CONTAINER>;
-			if constexpr (do_hdr)
-			{
-				//encode_header<header_type, IE>(encoder);
-				encoder(HEADER_CONTAINER{}, ie);
-			}
 
+			call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, ie);
 			call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
+
 			bool first = true;
 			for (auto& field : ie)
 			{
 				//field was pushed but not set... do we need a new error?
 				if (not field.is_set()) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1) }
 				if (not first) { call_if<is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to); }
-				//if constexpr (not do_hdr) { encode_header<header_type, IE>(encoder); }
 				sl::ie_encode<get_meta_info_t<IE>>(encoder, field);
-				//med::encode(encoder, field);
 				first = false;
 			}
 			call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
@@ -113,13 +89,11 @@ struct set_enc
 		else //single-instance field
 		{
 			IE const& ie = static_cast<IE const&>(to);
-			if (ie.ref_field().is_set())
+			if (ie.is_set())
 			{
 				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<get_meta_info_t<IE>>());
-				//encode_header<header_type, IE>(encoder);
 				call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, to);
-				//med::encode(encoder, ie.ref_field());
-				sl::ie_encode<get_meta_info_t<IE>>(encoder, ie.ref_field());
+				sl::ie_encode<get_meta_info_t<IE>>(encoder, ie);
 			}
 			else if constexpr (!is_optional_v<IE>)
 			{
@@ -137,16 +111,16 @@ struct set_dec
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
 	static bool check(TO&, DECODER&, UNEXP&, HEADER const& header)
 	{
-		using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
-		return tag_type::match( get_tag(header) );
+		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		return type::match( get_tag(header) );
 	}
 
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
 	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, HEADER const&)
 	{
 		//pop back the tag read since we have non-fixed tag inside
-		using tag_type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
-		if constexpr (not tag_type::is_const) { decoder(POP_STATE{}); }
+		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		if constexpr (not type::is_const) { decoder(POP_STATE{}); }
 
 		IE& ie = static_cast<IE&>(to);
 		if constexpr (is_multi_field_v<IE>)
@@ -186,10 +160,10 @@ struct set_dec
 		}
 		else //single-instance field
 		{
-			CODEC_TRACE("[%s] = %u", name<IE>(), ie.ref_field().is_set());
-			if (not ie.ref_field().is_set())
+			CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
+			if (not ie.is_set())
 			{
-				return med::decode(decoder, ie.ref_field(), unexp);
+				return med::decode(decoder, ie, unexp);
 			}
 			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)
 		}
@@ -215,7 +189,7 @@ struct set_check
 		}
 		else //single-instance field
 		{
-			if (not (is_optional_v<IE> || ie.ref_field().is_set()))
+			if (not (is_optional_v<IE> || ie.is_set()))
 			{
 				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
 			}
