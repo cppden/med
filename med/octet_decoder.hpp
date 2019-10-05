@@ -84,7 +84,7 @@ struct octet_decoder : sl::octet_info
 		{
 			ie.set_encoded(val);
 		}
-		CODEC_TRACE("V=%zxh [%s]: %s", std::size_t(val), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("VAL=%zxh [%s]: %s", std::size_t(val), name<IE>(), ctx.buffer().toString());
 	}
 
 	//IE_OCTET_STRING

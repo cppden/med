@@ -45,7 +45,7 @@ inline std::size_t decode_tag(DECODER& decoder)
 	std::size_t value{};
 	if constexpr (PEEK_SAVE && is_peek_v<TAG_TYPE>)
 	{
-		CODEC_TRACE("PEEK TAG %s", name<TAG_TYPE>());
+		CODEC_TRACE("PEEK TAG %s", class_name<TAG_TYPE>());
 		if (decoder(PUSH_STATE{}, ie))
 		{
 			value = decoder(ie, IE_TAG{});
@@ -56,7 +56,7 @@ inline std::size_t decode_tag(DECODER& decoder)
 	{
 		value = decoder(ie, IE_TAG{});
 	}
-	CODEC_TRACE("TAG=%zxh [%s]", value, name<TAG_TYPE>());
+	CODEC_TRACE("%s=%zxh of %s", __FUNCTION__, value, class_name<TAG_TYPE>());
 	return value;
 }
 //Length
@@ -78,7 +78,7 @@ inline std::size_t decode_len(DECODER& decoder)
 		decoder(ie, IE_LEN{});
 	}
 	std::size_t value = ie.get_encoded();
-	CODEC_TRACE("LEN[%s]=%zxh", name<LEN_TYPE>(), value);
+	CODEC_TRACE("%s=%zxh of %s", __FUNCTION__, value, class_name<LEN_TYPE>());
 	value_to_length(ie, value);
 	return value;
 }
@@ -269,7 +269,7 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp)
 	if constexpr (not meta::list_is_empty_v<META_INFO>)
 	{
 		using mi = meta::list_first_t<META_INFO>;
-		CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
+		CODEC_TRACE("%s[%s] w/ %s", __FUNCTION__, name<IE>(), class_name<mi>());
 
 		if constexpr (mi::kind == mik::TAG)
 		{

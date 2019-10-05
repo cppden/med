@@ -74,12 +74,16 @@ struct accessor
 
 	template <class T, class = std::enable_if_t<!std::is_pointer_v<T>>> operator T& ()
 	{
-		//static_assert(!std::is_pointer<T>(), "INVALID ACCESS BY NON-CONST POINTER");
 		return m_that.template ref<T>();
 	}
 	template <class T, class = std::enable_if_t<std::is_const_v<T>>> operator T* () const
 	{
 		return access<T>::as_optional(m_that.template get<std::remove_const_t<T>>());
+	}
+	template <class T, class = std::enable_if_t<std::is_pointer_v<T> && !std::is_const_v<T>>> operator T* ()
+	{
+		static_assert(!std::is_pointer<T>(), "INVALID ACCESS OF MANDATORY BY POINTER");
+		return T{};
 	}
 
 private:

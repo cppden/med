@@ -26,10 +26,10 @@ struct U32 : med::value<uint32_t>
 	bool set_encoded(value_type v) { return (v < 0xF0000000) ? ((void)base_t::set_encoded(v), true) : false; }
 };
 
-struct CHOICE : med::choice< med::value<uint32_t>
-	, med::option<T<1>, U8>
-	, med::option<T<2>, U16>
-	, med::option<T<4>, U32>
+struct CHOICE : med::choice<
+	M<T<1>, U8>,
+	M<T<2>, U16>,
+	M<T<4>, U32>
 >{};
 
 struct SEQ2 : med::sequence<
@@ -50,7 +50,7 @@ struct MSGSEQ : med::sequence<
 	M< L, SEQ2 >
 >{};
 
-struct SET : med::set< med::value<uint32_t>,
+struct SET : med::set<
 	M< T<1>, L, U8, med::max<2>>,
 	O< T<2>, U16, med::max<2>>,
 	O< T<3>, U24, med::max<2>>,
@@ -238,8 +238,8 @@ struct response : med::sequence<
 };
 
 struct proto : med::choice< hdr
-	, med::option<T<1>, challenge>
-	, med::option<T<2>, response>
+	, M<T<1>, challenge>
+	, M<T<2>, response>
 >
 {
 	using length_type = med::value<uint16_t>;

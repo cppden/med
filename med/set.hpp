@@ -118,14 +118,15 @@ struct set_dec
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
 	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, HEADER const&)
 	{
-		//pop back the tag read since we have non-fixed tag inside
+		//pop back the tag we've read as we have non-fixed tag inside
 		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
 		if constexpr (not type::is_const) { decoder(POP_STATE{}); }
 
+		using meta_info = get_meta_info_t<IE>;
 		IE& ie = static_cast<IE&>(to);
 		if constexpr (is_multi_field_v<IE>)
 		{
-			CODEC_TRACE("[%s]@%zu", name<IE>(), ie.count());
+			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
 			//TODO: looks strange since it doesn't match encode's calls
 			//call_if<is_callable_with_v<DECODER, HEADER_CONTAINER>>::call(decoder, HEADER_CONTAINER{}, ie);
 			call_if<is_callable_with_v<DECODER, ENTRY_CONTAINER>>::call(decoder, ENTRY_CONTAINER{}, ie);
@@ -143,7 +144,7 @@ struct set_dec
 						}
 					}
 					auto* field = ie.push_back(decoder);
-					med::decode(decoder, *field, unexp);
+					sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, *field, unexp);
 				}
 			}
 			else
@@ -153,7 +154,7 @@ struct set_dec
 					MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 				}
 				auto* field = ie.push_back(decoder);
-				med::decode(decoder, *field, unexp);
+				sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, *field, unexp);
 			}
 
 			call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
@@ -163,7 +164,8 @@ struct set_dec
 			CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
 			if (not ie.is_set())
 			{
-				return med::decode(decoder, ie, unexp);
+				return sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, ie, unexp);
+				//return med::decode(decoder, ie, unexp);
 			}
 			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)
 		}

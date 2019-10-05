@@ -55,11 +55,11 @@ struct ip : med::sequence<
 	void set(u32::value_type v)  { ref<u32>().set(v); }
 };
 
-struct exclusive : med::choice< med::value<uint8_t>
-	, CASE< flag >
-	, CASE< port >
-	, CASE< pdu >
-	, CASE< ip >
+struct exclusive : med::choice<
+	CASE< flag >,
+	CASE< port >,
+	CASE< pdu >,
+	CASE< ip >
 >
 {
 	using length_type = med::value<uint8_t>;
@@ -67,11 +67,11 @@ struct exclusive : med::choice< med::value<uint8_t>
 	static constexpr char const* name() { return "Header"; }
 };
 
-struct inclusive : med::choice< med::value<uint8_t>
-	, CASE< flag >
-	, CASE< port >
-	, CASE< pdu >
-	, CASE< ip >
+struct inclusive : med::choice<
+	CASE< flag >,
+	CASE< port >,
+	CASE< pdu >,
+	CASE< ip >
 >
 {
 	using length_type = med::value<uint8_t>;

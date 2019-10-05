@@ -291,15 +291,15 @@ struct ANY : med::set< avp_code
 };
 
 template <class MSG>
-using request = med::option<med::value<med::fixed<REQUEST | MSG::code, uint32_t>>, MSG>;
+using request = M<med::value<med::fixed<REQUEST | MSG::code, uint32_t>>, MSG>;
 template <class MSG>
-using answer = med::option<med::value<med::fixed<MSG::code, uint32_t>>, MSG>;
+using answer = M<med::value<med::fixed<MSG::code, uint32_t>>, MSG>;
 
 //couple of messages from base protocol for testing
 struct base : med::choice< header
 	, request<DPR>
 	, answer<DPA>
-	, med::option<cmd_code, ANY>
+	, M<cmd_code, ANY>
 >
 {
 	using length_type = length;

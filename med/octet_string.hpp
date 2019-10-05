@@ -224,6 +224,8 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	{
 		return this->set(s.size(), s.data());
 	}
+	template <typename T, std::size_t N>
+	bool set(T const(&arr)[N])                      { return set(N * sizeof(T), arr); }
 
 	//NOTE: do not override!
 	bool set_encoded(std::size_t len, void const* data)

@@ -98,11 +98,11 @@ struct NO_THING : med::empty<>
 	static constexpr char const* name() { return "Nothing"; }
 };
 
-struct FLD_CHO : med::choice< med::value<uint8_t>
-	, med::option<C<0x00>, FLD_U8>
-	, med::option<C<0x02>, FLD_U16>
-	, med::option<C<0x04>, FLD_IP>
-	, med::option<C<0x06>, NO_THING>
+struct FLD_CHO : med::choice<
+	M<C<0x00>, FLD_U8>,
+	M<C<0x02>, FLD_U16>,
+	M<C<0x04>, FLD_IP>,
+	M<C<0x06>, NO_THING>
 >
 {};
 
@@ -145,10 +145,11 @@ struct HT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 };
 
 //low nibble selector
-struct LT : med::peek<med::value<uint8_t>>
+template <std::size_t TAG>
+struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 {
-	//value_type get() const                    { return base_t::get() & 0xF; }
-	void set_encoded(value_type v)            { base_t::set_encoded(v & 0xF); }
+	static_assert(0 == (TAG & 0xF0), "LOW NIBBLE TAG EXPECTED");
+	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF); }
 };
 
 //tagged nibble
@@ -171,11 +172,11 @@ struct FLD_TN : med::value<uint8_t>
 
 
 //binary coded decimal: 0x21,0x43 is 1,2,3,4
-template <uint8_t tag>
+template <uint8_t TAG>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
+		, med::minfo< med::mi<med::mik::TAG, LT<TAG>> >
 {
 	//NOTE: low nibble of 1st octet is a tag
-	using case_value = med::value<med::fixed<tag, uint8_t>>;
 
 	template <std::size_t N>
 	void print(char (&sz)[N]) const
@@ -211,7 +212,7 @@ struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
 			uint8_t* p = m_value.data();
 			uint8_t const* in = static_cast<uint8_t const*>(data);
 
-			*p++ = (*in & 0xF0) | case_value::get_encoded();
+			*p++ = (*in & 0xF0) | TAG;
 			uint8_t o = (*in++ << 4);
 			for (; len > 1; --len)
 			{
@@ -235,9 +236,9 @@ struct BCD_2 : BCD<2>
 };
 
 //nibble selected choice field
-struct FLD_NSCHO : med::choice<LT
-	, M< BCD_1 >
-	, M< BCD_2 >
+struct FLD_NSCHO : med::choice<
+	M< BCD_1 >,
+	M< BCD_2 >
 >
 {
 };
@@ -389,12 +390,12 @@ struct MSG_FUNC : med::sequence<
 };
 
 
-struct PROTO : med::choice< med::value<uint8_t>
-	, med::option<C<0x01>, MSG_SEQ>
-	, med::option<C<0x11>, MSG_MSEQ>
-	, med::option<C<0x04>, MSG_SET>
-	, med::option<C<0x14>, MSG_MSET>
-	, med::option<C<0xFF>, MSG_FUNC>
+struct PROTO : med::choice<
+	M<C<0x01>, MSG_SEQ>,
+	M<C<0x11>, MSG_MSEQ>,
+	M<C<0x04>, MSG_SET>,
+	M<C<0x14>, MSG_MSET>,
+	M<C<0xFF>, MSG_FUNC>
 >
 {
 };

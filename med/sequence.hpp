@@ -94,7 +94,8 @@ struct seq_dec
 				{
 					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count());
 					auto* field = ie.push_back(decoder);
-					med::decode(decoder, *field, unexp);
+					using meta_info = get_meta_info_t<IE>;
+					sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, *field, unexp);
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
@@ -190,9 +191,8 @@ struct seq_dec
 		{
 			if constexpr (is_optional_v<IE>)
 			{
-				if constexpr (not std::is_void_v<IE>) //optional field with tag
+				if constexpr (not std::is_void_v<type>) //optional field with tag
 				{
-					using type = typename IE::matching_type;
 					CODEC_TRACE("O<%s> w/TAG %s", name<IE>(), class_name<type>());
 					//read a tag or use the tag read before
 					if (!vtag)
@@ -215,7 +215,8 @@ struct seq_dec
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						med::decode(decoder, ie, unexp);
+						using meta_info = get_meta_info_t<IE>;
+						sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, ie, unexp);
 					}
 				}
 				else //optional w/o tag

@@ -238,6 +238,7 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
 			using mi = meta::list_first_t<META_INFO>;
+			using mi_rest = meta::list_rest_t<META_INFO>;
 			CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
 
 			if constexpr (mi::kind == mik::TAG)
@@ -248,12 +249,12 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				CODEC_TRACE("LV=? [%s]", name<IE>());
-				auto const len = field_length(ie, encoder);
+				auto const len = sl::ie_length<mi_rest>(ie, encoder);
 				CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
 				encode_len<typename mi::length_type>(encoder, len);
 			}
 
-			ie_encode<meta::list_rest_t<META_INFO>>(encoder, ie);
+			ie_encode<mi_rest>(encoder, ie);
 		}
 		else
 		{

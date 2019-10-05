@@ -92,7 +92,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			else
 			{
 				len = encoder(GET_LENGTH{}, ie);
-				CODEC_TRACE("%s[%s] : len(V) = %zu", __FUNCTION__, name<IE>(), len);
+				CODEC_TRACE("%s[%s] : len(VAL) = %zu", __FUNCTION__, name<IE>(), len);
 			}
 		}
 	}

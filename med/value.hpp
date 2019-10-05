@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include <type_traits>
 
 #include "ie_type.hpp"
+#include "name.hpp"
 #include "exception.hpp"
 
 
@@ -114,8 +115,8 @@ struct integer : IE<IE_VALUE>
 	}
 
 private:
-	value_type m_value{};
 	bool       m_set{false};
+	value_type m_value{};
 };
 
 

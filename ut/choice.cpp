@@ -55,19 +55,19 @@ struct BCD_2 : BCD<2>
 };
 
 //nibble selected choice field
-struct FLD_NSCHO : med::choice< void
-	, M< BCD_1 >
-	, M< BCD_2 >
+struct FLD_NSCHO : med::choice<
+	M< BCD_1 >,
+	M< BCD_2 >
 >
 {
 };
 
 
 //choice based on plain value selector
-struct PLAIN : med::choice< void
-	, M<C<0x00>, cmp::U8>
-	, M<C<0x02>, cmp::U16>
-	, M<C<0x04>, cmp::U32>
+struct PLAIN : med::choice<
+	M<C<0x00>, cmp::U8>,
+	M<C<0x02>, cmp::U16>,
+	M<C<0x04>, cmp::U32>
 >
 {};
 
@@ -76,7 +76,9 @@ struct CMP : med::choice< cmp::hdr<>
 	, M< cmp::string >
 	, M< cmp::number >
 >
-{};
+{
+	using length_type = cmp::length;
+};
 
 } //end: namespace cho
 
@@ -143,8 +145,7 @@ TEST(choice, compound)
 
 	encode(med::octet_encoder{ctx}, msg);
 	EXPECT_STRCASEEQ(
-		"00 0C 00 01 31 32 33 34 35 36 37 38 ",
-//		"00 08 00 02 12 34 56 78 ",
+		"00 10 00 01 00 0C 00 01 31 32 33 34 35 36 37 38 ",
 		as_string(ctx.buffer())
 	);
 

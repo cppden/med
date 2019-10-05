@@ -1,7 +1,5 @@
 #include <cmath>
 
-#if 0
-
 #include "../ut.hpp"
 
 #include "asn/ids.hpp"
@@ -571,7 +569,7 @@ TEST(asn_ber, sequence)
 		s.ref<ab::oint>().set(987654321);
 		EXPECT_EQ("30 12 80 02 12 34 81 03 45 67 89 82 01 07 83 04 3A DE 68 B1 "s, encoded(s));
 	}
-#if 0
+
 	s.clear();
 	{
 		/*
@@ -585,7 +583,6 @@ TEST(asn_ber, sequence)
 		s.ref<ab::mint>().set(7);
 		EXPECT_EQ("30 07 80 02 12 34 82 01 07 "s, encoded(s));
 	}
-#endif
 }
 
 //8.10 Encoding of a sequence-of value
@@ -613,4 +610,3 @@ TEST(asn_ber, sequence)
 //8.25 Encoding for values of the useful types
 //8.26 Encoding for values of the TIME type and the useful time types
 
-#endif

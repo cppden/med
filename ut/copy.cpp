@@ -18,11 +18,29 @@ struct byte : med::value<uint8_t> {};
 struct word : med::value<uint16_t> {};
 struct dword : med::value<uint32_t> {};
 
-struct cho : med::choice< byte
-	, med::option<C<1>, byte>
-	, med::option<C<2>, word>
-	, med::option<C<4>, dword>
+struct hdr : med::sequence<
+	M<byte>,
+	M<word>,
+	med::placeholder::_length<0>
+>
+{
+	auto get_tag() const    { return get<byte>().get(); }
+	void set_tag(uint8_t v) { return ref<byte>().set(v); }
+};
+
+struct cho : med::choice<
+	M<C<1>, byte>,
+	M<C<2>, word>,
+	M<C<4>, dword>
 >{};
+struct hdr_cho : med::choice< hdr
+	, M<T<1>, L, var_intern>
+	, M<T<2>, L, fix_extern>
+>
+{
+	using length_type = med::value<uint16_t>;
+};
+
 
 struct seq : med::sequence<
 	M< T<0xF1>, byte, med::min<2>, med::inf >, //<TV>*[2,*)
@@ -71,7 +89,6 @@ TEST(copy, seq_same)
 	}
 }
 
-#if 1
 TEST(copy, seq_diff)
 {
 	cp::seq src_msg;
@@ -114,7 +131,6 @@ TEST(copy, seq_diff)
 		EXPECT_TRUE(Matches(encoded, buffer));
 	}
 }
-#endif
 
 TEST(copy, choice)
 {
@@ -123,9 +139,15 @@ TEST(copy, choice)
 
 	cp::cho dst;
 	dst.ref<cp::byte>().set(1);
+	cp::byte const* pb = dst.cselect();
+	cp::word const* pw = dst.cselect();
+	ASSERT_NE(nullptr, pb);
+	ASSERT_EQ(nullptr, pw);
 	dst.copy(src);
 
-	cp::word const* pw = dst.cselect();
+	pb = dst.cselect();
+	pw = dst.cselect();
+	ASSERT_EQ(nullptr, pb);
 	ASSERT_NE(nullptr, pw);
 	EXPECT_EQ(0xABBA, pw->get());
 
@@ -133,7 +155,24 @@ TEST(copy, choice)
 	EXPECT_FALSE(src.is_set());
 	EXPECT_TRUE(dst.is_set());
 	src.copy_to(dst);
-	EXPECT_FALSE(dst.is_set());
+	EXPECT_TRUE(dst.is_set());
 }
 
-//TODO: test copy_to, copy of not set fields?
+TEST(copy, choice_hdr)
+{
+	cp::hdr_cho src;
+	src.header().ref<cp::word>().set(0xDADA);
+	uint8_t const data[] = {1,2,3,4};
+	src.ref<cp::var_intern>().set(data);
+
+
+	cp::hdr_cho dst;
+	dst.header().ref<cp::word>().set(0xBABA);
+	dst.ref<cp::fix_extern>().set(data);
+	src.copy_to(dst);
+
+	cp::var_intern const* pv = dst.cselect();
+	EXPECT_EQ(0xDADA, dst.header().get<cp::word>().get());
+	ASSERT_NE(nullptr, pv);
+	//EXPECT_EQ(0xABBA, pw->get());
+}
