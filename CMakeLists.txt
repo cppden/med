@@ -70,7 +70,7 @@ set(UT_SRCS
 	ut/sequence.cpp
 	ut/set.cpp
 	ut/unique.cpp
-	ut/asn/ber.cpp
+	#ut/asn/ber.cpp
 )
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
 
