@@ -8,13 +8,13 @@ enum class mik //kind of meta-information
 {
 	TAG,
 	LEN,
-	NONE,
 };
 
 //meta-information holder
 template <mik KIND, class INFO>
 struct mi : INFO
 {
+	using info_type = INFO;
 	static constexpr mik kind = KIND;
 };
 
@@ -42,7 +42,7 @@ struct get_meta_info<T, std::void_t<typename T::meta_info>>
 	using type = typename T::meta_info;
 };
 template <class T>
-struct get_meta_info<T, std::enable_if_t<T::kind != med::mik::NONE>>
+struct get_meta_info<T, std::enable_if_t<int(T::kind) >= 0>>
 {
 	using type = meta::typelist<T>;
 };

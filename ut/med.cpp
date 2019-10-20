@@ -303,13 +303,9 @@ TEST(field, init)
 //update
 struct UFLD : med::value<uint32_t>, med::with_snapshot
 {
-	static constexpr char const* name() { return "Updatalbe-Field"; }
+	static constexpr auto name() { return "Updatable-Field"; }
 };
-struct UMSG : med::sequence<
-	M<T<7>, L, UFLD>
->
-{
-};
+struct UMSG : med::sequence< M<T<7>, L, UFLD> > {};
 
 TEST(update, fixed)
 {

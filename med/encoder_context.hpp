@@ -79,7 +79,7 @@ public:
 	 */
 	void snapshot(SNAPSHOT const& snap)
 	{
-		CODEC_TRACE("snapshot %p{%zu}", (void*)snap.id, snap.size);
+		CODEC_TRACE("snapshot %p{%zu}", static_cast<void const*>(snap.id), snap.size);
 		snapshot_s* p = get_allocator().template allocate<snapshot_s>();
 		p->snapshot = snap;
 		p->state = m_buffer.get_state();
@@ -91,14 +91,18 @@ public:
 	class snap_s : public state_t
 	{
 	public:
-		bool validate_length(std::size_t s) const       { return m_length == s; }
+		bool validate_length(std::size_t s) const
+		{
+			CODEC_TRACE("%s(%zu ? %zu)=%d", __FUNCTION__, m_length, s, m_length == s);
+			return m_length == s;
+		}
 
 	private:
 		friend class encoder_context;
-		snap_s(state_t const& ss, std::size_t len) : state_t{ss}, m_length{len} {}
+		snap_s(state_t const& st, std::size_t len) : state_t{st}, m_length{len} {}
 		snap_s() : state_t{}, m_length{} {}
 
-		std::size_t  m_length;
+		std::size_t m_length;
 	};
 
 	/**

@@ -161,40 +161,44 @@ TEST(asn_ber, len_size)
 	static_assert(med::asn::ber::length::bits<uint32_t>(0b1000'0000'0000'0000'1000'0000'0000'0000) == 32);
 	static_assert(med::asn::ber::length::bits<uint32_t>(0b1111'1111'1111'1111'1111'1111'1111'1111) == 32);
 
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000) == 1);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0001) == 1);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0010) == 2);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0100) == 3);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'1000) == 4);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0001'0000) == 5);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0010'0000) == 6);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0100'0000) == 7);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'1000'0000) == 8);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0001'0000'0000) == 9);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0010'0000'0000) == 10);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0100'0000'0000) == 11);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'1000'0000'0000) == 12);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0001'0000'0000'0000) == 13);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0010'0000'0000'0000) == 14);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0100'0000'0000'0000) == 15);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'1000'0000'0000'0000) == 16);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0001'1000'0000'0000'0000) == 17);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0010'1000'0000'0000'0000) == 18);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0100'1000'0000'0000'0000) == 19);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'1000'1000'0000'0000'0000) == 20);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0001'0000'1000'0000'0000'0000) == 21);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0010'0000'1000'0000'0000'0000) == 22);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0100'0000'1000'0000'0000'0000) == 23);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'1000'0000'1000'0000'0000'0000) == 24);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0001'0000'0000'1000'0000'0000'0000) == 25);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0010'0000'0000'1000'0000'0000'0000) == 26);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0100'0000'0000'1000'0000'0000'0000) == 27);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'1000'0000'0000'1000'0000'0000'0000) == 28);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0001'0000'0000'0000'1000'0000'0000'0000) == 29);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0010'0000'0000'0000'1000'0000'0000'0000) == 30);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b0100'0000'0000'0000'1000'0000'0000'0000) == 31);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b1000'0000'0000'0000'1000'0000'0000'0000) == 32);
-	static_assert(med::asn::ber::length::bits<uint64_t>(0b1111'1111'1111'1111'1111'1111'1111'1111) == 32);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000) == 1);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001) == 1);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0010) == 2);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0100) == 3);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000) == 4);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001'0000) == 5);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0010'0000) == 6);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0100'0000) == 7);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'0000) == 8);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001'0000'0000) == 9);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0010'0000'0000) == 10);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0100'0000'0000) == 11);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'0000'0000) == 12);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001'0000'0000'0000) == 13);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0010'0000'0000'0000) == 14);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0100'0000'0000'0000) == 15);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'0000'0000'0000) == 16);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001'1000'0000'0000'0000) == 17);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0010'1000'0000'0000'0000) == 18);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0100'1000'0000'0000'0000) == 19);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'1000'0000'0000'0000) == 20);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001'0000'1000'0000'0000'0000) == 21);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0010'0000'1000'0000'0000'0000) == 22);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0100'0000'1000'0000'0000'0000) == 23);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'0000'1000'0000'0000'0000) == 24);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0001'0000'0000'1000'0000'0000'0000) == 25);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0010'0000'0000'1000'0000'0000'0000) == 26);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0100'0000'0000'1000'0000'0000'0000) == 27);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'0000'0000'1000'0000'0000'0000) == 28);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0001'0000'0000'0000'1000'0000'0000'0000) == 29);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0010'0000'0000'0000'1000'0000'0000'0000) == 30);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'0100'0000'0000'0000'1000'0000'0000'0000) == 31);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'0000'0000'1000'0000'0000'0000'1000'0000'0000'0000) == 32);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'0000'0000'1000'0000'0000'0000'0000'0000'1000'0000'0000'0000) == 40);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'0000'0000'1000'0000'0000'0000'0000'0000'0000'0000'1000'0000'0000'0000) == 48);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b0000'0000'1000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'0000'0000'0000) == 56);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b1000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1000'0000'0000'0000) == 64);
+	static_assert(med::asn::ber::length::bits<uint64_t>(0b1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111) == 64);
 }
 
 TEST(asn_ber, len_encode)
@@ -279,10 +283,6 @@ auto encoded(typename IE::value_type const& val)
 
 template <class IE, typename T>
 std::string encoded(T const* pval, std::size_t size)
-//	-> std::enable_if_t<
-//		IE::traits::AsnTagType == med::asn::OCTET_STRING ||
-//		IE::traits::AsnTagType == med::asn::BIT_STRING
-//	, std::string>
 {
 	uint8_t enc_buf[128*1024] = {};
 	med::encoder_context<> ectx{ enc_buf };
@@ -548,6 +548,7 @@ struct Seq : med::asn::sequence<
 
 }
 
+#if 0
 //8.9 Encoding of a sequence value
 TEST(asn_ber, sequence)
 {
@@ -584,6 +585,7 @@ TEST(asn_ber, sequence)
 		EXPECT_EQ("30 07 80 02 12 34 82 01 07 "s, encoded(s));
 	}
 }
+#endif
 
 //8.10 Encoding of a sequence-of value
 //8.11 Encoding of a set value

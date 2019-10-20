@@ -125,4 +125,5 @@ private:
 	}
 };
 
+template <class C> explicit octet_encoder(C& ctx) -> octet_encoder<C>;
 }	//end: namespace med

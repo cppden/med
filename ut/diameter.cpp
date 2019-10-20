@@ -153,14 +153,13 @@ struct vendor : med::value<uint32_t>
  +-+-+-+-+-+-+-+-+                                                 */
 template <class BODY, avp_code::value_type CODE, uint8_t FLAGS = 0, vendor::value_type VENDOR = 0>
 struct avp :
-		med::sequence<
-			//M< ?avp_code_fixed<CODE> >,
-			M< avp_flags >,
-			med::placeholder::_length<-4>, //include AVP Code
-			O< vendor, vendor::has >,
-			M< BODY >
-		>
-		, med::minfo< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
+	med::sequence<
+		M< avp_flags >,
+		med::placeholder::_length<-4>, //include AVP Code
+		O< vendor, vendor::has >,
+		M< BODY >
+	>
+	, med::minfo< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;
@@ -288,6 +287,7 @@ struct ANY : med::set< avp_code
 	, O< any_avp, med::inf >
 >
 {
+	static constexpr auto name() { return "Diameter-Message"; }
 };
 
 template <class MSG>

@@ -65,11 +65,13 @@ struct set_enc
 				&& is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>
 			>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to);
 
+		using mi = get_meta_info_t<IE>;
+		IE const& ie = to;
+		constexpr bool explicit_meta = explicit_meta_in<mi, typename IE::field_type>();
+
 		if constexpr (is_multi_field_v<IE>)
 		{
-			IE const& ie = static_cast<IE const&>(to);
-			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
-
+			CODEC_TRACE("[%s]*%zu: %s", name<IE>(), ie.count(), class_name<mi>());
 			check_arity(encoder, ie);
 
 			call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, ie);
@@ -81,19 +83,33 @@ struct set_enc
 				//field was pushed but not set... do we need a new error?
 				if (not field.is_set()) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1) }
 				if (not first) { call_if<is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to); }
-				sl::ie_encode<get_meta_info_t<IE>>(encoder, field);
+
+				if constexpr (explicit_meta)
+				{
+					sl::ie_encode<meta::list_rest_t<mi>>(encoder, field);
+				}
+				else
+				{
+					sl::ie_encode<mi>(encoder, field);
+				}
 				first = false;
 			}
 			call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
 		}
 		else //single-instance field
 		{
-			IE const& ie = static_cast<IE const&>(to);
 			if (ie.is_set())
 			{
-				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<get_meta_info_t<IE>>());
+				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<mi>());
 				call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, to);
-				sl::ie_encode<get_meta_info_t<IE>>(encoder, ie);
+				if constexpr (explicit_meta)
+				{
+					sl::ie_encode<meta::list_rest_t<mi>>(encoder, ie);
+				}
+				else
+				{
+					sl::ie_encode<mi>(encoder, ie);
+				}
 			}
 			else if constexpr (!is_optional_v<IE>)
 			{
@@ -123,7 +139,7 @@ struct set_dec
 		if constexpr (not type::is_const) { decoder(POP_STATE{}); }
 
 		using meta_info = get_meta_info_t<IE>;
-		IE& ie = static_cast<IE&>(to);
+		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
 		{
 			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
@@ -184,7 +200,7 @@ struct set_check
 	template <class IE, class TO, class DECODER>
 	static constexpr void apply(TO const& to, DECODER& decoder)
 	{
-		IE const& ie = static_cast<IE const&>(to);
+		IE const& ie = to;
 		if constexpr (is_multi_field_v<IE>)
 		{
 			check_arity(decoder, ie);

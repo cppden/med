@@ -70,4 +70,17 @@ struct peek : T, peek_t {};
 template <class T>
 constexpr bool is_peek_v = std::is_base_of<peek_t, T>::value;
 
+//check if type used in meta-information is also used inside container
+//this means we shouldn't encode this meta-data implicitly
+template <class META_INFO, class CONT>
+constexpr bool explicit_meta_in()
+{
+	if constexpr (std::is_base_of_v<CONTAINER, typename CONT::ie_type>)
+	{
+		using ft = typename meta::list_first_t<META_INFO>::info_type;
+		return CONT::template has<ft>();
+	}
+	return false;
+}
+
 }	//end: namespace med

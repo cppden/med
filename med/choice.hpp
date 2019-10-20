@@ -113,18 +113,22 @@ struct choice_enc : choice_if
 		}
 		else
 		{
+			using mi = get_meta_info_t<IE>;
+			//tag of this IE is in header
 			using type = meta::unwrap_t<decltype(ENCODER::template get_tag_type<IE>())>;
-			type const tag{};
+			if constexpr (!explicit_meta_in<mi, typename TO::header_type>())
+			{
+				type const tag{};
 #if 0 //TODO: how to not modify? problem to copy with length placeholder...
-			auto hdr = to.header();
-			hdr.set_tag(tag.get());
-			med::encode(encoder, hdr);
+				auto hdr = to.header();
+				hdr.set_tag(tag.get());
 #else
-			const_cast<TO&>(to).header().set_tag(tag.get());
-			med::encode(encoder, to.header());
+				const_cast<TO&>(to).header().set_tag(tag.get());
 #endif
+			}
+			med::encode(encoder, to.header());
 			//skip 1st TAG meta-info as it's encoded in header
-			sl::ie_encode<meta::list_rest_t<get_meta_info_t<IE>>>(encoder, to.template as<IE>());
+			sl::ie_encode<meta::list_rest_t<mi>>(encoder, to.template as<IE>());
 		}
 	}
 

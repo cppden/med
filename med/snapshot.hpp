@@ -24,7 +24,7 @@ constexpr void snapshot(FUNC& func, IE& ie)
 {
 	if constexpr (std::is_base_of<with_snapshot, IE>::value)
 	{
-		func(SNAPSHOT{snapshot_id<IE>, field_length(ie, func)});
+		func(SNAPSHOT{snapshot_id<IE>, sl::ie_length<>(ie, func)});
 	}
 }
 
