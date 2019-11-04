@@ -79,7 +79,7 @@ struct len_enc_impl
 	template <class T>
 	static constexpr std::size_t size_of()            { return ENCODER::template size_of<T>(); }
 	template <class T>
-	static constexpr auto get_tag_type()              { return ENCODER::template get_tag_type<T>(); }
+	static constexpr auto produce_meta_info()         { return ENCODER::template produce_meta_info<T>(); }
 
 	//forward regular types to encoder
 	template <class... Args> //NOTE: decltype is needed to expose actually defined operators
@@ -243,8 +243,7 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				using type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<mi>())>;
-				encode_tag<type>(encoder);
+				encode_tag<mi>(encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
@@ -282,7 +281,8 @@ constexpr void encode(ENCODER&& encoder, IE const& ie)
 {
 	if constexpr (has_ie_type_v<IE>)
 	{
-		sl::ie_encode<get_meta_info_t<IE>>(encoder, ie);
+		using mi = meta::produce_info_t<ENCODER, IE>;
+		sl::ie_encode<mi>(encoder, ie);
 	}
 	else //special cases like passing a placeholder
 	{

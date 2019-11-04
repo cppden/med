@@ -37,7 +37,8 @@ struct set_name
 	template <class IE, typename TAG, class CODEC>
 	static constexpr bool check(TAG const& tag, CODEC&)
 	{
-		using type = meta::unwrap_t<decltype(CODEC::template get_tag_type<IE>())>;
+		using mi = meta::produce_info_t<CODEC, IE>;
+		using type = meta::list_first_t<mi>;
 		return type::match(tag);
 	}
 
@@ -65,7 +66,7 @@ struct set_enc
 				&& is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>
 			>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to);
 
-		using mi = get_meta_info_t<IE>;
+		using mi = meta::produce_info_t<ENCODER, IE>;
 		IE const& ie = to;
 		constexpr bool explicit_meta = explicit_meta_in<mi, typename IE::field_type>();
 
@@ -127,18 +128,19 @@ struct set_dec
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
 	static bool check(TO&, DECODER&, UNEXP&, HEADER const& header)
 	{
-		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		using mi = meta::produce_info_t<DECODER, IE>;
+		using type = meta::list_first_t<mi>;
 		return type::match( get_tag(header) );
 	}
 
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
 	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, HEADER const&)
 	{
+		using mi = meta::produce_info_t<DECODER, IE>;
 		//pop back the tag we've read as we have non-fixed tag inside
-		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		using type = meta::list_first_t<mi>;
 		if constexpr (not type::is_const) { decoder(POP_STATE{}); }
 
-		using meta_info = get_meta_info_t<IE>;
 		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
 		{
@@ -160,7 +162,7 @@ struct set_dec
 						}
 					}
 					auto* field = ie.push_back(decoder);
-					sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, *field, unexp);
+					sl::ie_decode<meta::list_rest_t<mi>>(decoder, *field, unexp);
 				}
 			}
 			else
@@ -170,7 +172,7 @@ struct set_dec
 					MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 				}
 				auto* field = ie.push_back(decoder);
-				sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, *field, unexp);
+				sl::ie_decode<meta::list_rest_t<mi>>(decoder, *field, unexp);
 			}
 
 			call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
@@ -180,7 +182,7 @@ struct set_dec
 			CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
 			if (not ie.is_set())
 			{
-				return sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, ie, unexp);
+				return sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp);
 				//return med::decode(decoder, ie, unexp);
 			}
 			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)

@@ -26,7 +26,7 @@ namespace sl {
 template <class IE, class FUNC, class TAG>
 inline void clear_tag(FUNC& func, TAG& vtag)
 {
-	using type = meta::unwrap_t<decltype(FUNC::template get_tag_type<IE>())>;
+	using type = get_meta_tag_t<meta::produce_info_t<FUNC, IE>>;
 	if constexpr (is_peek_v<type>)
 	{
 		func(POP_STATE{});
@@ -54,7 +54,8 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			sl::ie_encode<get_meta_info_t<IE>>(func, field);
+			using mi = meta::produce_info_t<FUNC, IE>;
+			sl::ie_encode<mi>(func, field);
 			if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
 			{
 				if (ie.last() != &field) { func(NEXT_CONTAINER_ELEMENT{}, ie); }
@@ -73,8 +74,8 @@ struct seq_dec
 	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, TAG& vtag)
 	{
 		IE& ie = to;
-		//using meta_info = get_meta_info_t<IE>;
-		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		using mi = meta::produce_info_t<DECODER, IE>;
+		using type = get_meta_tag_t<mi>;
 
 		if constexpr (is_multi_field_v<IE>)
 		{
@@ -92,10 +93,9 @@ struct seq_dec
 
 				while (type::match(vtag.get_encoded()))
 				{
-					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count());
+					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count()+1);
 					auto* field = ie.push_back(decoder);
-					using meta_info = get_meta_info_t<IE>;
-					sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, *field, unexp);
+					sl::ie_decode<meta::list_rest_t<mi>>(decoder, *field, unexp);
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
@@ -118,7 +118,7 @@ struct seq_dec
 			}
 			else //multi-field w/o tag
 			{
-				using prev_tag_t = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
+				using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;
 				if constexpr (not std::is_void_v<prev_tag_t>)
 				{
 					discard(decoder, vtag);
@@ -179,7 +179,7 @@ struct seq_dec
 						{
 							if (count > 0) { decoder(NEXT_CONTAINER_ELEMENT{}, ie); }
 						}
-						sl::ie_decode<get_meta_info_t<IE>>(decoder, *field, unexp);
+						sl::ie_decode<mi>(decoder, *field, unexp);
 						++count;
 					}
 
@@ -215,15 +215,14 @@ struct seq_dec
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						using meta_info = get_meta_info_t<IE>;
-						sl::ie_decode<meta::list_rest_t<meta_info>>(decoder, ie, unexp);
+						sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp);
 					}
 				}
 				else //optional w/o tag
 				{
 					CODEC_TRACE("O<%s> w/o TAG", name<IE>());
 					//discard tag if needed
-					using prev_tag_t = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
+					using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;
 					if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_t>)
 					{
 						discard(decoder, vtag);
@@ -266,7 +265,7 @@ struct seq_dec
 				CODEC_TRACE("M<%s>...", name<IE>());
 
 				//if switched from optional with tag then discard it since mandatory is read as whole
-				using prev_tag_t = meta::unwrap_t<decltype(DECODER::template get_tag_type<PREV_IE>())>;
+				using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;
 				if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_t>)
 				{
 					discard(decoder, vtag);

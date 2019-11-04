@@ -51,7 +51,8 @@ enum class tg_class : uint8_t
 3.8.87 type prefix: Part of the ASN.1 notation that can be used to assign an encoding instruction
 	or a tag to a type.
 
-9.1 An encoding instruction is assigned to a type using either a type prefix (31.3) or an encoding control section (54).
+9.1 An encoding instruction is assigned to a type using either a type prefix (31.3) or an encoding
+	control section (54).
 9.5 Multiple encoding instructions with the same or with different encoding references may be
 	assigned to a type (using either or both of type prefixes and an encoding control section).
 	Encoding instructions assigned with a given encoding reference are independent from those
@@ -71,12 +72,6 @@ enum class tg_class : uint8_t
 	Tagging also differs syntactically from assignment of encoding instructions: the specification
 	that tagging is EXPLICIT or IMPLICIT occurs following the closing "]" of the tag.
 */
-enum class tg_type : uint8_t
-{
-	EXPLICIT,
-	IMPLICIT,
-	AUTOMATIC,
-};
 
 //Table 1 – Universal class tag assignments
 enum tg_value : uint8_t
@@ -121,12 +116,12 @@ enum tg_value : uint8_t
 };
 
 
-template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, tg_type TYPE = tg_type::IMPLICIT>
-struct traits : med::base_traits
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, bool CONSTRUCTED = false>
+struct traits
 {
-	static constexpr auto AsnTagType = TYPE; //not used at all?
-	static constexpr auto AsnTagClass = CLASS;
 	static constexpr auto AsnTagValue = TAG;
+	static constexpr auto AsnTagClass = CLASS;
+	static constexpr auto AsnTagConstructed = CONSTRUCTED;
 };
 
 

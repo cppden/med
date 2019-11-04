@@ -68,8 +68,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				using type = med::meta::unwrap_t<decltype(ENCODER::template get_tag_type<mi>())>;
-				len = ie_length(type{}, encoder);
+				len = ie_length(mi{}, encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
@@ -104,7 +103,8 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 template <class IE, class ENCODER>
 constexpr std::size_t field_length(IE const& ie, ENCODER& encoder)
 {
-	return sl::ie_length<get_meta_info_t<IE>>(ie, encoder);
+	using mi = meta::produce_info_t<ENCODER, IE>;
+	return sl::ie_length<mi>(ie, encoder);
 }
 
 namespace detail {

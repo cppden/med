@@ -72,7 +72,11 @@ struct cont_len
 		{
 			IE const& ie = seq;
 			std::size_t len = 0;
-			for (auto& v : ie) { len += sl::ie_length<get_meta_info_t<IE>>(v, encoder); }
+			for (auto& v : ie)
+			{
+				using mi = meta::produce_info_t<ENCODER, IE>;
+				len += sl::ie_length<mi>(v, encoder);
+			}
 			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
 		}

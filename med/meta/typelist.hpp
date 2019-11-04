@@ -114,6 +114,9 @@ struct wrap
 template <class T>
 using unwrap_t = typename T::type;
 
+template <class F, class T>
+using produce_info_t = unwrap_t<decltype(std::remove_reference_t<F>::template produce_meta_info<T>())>;
+
 } //end: namespace meta
 } //end: namespace med
 

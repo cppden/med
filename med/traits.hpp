@@ -55,6 +55,23 @@ struct make_meta_info
 };
 template <class... T> using make_meta_info_t = typename make_meta_info<T...>::type;
 
+template <class T, class Enable = void>
+struct get_meta_tag
+{
+	using type = void;
+};
+template <class L>
+struct get_meta_tag<L, std::enable_if_t<meta::list_is_empty_v<L>>>
+{
+	using type = void;
+};
+template <class L>
+struct get_meta_tag<L, std::enable_if_t<!meta::list_is_empty_v<L>>>
+{
+	using type = conditional_t<meta::list_first_t<L>::kind == mik::TAG, meta::list_first_t<L>, void>;
+};
+template <class T> using get_meta_tag_t = typename get_meta_tag<T>::type;
+
 
 //common base for traits
 struct base_traits {};

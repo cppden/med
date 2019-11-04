@@ -339,16 +339,51 @@ std::string encoded()
 
 //8.2 Encoding of a boolean value
 TEST(asn_ber, boolean)
-{	
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+	BEGIN
+		Value ::= BOOLEAN
+	END
+	*/
+	//Value ::= TRUE
 	EXPECT_EQ("01 01 FF "s, encoded<med::asn::boolean>(true));
+	//Value ::= FALSE
 	EXPECT_EQ("01 01 00 "s, encoded<med::asn::boolean>(false));
 }
 TEST(asn_ber, prefixed_boolean)
 {
-	using boolean = med::asn::boolean_t<1024, med::asn::tg_class::CONTEXT_SPECIFIC>;
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+	BEGIN
+		Value ::= [1024] BOOLEAN
+	END
+	*/
+	using boolean = med::asn::boolean_t<med::asn::traits<1024, med::asn::tg_class::CONTEXT_SPECIFIC>>;
 
+	//Value ::= TRUE
 	EXPECT_EQ("9F 88 00 01 FF "s, encoded<boolean>(true));
+	//Value ::= FALSE
 	EXPECT_EQ("9F 88 00 01 00 "s, encoded<boolean>(false));
+
+#if 1
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+	BEGIN
+		Value ::= [1024] EXPLICIT [100] EXPLICIT [APPLICATION 200]
+	END
+	*/
+	using boolean3 = med::asn::boolean_t<
+		med::asn::traits<1024, med::asn::tg_class::CONTEXT_SPECIFIC>,
+		med::asn::traits<100, med::asn::tg_class::CONTEXT_SPECIFIC>,
+		med::asn::traits<200, med::asn::tg_class::APPLICATION>
+	>;
+
+	//Value ::= TRUE
+	EXPECT_EQ("BF 88 00 08 BF 64 05 5F 81 48 01 FF "s, encoded<boolean3>(true));
+	//Value ::= FALSE
+	EXPECT_EQ("BF 88 00 08 BF 64 05 5F 81 48 01 00 "s, encoded<boolean3>(false));
+#endif
 }
 
 //8.3 Encoding of an integer value
@@ -362,7 +397,7 @@ TEST(asn_ber, integer)
 }
 TEST(asn_ber, prefixed_integer)
 {
-	using integer = med::asn::value_t<int, 1024, med::asn::tg_class::CONTEXT_SPECIFIC>;
+	using integer = med::asn::value_t<int, med::asn::traits<1024, med::asn::tg_class::CONTEXT_SPECIFIC>>;
 
 	EXPECT_EQ("9F 88 00 01 00 "s, encoded<integer>(0));
 	EXPECT_EQ("9F 88 00 02 00 80 "s, encoded<integer>(128));
@@ -394,7 +429,7 @@ TEST(asn_ber, prefixed_enumerated)
 	value Enum ::= two
 	*/
 	enum Enum { one, two, three };
-	using enumerated = med::asn::enumerated_t<1961, med::asn::tg_class::CONTEXT_SPECIFIC>;
+	using enumerated = med::asn::enumerated_t<med::asn::traits<1961, med::asn::tg_class::CONTEXT_SPECIFIC>>;
 
 	EXPECT_EQ("9F 8F 29 01 01 "s, encoded<enumerated>(two));
 }
@@ -470,7 +505,7 @@ World-Schema DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 	Str ::= [APPLICATION 12321] OCTET STRING
 END
 */
-	using octet_str = med::asn::octet_string_t<12321, med::asn::tg_class::APPLICATION>;
+	using octet_str = med::asn::octet_string_t<med::asn::traits<12321, med::asn::tg_class::APPLICATION>>;
 
 	//value Str ::= '010203'H
 	uint8_t const small[] = {1, 2, 3};
@@ -502,7 +537,7 @@ TEST(asn_ber, null_prefixed)
 		Nothing ::= [137] NULL
 	END
 	*/
-	using null = med::asn::null_t<137, med::asn::tg_class::CONTEXT_SPECIFIC>;
+	using null = med::asn::null_t<med::asn::traits<137, med::asn::tg_class::CONTEXT_SPECIFIC>>;
 	EXPECT_EQ("9F 81 09 00 "s, encoded<null>());
 }
 
@@ -524,10 +559,10 @@ BEGIN
 	}
 END
 */
-struct moct : med::asn::octet_string_t<0, med::asn::tg_class::CONTEXT_SPECIFIC> {};
-struct ooct : med::asn::octet_string_t<1, med::asn::tg_class::CONTEXT_SPECIFIC> {};
-struct mint : med::asn::value_t<int, 2, med::asn::tg_class::CONTEXT_SPECIFIC> {};
-struct oint : med::asn::value_t<int, 3, med::asn::tg_class::CONTEXT_SPECIFIC> {};
+struct moct : med::asn::octet_string_t<med::asn::traits<0, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
+struct ooct : med::asn::octet_string_t<med::asn::traits<1, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
+struct mint : med::asn::value_t<int, med::asn::traits<2, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
+struct oint : med::asn::value_t<int, med::asn::traits<3, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 
 //eq SEQUENCE: tag = [UNIVERSAL 16] constructed; length = 18
 //  moct OCTET STRING: tag = [0] primitive; length = 2

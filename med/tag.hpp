@@ -24,8 +24,9 @@ template <class T> constexpr bool is_tag_v = is_tag<T>::value;
 template <class FUNC>
 struct tag_getter
 {
+	//TODO: skip if not tag?
 	template <class T>
-	using apply = meta::unwrap_t<decltype(FUNC::template get_tag_type<T>())>;
+	using apply = meta::list_first_t<meta::produce_info_t<FUNC, T>>;
 };
 
 namespace detail {

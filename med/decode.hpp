@@ -125,7 +125,7 @@ struct len_dec_impl
 	}
 
 	template <class T>
-	static constexpr auto get_tag_type()               { return DECODER::template get_tag_type<T>(); }
+	static constexpr auto produce_meta_info()          { return DECODER::template produce_meta_info<T>(); }
 
 	allocator_type& get_allocator()                    { return m_decoder.get_allocator(); }
 
@@ -273,9 +273,8 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp)
 
 		if constexpr (mi::kind == mik::TAG)
 		{
-			using type = med::meta::unwrap_t<decltype(DECODER::template get_tag_type<mi>())>;
-			auto const tag = decode_tag<type, true>(decoder);
-			if (not type::match(tag))
+			auto const tag = decode_tag<mi, true>(decoder);
+			if (not mi::match(tag))
 			{
 				//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
 				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), tag)
@@ -338,7 +337,8 @@ constexpr void decode(DECODER&& decoder, IE& ie, UNEXP&& unexp = sl::default_han
 {
 	if constexpr (has_ie_type_v<IE>)
 	{
-		sl::ie_decode<get_meta_info_t<IE>>(decoder, ie, unexp);
+		using mi = meta::produce_info_t<DECODER, IE>;
+		sl::ie_decode<mi>(decoder, ie, unexp);
 	}
 	else //special cases like passing a placeholder
 	{

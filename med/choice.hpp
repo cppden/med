@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include <new>
+#define BRIGAND_NO_BOOST_SUPPORT
 #include <brigand.hpp>
 
 #include "exception.hpp"
@@ -49,7 +50,8 @@ struct choice_len : choice_if
 		{
 			return field_length(to.header(), encoder)
 				//skip TAG as 1st metainfo which is encoded in header
-				+ sl::ie_length<meta::list_rest_t<get_meta_info_t<IE>>>(to.template as<IE>(), encoder);
+				+ sl::ie_length<meta::list_rest_t<
+					meta::produce_info_t<ENCODER, IE>>>>(to.template as<IE>(), encoder);
 		}
 	}
 
@@ -84,7 +86,8 @@ struct choice_name
 	template <class IE, typename TAG, class... Ts>
 	static constexpr bool check(TAG const& tag, Ts&&...)
 	{
-		using type = meta::unwrap_t<decltype(CODEC::template get_tag_type<IE>())>;
+		using type = typename meta::list_first<meta::produce_info_t<CODEC, IE>>::type;
+		//static_assert (type::mik == mik::TAG, "NOT A TAG");
 		return type::match( tag );
 	}
 
@@ -113,9 +116,9 @@ struct choice_enc : choice_if
 		}
 		else
 		{
-			using mi = get_meta_info_t<IE>;
+			using mi = meta::produce_info_t<ENCODER, IE>;
 			//tag of this IE is in header
-			using type = meta::unwrap_t<decltype(ENCODER::template get_tag_type<IE>())>;
+			using type = meta::list_first_t<mi>;
 			if constexpr (!explicit_meta_in<mi, typename TO::header_type>())
 			{
 				type const tag{};
@@ -144,7 +147,9 @@ struct choice_dec
 	template <class IE, class TO, class HEADER, class DECODER, class UNEXP>
 	bool check(TO&, HEADER const& header, DECODER&, UNEXP&)
 	{
-		using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+		using mi = meta::produce_info_t<DECODER, IE>;
+		using type = meta::list_first_t<mi>;
+		//static_assert (type::mik = kind::TAG, "NOT A TAG");
 		return type::match( get_tag(header) );
 	}
 
@@ -154,7 +159,8 @@ struct choice_dec
 		CODEC_TRACE("CASE[%s]", name<typename IE::field_type>());
 		auto& ie = static_cast<IE&>(to.template ref<typename IE::field_type>());
 		//skip 1st TAG meta-info as it's decoded in header
-		sl::ie_decode<meta::list_rest_t<get_meta_info_t<IE>>>(decoder, ie, unexp);
+		using mi = meta::produce_info_t<DECODER, IE>;
+		sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp);
 	}
 
 	template <class TO, class HEADER, class DECODER, class UNEXP>
@@ -221,16 +227,16 @@ struct selector
 
 template <class TRAITS, class... IEs>
 class base_choice : public IE<CONTAINER>
-		, public detail::make_header< meta::list_first_t<brigand::list<IEs...>> >
+		, public detail::make_header< meta::list_first_t<meta::typelist<IEs...>> >
 {
 public:
 	using traits = TRAITS;
 	using ies_types = conditional_t<
-		detail::has_get_tag< meta::list_first_t<brigand::list<IEs...>> >::value,
-		meta::list_rest_t<brigand::list<IEs...>>,
-		brigand::list<IEs...>>;
+		detail::has_get_tag< meta::list_first_t<meta::typelist<IEs...>> >::value,
+		meta::list_rest_t<meta::typelist<IEs...>>,
+		meta::typelist<IEs...>>;
 	using field_types = brigand::transform<ies_types, get_field_type<brigand::_1>>;
-	static constexpr std::size_t num_types = brigand::size<ies_types>::value;
+	static constexpr std::size_t num_types = meta::list_size<ies_types>::value;
 
 	template <typename TAG, class CODEC>
 	static constexpr char const* name_tag(TAG const& tag, CODEC& codec)
@@ -302,7 +308,8 @@ public:
 		if constexpr (base_choice::plain_header)
 		{
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
-			using type = meta::unwrap_t<decltype(DECODER::template get_tag_type<IE>())>;
+			using mi = meta::produce_info_t<DECODER, IE>;
+			using type = meta::list_first_t<mi>;
 			value<std::size_t> tag;
 			tag.set(sl::decode_tag<type, true>(decoder));
 			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, unexp);
