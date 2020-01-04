@@ -1,13 +1,32 @@
 #pragma once
+#include <utility>
 
 #include "meta/typelist.hpp"
 #include "value.hpp"
+#include "../../length.hpp"
 #include "asn/ber/tag.hpp"
 
 namespace med::asn::ber {
 
 struct info
 {
+private:
+	template <class T, class CONSTRUCTED = std::true_type>
+	struct make_tag
+	{
+		template <class V>
+		using tag_of = med::value< med::fixed< V::value(), med::bytes<V::num_bytes()> > >;
+		using type = mi< mik::TAG, tag_of<tag_value<T, CONSTRUCTED::value>> >;
+	};
+
+	template <std::size_t I, std::size_t N>
+	struct not_last
+	{
+		using type = std::bool_constant<I < (N-1)>;
+	};
+
+
+public:
 	template <class IE>
 	static constexpr auto produce_meta_info()
 	{
@@ -21,12 +40,24 @@ the encoding is constructed and contents octets is the complete base encoding.
 a) the encoding is constructed if the base encoding is constructed, and primitive otherwise;
 b) the contents octets shall be the same as the contents octets of the base encoding.
 */
-		constexpr bool constructed = std::is_base_of_v<CONTAINER, typename IE::ie_type>;
-		using tv = tag_value<typename IE::traits, constructed>;
-		using type = med::value<
-			med::fixed< tv::value(), med::bytes<tv::num_bytes()> >
-		>;
-		return meta::wrap<type>{};
+		constexpr auto get_tags = []
+		{
+			using asn_traits = get_meta_info_t<IE>;
+
+			if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+			{
+				return meta::wrap<meta::transform_t<asn_traits, make_tag>>{};
+			}
+			else
+			{
+				return meta::wrap<meta::transform_indexed_t<asn_traits, make_tag, not_last>>{};
+			}
+		};
+
+		//!TODO: LENSIZE need to calc len to known its size (only 1 byte for now)
+		using len_t = mi<mik::LEN, med::length_t<med::value<uint8_t>>>;
+		using meta_info = meta::interleave_t< meta::unwrap_t<decltype(get_tags())>, len_t>;
+		return meta::wrap<meta_info>{};
 	}
 };
 

@@ -56,7 +56,7 @@ inline std::size_t decode_tag(DECODER& decoder)
 	{
 		value = decoder(ie, IE_TAG{});
 	}
-	CODEC_TRACE("%s=%zxh of %s", __FUNCTION__, value, class_name<TAG_TYPE>());
+	CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, value, class_name<TAG_TYPE>());
 	return value;
 }
 //Length
@@ -78,7 +78,7 @@ inline std::size_t decode_len(DECODER& decoder)
 		decoder(ie, IE_LEN{});
 	}
 	std::size_t value = ie.get_encoded();
-	CODEC_TRACE("%s=%zxh of %s", __FUNCTION__, value, class_name<LEN_TYPE>());
+	CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, value, class_name<LEN_TYPE>());
 	value_to_length(ie, value);
 	return value;
 }
@@ -283,6 +283,7 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp)
 		else if constexpr (mi::kind == mik::LEN)
 		{
 			auto const len_value = decode_len<typename mi::length_type>(decoder);
+			//TODO: may have fixed length like in BER:NULL/BOOL so need to check here
 			if (auto end = decoder(PUSH_SIZE{len_value}))
 			{
 				ie_decode<meta::list_rest_t<META_INFO>>(decoder, ie, unexp);

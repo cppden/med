@@ -60,48 +60,43 @@ struct decoder : info
 		uint8_t const* input = ctx.buffer().template advance<IE, nbytes>();
 		std::size_t vtag = 0;
 		get_bytes_impl(input, vtag, std::make_index_sequence<nbytes>{});
-		CODEC_TRACE("T=%zxh [%s] %zu bytes: %s", vtag, name<IE>(), nbytes, ctx.buffer().toString());
+		CODEC_TRACE("T=%zX [%s] %zu bytes: %s", vtag, name<IE>(), nbytes, ctx.buffer().toString());
 		return vtag;
 	}
 	//IE_LEN
 	template <class IE> void operator() (IE& ie, IE_LEN)
 	{
-		CODEC_TRACE("LEN[%s]: %s", name<IE>(), ctx.buffer().toString());
-		(*this)(ie, typename IE::ie_type{});
+		//CODEC_TRACE("LEN[%s]: %s", name<IE>(), ctx.buffer().toString());
+		auto const len = ber_length<IE>();
+		ie.set_encoded(len);
+		CODEC_TRACE("L=%zX [%s]: %s", len, name<IE>(), ctx.buffer().toString());
 	}
 
 	//IE_NULL
-	template <class IE> void operator() (IE&, IE_NULL)
+	template <class IE> constexpr void operator() (IE&, IE_NULL) const
 	{
-		//check_tag<IE, false>();
-		if (uint8_t const length = ctx.buffer().template pop<IE>())
-		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), length, ctx.buffer())
-		}
+//		if (uint8_t const length = ctx.buffer().template pop<IE>())
+//		{
+//			MED_THROW_EXCEPTION(invalid_value, name<IE>(), length, ctx.buffer())
+//		}
 	}
 
 	//IE_VALUE
 	template <class IE> void operator() (IE& ie, IE_VALUE)
 	{
-		//check_tag<IE, false>();
 		CODEC_TRACE("V[%s]: %s", name<IE>(), ctx.buffer().toString());
 		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
 			//X.690 8.2 Encoding of a boolean value
-			auto* input = ctx.buffer().template advance<IE, 1 + 1>(); //length + value
-			if (input[0] == 1) //length is always 1
-			{
-				return ie.set_encoded(input[1] != 0);
-			}
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), input[0], ctx.buffer())
+			return ie.set_encoded(ctx.buffer().template pop<IE>() != 0);
 		}
 		else if constexpr (std::is_integral_v<typename IE::value_type>)
 		{
 			//X.690 8.3 Encoding of an integer value
 			//X.690 8.4 Encoding of an enumerated value
-			if (uint8_t const len = ctx.buffer().template pop<IE>(); 0 < len && len < 127) //1..127 in one octet
+			if (auto const len = ctx.buffer().size(); 0 < len && len < 127) //1..127 in one octet
 			{
-				CODEC_TRACE("\t%u octets: %s", len, ctx.buffer().toString());
+				CODEC_TRACE("\t%zu octets: %s", len, ctx.buffer().toString());
 				auto* input = ctx.buffer().template advance<IE>(len); //value
 				ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
 			}
@@ -114,21 +109,22 @@ struct decoder : info
 		{
 			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
 		}
+		else
+		{
+			static_assert(std::is_void_v<typename IE::value_type>, "NOT IMPLEMENTED?");
+		}
 	}
 
 	//IE_BIT_STRING
 	template <class IE> void operator() (IE& ie, IE_BIT_STRING)
 	{
-		//check_tag<IE, false>();
-		auto const bytes = ber_length<IE>() - 1;
-		auto* input = ctx.buffer().template advance<IE, 1>(); //num of unused bits [0..7]
-		std::size_t unused_bits = 0;
-		get_bytes_impl(input, unused_bits, std::make_index_sequence<1>{});
-		std::size_t const num_bits = bytes * 8 - unused_bits;
+		auto const unused_bits = ctx.buffer().template pop<IE>(); //num of unused bits [0..7]
+		auto const len = ctx.buffer().size();
+		std::size_t const num_bits = len * 8 - unused_bits;
 		CODEC_TRACE("\tBSTR[%s] %zu bits: %s", name<IE>(), num_bits, ctx.buffer().toString());
 		if (ie.set_encoded(num_bits, ctx.buffer().begin()))
 		{
-			ctx.buffer().template advance<IE>(bytes);
+			ctx.buffer().template advance<IE>(len);
 		}
 		else
 		{
@@ -139,23 +135,16 @@ struct decoder : info
 	//IE_OCTET_STRING
 	template <class IE> void operator() (IE& ie, IE_OCTET_STRING)
 	{
-		//check_tag<IE, false>();
-		auto const len = ber_length<IE>();
-		CODEC_TRACE("\tOSTR[%s] %zu octets: %s", name<IE>(), std::size_t(len), ctx.buffer().toString());
-		if (!ie.set_encoded(len, ctx.buffer().begin()))
+		auto const len = ctx.buffer().size();
+		CODEC_TRACE("\tOSTR[%s] %zu octets: %s", name<IE>(), len, ctx.buffer().toString());
+		if (ie.set_encoded(len, ctx.buffer().begin()))
+		{
+			ctx.buffer().template advance<IE>(len);
+		}
+		else
 		{
 			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer())
 		}
-		ctx.buffer().template advance<IE>(len);
-	}
-
-	template <class IE> void operator() (ENTRY_CONTAINER, IE const&)
-	{
-		//X.690 8.9 Encoding of a sequence value (not segmented only)
-		//check_tag<IE, true>();
-		CODEC_TRACE("\tSEQ[%s] %zu octets: %s", name<IE>(), ber_length<IE>(), ctx.buffer().toString());
-		//CODEC_TRACE("entry [%s] len=%zu: %s", name<IE>(), len, ctx.buffer().toString());
-		//TODO: need to encode length...
 	}
 
 #ifndef UNIT_TEST
@@ -228,21 +217,6 @@ private:
 				return value;
 			}
 		}
-	}
-
-	template <class IE, bool CONSTRUCTED>
-	void check_tag()
-	{
-		using tv = tag_value<typename IE::traits, CONSTRUCTED>;
-		uint8_t const* input = ctx.buffer().template advance<IE, tv::num_bytes()>();
-		std::size_t vtag = 0;
-		get_bytes_impl(input, vtag, std::make_index_sequence<tv::num_bytes()>{});
-		if (tv::value() != vtag)
-		{
-			CODEC_TRACE("tag[%s] exp=%zX got=%zu %zu bytes", name<IE>(), tv::value(), vtag, tv::num_bytes());
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), vtag, ctx.buffer())
-		}
-		CODEC_TRACE("tag[%s]=%zX %zu bytes", name<IE>(), tv::value(), tv::num_bytes());
 	}
 };
 

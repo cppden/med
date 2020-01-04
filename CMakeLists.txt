@@ -22,6 +22,14 @@ include_directories(
 	${PROJECT_SOURCE_DIR}/med
 )
 
+find_package(Boost)
+if(Boost_FOUND)
+	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
+else()
+	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBRIGAND_NO_BOOST_SUPPORT")
+endif()
+
 # -----------------------------------------------------------------------------
 # Benchmarks
 # -----------------------------------------------------------------------------
@@ -62,6 +70,7 @@ set(UT_SRCS
 #	ut/json.cpp
 	ut/length.cpp
 	ut/med.cpp
+	ut/meta.cpp
 	ut/multi.cpp
 	ut/octets.cpp
 	ut/padding.cpp
@@ -70,7 +79,7 @@ set(UT_SRCS
 	ut/sequence.cpp
 	ut/set.cpp
 	ut/unique.cpp
-	#ut/asn/ber.cpp
+	ut/asn/ber.cpp
 )
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
 

@@ -10,8 +10,6 @@ Distributed under the MIT License
 #pragma once
 
 #include <new>
-#define BRIGAND_NO_BOOST_SUPPORT
-#include <brigand.hpp>
 
 #include "exception.hpp"
 #include "accessor.hpp"
@@ -222,6 +220,9 @@ struct selector
 	T* m_this;
 };
 
+template <class L> struct list_aligned_union;
+template <template <class...> class L, class... Ts> struct list_aligned_union<L<Ts...>> : std::aligned_union<0, Ts...> {};
+
 } //end: namespace detail
 
 
@@ -235,7 +236,7 @@ public:
 		detail::has_get_tag< meta::list_first_t<meta::typelist<IEs...>> >::value,
 		meta::list_rest_t<meta::typelist<IEs...>>,
 		meta::typelist<IEs...>>;
-	using field_types = brigand::transform<ies_types, get_field_type<brigand::_1>>;
+	using field_types = meta::transform_t<ies_types, get_field_type>;
 	static constexpr std::size_t num_types = meta::list_size<ies_types>::value;
 
 	template <typename TAG, class CODEC>
@@ -249,10 +250,10 @@ public:
 	std::size_t index() const               { return m_index; }
 	//return index of given type
 	template <class T>
-	static constexpr std::size_t index()    { return brigand::index_of<field_types, T>::value; }
+	static constexpr std::size_t index()    { return meta::list_index_of_v<T, field_types>; }
 
 	void clear()                            { this->header().clear(); m_index = num_types; }
-	bool is_set() const                     { return this->header().is_set() && m_index != num_types; }
+	bool is_set() const                     { return this->header().is_set() && index() != num_types; }
 	template <class ENC>
 	std::size_t calc_length(ENC& enc) const { return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len{}, *this, enc); }
 
@@ -327,7 +328,7 @@ private:
 	friend struct sl::choice_enc;
 	friend struct sl::choice_dec;
 
-	using storage_type = meta::list_aligned_union_t<ies_types>;
+	using storage_type = typename detail::list_aligned_union<ies_types>::type;
 
 	template <class T> T& as()              { return *reinterpret_cast<T*>(&m_storage); }
 	template <class T> T const& as() const  { return *reinterpret_cast<T const*>(&m_storage); }

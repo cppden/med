@@ -72,6 +72,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
+				//TODO: remove length_type, handle directly like TAG
 				//TODO: involve codec to get length type + may need to set its value like for BER
 				using type = typename mi::length_type;
 				len = ie_length(type{}, encoder);

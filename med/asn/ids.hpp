@@ -116,12 +116,11 @@ enum tg_value : uint8_t
 };
 
 
-template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL, bool CONSTRUCTED = false>
+template <std::size_t TAG, tg_class CLASS = tg_class::UNIVERSAL>
 struct traits
 {
 	static constexpr auto AsnTagValue = TAG;
 	static constexpr auto AsnTagClass = CLASS;
-	static constexpr auto AsnTagConstructed = CONSTRUCTED;
 };
 
 

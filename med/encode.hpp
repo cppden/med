@@ -33,8 +33,8 @@ inline void encode_tag(ENCODER& encoder)
 {
 	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
 	{
-		CODEC_TRACE("%s[%s]", __FUNCTION__, name<TAG_TYPE>());
 		TAG_TYPE const ie{};
+		CODEC_TRACE("%s=%zX[%s]", __FUNCTION__, std::size_t(ie.get_encoded()), name<TAG_TYPE>());
 		encoder(ie, IE_TAG{});
 	}
 }
@@ -47,6 +47,7 @@ inline void encode_len(ENCODER& encoder, std::size_t len)
 	{
 		LEN_TYPE ie;
 		length_to_value(ie, len);
+		CODEC_TRACE("%s=%zX[%s]", __FUNCTION__, std::size_t(ie.get_encoded()), name<LEN_TYPE>());
 		encoder(ie, IE_LEN{});
 	}
 }
@@ -247,9 +248,9 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
-				CODEC_TRACE("LV=? [%s]", name<IE>());
+				//CODEC_TRACE("LV=? [%s]", name<IE>());
 				auto const len = sl::ie_length<mi_rest>(ie, encoder);
-				CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
+				//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
 				encode_len<typename mi::length_type>(encoder, len);
 			}
 
