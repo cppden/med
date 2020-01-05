@@ -96,7 +96,7 @@ add_compile_options(
 	-Wunreachable-code
 	-pedantic
 	-pedantic-errors
-	-march=native
+	#-march=native
 	-mtune=native
 )
 
