@@ -74,14 +74,15 @@ constexpr auto least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_
 
 } //end: namespace detail
 
-struct length
-{
-	template <typename INT>
-	static constexpr uint8_t bits(INT x)    { return detail::least_bits<INT>(x); }
+namespace length {
 
-	template <typename INT>
-	static constexpr uint8_t bytes(INT x)   { return (bits<INT>(x) + bits_in_byte - 1) / bits_in_byte; }
-};
+template <typename INT>
+constexpr uint8_t bits(INT x)    { return detail::least_bits<INT>(x); }
+
+template <typename INT>
+constexpr uint8_t bytes(INT x)   { return (bits<INT>(x) + (bits_in_byte - 1)) / bits_in_byte; }
+
+} //end: namespace length
 
 } //end: namespace med::asn::ber
 

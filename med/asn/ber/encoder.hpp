@@ -78,9 +78,14 @@ struct encoder : info
 			}
 			else if constexpr (std::is_integral_v<typename IE::value_type>)
 			{
-				std::size_t const val_size = length::bytes<typename IE::value_type>(ie.get_encoded());
-				CODEC_TRACE("INT[%s] len=%zu for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
+				auto val_size = length::bytes<typename IE::value_type>(ie.get_encoded());
+				CODEC_TRACE("INT[%s] len=%u for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
+#if defined(__GNUC__)
+				//optimizer bug in GCC :( - shows up only when ie.get_encoded() = 0
+				return (++val_size > 1) ? val_size-1 : 0;
+#else
 				return val_size;
+#endif
 			}
 			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
 			{

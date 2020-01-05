@@ -18,7 +18,6 @@ find_package(Threads REQUIRED)
 
 include_directories(
 	${GTEST_INCLUDE_DIRS}
-	${PROJECT_SOURCE_DIR}/brigand/include/standalone
 	${PROJECT_SOURCE_DIR}/med
 )
 
@@ -97,6 +96,7 @@ add_compile_options(
 	-Wunreachable-code
 	-pedantic
 	-pedantic-errors
+	-march=native
 	-mtune=native
 )
 
