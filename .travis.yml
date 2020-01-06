@@ -79,7 +79,13 @@ matrix:
       script:
         - cmake . && make VERBOSE=1 -j check
       after_success:
-        - coveralls --verbose --gcov gcov-7 --gcov-options '\-lp' --exclude CMakeFiles
+        - coveralls
+          --root ./
+          --build-root ./
+          --exclude-pattern '.+/CMakeFiles/'
+          --gcov gcov-7
+          --gcov-options '\--long-file-names --preserve-paths'
+          --verbose
 
 
 notifications:

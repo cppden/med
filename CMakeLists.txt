@@ -106,13 +106,13 @@ add_executable(gtest_med ${UT_SRCS} ${MED_SRCS})
 
 if (WITH_BM)
 	add_executable(bm_med ${BM_SRCS})
-#  set_target_properties(bm_med PROPERTIES
-#    INTERPROCEDURAL_OPTIMIZATION ON)
-    target_link_libraries(bm_med
+#	set_target_properties(bm_med PROPERTIES
+#		INTERPROCEDURAL_OPTIMIZATION ON)
+	target_link_libraries(bm_med
 		${BENCHMARK_LIBS}
 		${CMAKE_THREAD_LIBS_INIT}
 	)
-    add_custom_target(benchmark COMMAND echo "Benchmarking....."
+	add_custom_target(benchmark COMMAND echo "Benchmarking....."
 		DEPENDS bm_med
 	)
 endif (WITH_BM)

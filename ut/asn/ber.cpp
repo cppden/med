@@ -589,7 +589,7 @@ struct Seq : med::asn::sequence<
 
 }
 
-#if 0
+#if 1
 //8.9 Encoding of a sequence value
 TEST(asn_ber, sequence)
 {

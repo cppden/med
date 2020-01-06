@@ -30,6 +30,7 @@ public:
 	template <class IE>
 	static constexpr auto produce_meta_info()
 	{
+		using asn_traits = get_meta_info_t<IE>;
 /*
 8.14 Encoding of a value of a prefixed type
 8.14.2 Encoding of tagged value is derived from complete encoding of corresponding value of the type
@@ -40,24 +41,29 @@ the encoding is constructed and contents octets is the complete base encoding.
 a) the encoding is constructed if the base encoding is constructed, and primitive otherwise;
 b) the contents octets shall be the same as the contents octets of the base encoding.
 */
-		constexpr auto get_tags = []
+		if constexpr (meta::list_is_empty_v<asn_traits>)
 		{
-			using asn_traits = get_meta_info_t<IE>;
-
-			if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+			return meta::wrap<asn_traits>{};
+		}
+		else
+		{
+			constexpr auto get_tags = []
 			{
-				return meta::wrap<meta::transform_t<asn_traits, make_tag>>{};
-			}
-			else
-			{
-				return meta::wrap<meta::transform_indexed_t<asn_traits, make_tag, not_last>>{};
-			}
-		};
+				if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+				{
+					return meta::wrap<meta::transform_t<asn_traits, make_tag>>{};
+				}
+				else
+				{
+					return meta::wrap<meta::transform_indexed_t<asn_traits, make_tag, not_last>>{};
+				}
+			};
 
-		//!TODO: LENSIZE need to calc len to known its size (only 1 byte for now)
-		using len_t = mi<mik::LEN, med::length_t<med::value<uint8_t>>>;
-		using meta_info = meta::interleave_t< meta::unwrap_t<decltype(get_tags())>, len_t>;
-		return meta::wrap<meta_info>{};
+			//!TODO: LENSIZE need to calc len to known its size (only 1 byte for now)
+			using len_t = mi<mik::LEN, med::length_t<med::value<uint8_t>>>;
+			using meta_info = meta::interleave_t< meta::unwrap_t<decltype(get_tags())>, len_t>;
+			return meta::wrap<meta_info>{};
+		}
 	}
 };
 
