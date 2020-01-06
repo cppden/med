@@ -62,48 +62,54 @@ struct encoder : info
 	template <class IE>
 	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
 	{
-		if constexpr (std::is_base_of_v<IE_NULL, typename IE::ie_type>)
+		using ie_type = typename IE::ie_type;
+		if constexpr (std::is_base_of_v<IE_NULL, ie_type>)
 		{
 			constexpr std::size_t val_size = 0;
 			CODEC_TRACE("NULL[%s] len=%zu", name<IE>(), val_size);
 			return val_size;
 		}
-		else if constexpr (std::is_base_of_v<IE_VALUE, typename IE::ie_type>)
+		else if constexpr (std::is_base_of_v<IE_VALUE, ie_type>)
 		{
-			if constexpr (std::is_same_v<bool, typename IE::value_type>)
+			using value_type = typename IE::value_type;
+			if constexpr (std::is_same_v<bool, value_type>)
 			{
 				constexpr std::size_t val_size = 1;
 				CODEC_TRACE("BOOL[%s] len=%zu", name<IE>(), val_size);
 				return val_size;
 			}
-			else if constexpr (std::is_integral_v<typename IE::value_type>)
+			else if constexpr (std::is_integral_v<value_type>)
 			{
-				auto val_size = length::bytes<typename IE::value_type>(ie.get_encoded());
-				CODEC_TRACE("INT[%s] len=%u for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
 #if defined(__GNUC__)
 				//optimizer bug in GCC :( - shows up only when ie.get_encoded() = 0
-				return (++val_size > 1) ? val_size-1 : 0;
+				auto const val = ie.get_encoded();
+				return val ? length::bytes<value_type>(val) : 1;
+//#pragma GCC push_options
+//#pragma GCC optimize ("O1")
+//#pragma GCC pop_options
 #else
+				auto const val_size = length::bytes<value_type>(ie.get_encoded());
+				CODEC_TRACE("INT[%s] len=%u for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
 				return val_size;
 #endif
 			}
-			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
+			else if constexpr (std::is_floating_point_v<value_type>)
 			{
 				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
 			}
 			else
 			{
-				static_assert(std::is_void_v<typename IE::value_type>, "NOT IMPLEMENTED?");
+				static_assert(std::is_void_v<value_type>, "NOT IMPLEMENTED?");
 			}
 		}
-		else if constexpr (std::is_base_of_v<IE_OCTET_STRING, typename IE::ie_type>)
+		else if constexpr (std::is_base_of_v<IE_OCTET_STRING, ie_type>)
 		{
 			std::size_t const val_size = ie.size();
 			//std::size_t const len_size = length::bytes(val_size);
 			CODEC_TRACE("OSTR[%s] len=%zu", name<IE>(), val_size);
 			return val_size;
 		}
-		else if constexpr (std::is_base_of_v<IE_BIT_STRING, typename IE::ie_type>)
+		else if constexpr (std::is_base_of_v<IE_BIT_STRING, ie_type>)
 		{
 			std::size_t const val_size = ie.size() + 1;
 			CODEC_TRACE("BSTR[%s] len=%zu", name<IE>(), val_size);
@@ -141,30 +147,31 @@ struct encoder : info
 	//IE_VALUE
 	template <class IE> void operator() (IE const& ie, IE_VALUE)
 	{
-		if constexpr (std::is_same_v<bool, typename IE::value_type>)
+		using value_type = typename IE::value_type;
+		if constexpr (std::is_same_v<bool, value_type>)
 		{
 			//X.690 8.2 Encoding of a boolean value
 			ctx.buffer().template push<IE>(ie.get_encoded() ? 0xFF : 0x00);
 			CODEC_TRACE("BOOL[%s]=%zxh: %s", name<IE>(), std::size_t(ie.get_encoded()), ctx.buffer().toString());
 		}
-		else if constexpr (std::is_integral_v<typename IE::value_type>)
+		else if constexpr (std::is_integral_v<value_type>)
 		{
 			//X.690 8.3 Encoding of an integer value
 			//X.690 8.4 Encoding of an enumerated value
-			auto const len = length::bytes<typename IE::value_type>(ie.get_encoded());
+			auto const len = length::bytes<value_type>(ie.get_encoded());
 			uint8_t* out = ctx.buffer().template advance<IE>(len); //value
 			//*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
 			put_bytes(ie.get_encoded(), out, len); //value
 			CODEC_TRACE("INT[%s]=%d %u bytes: %s", name<IE>(), ie.get_encoded(), len, ctx.buffer().toString());
 		}
-		else if constexpr (std::is_floating_point_v<typename IE::value_type>)
+		else if constexpr (std::is_floating_point_v<value_type>)
 		{
 			//TODO: implement
 			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
 		}
 		else
 		{
-			static_assert(std::is_void_v<typename IE::value_type>, "NOT IMPLEMENTED?");
+			static_assert(std::is_void_v<value_type>, "NOT IMPLEMENTED?");
 		}
 	}
 

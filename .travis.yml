@@ -30,8 +30,6 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-8']
       env:
-        # can't reproduce gcc bug localy with gcc8.3, thus lowering optimization level
-        - BUILD_FLAGS="-O2"
         - CXX=g++-8
 
     - compiler: gcc
