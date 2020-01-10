@@ -84,34 +84,50 @@ struct decoder : info
 	//IE_VALUE
 	template <class IE> void operator() (IE& ie, IE_VALUE)
 	{
-		CODEC_TRACE("V[%s]: %s", name<IE>(), ctx.buffer().toString());
-		if constexpr (std::is_same_v<bool, typename IE::value_type>)
+		if constexpr (is_multi_field_v<IE>)
 		{
-			//X.690 8.2 Encoding of a boolean value
-			return ie.set_encoded(ctx.buffer().template pop<IE>() != 0);
-		}
-		else if constexpr (std::is_integral_v<typename IE::value_type>)
-		{
-			//X.690 8.3 Encoding of an integer value
-			//X.690 8.4 Encoding of an enumerated value
-			if (auto const len = ctx.buffer().size(); 0 < len && len < 127) //1..127 in one octet
+			CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
+			//std::size_t count = 0;
+			while ((*this)(CHECK_STATE{}, ie))
 			{
-				CODEC_TRACE("\t%zu octets: %s", len, ctx.buffer().toString());
-				auto* input = ctx.buffer().template advance<IE>(len); //value
-				ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
+				auto* field = ie.push_back(*this);
+				med::decode(*this, *field);
+				//++count;
 			}
-			else
-			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer())
-			}
-		}
-		else if constexpr (std::is_floating_point_v<typename IE::value_type>)
-		{
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
+			//check_arity(decoder, ie, count);
+
 		}
 		else
 		{
-			static_assert(std::is_void_v<typename IE::value_type>, "NOT IMPLEMENTED?");
+			CODEC_TRACE("V[%s]: %s", name<IE>(), ctx.buffer().toString());
+			if constexpr (std::is_same_v<bool, typename IE::value_type>)
+			{
+				//X.690 8.2 Encoding of a boolean value
+				return ie.set_encoded(ctx.buffer().template pop<IE>() != 0);
+			}
+			else if constexpr (std::is_integral_v<typename IE::value_type>)
+			{
+				//X.690 8.3 Encoding of an integer value
+				//X.690 8.4 Encoding of an enumerated value
+				if (auto const len = ctx.buffer().size(); 0 < len && len < 127) //1..127 in one octet
+				{
+					CODEC_TRACE("\t%zu octets: %s", len, ctx.buffer().toString());
+					auto* input = ctx.buffer().template advance<IE>(len); //value
+					ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
+				}
+				else
+				{
+					MED_THROW_EXCEPTION(invalid_value, name<IE>(), len, ctx.buffer())
+				}
+			}
+			else if constexpr (std::is_floating_point_v<typename IE::value_type>)
+			{
+				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
+			}
+			else
+			{
+				static_assert(std::is_void_v<typename IE::value_type>, "NOT IMPLEMENTED?");
+			}
 		}
 	}
 

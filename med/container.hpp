@@ -68,13 +68,13 @@ struct cont_len
 	template <class IE, class SEQ, class ENCODER>
 	static std::size_t apply(SEQ const& seq, ENCODER& encoder)
 	{
+		using mi = meta::produce_info_t<ENCODER, IE>;
 		if constexpr (is_multi_field_v<IE>)
 		{
 			IE const& ie = seq;
 			std::size_t len = 0;
 			for (auto& v : ie)
 			{
-				using mi = meta::produce_info_t<ENCODER, IE>;
 				len += sl::ie_length<mi>(v, encoder);
 			}
 			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
@@ -84,7 +84,7 @@ struct cont_len
 		{
 			IE const& ie = seq;
 			std::size_t const len = has_setter_type_v<IE> || ie.is_set()
-					? field_length(ie, encoder)
+					? sl::ie_length<mi>(ie, encoder)
 					: 0;
 			CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;

@@ -18,6 +18,72 @@ Distributed under the MIT License
 
 namespace med::asn::ber {
 
+/*
+template <class META_INFO, class ENCODER, class IE>
+inline void ie_encode(ENCODER& encoder, IE const& ie)
+{
+	if constexpr (not meta::list_is_empty_v<META_INFO>)
+	{
+		using mi = meta::list_first_t<META_INFO>;
+		using mi_rest = meta::list_rest_t<META_INFO>;
+		CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
+
+		if constexpr (mi::kind == mik::TAG)
+		{
+			encode_tag<mi>(encoder);
+		}
+		else if constexpr (mi::kind == mik::LEN)
+		{
+			//CODEC_TRACE("LV=? [%s]", name<IE>());
+			auto const len = sl::ie_length<mi_rest>(ie, encoder);
+			//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
+			encode_len<typename mi::length_type>(encoder, len);
+		}
+
+		ie_encode<mi_rest>(encoder, ie);
+	}
+	else
+	{
+		using ie_type = typename IE::ie_type;
+		CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
+		if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
+		{
+			call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
+			container_encoder<ENCODER>::encode(encoder, ie);
+			call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
+		}
+		else
+		{
+			snapshot(encoder, ie);
+			encoder(ie, ie_type{});
+		}
+	}
+}
+*/
+
+template <class FUNC, class IE>
+inline void encode_multi(FUNC& func, IE const& ie)
+{
+	using field_type = typename IE::field_type;
+	//using mi = meta::produce_info_t<FUNC, IE>; //assuming MI of multi_field == MI of field
+	using field_mi = meta::produce_info_t<FUNC, field_type>;
+//	sl::ie_encode<mi>(*this, ie);
+
+	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
+	for (auto& field : ie)
+	{
+		if (field.is_set())
+		{
+			sl::ie_encode<field_mi>(func, field);
+		}
+		else
+		{
+			MED_THROW_EXCEPTION(missing_ie, name<field_type>(), ie.count(), ie.count() - 1)
+		}
+	}
+}
+
+
 template <class ENC_CTX>
 struct encoder : info
 {
@@ -84,9 +150,6 @@ struct encoder : info
 				//optimizer bug in GCC :( - shows up only when ie.get_encoded() = 0
 				auto const val = ie.get_encoded();
 				return val ? length::bytes<value_type>(val) : 1;
-//#pragma GCC push_options
-//#pragma GCC optimize ("O1")
-//#pragma GCC pop_options
 #else
 				auto const val_size = length::bytes<value_type>(ie.get_encoded());
 				CODEC_TRACE("INT[%s] len=%u for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
@@ -147,31 +210,39 @@ struct encoder : info
 	//IE_VALUE
 	template <class IE> void operator() (IE const& ie, IE_VALUE)
 	{
-		using value_type = typename IE::value_type;
-		if constexpr (std::is_same_v<bool, value_type>)
+		//TODO: normally this is handled in sequence/set but ASN.1 has seq-of/set-of :(
+		if constexpr (is_multi_field_v<IE>)
 		{
-			//X.690 8.2 Encoding of a boolean value
-			ctx.buffer().template push<IE>(ie.get_encoded() ? 0xFF : 0x00);
-			CODEC_TRACE("BOOL[%s]=%zxh: %s", name<IE>(), std::size_t(ie.get_encoded()), ctx.buffer().toString());
-		}
-		else if constexpr (std::is_integral_v<value_type>)
-		{
-			//X.690 8.3 Encoding of an integer value
-			//X.690 8.4 Encoding of an enumerated value
-			auto const len = length::bytes<value_type>(ie.get_encoded());
-			uint8_t* out = ctx.buffer().template advance<IE>(len); //value
-			//*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
-			put_bytes(ie.get_encoded(), out, len); //value
-			CODEC_TRACE("INT[%s]=%d %u bytes: %s", name<IE>(), ie.get_encoded(), len, ctx.buffer().toString());
-		}
-		else if constexpr (std::is_floating_point_v<value_type>)
-		{
-			//TODO: implement
-			MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
+			encode_multi(*this, ie);
 		}
 		else
 		{
-			static_assert(std::is_void_v<value_type>, "NOT IMPLEMENTED?");
+			using value_type = typename IE::value_type;
+			if constexpr (std::is_same_v<bool, value_type>)
+			{
+				//X.690 8.2 Encoding of a boolean value
+				ctx.buffer().template push<IE>(ie.get_encoded() ? 0xFF : 0x00);
+				CODEC_TRACE("BOOL[%s]=%zxh: %s", name<IE>(), std::size_t(ie.get_encoded()), ctx.buffer().toString());
+			}
+			else if constexpr (std::is_integral_v<value_type>)
+			{
+				//X.690 8.3 Encoding of an integer value
+				//X.690 8.4 Encoding of an enumerated value
+				auto const len = length::bytes<value_type>(ie.get_encoded());
+				uint8_t* out = ctx.buffer().template advance<IE>(len); //value
+				//*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
+				put_bytes(ie.get_encoded(), out, len); //value
+				CODEC_TRACE("INT[%s]=%d %u bytes: %s", name<IE>(), ie.get_encoded(), len, ctx.buffer().toString());
+			}
+			else if constexpr (std::is_floating_point_v<value_type>)
+			{
+				//TODO: implement
+				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
+			}
+			else
+			{
+				static_assert(std::is_void_v<value_type>, "NOT IMPLEMENTED?");
+			}
 		}
 	}
 

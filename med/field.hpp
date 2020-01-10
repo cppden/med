@@ -43,7 +43,7 @@ template <std::size_t N> struct pmax : std::integral_constant<std::size_t, N> {}
 using inf = pmax< std::numeric_limits<std::size_t>::max() >;
 
 
-namespace {
+namespace detail {
 
 template <std::size_t MIN, class CMAX>
 struct get_inplace;
@@ -54,14 +54,21 @@ struct get_inplace<MIN, max<MAX>> : std::integral_constant<std::size_t, MAX> {};
 template <std::size_t MIN, std::size_t MAX>
 struct get_inplace<MIN, pmax<MAX>> : std::integral_constant<std::size_t, MIN> {};
 
-}
+template <class META_INFO>
+struct define_meta_info
+{
+	using meta_info = META_INFO;
+};
+template <>
+struct define_meta_info<void> {};
 
-template <class FIELD, std::size_t MIN, class CMAX>
-class multi_field
+} //end: namespace detail
+
+template <class FIELD, std::size_t MIN, class CMAX, class META_INFO = void>
+class multi_field : public detail::define_meta_info<META_INFO>
 {
 	static_assert(MIN > 0, "MIN SHOULD BE GREATER ZERO");
 	static_assert(CMAX::value >= MIN, "MAX SHOULD BE GREATER OR EQUAL TO MIN");
-	//static_assert(MIN <= INPLACE && INPLACE <= MAX, "INPLACE SHOULD BE BETWEEN MIN AND MAX");
 	static_assert(is_field_v<FIELD>, "FIELD IS REQUIRED");
 
 public:
@@ -78,7 +85,7 @@ public:
 	{
 		min     = MIN,
 		max     = CMAX::value,
-		inplace = get_inplace<MIN, CMAX>::value,
+		inplace = detail::get_inplace<MIN, CMAX>::value,
 	};
 
 	multi_field() = default;

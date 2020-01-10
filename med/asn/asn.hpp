@@ -15,12 +15,9 @@ Distributed under the MIT License
 #include "../octet_string.hpp"
 #include "../bit_string.hpp"
 #include "../sequence.hpp"
+#include "../set.hpp"
 
 namespace med::asn {
-
-
-template <std::size_t TAG>
-using tag_value = value<fixed<TAG, std::size_t>>;
 
 template <typename T, class... ASN_TRAITS> //TRAITs is asn::traits<T,C>
 struct value_t : value<T>
@@ -64,7 +61,6 @@ struct octet_string_t : med::octet_string<octets_var_extern>
 };
 using octet_string = octet_string_t<traits<tg_value::OCTET_STRING>>;
 
-//TODO: wrapper to pass both variadics ASN_TRAITS and IES
 template <class META_INFO, class ...IES>
 struct sequence_t : med::sequence<IES...>
 {
@@ -75,6 +71,42 @@ using sequence = sequence_t<
 	meta::typelist<mi<mik::TAG, traits<tg_value::SEQUENCE>>>,
 	IES...
 >;
+
+template <class META_INFO, class IE, class CMAX = med::inf>
+using sequence_of_t = med::multi_field<IE, 1, CMAX, META_INFO>;
+template <class IE, class CMAX = med::inf>
+using sequence_of = sequence_of_t<
+	meta::typelist<mi<mik::TAG, traits<tg_value::SEQUENCE>>>,
+	IE, CMAX
+>;
+
+//TODO: set should handle constructed tags
+template <class META_INFO, class ...IES>
+struct set_t : med::set<med::value<uint8_t>, IES...>
+{
+	using meta_info = META_INFO;
+};
+template <class ...IES>
+using set = set_t<
+	meta::typelist<mi<mik::TAG, traits<tg_value::SET>>>,
+	IES...
+>;
+
+/*
+NOTE: due to exessively bloat ASN.1 specs there are sequence-of and set-of.
+Both are about repeated *single* type (multi_field in terms of MED).
+And in all encoding rules except for DER/COER these ASN-types are encoded the same
+(but different default ASN-classes in BER).
+In DER/COER the elements of set-of are ordered increasingly by value prior to encoding.
+*/
+template <class META_INFO, class IE, class CMAX = med::inf>
+using set_of_t = med::multi_field<IE, 1, CMAX, META_INFO>;
+template <class IE, class CMAX = med::inf>
+using set_of = set_of_t<
+	meta::typelist<mi<mik::TAG, traits<tg_value::SET>>>,
+	IE, CMAX
+>;
+
 
 } //end: namespace med::asn
 

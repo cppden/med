@@ -52,10 +52,10 @@ inline void encode_len(ENCODER& encoder, std::size_t len)
 	}
 }
 
-template <bool BY_IE, class ENCODER, class LEN>
+template <bool BY_IE, class LEN, class ENCODER>
 struct length_encoder;
 
-template <class ENCODER, class LEN>
+template <class LEN, class ENCODER>
 struct len_enc_impl
 {
 	using state_type = typename ENCODER::state_type;
@@ -98,12 +98,12 @@ protected:
 
 
 //by placeholder
-template <class ENCODER, class LEN>
-struct length_encoder<false, ENCODER, LEN> : len_enc_impl<ENCODER, LEN>
+template <class LEN, class ENCODER>
+struct length_encoder<false, LEN, ENCODER> : len_enc_impl<LEN, ENCODER>
 {
 	using length_type = LEN;
-	using len_enc_impl<ENCODER, LEN>::len_enc_impl;
-	using len_enc_impl<ENCODER, LEN>::operator();
+	using len_enc_impl<LEN, ENCODER>::len_enc_impl;
+	using len_enc_impl<LEN, ENCODER>::operator();
 
 	//length position by placeholder
 	template <int DELTA>
@@ -135,12 +135,12 @@ private:
 };
 
 //by exact length type
-template <class ENCODER, class LEN>
-struct length_encoder<true, ENCODER, LEN> : len_enc_impl<ENCODER, LEN>
+template <class LEN, class ENCODER>
+struct length_encoder<true, LEN, ENCODER> : len_enc_impl<LEN, ENCODER>
 {
 	using length_type = LEN;
-	using len_enc_impl<ENCODER, LEN>::len_enc_impl;
-	using len_enc_impl<ENCODER, LEN>::operator();
+	using len_enc_impl<LEN, ENCODER>::len_enc_impl;
+	using len_enc_impl<LEN, ENCODER>::operator();
 
 
 	//length position by exact type match
@@ -189,7 +189,7 @@ struct container_encoder
 				CODEC_TRACE("start %s with padded len_type=%s...:", name<IE>(), name<length_type>());
 				using pad_t = padder<IE, ENCODER>;
 				pad_t pad{encoder};
-				length_encoder<IE::template has<length_type>(), ENCODER, length_type> le{ encoder };
+				length_encoder<IE::template has<length_type>(), length_type, ENCODER> le{ encoder };
 				ie.encode(le);
 				//special case for empty elements w/o length placeholder
 				pad.enable(static_cast<bool>(le));
@@ -207,7 +207,7 @@ struct container_encoder
 			else
 			{
 				CODEC_TRACE("start %s with len_type=%s...:", name<IE>(), name<length_type>());
-				length_encoder<IE::template has<length_type>(), ENCODER, length_type> le{ encoder };
+				length_encoder<IE::template has<length_type>(), length_type, ENCODER> le{ encoder };
 				ie.encode(le);
 				le.set_length_ie();
 			}
@@ -283,6 +283,7 @@ constexpr void encode(ENCODER&& encoder, IE const& ie)
 	if constexpr (has_ie_type_v<IE>)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
+		CODEC_TRACE("mi=%s", class_name<mi>());
 		sl::ie_encode<mi>(encoder, ie);
 	}
 	else //special cases like passing a placeholder

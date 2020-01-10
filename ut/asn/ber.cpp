@@ -12,6 +12,15 @@ using namespace std::literals;
 
 TEST(asn_ber, len_size)
 {
+	static_assert(med::asn::ber::length::bytes<int8_t>(0) == 1);
+	static_assert(med::asn::ber::length::bytes<uint8_t>(0) == 1);
+	static_assert(med::asn::ber::length::bytes<int16_t>(0) == 1);
+	static_assert(med::asn::ber::length::bytes<uint16_t>(0) == 1);
+	static_assert(med::asn::ber::length::bytes<int32_t>(0) == 1);
+	static_assert(med::asn::ber::length::bytes<uint32_t>(0) == 1);
+	static_assert(med::asn::ber::length::bytes<int64_t>(0) == 1);
+	static_assert(med::asn::ber::length::bytes<uint64_t>(0) == 1);
+
 	static_assert(med::asn::ber::length::bits<char>(0b0000'0000) == 1);
 	static_assert(med::asn::ber::length::bits<char>(0b0000'0001) == 2);
 	static_assert(med::asn::ber::length::bits<char>(0b0000'0010) == 3);
@@ -547,12 +556,8 @@ TEST(asn_ber, null_prefixed)
 }
 #endif
 
-namespace ab {
-template <typename ...T>
-using M = med::mandatory<T...>;
-template <typename ...T>
-using O = med::optional<T...>;
-
+//8.9 Encoding of a sequence value
+#if 1
 /*
 World-Schema DEFINITIONS AUTOMATIC TAGS ::=
 BEGIN
@@ -565,19 +570,17 @@ BEGIN
 	}
 END
 */
+namespace ab {
+
+template <typename ...T>
+using M = med::mandatory<T...>;
+template <typename ...T>
+using O = med::optional<T...>;
+
 struct moct : med::asn::octet_string_t<med::asn::traits<0, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 struct ooct : med::asn::octet_string_t<med::asn::traits<1, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 struct mint : med::asn::value_t<int, med::asn::traits<2, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 struct oint : med::asn::value_t<int, med::asn::traits<3, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
-
-//eq SEQUENCE: tag = [UNIVERSAL 16] constructed; length = 18
-//  moct OCTET STRING: tag = [0] primitive; length = 2
-//    0x1234
-//  ooct OCTET STRING: tag = [1] primitive; length = 3
-//    0x456789
-//  mint INTEGER: tag = [2] primitive; length = 1
-//    7
-//  oint INTEGER: tag = [3] primitive; length = 4
 
 struct Seq : med::asn::sequence<
 	M<moct>,
@@ -589,8 +592,6 @@ struct Seq : med::asn::sequence<
 
 }
 
-#if 1
-//8.9 Encoding of a sequence value
 TEST(asn_ber, sequence)
 {
 	ab::Seq s;
@@ -629,6 +630,28 @@ TEST(asn_ber, sequence)
 #endif
 
 //8.10 Encoding of a sequence-of value
+#if 0
+TEST(asn_ber, sequence_of)
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+	BEGIN
+		Seqof ::= SEQUENCE OF INTEGER
+	END
+	*/
+	using seqof = med::asn::sequence_of<med::asn::integer, med::max<5>>;
+
+	//value Seqof ::= {1,2,3,4,5}
+	seqof s;
+	s.push_back()->set(1);
+	s.push_back()->set(2);
+	s.push_back()->set(3);
+	s.push_back()->set(4);
+	s.push_back()->set(5);
+	EXPECT_EQ("30 0F 02 01 01 02 01 02 02 01 03 02 01 04 02 01 05 "s, encoded(s));
+}
+#endif
+
 //8.11 Encoding of a set value
 //8.12 Encoding of a set-of value
 //8.13 Encoding of a choice value
