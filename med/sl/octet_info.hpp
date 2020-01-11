@@ -13,7 +13,15 @@ struct octet_info
 	template <class IE>
 	static constexpr auto produce_meta_info()
 	{
-		return meta::wrap<get_meta_info_t<IE>>{};
+		//TODO: process MI for multi_field itself? so far it's used only in ASN
+		if constexpr (is_multi_field_v<IE>)
+		{
+			return meta::wrap<get_meta_info_t<typename IE::field_type>>{};
+		}
+		else
+		{
+			return meta::wrap<get_meta_info_t<IE>>{};
+		}
 	}
 };
 

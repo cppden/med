@@ -25,7 +25,7 @@ const char* class_name()
 	int status;
 	if (char* sane = abi::__cxa_demangle(psz, 0, 0, &status))
 	{
-		constexpr std::size_t LEN = 128;
+		constexpr std::size_t LEN = 4*1024;
 		constexpr std::size_t NUM = 8;
 		static char szbuf[NUM][LEN];
 		static uint8_t index = 0;
@@ -58,6 +58,7 @@ constexpr char const* name()
 	}
 	else if constexpr (has_field_type_v<IE>)
 	{
+		//gradually peel-off indirections looking for ::name() in each step
 		return name<typename IE::field_type>();
 	}
 	else

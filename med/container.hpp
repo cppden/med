@@ -33,11 +33,11 @@ struct cont_copy
 	template <class IE, class TO, class FROM, class... ARGS>
 	static void apply(TO& to, FROM const& from, ARGS&&... args)
 	{
-		using field_type = get_field_type_t<IE>;
-		auto const& from_field = from.m_ies.template as<field_type>();
+		using field_t = get_field_type_t<IE>;
+		auto const& from_field = from.m_ies.template as<field_t>();
 		if (from_field.is_set())
 		{
-			auto& to_field = to.m_ies.template as<field_type>();
+			auto& to_field = to.m_ies.template as<field_t>();
 			if constexpr (is_multi_field_v<IE>)
 			{
 				to_field.clear();

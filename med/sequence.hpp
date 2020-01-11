@@ -48,16 +48,15 @@ inline void discard(FUNC& func, TAG& vtag)
 template <class FUNC, class IE>
 inline void encode_multi(FUNC& func, IE const& ie)
 {
-	using field_type = typename IE::field_type;
-	using mi = meta::produce_info_t<FUNC, IE>; //assuming MI of multi_field == MI of field
+	using field_mi = meta::produce_info_t<FUNC, typename IE::field_type>; //assuming MI of multi_field == MI of field
 
 	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
 	for (auto& field : ie)
 	{
-		CODEC_TRACE("[%s]%c", name<field_type>(), field.is_set() ? '+':'-');
+		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			sl::ie_encode<mi>(func, field);
+			sl::ie_encode<field_mi>(func, field);
 			if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
 			{
 				if (ie.last() != &field) { func(NEXT_CONTAINER_ELEMENT{}, ie); }
@@ -65,7 +64,7 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(missing_ie, name<field_type>(), ie.count(), ie.count() - 1)
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count() - 1)
 		}
 	}
 }

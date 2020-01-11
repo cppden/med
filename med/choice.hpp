@@ -30,8 +30,8 @@ struct choice_if
 	template <class IE, class T, class... Ts>
 	static bool check(T const& v, Ts&&...)
 	{
-		//CODEC_TRACE("%s(%s): %zu ? %zu", __FUNCTION__, name<typename IE::field_type>(), v.index(), v.template index<typename IE::field_type>());
-		return v.index() == v.template index<typename IE::field_type>();
+		//CODEC_TRACE("%s(%s): %zu ? %zu", __FUNCTION__, name<IE>(), v.index(), v.template index<get_field_type_t<IE>>());
+		return v.index() == v.template index<get_field_type_t<IE>>();
 	}
 };
 
@@ -65,9 +65,8 @@ struct choice_copy : choice_if
 	template <class IE, class FROM, class TO, class... ARGS>
 	static void apply(FROM const& from, TO& to, ARGS&&... args)
 	{
-		using type = typename IE::field_type;
 		//CODEC_TRACE("copy: %s", name<IE>());
-		to.template ref<type>().copy(from.template as<IE>(), std::forward<ARGS>(args)...);
+		to.template ref<get_field_type_t<IE>>().copy(from.template as<IE>(), std::forward<ARGS>(args)...);
 		if constexpr (not (TO::plain_header or FROM::plain_header))
 		{
 			to.header().copy(from.header(), std::forward<ARGS>(args)...);
@@ -92,7 +91,7 @@ struct choice_name
 	template <class IE, typename TAG, class... Ts>
 	static constexpr char const* apply(TAG const&, Ts&&...)
 	{
-		return name<typename IE::field_type>();
+		return name<IE>();
 	}
 
 	template <typename TAG, class... Ts>
@@ -107,7 +106,7 @@ struct choice_enc : choice_if
 	template <class IE, class TO, class ENCODER>
 	static void apply(TO const& to, ENCODER& encoder)
 	{
-		CODEC_TRACE("CASE[%s]", name<typename IE::field_type>());
+		CODEC_TRACE("CASE[%s]", name<IE>());
 		if constexpr (TO::plain_header)
 		{
 			med::encode(encoder, to.template as<IE>());
@@ -154,8 +153,8 @@ struct choice_dec
 	template <class IE, class TO, class HEADER, class DECODER, class UNEXP>
 	static void apply(TO& to, HEADER const&, DECODER& decoder, UNEXP& unexp)
 	{
-		CODEC_TRACE("CASE[%s]", name<typename IE::field_type>());
-		auto& ie = static_cast<IE&>(to.template ref<typename IE::field_type>());
+		CODEC_TRACE("CASE[%s]", name<IE>());
+		auto& ie = static_cast<IE&>(to.template ref<get_field_type_t<IE>>());
 		//skip 1st TAG meta-info as it's decoded in header
 		using mi = meta::produce_info_t<DECODER, IE>;
 		sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp);
@@ -236,7 +235,7 @@ public:
 		detail::has_get_tag< meta::list_first_t<meta::typelist<IEs...>> >::value,
 		meta::list_rest_t<meta::typelist<IEs...>>,
 		meta::typelist<IEs...>>;
-	using field_types = meta::transform_t<ies_types, get_field_type>;
+	using fields_types = meta::transform_t<ies_types, get_field_type>;
 	static constexpr std::size_t num_types = meta::list_size<ies_types>::value;
 
 	template <typename TAG, class CODEC>
@@ -250,7 +249,7 @@ public:
 	std::size_t index() const               { return m_index; }
 	//return index of given type
 	template <class T>
-	static constexpr std::size_t index()    { return meta::list_index_of_v<T, field_types>; }
+	static constexpr std::size_t index()    { return meta::list_index_of_v<T, fields_types>; }
 
 	void clear()                            { this->header().clear(); m_index = num_types; }
 	bool is_set() const                     { return this->header().is_set() && index() != num_types; }
@@ -302,8 +301,9 @@ public:
 	template <class DECODER, class UNEXP>
 	void decode(DECODER& decoder, UNEXP& unexp)
 	{
-		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
-			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
+		//!TODO: restore
+//		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
+//			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 
 		clear();
 		if constexpr (base_choice::plain_header)

@@ -42,7 +42,7 @@ template <class FIELD>
 struct field_at
 {
 	template <class T>
-	using type = std::is_same<FIELD, typename T::field_type>;
+	using type = std::is_same<FIELD, get_field_type_t<T>>;
 };
 
 } //end: namespace sl

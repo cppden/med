@@ -208,7 +208,7 @@ struct length_decoder<true, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEX
 	//length position by exact type match
 	template <class T, class ...ARGS>
 	auto operator () (T& len_ie, ARGS&&...) ->
-		std::enable_if_t<std::is_same_v<typename T::field_type, length_type>, void>
+		std::enable_if_t<std::is_same_v<get_field_type_t<T>, length_type>, void>
 	{
 		CODEC_TRACE("len_dec[%s] by IE", name<length_type>());
 		//don't count the size of length IE itself just like with regular LV

@@ -30,11 +30,16 @@ template <class, class = void> struct is_multi_field : std::false_type { };
 template <class T> struct is_multi_field<T, std::void_t<typename T::field_value>> : std::true_type { };
 template <class T> constexpr bool is_multi_field_v = is_multi_field<T>::value;
 
-template <class T>
-struct field_t : T
+template <class FIELD, class... META_INFO>
+struct field_t : FIELD
 {
-	using field_type = T;
-	//static_assert (is_field_v<T>, "NOT A FIELD");
+	using field_type = FIELD;
+	//static_assert (is_field_v<FIELD>, "NOT A FIELD");
+
+	//NOTE: since field may have meta_info already we have to override it directly
+	// w/o inheritance to avoid ambiguity
+	//NOTE: since it's a wrapper the added MI goes 1st
+	using meta_info = make_meta_info_t<META_INFO..., FIELD>;
 };
 
 
@@ -64,7 +69,7 @@ struct define_meta_info<void> {};
 
 } //end: namespace detail
 
-template <class FIELD, std::size_t MIN, class CMAX, class META_INFO = void>
+template <class FIELD, std::size_t MIN, class CMAX, class META_INFO = void, class... FIELD_META_INFO>
 class multi_field : public detail::define_meta_info<META_INFO>
 {
 	static_assert(MIN > 0, "MIN SHOULD BE GREATER ZERO");
@@ -73,7 +78,7 @@ class multi_field : public detail::define_meta_info<META_INFO>
 
 public:
 	using ie_type = typename FIELD::ie_type;
-	using field_type = FIELD;
+	using field_type = field_t<FIELD, FIELD_META_INFO...>;
 
 	struct field_value
 	{

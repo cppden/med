@@ -93,6 +93,7 @@ TEST(encode, msg_func)
 	EXPECT_TRUE(Matches(encoded3, buffer));
 }
 
+#if 1
 TEST(decode, msg_func)
 {
 	PROTO proto;
@@ -214,7 +215,9 @@ TEST(decode, msg_func)
 	ctx.reset(conditional_overflow, sizeof(conditional_overflow));
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::extra_ie);
 }
+#endif
 
+#if 1
 TEST(field, tagged_nibble)
 {
 	uint8_t buffer[4];
@@ -248,7 +251,9 @@ TEST(field, empty)
 	decode(med::octet_decoder{dctx}, dfield);
 	EXPECT_NE(nullptr, dfield.get<NO_THING>());
 }
+#endif
 
+#if 1
 namespace init {
 
 struct MSG1 : med::sequence<
@@ -299,7 +304,9 @@ TEST(field, init)
 	EXPECT_STRCASEEQ("02 01 07 ", as_string(ctx.buffer()));
 	dec(ctx);
 }
+#endif
 
+#if 1
 //update
 struct UFLD : med::value<uint32_t>, med::with_snapshot
 {
@@ -329,7 +336,7 @@ TEST(update, fixed)
 	uint8_t const updated[] = {7, 4, 0x34,0x56,0x78,0x9A};
 	EXPECT_TRUE(Matches(updated, buffer));
 }
-
+#endif
 
 int main(int argc, char **argv)
 {

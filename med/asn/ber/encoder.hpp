@@ -64,9 +64,8 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 template <class FUNC, class IE>
 inline void encode_multi(FUNC& func, IE const& ie)
 {
-	using field_type = typename IE::field_type;
 	//using mi = meta::produce_info_t<FUNC, IE>; //assuming MI of multi_field == MI of field
-	using field_mi = meta::produce_info_t<FUNC, field_type>;
+	using field_mi = meta::produce_info_t<FUNC, typename IE::field_type>;
 //	sl::ie_encode<mi>(*this, ie);
 
 	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
@@ -78,7 +77,7 @@ inline void encode_multi(FUNC& func, IE const& ie)
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(missing_ie, name<field_type>(), ie.count(), ie.count() - 1)
+			MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count() - 1)
 		}
 	}
 }

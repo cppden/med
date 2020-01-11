@@ -50,6 +50,7 @@ template <class L> constexpr bool list_is_empty_v = (list_size_v<L> == 0);
 template <class L> struct list_first
 {
 	static_assert(std::is_same_v<L, list_first<L>>, "empty or not a list");
+	using type = list_first; //to allow instantiation of derived templates showing propper error
 };
 template <template <class...> class L, class T1, class... T> struct list_first<L<T1, T...>>
 {
