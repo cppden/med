@@ -455,21 +455,18 @@ TEST(DISABLED_asn_ber, real)
 	*/
 	//value Real ::= 0
 	EXPECT_EQ("09 00 "s, encoded<med::asn::real>(0));
-	//value Real ::= 1
-	EXPECT_EQ("09 03 01 20 31 "s, encoded<med::asn::real>(1));
-	//value Real ::= 123,456
-	EXPECT_EQ("09 09 02 20 31 32 33 2C 34 35 36 "s, encoded<med::asn::real>(123.456));
-	//value Real ::= -0
-	EXPECT_EQ("09 04 01 20 2D 30 "s, encoded<med::asn::real>(-0));
-	//-0,0 --> 09 06 02 20 2D 30 2C 30
+	//value Real ::= "-0"
+	EXPECT_EQ("09 01 43 "s, encoded<med::asn::real>(-0));
 	//value Real ::= PLUS-INFINITY
 	EXPECT_EQ("09 01 40 "s, encoded<med::asn::real>(std::numeric_limits<double>::infinity()));
 	//value Real ::= MINUS-INFINITY
 //	EXPECT_EQ("09 01 41 "s, encoded<med::asn::real>(med::asn::minus_inf));
 	//value Real ::= NOT-A-NUMBER
 	EXPECT_EQ("09 01 42 "s, encoded<med::asn::real>(std::nan("")));
-	//value Real ::= -0
-	EXPECT_EQ("09 01 43 "s, encoded<med::asn::real>(-0));
+	//value Real ::= 1
+	EXPECT_EQ("09 03 01 20 31 "s, encoded<med::asn::real>(1));
+	//value Real ::= { 314159, 10, -5 }
+	EXPECT_EQ("09 0B 03 33 31 34 31 35 39 2E 45 2D 35 "s, encoded<med::asn::real>(3.14159));
 }
 
 //8.6 Encoding of a bitstring value
@@ -558,18 +555,6 @@ TEST(asn_ber, null_prefixed)
 
 //8.9 Encoding of a sequence value
 #if 1
-/*
-World-Schema DEFINITIONS AUTOMATIC TAGS ::=
-BEGIN
-	Seq ::= SEQUENCE
-	{
-		moct	OCTET STRING,
-		ooct	OCTET STRING OPTIONAL,
-		mint	INTEGER,
-		oint	INTEGER OPTIONAL
-	}
-END
-*/
 namespace ab {
 
 template <typename ...T>
@@ -582,7 +567,39 @@ struct ooct : med::asn::octet_string_t<med::asn::traits<1, med::asn::tg_class::C
 struct mint : med::asn::value_t<int, med::asn::traits<2, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 struct oint : med::asn::value_t<int, med::asn::traits<3, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 
+/*
+World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+BEGIN
+	Seq ::= SEQUENCE
+	{
+		moct	OCTET STRING,
+		ooct	OCTET STRING OPTIONAL,
+		mint	INTEGER,
+		oint	INTEGER OPTIONAL
+	}
+END
+*/
 struct Seq : med::asn::sequence<
+	M<moct>,
+	O<ooct>,
+	M<mint>,
+	O<oint>
+>
+{};
+
+/*
+World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+BEGIN
+	Set ::= SET
+	{
+		moct	OCTET STRING,
+		ooct	OCTET STRING OPTIONAL,
+		mint	INTEGER,
+		oint	INTEGER OPTIONAL
+	}
+END
+*/
+struct Set : med::asn::set<
 	M<moct>,
 	O<ooct>,
 	M<mint>,
@@ -630,7 +647,7 @@ TEST(asn_ber, sequence)
 #endif
 
 //8.10 Encoding of a sequence-of value
-#if 0
+#if 1
 TEST(asn_ber, sequence_of)
 {
 	/*
@@ -653,21 +670,110 @@ TEST(asn_ber, sequence_of)
 #endif
 
 //8.11 Encoding of a set value
+TEST(DISABLED_asn_ber, set)
+{
+	ab::Set s;
+	{
+		/*
+		value Set ::= {
+			moct '1234'H,
+			ooct '456789'H,
+			mint 7,
+			oint 987654321
+		}
+		*/
+		uint8_t const moct_val[] = {0x12, 0x34};
+		uint8_t const ooct_val[] = {0x45, 0x67, 0x89};
+		s.ref<ab::moct>().set(sizeof(moct_val), moct_val);
+		s.ref<ab::ooct>().set(sizeof(ooct_val), ooct_val);
+		s.ref<ab::mint>().set(7);
+		s.ref<ab::oint>().set(987654321);
+		EXPECT_EQ("31 12 80 02 12 34 81 03 45 67 89 82 01 07 83 04 3A DE 68 B1"s, encoded(s));
+	}
+
+	s.clear();
+	{
+		/*
+		value Set ::= {
+			moct '1234'H,
+			mint 7
+		}
+		*/
+		uint8_t const moct_val[] = {0x12, 0x34};
+		s.ref<ab::moct>().set(sizeof(moct_val), moct_val);
+		s.ref<ab::mint>().set(7);
+		EXPECT_EQ("31 07 80 02 12 34 82 01 07 "s, encoded(s));
+	}
+}
+
 //8.12 Encoding of a set-of value
+TEST(asn_ber, set_of)
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+	BEGIN
+		Setof ::= SET OF INTEGER
+	END
+	*/
+	using setof = med::asn::set_of<med::asn::integer, med::max<5>>;
+
+	//value Setof ::= {1,2,3,4,5}
+	setof s;
+	s.push_back()->set(1);
+	s.push_back()->set(2);
+	s.push_back()->set(3);
+	s.push_back()->set(4);
+	s.push_back()->set(5);
+	EXPECT_EQ("31 0F 02 01 01 02 01 02 02 01 03 02 01 04 02 01 05 "s, encoded(s));
+}
+
+#if 1
 //8.13 Encoding of a choice value
 /*
-	cho CHOICE
+World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+BEGIN
+	Choice ::= CHOICE
 	{
-		one INTEGER,
+		one OCTET STRING,
 		two INTEGER
 	}
+END
 */
+namespace ab {
+struct one : med::asn::octet_string_t<med::asn::traits<0, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
+struct two : med::asn::value_t<int, med::asn::traits<1, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
+
+struct Choice : med::asn::choice<
+	O<one>,
+	O<two>
+>
+{};
+
+}
+TEST(asn_ber, choice)
+{
+	ab::Choice s;
+	//value Choice ::= one '1234'H
+	uint8_t const oct_val[] = {0x12, 0x34};
+	s.ref<ab::one>().set(sizeof(oct_val), oct_val);
+	EXPECT_EQ("80 02 12 34 "s, encoded(s));
+
+	s.clear();
+	//value Choice ::= two 7
+	s.ref<ab::two>().set(7);
+	EXPECT_EQ("81 01 07 "s, encoded(s));
+}
+#endif
+
 //8.14 Encoding of a value of a prefixed type
+//covered within value tests above
+
 //8.15 Encoding of an open type
 //8.16 Encoding of an instance-of value
 //8.17 Encoding of a value of the embedded-pdv type
 //8.18 Encoding of a value of the external type
 //8.19 Encoding of an object identifier value
+
 //8.20 Encoding of a relative object identifier value
 //8.21 Encoding of an OID internationalized resource identifier value
 //8.22 Encoding of a relative OID internationalized resource identifier value

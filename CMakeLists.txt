@@ -21,13 +21,13 @@ include_directories(
 	${PROJECT_SOURCE_DIR}/med
 )
 
-find_package(Boost)
-if(Boost_FOUND)
-	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
-else()
-	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBRIGAND_NO_BOOST_SUPPORT")
-endif()
+#find_package(Boost)
+#if(Boost_FOUND)
+#	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
+#else()
+#	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBRIGAND_NO_BOOST_SUPPORT")
+#endif()
 
 # -----------------------------------------------------------------------------
 # Benchmarks

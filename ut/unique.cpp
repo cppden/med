@@ -14,16 +14,16 @@ TEST(unique, typed)
 {
 	//checking tag uniqueness
 	using tags = med::meta::typelist<
-		med::minfo< med::mi<med::mik::TAG, C<0x02>> >,
-		med::minfo< med::mi<med::mik::TAG, C<0x03>> >,
-		med::minfo< med::mi<med::mik::TAG, C<0x04>> >
+		med::def_meta_info< med::mi<med::mik::TAG, C<0x02>> >,
+		med::def_meta_info< med::mi<med::mik::TAG, C<0x03>> >,
+		med::def_meta_info< med::mi<med::mik::TAG, C<0x04>> >
 	>;
 	static_assert(std::is_void_v<med::meta::unique_t<med::tag_getter<med::sl::octet_info>, tags>>);
 
 //	using dup_tags = med::meta::typelist<
-//		med::minfo< med::mi<med::mik::TAG, C<0x02>>,
-//		med::minfo< med::mi<med::mik::TAG, C<0x03>>,
-//		med::minfo< med::mi<med::mik::TAG, C<0x02>>
+//		med::def_meta_info< med::mi<med::mik::TAG, C<0x02>>,
+//		med::def_meta_info< med::mi<med::mik::TAG, C<0x03>>,
+//		med::def_meta_info< med::mi<med::mik::TAG, C<0x02>>
 //	>;
 //	static_assert(not std::is_void_v<med::meta::unique_t<med::tag_getter<med::sl::octet_info>, dup_tags>>);
 }

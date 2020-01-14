@@ -82,7 +82,9 @@ matrix:
         - coveralls
           --root ../
           --build-root ./
-          --exclude-pattern '.+/CMakeFiles/'
+          --exclude CMakeFiles/CompilerIdCXX/CMakeCXXCompilerId.cpp
+          # why?! not working for me only?
+          #--exclude-pattern '.+/CMakeFiles/'
           --gcov gcov-7
           --gcov-options '\--long-file-names --preserve-paths'
           --verbose

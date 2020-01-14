@@ -80,7 +80,6 @@ using sequence_of = sequence_of_t<
 	IE, CMAX
 >;
 
-//TODO: set should handle constructed tags
 template <class META_INFO, class ...IES>
 struct set_t : med::set<med::value<uint8_t>, IES...>
 {
@@ -105,6 +104,17 @@ template <class IE, class CMAX = med::inf>
 using set_of = set_of_t<
 	meta::typelist<mi<mik::TAG, traits<tg_value::SET>>>,
 	IE, CMAX
+>;
+
+template <class META_INFO, class ...IES>
+struct choice_t : med::choice<IES...>
+{
+	using meta_info = META_INFO;
+};
+template <class ...IES>
+using choice = choice_t<
+	meta::typelist<>,
+	IES...
 >;
 
 

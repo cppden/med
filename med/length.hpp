@@ -52,6 +52,9 @@ struct has_set_length<T, std::void_t<decltype(std::declval<T>().set_length(0))>>
 
 template <class T> constexpr bool is_length_v = detail::has_length_type<T>::value;
 
+template <class IE, class ENCODER>
+constexpr std::size_t field_length(IE const& ie, ENCODER& encoder);
+
 namespace sl {
 
 template <class META_INFO = meta::typelist<>, class IE, class ENCODER>
@@ -88,6 +91,16 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			{
 				len = ie.calc_length(encoder);
 				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
+			}
+			else if constexpr (is_multi_field_v<IE>)
+			{
+				for (auto& field : ie)
+				{
+					if (field.is_set())
+					{
+						len += field_length(field, encoder);
+					}
+				}
 			}
 			else
 			{

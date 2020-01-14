@@ -39,7 +39,7 @@ struct field_t : FIELD
 	//NOTE: since field may have meta_info already we have to override it directly
 	// w/o inheritance to avoid ambiguity
 	//NOTE: since it's a wrapper the added MI goes 1st
-	using meta_info = make_meta_info_t<META_INFO..., FIELD>;
+	using meta_info = meta::list_append_t<get_meta_info_t<META_INFO>..., get_meta_info_t<FIELD>>;
 };
 
 

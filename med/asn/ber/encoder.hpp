@@ -18,71 +18,6 @@ Distributed under the MIT License
 
 namespace med::asn::ber {
 
-/*
-template <class META_INFO, class ENCODER, class IE>
-inline void ie_encode(ENCODER& encoder, IE const& ie)
-{
-	if constexpr (not meta::list_is_empty_v<META_INFO>)
-	{
-		using mi = meta::list_first_t<META_INFO>;
-		using mi_rest = meta::list_rest_t<META_INFO>;
-		CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
-
-		if constexpr (mi::kind == mik::TAG)
-		{
-			encode_tag<mi>(encoder);
-		}
-		else if constexpr (mi::kind == mik::LEN)
-		{
-			//CODEC_TRACE("LV=? [%s]", name<IE>());
-			auto const len = sl::ie_length<mi_rest>(ie, encoder);
-			//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
-			encode_len<typename mi::length_type>(encoder, len);
-		}
-
-		ie_encode<mi_rest>(encoder, ie);
-	}
-	else
-	{
-		using ie_type = typename IE::ie_type;
-		CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
-		if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
-		{
-			call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
-			container_encoder<ENCODER>::encode(encoder, ie);
-			call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
-		}
-		else
-		{
-			snapshot(encoder, ie);
-			encoder(ie, ie_type{});
-		}
-	}
-}
-*/
-
-template <class FUNC, class IE>
-inline void encode_multi(FUNC& func, IE const& ie)
-{
-	//using mi = meta::produce_info_t<FUNC, IE>; //assuming MI of multi_field == MI of field
-	using field_mi = meta::produce_info_t<FUNC, typename IE::field_type>;
-//	sl::ie_encode<mi>(*this, ie);
-
-	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
-	for (auto& field : ie)
-	{
-		if (field.is_set())
-		{
-			sl::ie_encode<field_mi>(func, field);
-		}
-		else
-		{
-			MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count() - 1)
-		}
-	}
-}
-
-
 template <class ENC_CTX>
 struct encoder : info
 {
@@ -127,55 +62,63 @@ struct encoder : info
 	template <class IE>
 	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
 	{
-		using ie_type = typename IE::ie_type;
-		if constexpr (std::is_base_of_v<IE_NULL, ie_type>)
+		//sequence_of/set_of is tagged also in BER
+		if constexpr (is_multi_field_v<IE>)
 		{
-			constexpr std::size_t val_size = 0;
-			CODEC_TRACE("NULL[%s] len=%zu", name<IE>(), val_size);
-			return val_size;
+			static_assert(std::is_same_v<void, IE>, "not expected to get here");
 		}
-		else if constexpr (std::is_base_of_v<IE_VALUE, ie_type>)
+		else //single-field IEs
 		{
-			using value_type = typename IE::value_type;
-			if constexpr (std::is_same_v<bool, value_type>)
+			using ie_type = typename IE::ie_type;
+			if constexpr (std::is_base_of_v<IE_NULL, ie_type>)
 			{
-				constexpr std::size_t val_size = 1;
-				CODEC_TRACE("BOOL[%s] len=%zu", name<IE>(), val_size);
+				constexpr std::size_t val_size = 0;
+				CODEC_TRACE("NULL[%s] len=%zu", name<IE>(), val_size);
 				return val_size;
 			}
-			else if constexpr (std::is_integral_v<value_type>)
+			else if constexpr (std::is_base_of_v<IE_VALUE, ie_type>)
 			{
-#if defined(__GNUC__)
-				//optimizer bug in GCC :( - shows up only when ie.get_encoded() = 0
-				auto const val = ie.get_encoded();
-				return val ? length::bytes<value_type>(val) : 1;
-#else
-				auto const val_size = length::bytes<value_type>(ie.get_encoded());
-				CODEC_TRACE("INT[%s] len=%u for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
+				using value_type = typename IE::value_type;
+				if constexpr (std::is_same_v<bool, value_type>)
+				{
+					constexpr std::size_t val_size = 1;
+					CODEC_TRACE("BOOL[%s] len=%zu", name<IE>(), val_size);
+					return val_size;
+				}
+				else if constexpr (std::is_integral_v<value_type>)
+				{
+	#if defined(__GNUC__)
+					//optimizer bug in GCC :( - shows up only when ie.get_encoded() = 0
+					auto const val = ie.get_encoded();
+					return val ? length::bytes<value_type>(val) : 1;
+	#else
+					auto const val_size = length::bytes<value_type>(ie.get_encoded());
+					CODEC_TRACE("INT[%s] len=%u for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
+					return val_size;
+	#endif
+				}
+				else if constexpr (std::is_floating_point_v<value_type>)
+				{
+					MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
+				}
+				else
+				{
+					static_assert(std::is_void_v<value_type>, "NOT IMPLEMENTED?");
+				}
+			}
+			else if constexpr (std::is_base_of_v<IE_OCTET_STRING, ie_type>)
+			{
+				std::size_t const val_size = ie.size();
+				//std::size_t const len_size = length::bytes(val_size);
+				CODEC_TRACE("OSTR[%s] len=%zu", name<IE>(), val_size);
 				return val_size;
-#endif
 			}
-			else if constexpr (std::is_floating_point_v<value_type>)
+			else if constexpr (std::is_base_of_v<IE_BIT_STRING, ie_type>)
 			{
-				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), 0, ctx.buffer())
+				std::size_t const val_size = ie.size() + 1;
+				CODEC_TRACE("BSTR[%s] len=%zu", name<IE>(), val_size);
+				return val_size;
 			}
-			else
-			{
-				static_assert(std::is_void_v<value_type>, "NOT IMPLEMENTED?");
-			}
-		}
-		else if constexpr (std::is_base_of_v<IE_OCTET_STRING, ie_type>)
-		{
-			std::size_t const val_size = ie.size();
-			//std::size_t const len_size = length::bytes(val_size);
-			CODEC_TRACE("OSTR[%s] len=%zu", name<IE>(), val_size);
-			return val_size;
-		}
-		else if constexpr (std::is_base_of_v<IE_BIT_STRING, ie_type>)
-		{
-			std::size_t const val_size = ie.size() + 1;
-			CODEC_TRACE("BSTR[%s] len=%zu", name<IE>(), val_size);
-			return val_size;
 		}
 	}
 
@@ -212,7 +155,7 @@ struct encoder : info
 		//TODO: normally this is handled in sequence/set but ASN.1 has seq-of/set-of :(
 		if constexpr (is_multi_field_v<IE>)
 		{
-			encode_multi(*this, ie);
+			sl::encode_multi(*this, ie);
 		}
 		else
 		{

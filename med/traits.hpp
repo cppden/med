@@ -19,7 +19,7 @@ struct mi : INFO
 };
 
 template <class... T>
-struct minfo
+struct def_meta_info
 {
 	using meta_info = meta::typelist<T...>;
 };
@@ -48,12 +48,12 @@ struct get_meta_info<T, std::enable_if_t<int(T::kind) >= 0>>
 };
 template <class T> using get_meta_info_t = typename get_meta_info<T>::type;
 
-template <class... T>
-struct make_meta_info
-{
-	using type = meta::list_append_t<get_meta_info_t<T>...>;
-};
-template <class... T> using make_meta_info_t = typename make_meta_info<T...>::type;
+//template <class... T>
+//struct make_meta_info
+//{
+//	using type = meta::list_append_t<get_meta_info_t<T>...>;
+//};
+//template <class... T> using make_meta_info_t = typename make_meta_info<T...>::type;
 
 template <class T, class Enable = void>
 struct get_meta_tag

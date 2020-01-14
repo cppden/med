@@ -19,7 +19,7 @@ struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 //NOTE: low nibble of 1st octet is a tag
 template <uint8_t TAG>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
-		, med::minfo< med::mi<med::mik::TAG, LT<TAG>> >
+		, med::def_meta_info< med::mi<med::mik::TAG, LT<TAG>> >
 {
 	bool set(std::size_t len, void const* data)
 	{

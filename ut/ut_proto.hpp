@@ -154,7 +154,7 @@ struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 
 //tagged nibble
 struct FLD_TN : med::value<uint8_t>
-		, med::minfo< med::mi<med::mik::TAG, HT<0xE0>> >
+		, med::def_meta_info< med::mi<med::mik::TAG, HT<0xE0>> >
 {
 	enum : value_type
 	{
@@ -174,7 +174,7 @@ struct FLD_TN : med::value<uint8_t>
 //binary coded decimal: 0x21,0x43 is 1,2,3,4
 template <uint8_t TAG>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
-		, med::minfo< med::mi<med::mik::TAG, LT<TAG>> >
+		, med::def_meta_info< med::mi<med::mik::TAG, LT<TAG>> >
 {
 	//NOTE: low nibble of 1st octet is a tag
 

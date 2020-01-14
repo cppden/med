@@ -49,7 +49,10 @@ b) the contents octets shall be the same as the contents octets of the base enco
 		{
 			constexpr auto get_tags = []
 			{
-				if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+				constexpr bool is_constructed =
+						std::is_base_of_v<CONTAINER, typename IE::ie_type> //sequence, set
+						|| is_multi_field_v<IE>; //sequence-of, set-of
+				if constexpr (is_constructed)
 				{
 					return meta::wrap<meta::transform_t<asn_traits, make_tag>>{};
 				}

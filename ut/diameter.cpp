@@ -159,7 +159,7 @@ struct avp :
 		O< vendor, vendor::has >,
 		M< BODY >
 	>
-	, med::minfo< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
+	, med::def_meta_info< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;
@@ -232,7 +232,7 @@ struct any_avp :
 		O< vendor, vendor::has >,
 		M< med::octet_string<> >
 	>
-	, med::minfo< med::mi<med::mik::TAG, avp_code> >
+	, med::def_meta_info< med::mi<med::mik::TAG, avp_code> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;

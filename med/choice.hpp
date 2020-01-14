@@ -301,9 +301,8 @@ public:
 	template <class DECODER, class UNEXP>
 	void decode(DECODER& decoder, UNEXP& unexp)
 	{
-		//!TODO: restore
-//		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
-//			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
+		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
+			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 
 		clear();
 		if constexpr (base_choice::plain_header)
