@@ -222,11 +222,11 @@ struct set_check
 
 }	//end: namespace sl
 
-template <class TRAITS, class HEADER, class ...IEs>
-struct base_set : container<TRAITS, IEs...>
+template <class HEADER, class ...IEs>
+struct set : container<IEs...>
 {
 	using header_type = HEADER;
-	using ies_types = typename container<TRAITS, IEs...>::ies_types;
+	using ies_types = typename container<IEs...>::ies_types;
 
 	template <typename TAG, class CODEC>
 	static constexpr char const* name_tag(TAG const& tag, CODEC& codec)
@@ -269,8 +269,5 @@ struct base_set : container<TRAITS, IEs...>
 		meta::foreach<ies_types>(sl::set_check{}, this->m_ies, decoder);
 	}
 };
-
-template <class HEADER, class ...IEs>
-using set = base_set<base_traits, HEADER, IEs...>;
 
 }	//end: namespace med

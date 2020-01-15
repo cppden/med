@@ -670,7 +670,7 @@ TEST(asn_ber, sequence_of)
 #endif
 
 //8.11 Encoding of a set value
-TEST(DISABLED_asn_ber, set)
+TEST(asn_ber, set)
 {
 	ab::Set s;
 	{

@@ -413,10 +413,11 @@ struct seq_enc
 
 }	//end: namespace sl
 
-template <class TRAITS, class ...IES>
-struct base_sequence : container<TRAITS, IES...>
+
+template <class ...IES>
+struct sequence : container<IES...>
 {
-	using ies_types = typename container<TRAITS, IES...>::ies_types;
+	using ies_types = typename container<IES...>::ies_types;
 
 	template <class ENCODER>
 	void encode(ENCODER& encoder) const
@@ -431,9 +432,6 @@ struct base_sequence : container<TRAITS, IES...>
 		meta::foreach_prev<ies_types>(sl::seq_dec{}, this->m_ies, decoder, unexp, vtag);
 	}
 };
-
-template <class ...IES>
-using sequence = base_sequence<base_traits, IES...>;
 
 } //end: namespace med
 

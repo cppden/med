@@ -61,23 +61,23 @@ set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 file(GLOB_RECURSE MED_SRCS med/*.hpp)
 # file(GLOB_RECURSE UT_SRCS ut/*.cpp)
 set(UT_SRCS 
-	ut/bits.cpp
-	ut/choice.cpp
-	ut/copy.cpp
-	ut/diameter.cpp
-	ut/gtpc.cpp
-#	ut/json.cpp
-	ut/length.cpp
-	ut/med.cpp
-	ut/meta.cpp
-	ut/multi.cpp
-	ut/octets.cpp
-	ut/padding.cpp
-	ut/print.cpp
-	ut/protobuf.cpp
-	ut/sequence.cpp
+	#ut/bits.cpp
+	#ut/choice.cpp
+	#ut/copy.cpp
+	#ut/diameter.cpp
+	#ut/gtpc.cpp
+#	#ut/json.cpp
+	#ut/length.cpp
+	#ut/med.cpp
+	#ut/meta.cpp
+	#ut/multi.cpp
+	#ut/octets.cpp
+	#ut/padding.cpp
+	#ut/print.cpp
+	#ut/protobuf.cpp
+	#ut/sequence.cpp
 	ut/set.cpp
-	ut/unique.cpp
+	#ut/unique.cpp
 	ut/asn/ber.cpp
 )
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
@@ -121,9 +121,7 @@ endif (WITH_BM)
 # Coverage
 # ------------------------------------------------------------------------------
 if(COVERAGE)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftest-coverage")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")

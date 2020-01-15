@@ -148,12 +148,11 @@ constexpr std::size_t field_arity()
 
 }	//end: namespace sl
 
-template <class TRAITS, class... IES>
+template <class... IES>
 class container : public IE<CONTAINER>
 {
 public:
-	using traits = TRAITS;
-	using container_t = container<TRAITS, IES...>;
+	using container_t = container<IES...>;
 	using ies_types = meta::typelist<IES...>;
 
 	template <class T>
@@ -247,6 +246,4 @@ protected:
 	ies_t m_ies;
 };
 
-
-}
-
+} //end: namespace med

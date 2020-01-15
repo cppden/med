@@ -81,7 +81,8 @@ matrix:
         - coveralls
           --root .
           --build-root ./build
-          --exclude-pattern 'build/CMakeFiles/(\d+.*|.*\.(c|cxx)$)'
+          --exclude-lines-pattern 'MED_THROW_EXCEPTION'
+          --exclude-pattern '.*CMakeFiles/(\d+.*|.*\.(c|cxx)$)'
           --exclude benchmark
           --gcov gcov-7
           --gcov-options '\--long-file-names --preserve-paths'

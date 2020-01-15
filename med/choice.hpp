@@ -225,12 +225,11 @@ template <template <class...> class L, class... Ts> struct list_aligned_union<L<
 } //end: namespace detail
 
 
-template <class TRAITS, class... IEs>
-class base_choice : public IE<CONTAINER>
+template <class... IEs>
+class choice : public IE<CONTAINER>
 		, public detail::make_header< meta::list_first_t<meta::typelist<IEs...>> >
 {
 public:
-	using traits = TRAITS;
 	using ies_types = conditional_t<
 		detail::has_get_tag< meta::list_first_t<meta::typelist<IEs...>> >::value,
 		meta::list_rest_t<meta::typelist<IEs...>>,
@@ -266,7 +265,7 @@ public:
 		static_assert(!std::is_const<T>(), "REFERENCE IS NOT FOR ACCESSING AS CONST");
 		using type = meta::find<ies_types, sl::field_at<T>>;
 		static_assert(!std::is_void<type>(), "NO SUCH TYPE IN CHOICE");
-		constexpr auto idx = base_choice::template index<T>();
+		constexpr auto idx = choice::template index<T>();
 		auto* ie = reinterpret_cast<type*>(&m_storage);
 		if (idx != index())
 		{
@@ -280,7 +279,7 @@ public:
 	{
 		using type = meta::find<ies_types, sl::field_at<T>>;
 		static_assert(!std::is_void<type>(), "NO SUCH CASE IN CHOICE");
-		type const* ie = base_choice::template index<T>() == index()
+		type const* ie = choice::template index<T>() == index()
 			? &this->template as<type>()
 			: nullptr;
 		return ie;
@@ -305,7 +304,7 @@ public:
 			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
 
 		clear();
-		if constexpr (base_choice::plain_header)
+		if constexpr (choice::plain_header)
 		{
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
@@ -335,8 +334,5 @@ private:
 	std::size_t  m_index {num_types}; //index of selected type in storage
 	storage_type m_storage;
 };
-
-template <class ...IEs>
-using choice = base_choice<base_traits, IEs...>;
 
 } //end: namespace med

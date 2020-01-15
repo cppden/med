@@ -50,13 +50,6 @@ struct MSGSEQ : med::sequence<
 	M< L, SEQ2 >
 >{};
 
-struct SET : med::set<
-	M< T<1>, L, U8, med::max<2>>,
-	O< T<2>, U16, med::max<2>>,
-	O< T<3>, U24, med::max<2>>,
-	O< T<4>, L, U32, med::max<2>>
->{};
-
 //mandatory LMV (length multi-value)
 struct MV : med::sequence<
 	M<U8, med::pmax<3>>
