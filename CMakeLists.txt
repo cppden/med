@@ -117,20 +117,28 @@ if (WITH_BM)
 	)
 endif (WITH_BM)
 
-if(DEFINED ENV{BUILD_FLAGS})
-	set(BUILD_FLAGS "$ENV{BUILD_FLAGS}")
-else ()
-	set(BUILD_FLAGS "-O3")
-endif ()
+# ------------------------------------------------------------------------------
+# Coverage
+# ------------------------------------------------------------------------------
+if(COVERAGE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftest-coverage")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+endif()
 
-set_target_properties(gtest_${THIS_NAME} PROPERTIES COMPILE_FLAGS 
-	${BUILD_FLAGS}
-)
+#if(DEFINED ENV{BUILD_FLAGS})
+#	set(BUILD_FLAGS "$ENV{BUILD_FLAGS}")
+#endif ()
+#set_target_properties(gtest_${THIS_NAME} PROPERTIES COMPILE_FLAGS
+#	${BUILD_FLAGS}
+#)
 
 target_link_libraries(gtest_med
 	${GTEST_BOTH_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
-#	${CMAKE_DL_LIBS}
 )
 
 enable_testing()

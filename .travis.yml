@@ -67,8 +67,6 @@ matrix:
           packages: ['g++-7']
       env:
         - CXX=g++-7
-        - BUILD_FLAGS="-g -O0"
-        - CXXFLAGS="--coverage"
       before_install:
         - pip install --user cpp-coveralls
         - sudo apt-get -qq update
@@ -76,20 +74,21 @@ matrix:
         - (mkdir -p /tmp/gtest && cd /tmp/gtest && cmake -DCMAKE_BUILD_TYPE=RELEASE /usr/src/gtest && make && sudo mv libg* /usr/lib/)
       script:
         - mkdir build && cd build
-        - cmake ..
+        - cmake -DCOVERAGE=ON ..
         - make VERBOSE=1 -j check
+        - cd ..
       after_success:
         - coveralls
-          --root ../
-          --build-root ./
-          --exclude CMakeFiles/CompilerIdCXX/CMakeCXXCompilerId.cpp
-          # why?! not working for me only?
-          #--exclude-pattern '.+/CMakeFiles/'
+          --root .
+          --build-root ./build
+          --exclude 'build/CMakeFiles/CompilerIdCXX/CMakeCXXCompilerId.cpp'
           --gcov gcov-7
           --gcov-options '\--long-file-names --preserve-paths'
           --verbose
 
+#--exclude-pattern '.+/CMakeFiles/'
 
 notifications:
   email: false
+
 
