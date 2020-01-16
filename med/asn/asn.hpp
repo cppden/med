@@ -81,7 +81,7 @@ using sequence_of = sequence_of_t<
 >;
 
 template <class META_INFO, class ...IES>
-struct set_t : med::set<med::value<uint8_t>, IES...>
+struct set_t : med::set<IES...>
 {
 	using meta_info = META_INFO;
 };

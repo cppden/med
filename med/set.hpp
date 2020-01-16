@@ -23,23 +23,14 @@ namespace med {
 
 namespace sl {
 
-template <class T, class DECODER>
-constexpr void pop_state(DECODER& decoder)
-{
-	if constexpr (std::is_base_of_v<CONTAINER, typename T::ie_type>)
-	{
-		decoder(POP_STATE{});
-	}
-}
-
 struct set_name
 {
 	template <class IE, typename TAG, class CODEC>
 	static constexpr bool check(TAG const& tag, CODEC&)
 	{
 		using mi = meta::produce_info_t<CODEC, IE>;
-		using type = meta::list_first_t<mi>;
-		return type::match(tag);
+		using tag_t = meta::list_first_t<mi>;
+		return tag_t::match(tag);
 	}
 
 	template <class IE, typename TAG, class CODEC>
@@ -55,10 +46,8 @@ struct set_name
 	}
 };
 
-template <class HEADER>
 struct set_enc
 {
-	using header_type = HEADER;
 	template <class PREV_IE, class IE, class TO, class ENCODER>
 	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
@@ -129,8 +118,8 @@ struct set_dec
 	static bool check(TO&, DECODER&, UNEXP&, HEADER const& header)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
-		using type = meta::list_first_t<mi>;
-		return type::match( get_tag(header) );
+		using tag_t = meta::list_first_t<mi>;
+		return tag_t::match( get_tag(header) );
 	}
 
 	template <class IE, class TO, class DECODER, class UNEXP, class HEADER>
@@ -138,8 +127,8 @@ struct set_dec
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		//pop back the tag we've read as we have non-fixed tag inside
-		using type = meta::list_first_t<mi>;
-		if constexpr (not type::is_const) { decoder(POP_STATE{}); }
+		using tag_t = meta::list_first_t<mi>;
+		if constexpr (not tag_t::is_const) { decoder(POP_STATE{}); }
 
 		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
@@ -222,11 +211,28 @@ struct set_check
 
 }	//end: namespace sl
 
-template <class HEADER, class ...IEs>
-struct set : container<IEs...>
+namespace detail {
+
+
+template <class L, class = void> struct set_container;
+template <template <class...> class L, class HEADER, class... IEs>
+struct set_container<L<HEADER, IEs...>, std::enable_if_t<has_get_tag<HEADER>::value>> : container<IEs...>
 {
 	using header_type = HEADER;
-	using ies_types = typename container<IEs...>::ies_types;
+	static constexpr bool plain_header = false; //compound header e.g. a sequence
+};
+template <template <class...> class L, class IE1, class... IEs>
+struct set_container<L<IE1, IEs...>, std::enable_if_t<!has_get_tag<IE1>::value>> : container<IE1, IEs...>
+{
+	static constexpr bool plain_header = true; //plain header e.g. a tag
+};
+
+} //end: namespace detail
+
+template <class... IEs>
+struct set : detail::set_container<meta::typelist<IEs...>>
+{
+	using ies_types = typename detail::set_container<meta::typelist<IEs...>>::ies_types;
 
 	template <typename TAG, class CODEC>
 	static constexpr char const* name_tag(TAG const& tag, CODEC& codec)
@@ -237,7 +243,7 @@ struct set : container<IEs...>
 	template <class ENCODER>
 	void encode(ENCODER& encoder) const
 	{
-		meta::foreach_prev<ies_types>(sl::set_enc<header_type>{}, this->m_ies, encoder);
+		meta::foreach_prev<ies_types>(sl::set_enc{}, this->m_ies, encoder);
 	}
 
 	template <class DECODER, class UNEXP>
@@ -245,26 +251,51 @@ struct set : container<IEs...>
 	{
 		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
 			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
+		//?TODO: check all IEs have covariant tag
 
-		//TODO: how to join 2 branches w/o having unused bool
-		bool first = true;
-		while (decoder(PUSH_STATE{}, *this)) //NOTE: this usage doesn't address IE which corresponds to PUSH_STATE
+		if constexpr (set::plain_header)
 		{
-			if (not first)
+			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
+			using mi = meta::produce_info_t<DECODER, IE>;
+			using tag_t = meta::list_first_t<mi>;
+
+			//TODO: how to join 2 branches w/o having unused bool
+			if constexpr (is_callable_with_v<DECODER, NEXT_CONTAINER_ELEMENT>) //json-like
 			{
-				call_if<is_callable_with_v<DECODER, NEXT_CONTAINER_ELEMENT>>::call(
-					decoder, NEXT_CONTAINER_ELEMENT{}, *this);
+				bool first = true;
+				while (decoder(PUSH_STATE{}, *this)) //NOTE: this usage doesn't address IE which corresponds to PUSH_STATE
+				{
+					if (not first) { decoder(NEXT_CONTAINER_ELEMENT{}, *this); }
+					value<std::size_t> header;
+					header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
+					CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+					call_if<is_callable_with_v<DECODER, HEADER_CONTAINER>>::call(decoder, HEADER_CONTAINER{}, *this);
+					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header);
+					first = false;
+				}
 			}
-			header_type header;
-			med::decode(decoder, header, unexp);
-			sl::pop_state<header_type>(decoder);
-			CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
-			call_if<is_callable_with_v<DECODER, HEADER_CONTAINER>>::call(decoder, HEADER_CONTAINER{}, *this);
-
-			//meta::foreach<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header);
-			meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header);
-
-			first = false;
+			else
+			{
+				while (decoder(PUSH_STATE{}, *this))
+				{
+					value<std::size_t> header;
+					header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
+					CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header);
+				}
+			}
+		}
+		else //compound header
+		{
+			using header_type = typename detail::set_container<meta::typelist<IEs...>>::header_type;
+			while (decoder(PUSH_STATE{}, *this))
+			{
+				header_type header;
+				med::decode(decoder, header, unexp);
+				decoder(POP_STATE{}); //restore back for IE to decode itself (?TODO: better to copy instead)
+				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header);
+			}
 		}
 		meta::foreach<ies_types>(sl::set_check{}, this->m_ies, decoder);
 	}

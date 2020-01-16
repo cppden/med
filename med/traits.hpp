@@ -19,7 +19,7 @@ struct mi : INFO
 };
 
 template <class... T>
-struct def_meta_info
+struct add_meta_info
 {
 	using meta_info = meta::typelist<T...>;
 };

@@ -1,17 +1,6 @@
 #include "compound.hpp"
 #include "ut_proto.hpp"
 
-namespace set {
-
-//set based on compound selector
-struct CMP : med::set< cmp::hdr<>
-	, M< cmp::string >
-	, O< cmp::number >
->
-{};
-
-} //end: namespace set
-
 #if 0 //TODO! FIXME
 TEST(set, compound)
 {
@@ -20,7 +9,7 @@ TEST(set, compound)
 	uint8_t buffer[128];
 	med::encoder_context<> ctx{ buffer };
 
-	set::CMP msg;
+	cmp::SET msg;
 	msg.ref<cmp::string>().set("12345678"sv);
 	msg.ref<cmp::number>().set(0x12345678);
 

@@ -159,7 +159,7 @@ struct avp :
 		O< vendor, vendor::has >,
 		M< BODY >
 	>
-	, med::def_meta_info< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
+	, med::add_meta_info< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;
@@ -232,7 +232,7 @@ struct any_avp :
 		O< vendor, vendor::has >,
 		M< med::octet_string<> >
 	>
-	, med::def_meta_info< med::mi<med::mik::TAG, avp_code> >
+	, med::add_meta_info< med::mi<med::mik::TAG, avp_code> >
 {
 	using length_type = med::value<med::bytes<3>>;
 	using padding = med::padding<uint32_t, false>;
@@ -247,11 +247,11 @@ struct any_avp :
 		 { Origin-Realm }
 		 { Disconnect-Cause }
 */
-struct DPR : med::set< avp_code
-	, M< origin_host >
-	, M< origin_realm >
-	, M< disconnect_cause >
-	, O< any_avp, med::inf >
+struct DPR : med::set<
+	M< origin_host >,
+	M< origin_realm >,
+	M< disconnect_cause >,
+	O< any_avp, med::inf >
 >
 {
 	static constexpr std::size_t code = 282;
@@ -266,13 +266,13 @@ struct DPR : med::set< avp_code
 		 [ Error-Message ]
 	   * [ Failed-AVP ]
 */
-struct DPA : med::set< avp_code
-	, M< result_code >
-	, M< origin_host >
-	, M< origin_realm >
-	, O< error_message >
-	, O< failed_avp, med::inf >
-	, O< any_avp, med::inf >
+struct DPA : med::set<
+	M< result_code >,
+	M< origin_host >,
+	M< origin_realm >,
+	O< error_message >,
+	O< failed_avp, med::inf >,
+	O< any_avp, med::inf >
 >
 {
 	static constexpr std::size_t code = 282;
@@ -280,11 +280,11 @@ struct DPA : med::set< avp_code
 };
 
 //example how to decode ANY message extracting only few AVPs of interest
-struct ANY : med::set< avp_code
-	, O< result_code >
-	, O< origin_host >
-	, O< origin_realm >
-	, O< any_avp, med::inf >
+struct ANY : med::set<
+	O< result_code >,
+	O< origin_host >,
+	O< origin_realm >,
+	O< any_avp, med::inf >
 >
 {
 	static constexpr auto name() { return "Diameter-Message"; }

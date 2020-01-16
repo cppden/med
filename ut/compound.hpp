@@ -43,7 +43,7 @@ struct hdr<0, med::empty<>> :
 
 template <code::value_type CODE, class BODY>
 struct avp : hdr<CODE, BODY>
-		, med::def_meta_info< med::mi<med::mik::TAG, fixed<CODE>> >
+		, med::add_meta_info< med::mi<med::mik::TAG, fixed<CODE>> >
 {
 	using length_type = length;
 
@@ -56,6 +56,22 @@ struct avp : hdr<CODE, BODY>
 
 struct string : avp<0x1, med::ascii_string<>> {};
 struct number : avp<0x2, med::value<uint32_t>> {};
+
+//choice based on compound selector
+struct CHOICE : med::choice< hdr<>
+	, med::mandatory< string >
+	, med::mandatory< number >
+>
+{
+	using length_type = length;
+};
+
+//set based on compound selector
+struct SET : med::set< hdr<>
+	, med::mandatory< string >
+	, med::optional< number >
+>
+{};
 
 } //end: namespace cmp
 

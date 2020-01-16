@@ -114,11 +114,11 @@ struct choice_enc : choice_if
 		else
 		{
 			using mi = meta::produce_info_t<ENCODER, IE>;
-			//tag of this IE is in header
-			using type = meta::list_first_t<mi>;
+			//tag of this IE isn't in header
 			if constexpr (!explicit_meta_in<mi, typename TO::header_type>())
 			{
-				type const tag{};
+				using tag_t = meta::list_first_t<mi>;
+				tag_t const tag{};
 #if 0 //TODO: how to not modify? problem to copy with length placeholder...
 				auto hdr = to.header();
 				hdr.set_tag(tag.get());
@@ -171,33 +171,6 @@ struct choice_dec
 
 namespace detail {
 
-struct dummy_header
-{
-	static constexpr bool is_set()          { return true; }
-	static constexpr void clear()           { }
-};
-
-template <class HEADER, class = void>
-struct make_header : dummy_header
-{
-	static constexpr bool plain_header = true; //plain header e.g. a tag
-
-	auto& header() const                    { return *this; }
-};
-
-template <class HEADER>
-struct make_header<HEADER, std::enable_if_t<detail::has_get_tag<HEADER>::value>>
-{
-	static constexpr bool plain_header = false; //compound header e.g. a sequence
-
-	using header_type = HEADER;
-	header_type const& header() const       { return m_header; }
-	header_type& header()                   { return m_header; }
-
-private:
-	header_type  m_header;
-};
-
 template <class T>
 struct selector
 {
@@ -222,12 +195,39 @@ struct selector
 template <class L> struct list_aligned_union;
 template <template <class...> class L, class... Ts> struct list_aligned_union<L<Ts...>> : std::aligned_union<0, Ts...> {};
 
+struct dummy_header
+{
+	static constexpr bool is_set()          { return true; }
+	static constexpr void clear()           { }
+};
+
+template <class HEADER, class = void>
+struct choice_header : dummy_header
+{
+	static constexpr bool plain_header = true; //plain header e.g. a tag
+
+	auto& header() const                    { return *this; }
+};
+
+template <class HEADER>
+struct choice_header<HEADER, std::enable_if_t<has_get_tag<HEADER>::value>>
+{
+	static constexpr bool plain_header = false; //compound header e.g. a sequence
+
+	using header_type = HEADER;
+	header_type const& header() const       { return m_header; }
+	header_type& header()                   { return m_header; }
+
+private:
+	header_type  m_header;
+};
+
 } //end: namespace detail
 
 
 template <class... IEs>
 class choice : public IE<CONTAINER>
-		, public detail::make_header< meta::list_first_t<meta::typelist<IEs...>> >
+		, public detail::choice_header< meta::list_first_t<meta::typelist<IEs...>> >
 {
 public:
 	using ies_types = conditional_t<
@@ -235,7 +235,7 @@ public:
 		meta::list_rest_t<meta::typelist<IEs...>>,
 		meta::typelist<IEs...>>;
 	using fields_types = meta::transform_t<ies_types, get_field_type>;
-	static constexpr std::size_t num_types = meta::list_size<ies_types>::value;
+	static constexpr auto num_types = meta::list_size_v<ies_types>;
 
 	template <typename TAG, class CODEC>
 	static constexpr char const* name_tag(TAG const& tag, CODEC& codec)
@@ -308,9 +308,9 @@ public:
 		{
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
-			using type = meta::list_first_t<mi>;
+			using tag_t = meta::list_first_t<mi>;
 			value<std::size_t> tag;
-			tag.set(sl::decode_tag<type, true>(decoder));
+			tag.set_encoded(sl::decode_tag<tag_t, true>(decoder));
 			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, unexp);
 		}
 		else

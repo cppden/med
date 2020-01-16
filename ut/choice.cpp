@@ -19,7 +19,7 @@ struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 //NOTE: low nibble of 1st octet is a tag
 template <uint8_t TAG>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
-		, med::def_meta_info< med::mi<med::mik::TAG, LT<TAG>> >
+		, med::add_meta_info< med::mi<med::mik::TAG, LT<TAG>> >
 {
 	bool set(std::size_t len, void const* data)
 	{
@@ -71,14 +71,6 @@ struct PLAIN : med::choice<
 >
 {};
 
-//choice based on compound selector
-struct CMP : med::choice< cmp::hdr<>
-	, M< cmp::string >
-	, M< cmp::number >
->
-{
-	using length_type = cmp::length;
-};
 
 } //end: namespace cho
 
@@ -140,7 +132,7 @@ TEST(choice, compound)
 	uint8_t buffer[128];
 	med::encoder_context<> ctx{ buffer };
 
-	cho::CMP msg;
+	cmp::CHOICE msg;
 	msg.ref<cmp::string>().set("12345678"sv);
 
 	encode(med::octet_encoder{ctx}, msg);

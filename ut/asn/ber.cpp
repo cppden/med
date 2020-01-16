@@ -643,6 +643,8 @@ TEST(asn_ber, sequence)
 		s.ref<ab::mint>().set(7);
 		EXPECT_EQ("30 07 80 02 12 34 82 01 07 "s, encoded(s));
 	}
+
+	//?TODO: sequence with prefixed IEs, can starting prefixes collide?
 }
 #endif
 
@@ -688,7 +690,7 @@ TEST(asn_ber, set)
 		s.ref<ab::ooct>().set(sizeof(ooct_val), ooct_val);
 		s.ref<ab::mint>().set(7);
 		s.ref<ab::oint>().set(987654321);
-		EXPECT_EQ("31 12 80 02 12 34 81 03 45 67 89 82 01 07 83 04 3A DE 68 B1"s, encoded(s));
+		EXPECT_EQ("31 12 80 02 12 34 81 03 45 67 89 82 01 07 83 04 3A DE 68 B1 "s, encoded(s));
 	}
 
 	s.clear();
@@ -704,6 +706,7 @@ TEST(asn_ber, set)
 		s.ref<ab::mint>().set(7);
 		EXPECT_EQ("31 07 80 02 12 34 82 01 07 "s, encoded(s));
 	}
+	//?TODO: set with prefixed IEs, can starting prefixes collide?
 }
 
 //8.12 Encoding of a set-of value

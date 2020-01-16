@@ -154,7 +154,7 @@ struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 
 //tagged nibble
 struct FLD_TN : med::value<uint8_t>
-		, med::def_meta_info< med::mi<med::mik::TAG, HT<0xE0>> >
+		, med::add_meta_info< med::mi<med::mik::TAG, HT<0xE0>> >
 {
 	enum : value_type
 	{
@@ -174,7 +174,7 @@ struct FLD_TN : med::value<uint8_t>
 //binary coded decimal: 0x21,0x43 is 1,2,3,4
 template <uint8_t TAG>
 struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
-		, med::def_meta_info< med::mi<med::mik::TAG, LT<TAG>> >
+		, med::add_meta_info< med::mi<med::mik::TAG, LT<TAG>> >
 {
 	//NOTE: low nibble of 1st octet is a tag
 
@@ -262,7 +262,7 @@ struct MSG_MSEQ : med::sequence<
 };
 
 
-struct MSG_SET : med::set< med::value<uint16_t>,
+struct MSG_SET : med::set<
 	M< T16<0x0b>,    FLD_UC >, //<TV>
 	M< T16<0x21>, L, FLD_U16 >, //<TLV>
 	//M< FLD_TN >,
@@ -274,7 +274,7 @@ struct MSG_SET : med::set< med::value<uint16_t>,
 	static constexpr char const* name() { return "Msg-Set"; }
 };
 
-struct MSG_MSET : med::set< med::value<uint16_t>,
+struct MSG_MSET : med::set<
 	M< T16<0x0b>,    FLD_UC, med::arity<2> >, //<TV>*2
 	M< T16<0x0c>,    FLD_U8, med::max<2> >, //<TV>*[1,2]
 	M< T16<0x21>, L, FLD_U16, med::max<3> >, //<TLV>*[1,3]
