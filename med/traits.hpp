@@ -27,7 +27,7 @@ struct add_meta_info
 template <class, class Enable = void>
 struct has_meta_info : std::false_type { };
 template <class T>
-struct has_meta_info<T, std::void_t<typename T::meta_info>> : std::true_type { };
+struct has_meta_info<T, std::enable_if_t<!meta::list_is_empty_v<typename T::meta_info>>> : std::true_type { };
 template <class T>
 constexpr bool has_meta_info_v = has_meta_info<T>::value;
 

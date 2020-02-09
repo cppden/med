@@ -88,6 +88,7 @@ enum tg_value : uint8_t
 	ENUMERATED = 10,
 	EMBEDDED_PDV = 11,
 	UTF8_STRING = 12,
+	RELATIVE_OID = 13,
 	SEQUENCE = 16,
 	SET = 17,
 	//Character string types
@@ -110,7 +111,7 @@ enum tg_value : uint8_t
 	TIME_OF_DAY = 32,
 	DATE_TIME = 33,
 	DURATION = 34,
-	//OIDs
+	//Internationalized Resource Identifiers
 	OID_IRI = 35,
 	RELATIVE_OID_IRI = 36,
 };

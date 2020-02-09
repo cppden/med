@@ -11,9 +11,10 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "state.hpp"
 #include "octet_string.hpp"
-#include "asn/ber/tag.hpp"
-#include "asn/ber/length.hpp"
-#include "asn/ber/info.hpp"
+#include "ber_tag.hpp"
+#include "ber_length.hpp"
+#include "ber_info.hpp"
+#include "../asn.hpp"
 
 
 namespace med::asn::ber {
@@ -62,14 +63,35 @@ struct encoder : info
 	template <class IE>
 	constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
 	{
-		//sequence_of/set_of is tagged also in BER
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (is_seqof_v<IE>)
 		{
-			static_assert(std::is_same_v<void, IE>, "not expected to get here");
+			//NOTE: unrolling via field_length to process META-INFO if any
+			std::size_t len = 0;
+			for (auto& field : ie)
+			{
+				if (field.is_set()) { len += field_length(field, *this); }
+			}
+			return len;
+		}
+		else if constexpr (is_oid_v<IE>)
+		{
+			//NOTE: directly unrolling since no META-INFO for OID's subidentifiers
+			std::size_t len = 0;
+			for (auto& field : ie)
+			{
+				if (field.is_set())
+				{
+					len += detail::least_bytes_encoded(field.get());
+					CODEC_TRACE("INT[%s] %zu len=%zu", name<IE>(), std::size_t(field.get()), len);
+				}
+			}
+			return len;
 		}
 		else //single-field IEs
 		{
 			using ie_type = typename IE::ie_type;
+			//CODEC_TRACE("GET-LEN [%s] ie-type=%s", name<IE>(), class_name<ie_type>());
+
 			if constexpr (std::is_base_of_v<IE_NULL, ie_type>)
 			{
 				constexpr std::size_t val_size = 0;
@@ -87,15 +109,16 @@ struct encoder : info
 				}
 				else if constexpr (std::is_integral_v<value_type>)
 				{
-	#if defined(__GNUC__)
+#if defined(__GNUC__)
 					//optimizer bug in GCC :( - shows up only when ie.get_encoded() = 0
 					auto const val = ie.get_encoded();
+					CODEC_TRACE("INT[%s] len=%zu", name<IE>(), std::size_t(val));
 					return val ? length::bytes<value_type>(val) : 1;
-	#else
+#else
 					auto const val_size = length::bytes<value_type>(ie.get_encoded());
 					CODEC_TRACE("INT[%s] len=%u for %zX", name<IE>(), val_size, std::size_t(ie.get_encoded()));
 					return val_size;
-	#endif
+#endif
 				}
 				else if constexpr (std::is_floating_point_v<value_type>)
 				{
@@ -119,17 +142,20 @@ struct encoder : info
 				CODEC_TRACE("BSTR[%s] len=%zu", name<IE>(), val_size);
 				return val_size;
 			}
+			else
+			{
+				static_assert(std::is_void_v<IE>, "NOT IMPLEMENTED?");
+			}
 		}
 	}
 
 	//IE_TAG
 	template <class IE> void operator() (IE const& ie, IE_TAG)
 	{
-		//constexpr auto nbytes = IE::traits::num_bytes(); TODO: expose asn traits directly
 		constexpr std::size_t nbytes = bits_to_bytes(IE::traits::bits);
 		uint8_t* out = ctx.buffer().template advance<IE, nbytes>();
 		CODEC_TRACE("tag[%s]=%zXh %zu bytes: %s", name<IE>(), std::size_t(ie.get()), nbytes, ctx.buffer().toString());
-		put_bytes_impl<nbytes>(out, ie.get(), std::make_index_sequence<nbytes>{});
+		put_bytes<nbytes>(ie.get(), out);
 	}
 
 	//IE_LEN
@@ -153,9 +179,28 @@ struct encoder : info
 	template <class IE> void operator() (IE const& ie, IE_VALUE)
 	{
 		//TODO: normally this is handled in sequence/set but ASN.1 has seq-of/set-of :(
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (is_seqof_v<IE>)
 		{
+			CODEC_TRACE("SEQOF[%s] *%zu", name<IE>(), ie.count());
 			sl::encode_multi(*this, ie);
+		}
+		else if constexpr (is_oid_v<IE>)
+		{
+			CODEC_TRACE("OID[%s] *%zu", name<IE>(), ie.count());
+			for (auto& field : ie)
+			{
+				if (field.is_set())
+				{
+					auto const encoded = detail::encode_unsigned(field.get());
+					auto const len = detail::least_bytes_encoded(field.get());
+					uint8_t* out = ctx.buffer().template advance<IE>(len); //value
+					put_bytes(encoded, out, len); //value
+				}
+				else
+				{
+					MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count() - 1)
+				}
+			}
 		}
 		else
 		{
@@ -174,7 +219,7 @@ struct encoder : info
 				uint8_t* out = ctx.buffer().template advance<IE>(len); //value
 				//*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
 				put_bytes(ie.get_encoded(), out, len); //value
-				CODEC_TRACE("INT[%s]=%d %u bytes: %s", name<IE>(), ie.get_encoded(), len, ctx.buffer().toString());
+				CODEC_TRACE("INT[%s]=%lld %u bytes: %s", name<IE>(), (long long)ie.get_encoded(), len, ctx.buffer().toString());
 			}
 			else if constexpr (std::is_floating_point_v<value_type>)
 			{
@@ -214,7 +259,6 @@ struct encoder : info
 #ifndef UNIT_TEST
 private:
 #endif
-
 	template <class IE>
 	void ber_length(std::size_t len)
 	{
@@ -240,59 +284,48 @@ private:
 		}
 	}
 
-	template <std::size_t NUM_BYTES, typename VALUE>
-	static constexpr void put_byte(uint8_t*, VALUE const) { }
+	template <std::size_t NUM_BYTES, typename T>
+	static constexpr void put_byte(uint8_t*, T const) { }
 
-	template <std::size_t NUM_BYTES, typename VALUE, std::size_t OFS, std::size_t... Is>
-	static void put_byte(uint8_t* output, VALUE const value)
+	template <std::size_t NUM_BYTES, typename T, std::size_t OFS, std::size_t... Is>
+	static void put_byte(uint8_t* output, T const value)
 	{
-		output[OFS] = static_cast<uint8_t>(value >> ((NUM_BYTES - OFS - 1) << 3));
-		put_byte<NUM_BYTES, VALUE, Is...>(output, value);
+		output[OFS] = uint8_t(value >> ((NUM_BYTES - OFS - 1) << 3));
+		put_byte<NUM_BYTES, T, Is...>(output, value);
 	}
 
-	template<std::size_t NUM_BYTES, typename VALUE, std::size_t... Is>
-	static void put_bytes_impl(uint8_t* output, VALUE const value, std::index_sequence<Is...>)
+	template<std::size_t NUM_BYTES, typename T, std::size_t... Is>
+	static void put_bytes_impl(uint8_t* output, T const value, std::index_sequence<Is...>)
 	{
-		put_byte<NUM_BYTES, VALUE, Is...>(output, value);
+		put_byte<NUM_BYTES, T, Is...>(output, value);
+	}
+
+	template <std::size_t NUM_BYTES>
+	static void put_bytes(std::size_t value, uint8_t* output)
+	{
+		put_bytes_impl<NUM_BYTES>(output, value, std::make_index_sequence<NUM_BYTES>{});
 	}
 
 	template <class IE>
 	static void put_bytes(IE const& ie, uint8_t* output)
 	{
-		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
-		put_bytes_impl<NUM_BYTES>(output, ie.get_encoded(), std::make_index_sequence<NUM_BYTES>{});
+		put_bytes<bits_to_bytes(IE::traits::bits)>(ie.get_encoded(), output);
 	}
 
 	template <typename T>
-	static void put_bytes(T value, uint8_t* output, uint8_t num_bytes)
+	static void put_bytes(T const value, uint8_t* output, uint8_t num_bytes)
 	{
 		switch (num_bytes)
 		{
-		case 1:
-			output[0] = static_cast<uint8_t>(value);
-			break;
-		case 2:
-			output[0] = static_cast<uint8_t>(value >> 8);
-			output[1] = static_cast<uint8_t>(value);
-			break;
-		case 3:
-			output[0] = static_cast<uint8_t>(value >> 16);
-			output[1] = static_cast<uint8_t>(value >> 8);
-			output[2] = static_cast<uint8_t>(value);
-			break;
-		case 4:
-			output[0] = static_cast<uint8_t>(value >> 24);
-			output[1] = static_cast<uint8_t>(value >> 16);
-			output[2] = static_cast<uint8_t>(value >> 8);
-			output[3] = static_cast<uint8_t>(value);
-			break;
-			//TODO: template to support char/short/int/long...
-		default:
-			for (int s = (num_bytes - 1) * 8; s >= 0; s -= 8)
-			{
-				*output++ = static_cast<uint8_t>(value >> s);
-			}
-			break;
+		case 1: put_bytes<1>(value, output); break;
+		case 2: if constexpr (sizeof(T) >= 2) { put_bytes<2>(value, output); break; }
+		case 3: if constexpr (sizeof(T) >= 3) { put_bytes<3>(value, output); break; }
+		case 4: if constexpr (sizeof(T) >= 4) { put_bytes<4>(value, output); break; }
+		case 5: if constexpr (sizeof(T) >= 5) { put_bytes<5>(value, output); break; }
+		case 6: if constexpr (sizeof(T) >= 6) { put_bytes<6>(value, output); break; }
+		case 7: if constexpr (sizeof(T) >= 7) { put_bytes<7>(value, output); break; }
+		case 8: if constexpr (sizeof(T) >= 8) { put_bytes<8>(value, output); break; }
+		default: MED_THROW_EXCEPTION(invalid_value, __FUNCTION__, num_bytes)
 		}
 	}
 };

@@ -184,7 +184,7 @@ struct seq_dec
 						++count;
 					}
 
-					check_arity(decoder, ie, count);
+					check_arity(decoder, ie);
 				}
 			}
 		}

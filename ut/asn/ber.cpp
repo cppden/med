@@ -4,9 +4,9 @@
 
 #include "asn/ids.hpp"
 #include "asn/asn.hpp"
-#include "asn/ber/length.hpp"
-#include "asn/ber/encoder.hpp"
-#include "asn/ber/decoder.hpp"
+#include "asn/ber/ber_length.hpp"
+#include "asn/ber/ber_encoder.hpp"
+#include "asn/ber/ber_decoder.hpp"
 
 using namespace std::literals;
 
@@ -244,30 +244,30 @@ TEST(asn_ber, len_decode)
 	EXPECT_EQ(333, dec_len({0x82, 0x01, 0x4D}));
 }
 
-TEST(asn_ber, identifier)
+TEST(asn_ber, tag)
 {
 	using tv1 = med::asn::ber::tag_value<med::asn::traits<1>, false>;
-	static_assert(tv1::value() == 0b00000001);
+	static_assert(tv1::value == 0b00000001);
 	using tv30 = med::asn::ber::tag_value<med::asn::traits<30, med::asn::tg_class::PRIVATE>, true>;
-	static_assert(tv30::value() == 0b11111110);
+	static_assert(tv30::value == 0b11111110);
 	using tv5bit = med::asn::ber::tag_value<med::asn::traits<0b11111>, false>;
-	static_assert(tv5bit::value() == 0b00011111'00011111);
+	static_assert(tv5bit::value == 0b00011111'00011111);
 	using tv7bit = med::asn::ber::tag_value<med::asn::traits<0b1111111>, false>;
-	static_assert(tv7bit::value() == 0b00011111'01111111);
+	static_assert(tv7bit::value == 0b00011111'01111111);
 	using tv8bit = med::asn::ber::tag_value<med::asn::traits<0b11111111>, false>;
-	static_assert(tv8bit::value() == 0b00011111'10000001'01111111);
+	static_assert(tv8bit::value == 0b00011111'10000001'01111111);
 	using tv14bit = med::asn::ber::tag_value<med::asn::traits<0b111111'11111111>, false>;
-	static_assert(tv14bit::value() == 0b00011111'11111111'01111111);
+	static_assert(tv14bit::value == 0b00011111'11111111'01111111);
 	using tv16bit = med::asn::ber::tag_value<med::asn::traits<0b11111111'11111111>, false>;
-	static_assert(tv16bit::value() == 0b00011111'10000011'11111111'01111111);
+	static_assert(tv16bit::value == 0b00011111'10000011'11111111'01111111);
 	using tv21bit = med::asn::ber::tag_value<med::asn::traits<0b11111'11111111'11111111>, false>;
-	static_assert(tv21bit::value() == 0b00011111'11111111'11111111'01111111);
+	static_assert(tv21bit::value == 0b00011111'11111111'11111111'01111111);
 	using tv24bit = med::asn::ber::tag_value<med::asn::traits<0b11111111'11111111'11111111>, false>;
-	static_assert(tv24bit::value() == 0b00011111'10000111'11111111'11111111'01111111);
+	static_assert(tv24bit::value == 0b00011111'10000111'11111111'11111111'01111111);
 	using tv28bit = med::asn::ber::tag_value<med::asn::traits<0b1111'11111111'11111111'11111111>, false>;
-	static_assert(tv28bit::value() == 0b00011111'11111111'11111111'11111111'01111111);
+	static_assert(tv28bit::value == 0b00011111'11111111'11111111'11111111'01111111);
 	using tv32bit = med::asn::ber::tag_value<med::asn::traits<0b11111111'11111111'11111111'11111111>, false>;
-	static_assert(tv32bit::value() == 0b00011111'10001111'11111111'11111111'11111111'01111111);
+	static_assert(tv32bit::value == 0b00011111'10001111'11111111'11111111'11111111'01111111);
 }
 
 template <class IE>
@@ -368,18 +368,18 @@ TEST(asn_ber, prefixed_boolean)
 		Value ::= [1024] BOOLEAN
 	END
 	*/
-//	using boolean = med::asn::boolean_t<med::asn::traits<1024, med::asn::tg_class::CONTEXT_SPECIFIC>>;
+	using boolean = med::asn::boolean_t<med::asn::traits<1024, med::asn::tg_class::CONTEXT_SPECIFIC>>;
 
 	//Value ::= TRUE
-//	EXPECT_EQ("9F 88 00 01 FF "s, encoded<boolean>(true));
+	EXPECT_EQ("9F 88 00 01 FF "s, encoded<boolean>(true));
 	//Value ::= FALSE
-//	EXPECT_EQ("9F 88 00 01 00 "s, encoded<boolean>(false));
+	EXPECT_EQ("9F 88 00 01 00 "s, encoded<boolean>(false));
 
 #if 1
 	/*
 	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
 	BEGIN
-		Value ::= [1024] EXPLICIT [100] EXPLICIT [APPLICATION 200]
+		Value ::= [1024] EXPLICIT [100] EXPLICIT [APPLICATION 200] BOOLEAN
 	END
 	*/
 	using boolean3 = med::asn::boolean_t<
@@ -730,8 +730,9 @@ TEST(asn_ber, set_of)
 	EXPECT_EQ("31 0F 02 01 01 02 01 02 02 01 03 02 01 04 02 01 05 "s, encoded(s));
 }
 
-#if 1
 //8.13 Encoding of a choice value
+namespace ab {
+
 /*
 World-Schema DEFINITIONS AUTOMATIC TAGS ::=
 BEGIN
@@ -742,7 +743,6 @@ BEGIN
 	}
 END
 */
-namespace ab {
 struct one : med::asn::octet_string_t<med::asn::traits<0, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 struct two : med::asn::value_t<int, med::asn::traits<1, med::asn::tg_class::CONTEXT_SPECIFIC>> {};
 
@@ -752,7 +752,35 @@ struct Choice : med::asn::choice<
 >
 {};
 
+/*
+World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+BEGIN
+	PChoice ::= CHOICE
+	{
+		pone [1024] EXPLICIT [512] EXPLICIT [APPLICATION 1] INTEGER,
+		ptwo [1] EXPLICIT [APPLICATION 1024] INTEGER
+	}
+END
+*/
+using pone = med::asn::value_t<int,
+	med::asn::traits<1024, med::asn::tg_class::CONTEXT_SPECIFIC>,
+	med::asn::traits<512, med::asn::tg_class::CONTEXT_SPECIFIC>,
+	med::asn::traits<1, med::asn::tg_class::APPLICATION>
+>;
+using ptwo = med::asn::value_t<int,
+	med::asn::traits<1, med::asn::tg_class::CONTEXT_SPECIFIC>,
+	med::asn::traits<1024, med::asn::tg_class::APPLICATION>
+>;
+
+struct PChoice : med::asn::choice<
+	O<pone>,
+	O<ptwo>
+>
+{};
+
 }
+
+#if 1
 TEST(asn_ber, choice)
 {
 	ab::Choice s;
@@ -768,16 +796,121 @@ TEST(asn_ber, choice)
 }
 #endif
 
+#if 0 //!TODO: implement if needed
+TEST(asn_ber, choice_prefixed)
+{
+	ab::PChoice s;
+	//value PChoice ::= pone 1
+	s.ref<ab::pone>().set(1);
+	EXPECT_EQ("BF 88 00 07 BF 84 00 03 41 01 01 "s, encoded(s));
+
+	s.clear();
+	//value PChoice ::= ptwo 7
+	s.ref<ab::two>().set(7);
+	EXPECT_EQ("A1 05 5F 88 00 01 07 "s, encoded(s));
+}
+#endif
+
 //8.14 Encoding of a value of a prefixed type
 //covered within value tests above
 
 //8.15 Encoding of an open type
 //8.16 Encoding of an instance-of value
+
 //8.17 Encoding of a value of the embedded-pdv type
 //8.18 Encoding of a value of the external type
+
 //8.19 Encoding of an object identifier value
+#if 1
+TEST(asn_ber, oid)
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+	BEGIN
+	  Oid ::= OBJECT IDENTIFIER
+	END
+	*/
+	using oid = med::asn::object_identifier<med::max<3>>;
+
+	//value Oid ::= {1 2}
+	oid v;
+	v.root(1, 2);
+	EXPECT_EQ("06 01 2A "s, encoded(v));
+
+	//value Oid ::= {2 47}
+	//06017F
+	//value Oid ::= {2 16303}
+	//0602FF7F
+
+	//value Oid ::= {2 2097071}
+	v.clear();
+	v.root(2, 2097071);
+	EXPECT_EQ("06 03 FF FF 7F "s, encoded(v));
+
+	//value Oid ::= {2 268435375}
+	v.clear();
+	v.root(2, 268435375);
+	EXPECT_EQ("06 04 FF FF FF 7F "s, encoded(v));
+
+	//value Oid ::= {2 34359738287}
+	v.clear();
+	v.root(2, 34359738287); //0x7'FFFF'FFFF
+	EXPECT_EQ("06 05 FF FF FF FF 7F "s, encoded(v));
+
+	//value Oid ::= {2 4398046511023}
+	v.clear();
+	v.root(2, 4398046511023); //0x3FF'FFFF'FFFF
+	EXPECT_EQ("06 06 FF FF FF FF FF 7F "s, encoded(v));
+
+	//value Oid ::= {2 72057594037927855}
+	v.clear();
+	v.root(2, 72057594037927855); //0xFF'FFFF'FFFF'FFFF
+	EXPECT_EQ("06 08 FF FF FF FF FF FF FF 7F "s, encoded(v));
+
+	//value Oid ::= {joint-iso-itu-t 999 3} //joint-iso-itu-t = 2
+	v.clear();
+	v.root(2, 999);
+	v.push_back()->set(3);
+	EXPECT_EQ("06 03 88 37 03 "s, encoded(v));
+}
+#endif
+
 
 //8.20 Encoding of a relative object identifier value
+#if 1
+TEST(asn_ber, relative_oid)
+{
+	/*
+	World-Schema DEFINITIONS AUTOMATIC TAGS ::=
+	BEGIN
+	  Roid ::= RELATIVE-OID
+	END
+	*/
+	using roid = med::asn::relative_oid<med::max<3>>;
+
+	//value Oid ::= {1024 7}
+	roid v;
+	v.push_back()->set(1024);
+	v.push_back()->set(7);
+	EXPECT_EQ("0D 03 88 00 07 "s, encoded(v));
+
+	//value Roid ::= {8571 3 2}
+	v.clear();
+	v.push_back()->set(8571);
+	v.push_back()->set(3);
+	v.push_back()->set(2);
+	EXPECT_EQ("0D 04 C2 7B 03 02 "s, encoded(v));
+
+	//value Roid ::= {2}
+	v.clear();
+	v.push_back()->set(2);
+	EXPECT_EQ("0D 01 02 "s, encoded(v));
+}
+#endif
+//
+//
+
+
 //8.21 Encoding of an OID internationalized resource identifier value
 //8.22 Encoding of a relative OID internationalized resource identifier value
 //8.23 Encoding for values of the restricted character string types

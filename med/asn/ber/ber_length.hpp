@@ -59,17 +59,23 @@ constexpr auto least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_
 	{
 		if constexpr (sizeof(T) <= sizeof(int))
 		{
-			return bits_in_byte * sizeof(int) - (x ? __builtin_clz(x) : bits_in_byte * sizeof(int) - 1);
+			return x ? (bits_in_byte * sizeof(int) - __builtin_clz(x)) : 1;
 		}
 		else if constexpr (sizeof(T) <= sizeof(long))
 		{
-			return bits_in_byte * sizeof(long) - (x ? __builtin_clzl(x) : bits_in_byte * sizeof(long) - 1);
+			return x ? (bits_in_byte * sizeof(long) - __builtin_clzl(x)) : 1;
 		}
 		else
 		{
-			return bits_in_byte * sizeof(long long) - (x ? __builtin_clzll(x) : bits_in_byte * sizeof(long long) - 1);
+			return x ? (bits_in_byte * sizeof(long long) - __builtin_clzll(x)) : 1;
 		}
 	}
+}
+
+template <typename T>
+constexpr uint8_t least_bytes_encoded(T value)
+{
+	return (least_bits<T>(value) + 6) / 7;
 }
 
 } //end: namespace detail

@@ -86,12 +86,9 @@ public:
 		field_value* next;
 	};
 
-	enum bounds : std::size_t
-	{
-		min     = MIN,
-		max     = CMAX::value,
-		inplace = detail::get_inplace<MIN, CMAX>::value,
-	};
+	static constexpr std::size_t min = MIN;
+	static constexpr std::size_t max = CMAX::value;
+	static constexpr std::size_t inplace = detail::get_inplace<MIN, CMAX>::value;
 
 	multi_field() = default;
 
@@ -134,6 +131,8 @@ public:
 	void clear()                                            { m_count = 0; }
 	bool is_set() const                                     { return not empty() && m_fields[0].value.is_set(); }
 
+	field_type* first()                                     { return empty() ? nullptr : &m_fields[0].value; }
+	field_type* last()                                      { return empty() ? nullptr : &m_tail->value; }
 	field_type const* first() const                         { return empty() ? nullptr : &m_fields[0].value; }
 	field_type const* last() const                          { return empty() ? nullptr : &m_tail->value; }
 

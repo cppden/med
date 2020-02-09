@@ -11,9 +11,11 @@ Distributed under the MIT License
 #include "debug.hpp"
 #include "name.hpp"
 #include "state.hpp"
+#include "count.hpp"
 #include "octet_string.hpp"
-#include "asn/ber/tag.hpp"
-#include "asn/ber/info.hpp"
+#include "ber_tag.hpp"
+#include "ber_info.hpp"
+#include "../asn.hpp"
 
 namespace med::asn::ber {
 
@@ -75,27 +77,30 @@ struct decoder : info
 	//IE_NULL
 	template <class IE> constexpr void operator() (IE&, IE_NULL) const
 	{
-//		if (uint8_t const length = ctx.buffer().template pop<IE>())
-//		{
-//			MED_THROW_EXCEPTION(invalid_value, name<IE>(), length, ctx.buffer())
-//		}
 	}
 
 	//IE_VALUE
 	template <class IE> void operator() (IE& ie, IE_VALUE)
 	{
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (is_seqof_v<IE>)
 		{
-			CODEC_TRACE("[%s]*[%zu..%zu]", name<IE>(), IE::min, IE::max);
-			//std::size_t count = 0;
-			while ((*this)(CHECK_STATE{}, ie))
+			CODEC_TRACE("SEQOF[%s] *[%zu..%zu]", name<IE>(), IE::min, IE::max);
+			while (this->operator()(CHECK_STATE{}, ie))
 			{
 				auto* field = ie.push_back(*this);
 				med::decode(*this, *field);
-				//++count;
 			}
-			//check_arity(decoder, ie, count);
-
+			check_arity(*this, ie);
+		}
+		else if constexpr (is_oid_v<IE>)
+		{
+			CODEC_TRACE("OID[%s] *[%zu..%zu]", name<IE>(), IE::min, IE::max);
+			while (this->operator()(CHECK_STATE{}, ie))
+			{
+				auto* field = ie.push_back(*this);
+				this->operator()(*field, IE_VALUE{});
+			}
+			check_arity(*this, ie);
 		}
 		else
 		{
@@ -219,19 +224,14 @@ private:
 		switch (num_bytes)
 		{
 		case 1: return signextend<T, 8>(input[0]);
-		case 2: return signextend<T, 16>((T(input[0]) <<  8) | (T(input[1])) );
-		case 3: return signextend<T, 24>((T(input[0]) << 16) | (T(input[1]) <<  8) | (T(input[2])) );
-		case 4: return signextend<T, 32>((T(input[0]) << 24) | (T(input[1]) << 16) | (T(input[2]) << 8) | (T(input[3])) );
-//		case 5: return signextend<T, 40>((T(input[0]) << 32) | (T(input[1]) << 24) | (T(input[2]) << 16) | (T(input[3])<< 8) | (T(input[4])) );
-//		case 6: return signextend<T, 48>((T(input[0]) << 40) | (T(input[1]) << 32) | (T(input[2]) << 24) | (T(input[3])<<16) | (T(input[4])<< 8) | (T(input[5])) );
-//		case 7: return signextend<T, 56>((T(input[0]) << 48) | (T(input[1]) << 40) | (T(input[2]) << 32) | (T(input[3])<<24) | (T(input[4])<<16) | (T(input[5])<< 8) | (T(input[6])) );
-//		case 8: return signextend<T, 64>((T(input[0]) << 56) | (T(input[1]) << 48) | (T(input[2]) << 40) | (T(input[3])<<32) | (T(input[4])<<24) | (T(input[5])<<16) | (T(input[6])<<8) | (T(input[7])));
-		default:
-			{
-				std::size_t value = *input++;
-				while (--num_bytes) { value <<= 8; value |= *input++; }
-				return value;
-			}
+		case 2: if constexpr (sizeof(T) >= 2) return signextend<T, 16>((T(input[0]) <<  8) | (T(input[1])) );
+		case 3: if constexpr (sizeof(T) >= 3) return signextend<T, 24>((T(input[0]) << 16) | (T(input[1]) <<  8) | (T(input[2])) );
+		case 4: if constexpr (sizeof(T) >= 4) return signextend<T, 32>((T(input[0]) << 24) | (T(input[1]) << 16) | (T(input[2]) << 8) | (T(input[3])) );
+		case 5: if constexpr (sizeof(T) >= 5) return signextend<T, 40>((T(input[0]) << 32) | (T(input[1]) << 24) | (T(input[2]) << 16) | (T(input[3])<< 8) | (T(input[4])) );
+		case 6: if constexpr (sizeof(T) >= 6) return signextend<T, 48>((T(input[0]) << 40) | (T(input[1]) << 32) | (T(input[2]) << 24) | (T(input[3])<<16) | (T(input[4])<< 8) | (T(input[5])) );
+		case 7: if constexpr (sizeof(T) >= 7) return signextend<T, 56>((T(input[0]) << 48) | (T(input[1]) << 40) | (T(input[2]) << 32) | (T(input[3])<<24) | (T(input[4])<<16) | (T(input[5])<< 8) | (T(input[6])) );
+		case 8: if constexpr (sizeof(T) >= 8) return signextend<T, 64>((T(input[0]) << 56) | (T(input[1]) << 48) | (T(input[2]) << 40) | (T(input[3])<<32) | (T(input[4])<<24) | (T(input[5])<<16) | (T(input[6])<<8) | (T(input[7])));
+		default: MED_THROW_EXCEPTION(invalid_value, __FUNCTION__, num_bytes)
 		}
 	}
 };

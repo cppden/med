@@ -86,22 +86,15 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 		else //data itself
 		{
 			using ie_type = typename IE::ie_type;
-			//CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
+			CODEC_TRACE("%s[%.30s] multi=%d: %s", __FUNCTION__, class_name<IE>(), is_multi_field_v<IE>, class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
 				len = ie.calc_length(encoder);
 				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 			}
-			else if constexpr (is_multi_field_v<IE>)
-			{
-				for (auto& field : ie)
-				{
-					if (field.is_set())
-					{
-						len += field_length(field, encoder);
-					}
-				}
-			}
+			//NOTE: can't unroll multi-field here because for ASN.1 the OID and SEQENCE-OF
+			//are based on multi-field but need different length calculation thus it's passed
+			//directly to encoder
 			else
 			{
 				len = encoder(GET_LENGTH{}, ie);
@@ -148,9 +141,8 @@ constexpr void length_to_value(FIELD& field, std::size_t len)
 		{
 			MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len)
 		}
+		CODEC_TRACE("L=%zXh [%s]:", len, name<FIELD>());
 	}
-
-	CODEC_TRACE("L=%zXh [%s]:", len, name<FIELD>());
 
 	//set the length IE with the value
 	if constexpr (detail::has_set_length<FIELD>::value)

@@ -75,14 +75,7 @@ constexpr void check_arity(FUNC& func, IE const& ie, std::size_t count)
 template <class FUNC, class IE>
 constexpr void check_arity(FUNC& func, IE const& ie)
 {
-	if constexpr (is_optional_v<IE>)
-	{
-		if (ie.count()) { detail::check_n_arity(func, ie, ie.count()); }
-	}
-	else
-	{
-		detail::check_n_arity(func, ie, ie.count());
-	}
+	check_arity(func, ie, ie.count());
 }
 
 // user-provided functor to etract field count

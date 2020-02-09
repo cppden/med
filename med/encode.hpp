@@ -248,7 +248,7 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
-				//CODEC_TRACE("LV=? [%s]", name<IE>());
+				//CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
 				auto const len = sl::ie_length<mi_rest>(ie, encoder);
 				//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
 				encode_len<typename mi::length_type>(encoder, len);

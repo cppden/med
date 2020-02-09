@@ -1,10 +1,10 @@
 #pragma once
 #include <utility>
 
-#include "meta/typelist.hpp"
 #include "value.hpp"
-#include "../../length.hpp"
-#include "asn/ber/tag.hpp"
+#include "field.hpp"
+#include "length.hpp"
+#include "ber_tag.hpp"
 
 namespace med::asn::ber {
 
@@ -15,7 +15,7 @@ private:
 	struct make_tag
 	{
 		template <class V>
-		using tag_of = med::value< med::fixed< V::value(), med::bytes<V::num_bytes()> > >;
+		using tag_of = med::value< med::fixed< V::value, med::bytes<V::num_bytes> > >;
 		using type = mi< mik::TAG, tag_of<tag_value<T, CONSTRUCTED::value>> >;
 	};
 
@@ -49,9 +49,15 @@ b) the contents octets shall be the same as the contents octets of the base enco
 		{
 			constexpr auto get_tags = []
 			{
+				/* Rec. ITU-T X.690 (08/2015)
+				8.9.1 The encoding of a sequence value shall be constructed.
+				8.10.1 The encoding of a sequence-of value shall be constructed.
+				8.11.1 The encoding of a set value shall be constructed.
+				8.12.1 The encoding of a set-of value shall be constructed.
+				*/
 				constexpr bool is_constructed =
 						std::is_base_of_v<CONTAINER, typename IE::ie_type> //sequence, set
-						|| is_multi_field_v<IE>; //sequence-of, set-of
+						|| is_seqof_v<IE>; //sequence-of, set-of
 				if constexpr (is_constructed)
 				{
 					return meta::wrap<meta::transform_t<asn_traits, make_tag>>{};
