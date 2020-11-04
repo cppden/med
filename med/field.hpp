@@ -90,6 +90,8 @@ public:
 	static constexpr std::size_t max = CMAX::value;
 	static constexpr std::size_t inplace = detail::get_inplace<MIN, CMAX>::value;
 
+	multi_field(multi_field const&) = delete;
+	multi_field& operator= (multi_field const&) = delete;
 	multi_field() = default;
 
 private:
@@ -119,89 +121,99 @@ private:
 
 public:
 	using iterator = iter_type<field_value>;
-	iterator begin()                                        { return iterator{empty() ? nullptr : m_fields}; }
+	iterator begin()                                        { return iterator{m_head}; }
 	iterator end()                                          { return iterator{}; }
 	using const_iterator = iter_type<field_value const>;
-	const_iterator begin() const                            { return const_iterator{empty() ? nullptr : m_fields}; }
+	const_iterator begin() const                            { return const_iterator{m_head}; }
 	const_iterator end() const                              { return const_iterator{}; }
 
 	std::size_t count() const                               { return m_count; }
-	bool empty() const                                      { return 0 == m_count; }
+	bool empty() const                                      { return nullptr == m_head; }
 	//NOTE: clear won't return items allocated from external storage, use reset there
-	void clear()                                            { m_count = 0; }
-	bool is_set() const                                     { return not empty() && m_fields[0].value.is_set(); }
+	void clear()
+	{
+		for (auto& v : *this) { v.clear(); }
+		m_head = m_tail = nullptr;
+		m_count = 0;
+	}
+	bool is_set() const                                     { return not empty() && m_head->value.is_set(); }
 
-	field_type* first()                                     { return empty() ? nullptr : &m_fields[0].value; }
+	field_type* first()                                     { return empty() ? nullptr : &m_head->value; }
 	field_type* last()                                      { return empty() ? nullptr : &m_tail->value; }
-	field_type const* first() const                         { return empty() ? nullptr : &m_fields[0].value; }
-	field_type const* last() const                          { return empty() ? nullptr : &m_tail->value; }
+	field_type const* first() const                         { return const_cast<multi_field*>(this)->first(); }
+	field_type const* last() const                          { return const_cast<multi_field*>(this)->last(); }
 
 	//uses inplace storage only
-	field_type* push_back()
-	{
-		if (count() < inplace)
-		{
-			return inplace_push_back();
-		}
-		MED_THROW_EXCEPTION(out_of_memory, name<field_type>(), sizeof(field_type))
-	}
+	field_type* push_back()                                 { return append(get_free_inplace()); }
 
 	//uses inplace or external storage
 	//NOTE: check for max is done during encode/decode
 	template <class CTX> field_type* push_back(CTX& ctx)
 	{
-		//try inplace 1st then external
-		if (count() < inplace)
-		{
-			return inplace_push_back();
-		}
-		else
-		{
-			auto* piv = get_allocator_ptr(ctx)->template allocate<field_value>();
-			++m_count;
-			m_tail->next = piv;
-			piv->next = nullptr;
-			m_tail = piv;
-			return &m_tail->value;
-		}
+		auto* pf = get_free_inplace(); //try inplace 1st then external
+		return append(pf ? pf : get_allocator_ptr(ctx)->template allocate<field_value>());
 	}
 
 	//won't recover space if external storage was used
 	void pop_back()
 	{
-		if (auto const num = count())
+		if (auto* prev = m_head)
 		{
 			//clear the last
+			--m_count;
 			m_tail->value.clear();
+
 			//locate previous before last
-			auto* prev = m_fields;
-			for (std::size_t i = 2; i < num; ++i)
+			for (std::size_t i = 1; i < count(); ++i)
 			{
+				CODEC_TRACE("%s: %s[%zu]=%p", __FUNCTION__, name<field_type>(), i, (void*)prev->next);
 				prev = prev->next;
 			}
-			//CODEC_TRACE("%s: %s[%zu]=%p", __FUNCTION__, name<field_type>(), num-1, (void*)prev->next);
+
+			if (count())
+			{
+				prev->next->value.clear();
+				m_tail = (count()) ? prev : nullptr;
+			}
+			else
+			{
+				m_head = m_tail = nullptr;
+			}
+
 			prev->next = nullptr;
-			m_tail = (--m_count) ? prev : nullptr;
 		}
 	}
 
 private:
-	//checks are done by caller
-	field_type* inplace_push_back()
+	//find unset inplace slot
+	field_value* get_free_inplace()
 	{
-		auto* piv = m_fields + count();
-		//CODEC_TRACE("%s: inplace %s[%zu]=%p", __FUNCTION__, name<field_type>(), count(), (void*)piv);
-		if (m_count++) { m_tail->next = piv; }
-		piv->next = nullptr;
-		m_tail = piv;
+		if (count() < inplace)
+		{
+			for (auto& f : m_fields)
+			{
+				CODEC_TRACE("%s: %s=%p[%c]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-');
+				if (!f.value.is_set()) return &f;
+			}
+		}
+		return nullptr;
+	}
+
+	field_type* append(field_value* pf)
+	{
+		if (!pf) { MED_THROW_EXCEPTION(out_of_memory, name<field_type>(), sizeof(field_type)) }
+
+		CODEC_TRACE("%s(%s=%p) count=%zu", __FUNCTION__, name<field_type>(), (void*)pf, count());
+		if (m_count++) { m_tail->next = pf; }
+		else { m_head = m_tail = pf; }
+		pf->next = nullptr;
+		m_tail = pf;
 		return &m_tail->value;
 	}
 
-	multi_field(multi_field const&) = delete;
-	multi_field& operator= (multi_field const&) = delete;
-
 	field_value  m_fields[inplace];
 	std::size_t  m_count {0};
+	field_value* m_head {nullptr};
 	field_value* m_tail {nullptr};
 };
 

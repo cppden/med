@@ -787,7 +787,7 @@ TEST(decode, mseq_fail_length)
 			, 11, 't', 'e', 's', 't', 'e', 's', 't', 'e', 's', 't', 'e'
 		};
 		ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
-		EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::overflow);
+		EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::invalid_value);
 	}
 }
 
@@ -844,22 +844,6 @@ TEST(encode, mseq_open)
 	};
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
-}
-
-TEST(encode, alloc_fail)
-{
-	uint8_t buffer[1];
-	med::encoder_context<> ctx{ buffer };
-
-	MSEQ_OPEN msg;
-
-	//check the inplace storage for unlimited field has only one slot
-	auto* p = msg.push_back<FLD_IP>();
-	ASSERT_NE(nullptr, p);
-	p->set(1);
-
-	ASSERT_THROW(msg.push_back<FLD_IP>(), med::out_of_memory);
-	ASSERT_THROW(msg.push_back<FLD_IP>(ctx), med::out_of_memory);
 }
 
 TEST(decode, alloc_fail)

@@ -41,4 +41,7 @@ build/
 *.includes
 *.files
 *.user
+*.cflags
+*.cxxflags
+
 

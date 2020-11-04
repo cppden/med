@@ -15,7 +15,8 @@ struct U24 : med::value<med::bytes<3>> {};
 struct U32 : med::value<uint32_t> {};
 
 struct M1 : med::sequence<
-	M< T<1>, U8, med::max<3>>
+	M< T<1>, U8, med::max<3>>,
+	O< T<2>, U16, med::inf>
 >{};
 
 } //end: namespace multi
@@ -25,26 +26,22 @@ TEST(multi, pop_back)
 	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };
 
-	multi::M1 msg;
-	auto const& mie = msg.get<multi::U8>();
-	msg.push_back<multi::U8>()->set(1);
-	EXPECT_EQ(1, mie.count());
-	EXPECT_EQ(1, std::distance(mie.begin(), mie.end()));
-	msg.pop_back<multi::U8>();
+	using namespace multi;
+	M1 msg;
+	auto const& mie = msg.get<U8>();
+	msg.push_back<U8>()->set(1);
+	msg.pop_back<U8>();
+	EXPECT_TRUE(mie.empty());
 	EXPECT_EQ(0, mie.count());
-	EXPECT_EQ(0, std::distance(mie.begin(), mie.end()));
-	msg.push_back<multi::U8>()->set(1);
-	msg.push_back<multi::U8>()->set(2);
-	EXPECT_EQ(2, mie.count());
-	EXPECT_EQ(2, std::distance(mie.begin(), mie.end()));
-	msg.pop_back<multi::U8>();
-	EXPECT_EQ(1, mie.count());
-	EXPECT_EQ(1, std::distance(mie.begin(), mie.end()));
-	msg.push_back<multi::U8>()->set(2);
-	msg.push_back<multi::U8>()->set(3);
+
+	msg.push_back<U8>()->set(1);
+	msg.push_back<U8>()->set(2);
+	msg.push_back<U8>()->set(3);
+	EXPECT_FALSE(mie.empty());
 	EXPECT_EQ(3, mie.count());
 	EXPECT_EQ(3, std::distance(mie.begin(), mie.end()));
-	msg.pop_back<multi::U8>();
+
+	msg.pop_back<U8>();
 
 	encode(med::octet_encoder{ctx}, msg);
 
@@ -54,5 +51,45 @@ TEST(multi, pop_back)
 	};
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
+}
+
+TEST(multi, push_back)
+{
+	uint8_t buffer[1];
+	med::encoder_context<> ctx{ buffer };
+
+	using namespace multi;
+	M1 msg;
+
+	//check the inplace storage for unlimited field has only one slot
+	auto* p = msg.push_back<U16>();
+	ASSERT_NE(nullptr, p);
+	p->set(1);
+
+	ASSERT_THROW(msg.push_back<U16>(), med::out_of_memory);
+	ASSERT_THROW(msg.push_back<U16>(ctx), med::out_of_memory);
+}
+
+TEST(multi, clear)
+{
+	using namespace multi;
+	M1 msg;
+
+	auto const& mie = msg.get<U8>();
+	EXPECT_TRUE(mie.empty());
+	msg.push_back<U8>()->set(1);
+	msg.push_back<U8>()->set(2);
+	msg.push_back<U8>()->set(3);
+	EXPECT_FALSE(mie.empty());
+	EXPECT_EQ(3, mie.count());
+	EXPECT_EQ(3, std::distance(mie.begin(), mie.end()));
+
+	msg.clear<U8>();
+	msg.push_back<U8>()->set(1);
+	msg.push_back<U8>()->set(2);
+	msg.push_back<U8>()->set(3);
+	EXPECT_FALSE(mie.empty());
+	EXPECT_EQ(3, mie.count());
+	EXPECT_EQ(3, std::distance(mie.begin(), mie.end()));
 }
 
