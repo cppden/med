@@ -110,11 +110,11 @@ TEST(encode, mset_ok)
 	MSG_MSET& msg = proto.select();
 
 	//mandatory fields
-	msg.push_back<FLD_UC>(ctx)->set(0x11);
-	msg.push_back<FLD_UC>(ctx)->set(0x12);
-	msg.push_back<FLD_U8>(ctx)->set(0x13);
-	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-	msg.push_back<FLD_U16>(ctx)->set(0x35DA);
+	msg.ref<FLD_UC> ().push_back(ctx)->set(0x11);
+	msg.ref<FLD_UC> ().push_back(ctx)->set(0x12);
+	msg.ref<FLD_U8> ().push_back(ctx)->set(0x13);
+	msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
+	msg.ref<FLD_U16>().push_back(ctx)->set(0x35DA);
 
 	encode(med::octet_encoder{ctx}, proto);
 
@@ -130,7 +130,7 @@ TEST(encode, mset_ok)
 
 	//optional fields
 	ctx.reset();
-	msg.push_back<VFLD1>(ctx)->set("test.this");
+	msg.ref<VFLD1>().push_back(ctx)->set("test.this");
 
 	encode(med::octet_encoder{ctx}, proto);
 
@@ -146,12 +146,12 @@ TEST(encode, mset_ok)
 	EXPECT_TRUE(Matches(encoded2, buffer));
 
 	ctx.reset();
-	msg.push_back<FLD_U8>(ctx)->set(0x14);
-	msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
-	msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
-	msg.push_back<FLD_IP>(ctx)->set(0xfee1ABBA);
-	msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
-	msg.push_back<VFLD1>(ctx)->set("test.it");
+	msg.ref<FLD_U8> ().push_back(ctx)->set(0x14);
+	msg.ref<FLD_U24>().push_back(ctx)->set(0xDABEEF);
+	msg.ref<FLD_U24>().push_back(ctx)->set(0x22BEEF);
+	msg.ref<FLD_IP> ().push_back(ctx)->set(0xfee1ABBA);
+	msg.ref<FLD_IP> ().push_back(ctx)->set(0xABBAc001);
+	msg.ref<VFLD1>  ().push_back(ctx)->set("test.it");
 
 	uint8_t const encoded3[] = { 0x14
 		, 0, 0x0b, 0x11
@@ -182,13 +182,13 @@ TEST(encode, mset_fail_arity)
 
 	//arity violation in optional
 	MSG_MSET& msg = proto.select();
-	msg.push_back<FLD_UC>(ctx)->set(0);
-	msg.push_back<FLD_UC>(ctx)->set(0);
-	msg.push_back<FLD_U8>(ctx)->set(0);
-	msg.push_back<FLD_U16>(ctx)->set(0);
+	msg.ref<FLD_UC> ().push_back(ctx)->set(0);
+	msg.ref<FLD_UC> ().push_back(ctx)->set(0);
+	msg.ref<FLD_U8> ().push_back(ctx)->set(0);
+	msg.ref<FLD_U16>().push_back(ctx)->set(0);
 	encode(med::octet_encoder{ctx}, proto);
 
-	msg.push_back<FLD_U24>(ctx)->set(0);
+	msg.ref<FLD_U24>().push_back(ctx)->set(0);
 	EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
 }
 

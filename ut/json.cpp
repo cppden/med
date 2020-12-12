@@ -51,8 +51,8 @@ TEST(json, encode)
 	msg.ref<js::INT>().set(-10);
 	msg.ref<js::UINT>().set(137);
 	msg.ref<js::NUM>().set(3.14159);
-	msg.push_back<js::STR>()->set("one");
-	msg.push_back<js::STR>()->set("two");
+	msg.ref<js::STR>().push_back()->set("one");
+	msg.ref<js::STR>().push_back()->set("two");
 
 	char buffer[1024] = {};
 	med::json::encoder_context ctx{ buffer };

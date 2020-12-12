@@ -312,8 +312,8 @@ TEST(length, placeholder)
 	ctx.reset();
 	{
 		static_assert(msg.arity<U32>() == 2, "");
-		msg.push_back<U32>(ctx)->set(0x01020304);
-		msg.push_back<U32>(ctx)->set(0x05060708);
+		msg.ref<U32>().push_back(ctx)->set(0x01020304);
+		msg.ref<U32>().push_back(ctx)->set(0x05060708);
 
 		encode(med::octet_encoder{ctx}, msg);
 		uint8_t const encoded[] = {
@@ -419,7 +419,7 @@ TEST(length, vlvar)
 
 	for (std::size_t i = 0; i < std::size(data); ++i)
 	{
-		auto* vlvar = msg.push_back<len::VLVAR>();
+		auto* vlvar = msg.ref<len::VLVAR>().push_back();
 		ASSERT_NE(nullptr, vlvar);
 		vlvar->ref<len::VL>().set(i + 1);
 		vlvar->ref<len::VAR>().set(data[i]);
@@ -462,7 +462,7 @@ TEST(length, lvlarr)
 	std::string_view const data[] = {"123"sv, "123456"sv};
 	for (std::size_t i = 0; i < std::size(data); ++i)
 	{
-		auto* vlvar = msg.ref<len::VLARR>().push_back<len::VLVAR>();
+		auto* vlvar = msg.ref<len::VLARR>().ref<len::VLVAR>().push_back();
 		vlvar->ref<len::VL>().set(i + 1);
 		vlvar->ref<len::VAR>().set(data[i]);
 	}
@@ -674,7 +674,7 @@ TEST(length, setter_with_length)
 	msg.ref<SFLD>().ref<U16>().set(0x55AA);
 	for (std::size_t i = 0; i < 7; ++i)
 	{
-		msg.ref<SMFLD>().push_back<U8>()->set(i);
+		msg.ref<SMFLD>().ref<U8>().push_back()->set(i);
 	}
 
 	uint8_t buffer[1024];

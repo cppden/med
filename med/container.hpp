@@ -159,40 +159,26 @@ public:
 	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::field_at<T>>>; }
 
 	template <class FIELD>
-	FIELD& ref()
+	decltype(auto) ref()
 	{
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(!is_multi_field<IE>(), "MULTI-INSTANCE FIELDS ARE WRITTEN VIA PUSH_BACK");
-		return ie;
+		if constexpr (is_multi_field<IE>())
+		{
+			return static_cast<IE&>(ie);
+		}
+		else
+		{
+			return static_cast<FIELD&>(ie);
+		}
 	}
 
 	template <class FIELD>
 	decltype(auto) get() const
 	{
 		auto& ie = m_ies.template as<FIELD>();
-		//using IE = remove_cref_t<decltype(ie)>;
 		return get_field<FIELD>(ie);
-	}
-
-	template <class FIELD, class... ARGS>
-	FIELD* push_back(ARGS&&... args)
-	{
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE WRITTEN VIA ref");
-		return ie.push_back(std::forward<ARGS>(args)...);
-	}
-
-	//TODO: would be nice to recover space from allocator if possible
-	template <class FIELD>
-	void pop_back()
-	{
-		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
-		static_assert(is_multi_field<IE>(), "SINGLE-INSTANCE FIELDS ARE REMOVED VIA clear");
-		ie.pop_back();
 	}
 
 	auto field()                            { return make_accessor(*this); }

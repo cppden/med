@@ -122,16 +122,16 @@ TEST(encode, mseq_ok)
 	//mandatory only
 	MSG_MSEQ& msg = proto.select();
 	static_assert(MSG_MSEQ::arity<FLD_UC>() == 2, "");
-	msg.push_back<FLD_UC>(ctx)->set(37);
-	msg.push_back<FLD_UC>(ctx)->set(38);
-	msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-	msg.push_back<FLD_U16>(ctx)->set(0x35DA);
-	msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
-	msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
-	msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
-	msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+	msg.ref<FLD_UC> ().push_back(ctx)->set(37);
+	msg.ref<FLD_UC> ().push_back(ctx)->set(38);
+	msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
+	msg.ref<FLD_U16>().push_back(ctx)->set(0x35DA);
+	msg.ref<FLD_U24>().push_back(ctx)->set(0xDABEEF);
+	msg.ref<FLD_U24>().push_back(ctx)->set(0x22BEEF);
+	msg.ref<FLD_IP> ().push_back(ctx)->set(0xFee1ABBA);
+	msg.ref<FLD_DW> ().push_back(ctx)->set(0x01020304);
 	{
-		auto* s = msg.push_back<SEQOF_3<0>>();
+		auto* s = msg.ref<SEQOF_3<0>>().push_back();
 		ASSERT_NE(nullptr, s);
 		s->ref<FLD_U8>().set(1);
 		s->ref<FLD_U16>().set(2);
@@ -156,37 +156,27 @@ TEST(encode, mseq_ok)
 	//with more mandatory and optionals
 	ctx.reset();
 
-	msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
-	msg.push_back<FLD_DW>(ctx)->set(0x12345678);
+	msg.ref<FLD_IP>().push_back(ctx)->set(0xABBAc001);
+	msg.ref<FLD_DW>().push_back(ctx)->set(0x12345678);
 
 	msg.ref<FLD_TN>().set(2);
 
 	msg.ref<FLD_CHO>().ref<FLD_U8>().set(33);
 	SEQOF_1& s1 = msg.ref<SEQOF_1>();
-	s1.push_back<FLD_W>(ctx)->set(0x1223);
-	s1.push_back<FLD_W>(ctx)->set(0x3445);
+	s1.ref<FLD_W>().push_back(ctx)->set(0x1223);
+	s1.ref<FLD_W>().push_back(ctx)->set(0x3445);
 
-	SEQOF_2* s2 = msg.push_back<SEQOF_2>(ctx);
+	SEQOF_2* s2 = msg.ref<SEQOF_2>().push_back(ctx);
 	s2->ref<FLD_W>().set(0x1122);
 	s2->ref<FLD_CHO>().ref<FLD_U16>().set(0x3344);
 
-	msg.push_back<SEQOF_2>(ctx)->ref<FLD_W>().set(0x3344);
+	msg.ref<SEQOF_2>().push_back(ctx)->ref<FLD_W>().set(0x3344);
 
 	uint8_t const bcd[] = {0x34, 0x56};
 	msg.ref<FLD_NSCHO>().ref<BCD_1>().set(2, bcd);
 
-	//O< T<0x80>, CNT, SEQOF_3<1>, med::max<3>>, //T[CV]*[0,3]
-//	{
-//		auto* s = msg.push_back<SEQOF_3<1>>(ctx);
-//		s->ref<FLD_U8>().set(7);
-//		s->ref<FLD_U16>().set(0x7654);
-//		s = msg.push_back<SEQOF_3<1>>(ctx);
-//		s->ref<FLD_U8>().set(9);
-//		s->ref<FLD_U16>().set(0x9876);
-//	}
-
-	msg.push_back<VFLD1>(ctx)->set("test.this");
-	msg.push_back<VFLD1>(ctx)->set("test.it");
+	msg.ref<VFLD1>().push_back(ctx)->set("test.this");
+	msg.ref<VFLD1>().push_back(ctx)->set("test.it");
 
 	encode(med::octet_encoder{ctx}, proto);
 
@@ -246,16 +236,16 @@ TEST(encode, mseq_fail_arity)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.push_back<FLD_UC>(ctx)->set(37);
-		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
-		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
-		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
-		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
-		msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
-		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
-		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
-		msg.push_back<VFLD1>(ctx)->set("test.this");
+		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35DA);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0xDABEEF);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0x22BEEF);
+		msg.ref<FLD_IP> ().push_back(ctx)->set(0xFee1ABBA);
+		msg.ref<FLD_IP> ().push_back(ctx)->set(0xABBAc001);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x01020304);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x12345678);
+		msg.ref<VFLD1>  ().push_back(ctx)->set("test.this");
 
 		ctx.reset();
 		EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
@@ -265,16 +255,16 @@ TEST(encode, mseq_fail_arity)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.push_back<FLD_UC>(ctx)->set(37);
-		msg.push_back<FLD_UC>(ctx)->set(38);
-		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
-		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
-		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
-		msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
-		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
-		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
-		msg.push_back<VFLD1>(ctx)->set("test.this");
+		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
+		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0xDABEEF);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0x22BEEF);
+		msg.ref<FLD_IP> ().push_back(ctx)->set(0xFee1ABBA);
+		msg.ref<FLD_IP> ().push_back(ctx)->set(0xABBAc001);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x01020304);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x12345678);
+		msg.ref<VFLD1>  ().push_back(ctx)->set("test.this");
 
 		ctx.reset();
 		EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
@@ -284,16 +274,16 @@ TEST(encode, mseq_fail_arity)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.push_back<FLD_UC>(ctx)->set(37);
-		msg.push_back<FLD_UC>(ctx)->set(38);
-		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
-		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
-		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
-		msg.push_back<FLD_IP>(ctx)->set(0xABBAc001);
-		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
-		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
-		msg.push_back<VFLD1>(ctx)->set("test.this");
+		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
+		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35DA);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0xDABEEF);
+		msg.ref<FLD_IP> ().push_back(ctx)->set(0xFee1ABBA);
+		msg.ref<FLD_IP> ().push_back(ctx)->set(0xABBAc001);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x01020304);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x12345678);
+		msg.ref<VFLD1>  ().push_back(ctx)->set("test.this");
 
 		ctx.reset();
 		EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
@@ -303,15 +293,15 @@ TEST(encode, mseq_fail_arity)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.push_back<FLD_UC>(ctx)->set(37);
-		msg.push_back<FLD_UC>(ctx)->set(38);
-		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
-		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
-		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
-		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
-		msg.push_back<FLD_DW>(ctx)->set(0x12345678);
-		msg.push_back<VFLD1>(ctx)->set("test.this");
+		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
+		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35DA);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0xDABEEF);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0x22BEEF);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x01020304);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x12345678);
+		msg.ref<VFLD1>  ().push_back(ctx)->set("test.this");
 
 		ctx.reset();
 		EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
@@ -327,14 +317,14 @@ TEST(encode, mseq_fail_overflow)
 	{
 		PROTO proto;
 		MSG_MSEQ& msg = proto.select();
-		msg.push_back<FLD_UC>(ctx)->set(37);
-		msg.push_back<FLD_UC>(ctx)->set(38);
-		msg.push_back<FLD_U16>(ctx)->set(0x35D9);
-		msg.push_back<FLD_U16>(ctx)->set(0x35DA);
-		msg.push_back<FLD_U24>(ctx)->set(0xDABEEF);
-		msg.push_back<FLD_U24>(ctx)->set(0x22BEEF);
-		msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
-		msg.push_back<FLD_DW>(ctx)->set(0x01020304);
+		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
+		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
+		msg.ref<FLD_U16>().push_back(ctx)->set(0x35DA);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0xDABEEF);
+		msg.ref<FLD_U24>().push_back(ctx)->set(0x22BEEF);
+		msg.ref<FLD_IP> ().push_back(ctx)->set(0xFee1ABBA);
+		msg.ref<FLD_DW> ().push_back(ctx)->set(0x01020304);
 
 		uint8_t buffer[10];
 		med::encoder_context<> ctx{ buffer };
@@ -815,19 +805,19 @@ TEST(encode, mseq_open)
 	static_assert(msg.arity<FLD_W>() == med::inf(), "");
 
 	{
-		auto* p = msg.push_back<FLD_U16>();
+		auto* p = msg.ref<FLD_U16>().push_back();
 		ASSERT_NE(nullptr, p);
 		p->set(0x35D9);
-		p = msg.push_back<FLD_U16>(ctx);
+		p = msg.ref<FLD_U16>().push_back(ctx);
 		ASSERT_NE(nullptr, p);
 		p->set(0x35DA);
 	}
-	msg.push_back<FLD_IP>(ctx)->set(0xFee1ABBA);
-	msg.push_back<FLD_W>(ctx)->set(0x7654);
-	msg.push_back<FLD_W>(ctx)->set(0x9876);
-	msg.push_back<FLD_DW>(ctx)->set(0x01020304);
-	msg.push_back<VFLD1>(ctx)->set("test.this");
-	msg.push_back<VFLD1>(ctx)->set("test.it");
+	msg.ref<FLD_IP>().push_back(ctx)->set(0xFee1ABBA);
+	msg.ref<FLD_W> ().push_back(ctx)->set(0x7654);
+	msg.ref<FLD_W> ().push_back(ctx)->set(0x9876);
+	msg.ref<FLD_DW>().push_back(ctx)->set(0x01020304);
+	msg.ref<VFLD1> ().push_back(ctx)->set("test.this");
+	msg.ref<VFLD1> ().push_back(ctx)->set("test.it");
 
 //	O< T<0x80>, CNT, SEQOF_3<1>, med::inf >,      //T[CV]*[0,*)
 

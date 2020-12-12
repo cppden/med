@@ -116,6 +116,7 @@ private:
 		explicit operator bool() const              { return nullptr != m_curr; }
 
 	private:
+		template <class, std::size_t, class, class, class...> friend class multi_field;
 		value_type* m_curr;
 	};
 
@@ -184,6 +185,29 @@ public:
 		}
 	}
 
+	iterator erase(iterator pos)
+	{
+		for (auto it = begin(), prev = it; it; ++it)
+		{
+			if (it == pos)
+			{
+				--m_count;
+				it.m_curr->value.clear();
+				if (it == prev) //1st
+				{
+					m_head = m_head->next;
+					return begin();
+				}
+				else
+				{
+					prev.m_curr->next = it.m_curr->next;
+					return ++prev;
+				}
+			}
+			prev = it;
+		}
+		return end();
+	}
 private:
 	//find unset inplace slot
 	field_value* get_free_inplace()

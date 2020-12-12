@@ -35,8 +35,8 @@ TEST(encode, msg_func)
 
 	//mandatory only
 	MSG_FUNC& msg = proto.select();
-	msg.push_back<FLD_UC>(ctx)->set(37);
-	msg.push_back<FLD_UC>(ctx)->set(38);
+	msg.ref<FLD_UC>().push_back(ctx)->set(37);
+	msg.ref<FLD_UC>().push_back(ctx)->set(38);
 
 	encode(med::octet_encoder{ctx}, proto);
 
@@ -49,8 +49,8 @@ TEST(encode, msg_func)
 
 	//with 1 optional and 1 optional counted
 	ctx.reset();
-	msg.push_back<FLD_UC>(ctx)->set(39);
-	msg.push_back<FLD_U8>(ctx)->set('a');
+	msg.ref<FLD_UC>().push_back(ctx)->set(39);
+	msg.ref<FLD_U8>().push_back(ctx)->set('a');
 	msg.ref<FLD_U16>().set(0x35D9);
 
 	encode(med::octet_encoder{ctx}, proto);
@@ -66,12 +66,12 @@ TEST(encode, msg_func)
 
 	//with all optionals
 	ctx.reset();
-	msg.push_back<FLD_UC>(ctx)->set(40);
-	msg.push_back<FLD_U8>(ctx)->set('b');
+	msg.ref<FLD_UC>().push_back(ctx)->set(40);
+	msg.ref<FLD_U8>().push_back(ctx)->set('b');
 	msg.ref<FLD_U24>().set(0xDABEEF);
 	for (uint8_t i = 0; i < 3; ++i)
 	{
-		FLD_IP* p = msg.push_back<FLD_IP>(ctx);
+		FLD_IP* p = msg.ref<FLD_IP>().push_back(ctx);
 		ASSERT_NE(nullptr, p);
 		p->set(make_hash(i));
 	}
@@ -331,7 +331,7 @@ TEST(update, fixed)
 	EXPECT_TRUE(Matches(encoded, buffer));
 
 	ufld.set(0x3456789A);
-	med::update(encoder, ufld);
+	update(encoder, ufld);
 
 	uint8_t const updated[] = {7, 4, 0x34,0x56,0x78,0x9A};
 	EXPECT_TRUE(Matches(updated, buffer));

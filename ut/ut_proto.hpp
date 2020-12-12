@@ -42,7 +42,7 @@ struct FLD_DW : med::value<uint32_t>
 
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, std::vector<uint8_t>>
 //struct VFLD1 : med::octet_string<med::min<5>, med::max<10>, boost::container::static_vector<uint8_t, 10>>
-struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>//, med::with_snapshot
+struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>
 {
 	static constexpr char const* name() { return "url"; }
 };

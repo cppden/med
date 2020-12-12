@@ -111,6 +111,7 @@ template <class IE, class ENCODER>
 constexpr std::size_t field_length(IE const& ie, ENCODER& encoder)
 {
 	using mi = meta::produce_info_t<ENCODER, IE>;
+	//CODEC_TRACE("%s[%s]", __FUNCTION__, name<IE>());
 	return sl::ie_length<mi>(ie, encoder);
 }
 
