@@ -1,7 +1,7 @@
 #pragma once
 
-#include "value_traits.hpp"
-#include "tag.hpp"
+#include "../value_traits.hpp"
+#include "../tag.hpp"
 
 namespace med::sl {
 

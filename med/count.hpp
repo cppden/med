@@ -101,7 +101,7 @@ constexpr bool has_count_getter_v = has_count_getter<T>::value;
 template <class, class Enable = void >
 struct has_count : std::false_type { };
 template <class T>
-struct has_count<T, std::enable_if_t<std::is_same_v<std::size_t, decltype(((T const*)0)->count())>>> : std::true_type { };
+struct has_count<T, std::enable_if_t<std::is_same_v<std::size_t, decltype(std::declval<T const>().count())>>> : std::true_type { };
 template <class T>
 constexpr bool has_count_v = has_count<T>::value;
 

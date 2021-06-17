@@ -258,5 +258,6 @@ EncData const test_prints[] = {
 	},
 };
 
-INSTANTIATE_TEST_CASE_P(print, PrintUt, ::testing::ValuesIn(test_prints));
+//INSTANTIATE_TEST_CASE_P(print, PrintUt, ::testing::ValuesIn(test_prints));
+INSTANTIATE_TEST_SUITE_P(print, PrintUt, ::testing::ValuesIn(test_prints));
 

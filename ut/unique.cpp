@@ -20,10 +20,13 @@ TEST(unique, typed)
 	>;
 	static_assert(std::is_void_v<med::meta::unique_t<med::tag_getter<med::sl::octet_info>, tags>>);
 
+	//fails to compile with duplicate tag in error message
 //	using dup_tags = med::meta::typelist<
-//		med::add_meta_info< med::mi<med::mik::TAG, C<0x02>>,
-//		med::add_meta_info< med::mi<med::mik::TAG, C<0x03>>,
-//		med::add_meta_info< med::mi<med::mik::TAG, C<0x02>>
+//		med::add_meta_info< med::mi<med::mik::TAG, C<0x02>> >,
+//		med::add_meta_info< med::mi<med::mik::TAG, C<0x03>> >,
+//		med::add_meta_info< med::mi<med::mik::TAG, C<0x04>> >,
+//		med::add_meta_info< med::mi<med::mik::TAG, C<0x05>> >,
+//		med::add_meta_info< med::mi<med::mik::TAG, C<0x04>> >
 //	>;
 //	static_assert(not std::is_void_v<med::meta::unique_t<med::tag_getter<med::sl::octet_info>, dup_tags>>);
 }

@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include "exception.hpp"
 #include "ie_type.hpp"
+#include "field.hpp"
 #include "state.hpp"
 #include "value_traits.hpp"
 #include "name.hpp"

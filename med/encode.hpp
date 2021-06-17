@@ -113,7 +113,7 @@ struct length_encoder<false, LEN, ENCODER> : len_enc_impl<LEN, ENCODER>
 		m_delta = DELTA;
 		//save position in encoded buffer to update with correct length
 		this->m_lenpos = this->m_encoder(GET_STATE{});
-		return this->m_encoder(ADVANCE_STATE{+ENCODER::template size_of<length_type>()});
+		return this->m_encoder(ADVANCE_STATE{int(+ENCODER::template size_of<length_type>())});
 	}
 
 	//update the length with final value
