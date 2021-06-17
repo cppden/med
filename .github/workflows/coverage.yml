@@ -1,0 +1,21 @@
+name: Code Coverage
+
+on: [push, pull_request]
+
+jobs:
+  code-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtest-dev
+
+    - uses: actions/checkout@v2
+    - run: cmake -E make_directory build
+    - working-directory: build/
+      run: |
+        cmake $GITHUB_WORKSPACE -DCMAKE_CXX_FLAGS="-coverage" -DCOVERAGE=ON
+        cmake --build .
+        ctest --output-on-failure
+        bash <(curl -s https://codecov.io/bash)
