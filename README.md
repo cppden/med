@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/cppden/med.svg?branch=master)](https://travis-ci.org/cppden/med)
-[![Coverage Status](https://coveralls.io/repos/github/cppden/med/badge.svg?branch=master)](https://coveralls.io/github/cppden/med?branch=master)
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](../master/LICENSE)
+[![Linux CI](https://github.com/cppden/med/workflows/Linux/badge.svg)](https://github.com/cppden/med/actions?query=workflow%3ALinux)
+[![Code Coverage](https://codecov.io/gh/cppden/med/branch/master/graph/badge.svg?token=FP0KOE0YAW)](https://codecov.io/gh/cppden/med)
+[![License](https://img.shields.io/github/license/mashape/apistatus.svg)](../master/LICENSE)
 
 # Meta-Encoder/Decoder
 
