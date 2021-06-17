@@ -9,11 +9,6 @@ jobs:
       matrix:
         compiler:
           - g++-9
-          - g++-10
-          - g++-11
-          - clang++-10
-          - clang++-11
-          - clang++-12
         build_type: [Debug, Release]
 
     runs-on: ubuntu-latest
@@ -29,8 +24,6 @@ jobs:
         mkdir ~/gtbuild
         cd ~/gtbuild
         cmake /usr/src/googletest/googletest
-        cmake --build .
-        sudo cp libgtest* /usr/lib/
     - uses: actions/checkout@v2
     - run: cmake -E make_directory build
     - working-directory: build/
@@ -39,39 +32,4 @@ jobs:
         cmake --build .
         ctest --output-on-failure
 
-  linux-old:
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler:
-          - g++-7
-          - g++-8
-          - clang++-6.0
-          - clang++-7
-          - clang++-8
-          - clang++-9
-        build_type: [Debug, Release]
-
-    runs-on: ubuntu-latest
-
-    env:
-      CXX: ${{ matrix.compiler }}
-
-    steps:
-    - run: |
-        sudo apt-get update
-        sudo apt-get install -y ${{ matrix.compiler }}
-        sudo apt-get install -y libgtest-dev
-        mkdir ~/gtbuild
-        cd ~/gtbuild
-        cmake /usr/src/googletest/googletest
-        cmake --build .
-        sudo cp libgtest* /usr/lib/
-    - uses: actions/checkout@v2
-    - run: cmake -E make_directory build
-    - working-directory: build/
-      run: |
-        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        cmake --build .
-        ctest --output-on-failure
 
