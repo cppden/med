@@ -22,16 +22,22 @@ jobs:
       CXX: ${{ matrix.compiler }}
 
     steps:
+    - run: |
+        sudo apt-get update
+        sudo apt-get install -y ${{ matrix.compiler }}
+        sudo apt-get install -y libgtest-dev
+        mkdir ~/gtbuild
+        cd ~/gtbuild
+        cmake /usr/src/googletest/googletest
+        cmake --build .
+        sudo cp libgtest* /usr/lib/
     - uses: actions/checkout@v2
     - run: cmake -E make_directory build
     - working-directory: build/
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-
-    - working-directory: build/
-      run: cmake --build .
-
-    - working-directory: build/
-      run: ctest --output-on-failure
+      run: |
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        cmake --build .
+        ctest --output-on-failure
 
   linux-old:
     strategy:
@@ -52,16 +58,20 @@ jobs:
       CXX: ${{ matrix.compiler }}
 
     steps:
+    - run: |
+        sudo apt-get update
+        sudo apt-get install -y ${{ matrix.compiler }}
+        sudo apt-get install -y libgtest-dev
+        mkdir ~/gtbuild
+        cd ~/gtbuild
+        cmake /usr/src/googletest/googletest
+        cmake --build .
+        sudo cp libgtest* /usr/lib/
     - uses: actions/checkout@v2
-    - run: sudo apt-get update
-    - run: sudo apt-get install -y ${{ matrix.compiler }}
     - run: cmake -E make_directory build
     - working-directory: build/
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-
-    - working-directory: build/
-      run: cmake --build .
-
-    - working-directory: build/
-      run: ctest --output-on-failure
+      run: |
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        cmake --build .
+        ctest --output-on-failure
 
