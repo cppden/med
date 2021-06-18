@@ -28,19 +28,13 @@ using O = med::optional<T...>;
 using L = med::length_t<med::value<uint8_t>>;
 
 struct FIELD1 : med::value<uint8_t>
-{
-	static constexpr char const* name() { return "byte"; }
-};
+{ static constexpr char const* name() { return "byte"; } };
 
 struct FIELD2 : med::value<uint16_t>
-{
-	static constexpr char const* name() { return "word"; }
-};
+{ static constexpr char const* name() { return "word"; } };
 
 struct FIELD3 : med::value<med::bytes<3>>
-{
-	static constexpr char const* name() { return "3byte"; }
-};
+{ static constexpr char const* name() { return "3byte"; } };
 
 struct FIELD4 : med::value<uint32_t>
 {
@@ -55,14 +49,10 @@ struct FIELD4 : med::value<uint32_t>
 };
 
 struct FIELD5 : med::value<uint32_t>
-{
-	static constexpr char const* name() { return "dword"; }
-};
+{ static constexpr char const* name() { return "dword"; } };
 
 struct VFLD1 : med::octet_string<med::min<5>, med::max<10>>, med::with_snapshot
-{
-	static constexpr char const* name() { return "url"; }
-};
+{ static constexpr char const* name() { return "url"; } };
 
 struct MSG1 : med::sequence<
 	M< FIELD1 >, //V
@@ -72,28 +62,23 @@ struct MSG1 : med::sequence<
 	O< tag<0x89>, FIELD4 >,
 	O< tag<  3>, MSG1 >
 >
-{
-	static constexpr char const* name() { return "Msg-One"; }
-};
+{ static constexpr char const* name() { return "Msg-One"; } };
 
-struct MSG2 : med::set< med::value<uint16_t>,
+struct MSG2 : med::set<
 	M< tag<0x0b>,    FIELD1 >, //<TV>
 	M< tag<0x21>, L, FIELD2 >, //<TLV>
 	O< tag<0x49>, L, FIELD3 >, //[TLV]
 	O< tag<0x89>,    FIELD4 >, //[TV]
 	O< tag<0x22>, L, VFLD1 >   //[TLV(var)]
 >
-{
-	static constexpr char const* name() { return "Msg-Set"; }
-};
+{ static constexpr char const* name() { return "Msg-Set"; } };
 
 
-struct PROTO : med::choice< med::value<uint8_t>
-	, med::tag<1, MSG1>
-	, med::tag<2, MSG2>
+struct PROTO : med::choice<
+	med::tag<1, MSG1>,
+	med::tag<2, MSG2>
 >
-{
-};
+{};
 ```
 
 ## Dependencies
