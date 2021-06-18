@@ -1,5 +1,5 @@
-[![Linux CI](https://github.com/cppden/med/workflows/Linux/badge.svg)](https://github.com/cppden/med/actions?query=workflow%3ALinux)
-[![Code Coverage](https://codecov.io/gh/cppden/med/branch/master/graph/badge.svg?token=FP0KOE0YAW)](https://codecov.io/gh/cppden/med)
+[![Build](https://github.com/cppden/med/workflows/Linux/badge.svg)](https://github.com/cppden/med/actions?query=workflow%3ALinux)
+[![Coverage](https://codecov.io/gh/cppden/med/branch/master/graph/badge.svg?token=FP0KOE0YAW)](https://codecov.io/gh/cppden/med)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](../master/LICENSE)
 
 # Meta-Encoder/Decoder
