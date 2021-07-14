@@ -161,7 +161,7 @@ struct length_encoder<true, LEN, ENCODER> : len_enc_impl<LEN, ENCODER>
 		if (this->m_lenpos)
 		{
 			auto const end = this->m_encoder(GET_STATE{});
-			std::size_t const len_value = end - this->m_start - 1;
+			std::size_t const len_value = end - this->m_start - length_type::traits::bits/8;
 			this->m_encoder(SET_STATE{}, this->m_lenpos);
 			length_to_value(m_len_ie, len_value);
 			this->m_encoder(m_len_ie, IE_LEN{});

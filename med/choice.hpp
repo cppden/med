@@ -60,6 +60,19 @@ struct choice_len : choice_if
 	}
 };
 
+struct choice_clear : choice_if
+{
+	template <class IE, class TO>
+	static void apply(TO& to)
+	{
+		CODEC_TRACE("clear: %s", name<IE>());
+		to.template ref<get_field_type_t<IE>>().clear();
+	}
+
+	template <class TO>
+	static constexpr void apply(TO&) { }
+};
+
 struct choice_copy : choice_if
 {
 	template <class IE, class FROM, class TO, class... ARGS>
@@ -250,7 +263,11 @@ public:
 	template <class T>
 	static constexpr std::size_t index()    { return meta::list_index_of_v<T, fields_types>; }
 
-	void clear()                            { this->header().clear(); m_index = num_types; }
+	void clear()
+	{
+		meta::for_if<ies_types>(sl::choice_clear{}, *this);
+		this->header().clear(); m_index = num_types;
+	}
 	bool is_set() const                     { return this->header().is_set() && index() != num_types; }
 	template <class ENC>
 	std::size_t calc_length(ENC& enc) const { return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len{}, *this, enc); }

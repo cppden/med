@@ -90,7 +90,8 @@ TEST(choice, plain)
 	msg.ref<cmp::U16>().set(0);
 	EXPECT_EQ(3, msg.calc_length(encoder));
 
-	msg.ref<U16>().set(0x1234);
+	constexpr uint16_t magic = 0x1234;
+	msg.ref<U16>().set(magic);
 	encode(encoder, msg);
 	EXPECT_STRCASEEQ("02 12 34 ", as_string(ctx.buffer()));
 
@@ -98,8 +99,14 @@ TEST(choice, plain)
 	med::decoder_context<> dctx;
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 	decode(med::octet_decoder{dctx}, dmsg);
-	ASSERT_NE(nullptr, dmsg.get<U16>());
-	EXPECT_EQ(msg.get<U16>()->get(), dmsg.get<U16>()->get());
+	auto* pf = dmsg.get<U16>();
+	ASSERT_NE(nullptr, pf);
+	EXPECT_EQ(magic, pf->get());
+
+	EXPECT_TRUE(pf->is_set());
+	dmsg.clear();
+//TODO: gcc-11.1.0 bug?
+//	EXPECT_FALSE(pf->is_set());
 }
 
 TEST(choice, peek)
@@ -121,8 +128,13 @@ TEST(choice, peek)
 	med::decoder_context<> dctx;
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 	decode(med::octet_decoder{dctx}, dmsg);
-	ASSERT_NE(nullptr, dmsg.get<BCD_1>());
+	auto* pf = dmsg.get<BCD_1>();
+	ASSERT_NE(nullptr, pf);
 	EXPECT_EQ(msg.get<BCD_1>()->size(), dmsg.get<BCD_1>()->size());
+
+	EXPECT_TRUE(pf->is_set());
+	dmsg.clear();
+	EXPECT_FALSE(pf->is_set());
 }
 
 TEST(choice, compound)
@@ -146,7 +158,12 @@ TEST(choice, compound)
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	ASSERT_NE(nullptr, dmsg.get<cmp::string>());
+	auto* pf = dmsg.get<cmp::string>();
+	ASSERT_NE(nullptr, pf);
 	EXPECT_EQ(msg.get<cmp::string>()->get(), dmsg.get<cmp::string>()->get());
+
+	EXPECT_TRUE(pf->is_set());
+	dmsg.clear();
+	EXPECT_FALSE(pf->is_set());
 }
 

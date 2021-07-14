@@ -71,8 +71,8 @@ struct C_LV : med::sequence<
 	O<L, VAR, true_cond>
 >{};
 
-//value with length
-struct VL : med::value<uint8_t>
+//value with length (size > 1 byte)
+struct VL : med::value<uint16_t>
 {
 	//value part
 	value_type get() const          { return get_encoded() & 0xF; }
@@ -428,9 +428,9 @@ TEST(length, vlvar)
 	encode(med::octet_encoder{ctx}, msg);
 
 	uint8_t encoded[] = {
-		0,0,0,1, 0x31, //len=3, val=1
+		0,0,0,1, 0x00,0x31, //len=3, val=1
 		'1','2','3',
-		0,0,0,1, 0x62, //len=6, val=2
+		0,0,0,1, 0x00,0x62, //len=6, val=2
 		'1','2','3','4','5','6',
 	};
 	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
@@ -475,10 +475,10 @@ TEST(length, lvlarr)
 		std::cout << "0x" << std::hex << (uint32_t)buffer[i] << ((i == size-1) ? "}\n" : ", ");
 
 	uint8_t encoded[] = {
-		0x0B, //len=11
-		0x31, //len=3, val=1
+		0x0D, //len=11
+		0x00,0x31, //len=3, val=1
 		'1','2','3',
-		0x62, //len=6, val=2
+		0x00,0x62, //len=6, val=2
 		'1','2','3','4','5','6',
 	};
 
