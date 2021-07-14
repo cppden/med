@@ -72,8 +72,4 @@ struct get_meta_tag<L, std::enable_if_t<!meta::list_is_empty_v<L>>>
 };
 template <class T> using get_meta_tag_t = typename get_meta_tag<T>::type;
 
-
-//common base for traits
-struct base_traits {};
-
-}
+} //end: namespace med

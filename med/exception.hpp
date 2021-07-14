@@ -23,6 +23,7 @@ namespace detail {
 
 template <class, class Enable = void >
 struct has_to_str : std::false_type { };
+
 template <class T>
 struct has_to_str<T,
 	std::enable_if_t<

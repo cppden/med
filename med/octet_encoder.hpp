@@ -14,6 +14,7 @@ Distributed under the MIT License
 #include "length.hpp"
 #include "octet_string.hpp"
 #include "sl/octet_info.hpp"
+#include "padding.hpp"
 
 namespace med {
 
@@ -22,6 +23,8 @@ struct octet_encoder : sl::octet_info
 {
 	//required for length_encoder
 	using state_type = typename ENC_CTX::buffer_type::state_type;
+	template <class... PA>
+	using padder_type = octet_padder<PA...>;
 
 	ENC_CTX& ctx;
 

@@ -78,3 +78,20 @@ TEST(bits, fixed_small)
 		ASSERT_TRUE(Matches(exp, bits.data()));
 	}
 }
+
+TEST(bits, bit_string)
+{
+	{
+		using bs_t = med::bit_string<>;
+		bs_t bs;
+		static_assert(std::is_same<bs_t::value_type, med::bits_variable>());
+		EXPECT_FALSE(bs.is_set());
+	}
+	{
+		using bs_t = med::bit_string<med::min<64>, med::max<64>>;
+		bs_t bs;
+		static_assert(std::is_same<bs_t::value_type, med::bits_fixed<64>>());
+		EXPECT_FALSE(bs.is_set());
+	}
+}
+

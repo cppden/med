@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include <type_traits>
 
+#include "units.hpp"
 #include "ie_type.hpp"
 #include "name.hpp"
 #include "exception.hpp"
@@ -20,82 +21,39 @@ namespace med {
 
 //traits representing a fixed value of particular size (in bits/bytes/int)
 //which is predefined during encode and decode
-template <std::size_t VAL, class T, class EXT_TRAITS = base_traits, class Enable = void>
-struct fixed
-{
-	static_assert(std::is_void<T>(), "MALFORMED FIXED");
-};
-
-template <std::size_t VAL, std::size_t BITS, class EXT_TRAITS>
-struct fixed<VAL, bits<BITS>, EXT_TRAITS, void>
-	: value_traits<EXT_TRAITS, BITS>
+template <std::size_t VAL, typename T, class... EXT_TRAITS>
+struct fixed : value_traits<T, EXT_TRAITS...>
 {
 	static constexpr bool is_const = true;
-	static constexpr typename value_traits<EXT_TRAITS, BITS>::value_type value = VAL;
-};
-
-template <std::size_t VAL, std::size_t BYTES, class EXT_TRAITS>
-struct fixed<VAL, bytes<BYTES>, EXT_TRAITS, void>
-	: value_traits<EXT_TRAITS, BYTES*8>
-{
-	static constexpr bool is_const = true;
-	static constexpr typename value_traits<EXT_TRAITS, BYTES*8>::value_type value = VAL;
-};
-
-template <std::size_t VAL, typename T, class EXT_TRAITS>
-struct fixed< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
-	: value_base_traits<T, EXT_TRAITS>
-{
-	static constexpr bool is_const = true;
-	static constexpr typename value_base_traits<T, EXT_TRAITS>::value_type value = VAL;
+	static constexpr typename value_traits<T, EXT_TRAITS...>::value_type value = VAL;
 };
 
 //traits representing a fixed value with default
-template <std::size_t VAL, class T, class EXT_TRAITS = base_traits, class Enable = void>
-struct defaults
+template <std::size_t VAL, class T, class... EXT_TRAITS>
+struct defaults : value_traits<T, EXT_TRAITS...>
 {
-	static_assert(std::is_void<T>(), "MALFORMED DEFAULTS");
-};
-
-template <std::size_t VAL, std::size_t BITS, class EXT_TRAITS>
-struct defaults<VAL, bits<BITS>, EXT_TRAITS, void>
-	: value_traits<EXT_TRAITS, BITS>
-{
-	static constexpr typename value_traits<EXT_TRAITS, BITS>::value_type default_value = VAL;
-};
-
-template <std::size_t VAL, std::size_t BYTES, class EXT_TRAITS>
-struct defaults<VAL, bytes<BYTES>, EXT_TRAITS, void>
-	: value_traits<EXT_TRAITS, BYTES*8>
-{
-	static constexpr typename value_traits<EXT_TRAITS, BYTES*8>::value_type default_value = VAL;
-};
-
-template <std::size_t VAL, typename T, class EXT_TRAITS>
-struct defaults< VAL, T, EXT_TRAITS, std::enable_if_t<std::is_integral_v<T>> >
-	: value_base_traits<T, EXT_TRAITS>
-{
-	static constexpr typename value_base_traits<T, EXT_TRAITS>::value_type default_value = VAL;
+	static constexpr typename value_traits<T, EXT_TRAITS...>::value_type default_value = VAL;
 };
 
 //traits representing initialized value which is encoded with the fixed value
 //but can have any value when decoded
-template <std::size_t VAL, class T, class EXT_TRAITS = base_traits>
-struct init : fixed<VAL, T, EXT_TRAITS>
+template <std::size_t VAL, class T, class... EXT_TRAITS>
+struct init : fixed<VAL, T, EXT_TRAITS...>
 {
 	static constexpr bool is_const = false;
 };
 
+namespace detail {
 
 /**
- * plain numeric value (TODO: rename to numeric_value?)
+ * plain numeric value
  */
 template <class TRAITS>
-struct integer : IE<IE_VALUE>
+struct numeric_value : IE<IE_VALUE>
 {
 	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
-	using base_t     = integer;
+	using base_t     = numeric_value;
 
 	value_type get() const                      { return get_encoded(); }
 	auto set(value_type v)                      { return set_encoded(v); }
@@ -119,7 +77,6 @@ private:
 	value_type m_value{};
 };
 
-
 /**
  * plain fixed integral value
  * gives error if decoded value doesn't match the fixed one
@@ -130,7 +87,7 @@ struct const_integer : IE<IE_VALUE>
 	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
 	using base_t = const_integer;
-	using writable = integer<traits>;
+	using writable = numeric_value<traits>;
 
 	static constexpr void clear()                       { }
 	static constexpr value_type get()                   { return get_encoded(); }
@@ -146,7 +103,6 @@ struct const_integer : IE<IE_VALUE>
 	template <class... ARGS>
 	static constexpr void copy(base_t const&, ARGS&&...){ }
 };
-
 
 /**
  * plain initialized/set field
@@ -170,12 +126,11 @@ struct init_integer : IE<IE_VALUE>
 	static constexpr void copy(base_t const&, ARGS&&...){ }
 };
 
-
 /**
  * integer with a default value
  */
 template <class TRAITS>
-struct def_integer : integer<TRAITS>
+struct def_integer : numeric_value<TRAITS>
 {
 	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
@@ -184,39 +139,17 @@ struct def_integer : integer<TRAITS>
 	//NOTE: do not override!
 	value_type get_encoded() const
 	{
-		return this->is_set() ? integer<TRAITS>::get_encoded() : traits::default_value;
+		return this->is_set() ? numeric_value<TRAITS>::get_encoded() : traits::default_value;
 	}
 };
 
 
-/**
- * generic value - a facade for integers above
- */
-template <class T, class EXT_TRAITS = base_traits, class Enable = void>
-struct value;
-
-
-template <std::size_t BITS, class EXT_TRAITS>
-struct value<bits<BITS>, EXT_TRAITS, void>
-	: integer<value_traits<EXT_TRAITS, BITS>> {};
-
-template <std::size_t BYTES, class EXT_TRAITS>
-struct value<bytes<BYTES>, EXT_TRAITS, void>
-	: integer<value_traits<EXT_TRAITS, BYTES*8>> {};
-
-template <typename VAL, class EXT_TRAITS>
-struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_integral_v<VAL>> >
-	: integer<value_base_traits<VAL, EXT_TRAITS>> {};
-
-//meta-function to select proper int
+//meta-function to select proper implementation of numeric value
 template <class T, typename Enable = void>
-struct integer_selector
-{
-	static_assert(std::is_void<T>(), "INVALID TRAITS");
-};
+struct value_selector;
 
 template <class T>
-struct integer_selector<T,
+struct value_selector<T,
 	std::enable_if_t<
 		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::value)>>
 		&& T::is_const
@@ -227,7 +160,7 @@ struct integer_selector<T,
 };
 
 template <class T>
-struct integer_selector<T,
+struct value_selector<T,
 	std::enable_if_t<
 		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::value)>>
 		&& !T::is_const
@@ -238,7 +171,7 @@ struct integer_selector<T,
 };
 
 template <class T>
-struct integer_selector<T,
+struct value_selector<T,
 	std::enable_if_t<
 		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::default_value)>>
 	>
@@ -247,14 +180,32 @@ struct integer_selector<T,
 	using type = def_integer<T>;
 };
 
-template <class T, class EXT_TRAITS>
-struct value< T, EXT_TRAITS, std::enable_if_t<not std::is_void_v<typename T::value_type>> >
-	: integer_selector<T>::type {};
 
-//TODO: support in octet codecs? rename integer to more generic name?
-template <typename VAL, class EXT_TRAITS>
-struct value< VAL, EXT_TRAITS, std::enable_if_t<std::is_floating_point_v<VAL>> >
-	: integer<value_base_traits<VAL, EXT_TRAITS>> {};
+template <class T, class Enable, class... EXT_TRAITS>
+struct value;
 
+template <class T>
+struct value<T, std::enable_if_t<is_value_traits<T>::value>>
+		: value_selector<T>::type {};
+
+template<class T, class... EXT_TRAITS>
+struct value<T, std::enable_if_t<std::is_arithmetic_v<T>>, EXT_TRAITS...>
+		: numeric_value<value_traits<T, EXT_TRAITS...>> {};
+
+template<std::size_t N, class... EXT_TRAITS>
+struct value<bytes<N>, void, EXT_TRAITS...>
+		: numeric_value<value_traits<bytes<N>, EXT_TRAITS...>> {};
+
+template<std::size_t N, class... EXT_TRAITS>
+struct value<bits<N>, void, EXT_TRAITS...>
+		: numeric_value<value_traits<bits<N>, EXT_TRAITS...>> {};
+
+} //end: namespace detail
+
+/**
+ * generic value - a facade for numeric_values above
+ */
+template <class T, class... EXT_TRAITS>
+struct value : detail::value<T, void, EXT_TRAITS...> {};
 
 } //namespace med

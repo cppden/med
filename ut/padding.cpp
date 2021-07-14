@@ -62,15 +62,79 @@ struct exclusive : med::choice<
 	CASE< ip >
 >
 {
-	using length_type = med::value<uint8_t>;
-	using padding = med::padding<uint32_t>;
-	static constexpr char const* name() { return "Header"; }
+	using length_type = med::value<uint8_t, med::padding<uint32_t>>;
+};
+
+using PL = med::length_t<med::value<uint8_t, med::padding<uint32_t>>>;
+template <std::size_t TAG> using T = med::value<med::fixed<TAG, uint8_t>>;
+
+struct msg : med::sequence<
+	M< PL, u16>,
+	M< T<3>, PL, u24>
+>
+{
 };
 
 } //end: namespace pad
 
+TEST(padding, traits)
+{
+	#define PAD_TYPE(T) \
+	{                                                              \
+		using pt = med::padding<T>;                                \
+		static_assert(pt::padding_traits::pad_bits == sizeof(T)*8);\
+		static_assert(pt::padding_traits::filler == 0);            \
+	}                                                              \
+	/* PAD_TYPE */
+	PAD_TYPE(uint8_t);
+	PAD_TYPE(uint16_t);
+	PAD_TYPE(uint32_t);
+	PAD_TYPE(uint64_t);
+	#undef PAD_TYPE
 
-TEST(padding, exclusive)
+	#define PAD_BITS(N) \
+	{                                                    \
+		using pt = med::padding<med::bits<N>>;           \
+		static_assert(pt::padding_traits::pad_bits == N);\
+		static_assert(pt::padding_traits::filler == 0);   \
+	}                                                    \
+	/* PAD_BITS */
+	PAD_BITS(1);
+	PAD_BITS(64);
+	#undef PAD_BITS
+
+	#define PAD_BYTES(N) \
+	{                                                      \
+		using pt = med::padding<med::bytes<N>>;            \
+		static_assert(pt::padding_traits::pad_bits == N*8);\
+		static_assert(pt::padding_traits::filler == 0);     \
+	}                                                      \
+	/* PAD_BYTES */
+	PAD_BYTES(1);
+	PAD_BYTES(8);
+	#undef PAD_BYTES
+}
+
+TEST(padding, value)
+{
+	uint8_t buffer[64];
+	med::encoder_context<> ctx{ buffer };
+
+	pad::msg msg;
+	msg.ref<pad::u16>().set(0x1122);
+	msg.ref<pad::u24>().set(0x334455);
+	encode(med::octet_encoder{ctx}, msg);
+
+	uint8_t const encoded_1[] = {
+		2/*PL*/, 0x11,0x22/*u16*/, 0,0/*padding*/,
+		3/*T*/, 3/*PL*/, 0x33,0x44,0x55/*u16*/, 0/*padding*/,
+	};
+	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded_1, buffer));
+}
+
+
+TEST(padding, container)
 {
 	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };

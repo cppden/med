@@ -16,6 +16,7 @@ Distributed under the MIT License
 #include "name.hpp"
 #include "ie_type.hpp"
 #include "sl/octet_info.hpp"
+#include "padding.hpp"
 
 namespace med {
 
@@ -25,6 +26,8 @@ struct octet_decoder : sl::octet_info
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
+	template <class... PA>
+	using padder_type = octet_padder<PA...>;
 
 	DEC_CTX& ctx;
 

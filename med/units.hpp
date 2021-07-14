@@ -10,25 +10,24 @@ Distributed under the MIT License
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
+#include <limits>
 
 namespace med {
 
 enum class nbits : std::size_t {};
-
-template <std::size_t NUM>
-struct bits
-{
-	//static_assert(NUM > 0 && NUM <= 64, "INVALID NUMBER OF BITS");
-	static constexpr std::size_t size = NUM;
-};
-
 enum class nbytes : std::size_t {};
 
-template <std::size_t NUM>
-struct bytes
-{
-	//static_assert(NUM > 0 && NUM <= 8, "INVALID NUMBER OF BYTES");
-	static constexpr std::size_t size = NUM;
-};
+template <std::size_t N> struct bits {};
+
+template <std::size_t N> struct bytes {};
+
+template <std::size_t N> struct min {};
+
+template <std::size_t N> struct max : std::integral_constant<std::size_t, N> {};
+
+template <std::size_t N> struct arity : std::integral_constant<std::size_t, N> {};
+template <std::size_t N> struct pmax : std::integral_constant<std::size_t, N> {};
+using inf = pmax< std::numeric_limits<std::size_t>::max() >;
 
 } //namespace med

@@ -13,6 +13,18 @@ Distributed under the MIT License
 
 namespace med {
 
+namespace detail {
+
+template <std::size_t MIN_BITS = 0, std::size_t MAX_BITS = MIN_BITS, class... EXT_TRAITS>
+struct bitstr_traits : EXT_TRAITS...
+{
+	static constexpr std::size_t min_bits = MIN_BITS;
+	static constexpr std::size_t max_bits = MAX_BITS;
+	using value_type = uint8_t;
+};
+
+}
+
 //variable length bits
 class bits_variable
 {
@@ -167,30 +179,25 @@ struct bit_string_impl : IE<IE_BIT_STRING>
 	bool is_set() const                     { return m_value.is_set(); }
 	explicit operator bool() const          { return is_set(); }
 
-protected:
+private:
 	value_type  m_value;
 };
 
-
-template <class TRAITS = base_traits, class = void, class = void>
-struct bit_string;
-
 constexpr std::size_t MAX_BITS = 8*std::numeric_limits<num_octs_t>::max();
 
-template <class EXT_TRAITS>
-struct bit_string<EXT_TRAITS, void, void>
-		: bit_string_impl<detail::bits_traits<0, MAX_BITS, EXT_TRAITS>> {};
+template <class... EXT_TRAITS>
+struct bit_string : bit_string_impl<detail::bitstr_traits<0, MAX_BITS, EXT_TRAITS...>> {};
 
-template <std::size_t MIN>
-struct bit_string<min<MIN>, void, void>
-		: bit_string_impl<detail::bits_traits<MIN, MAX_BITS>> {};
+template <std::size_t MIN, class... EXT_TRAITS>
+struct bit_string<min<MIN>, EXT_TRAITS...>
+		: bit_string_impl<detail::bitstr_traits<MIN, MAX_BITS, EXT_TRAITS...>> {};
 
-template <std::size_t MAX>
-struct bit_string<max<MAX>, void, void>
-		: bit_string_impl<detail::bits_traits<0, MAX>> {};
+template <std::size_t MAX, class... EXT_TRAITS>
+struct bit_string<max<MAX>, EXT_TRAITS...>
+		: bit_string_impl<detail::bitstr_traits<0, MAX, EXT_TRAITS...>> {};
 
-template <std::size_t MIN, std::size_t MAX>
-struct bit_string<min<MIN>, max<MAX>, void>
-		: bit_string_impl<detail::bits_traits<MIN, MAX>> {};
+template <std::size_t MIN, std::size_t MAX, class... EXT_TRAITS>
+struct bit_string<min<MIN>, max<MAX>, EXT_TRAITS...>
+		: bit_string_impl<detail::bitstr_traits<MIN, MAX, EXT_TRAITS...>> {};
 
 }	//end: namespace med

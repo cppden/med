@@ -83,7 +83,7 @@ inline std::size_t decode_len(DECODER& decoder)
 	return value;
 }
 
-template <bool BY_IE, class DECODER, class IE, class UNEXP>
+template <bool REF_BY_IE, class DECODER, class IE, class UNEXP>
 struct length_decoder;
 
 template <class DECODER, class IE, class UNEXP>
@@ -92,6 +92,8 @@ struct len_dec_impl
 	using state_type = typename DECODER::state_type;
 	using size_state = typename DECODER::size_state;
 	using allocator_type = typename DECODER::allocator_type;
+	template <class... PA>
+	using padder_type = typename DECODER::template padder_type<PA...>;
 
 	using length_type = typename IE::length_type;
 
@@ -224,11 +226,20 @@ inline void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp)
 
 	if constexpr (is_length_v<IE>) //container with length_type defined
 	{
-		if constexpr (has_padding<IE>::value)
+		using length_type = typename IE::length_type;
+		using pad_traits = typename get_padding<length_type>::type;
+
+		length_decoder<IE::template has<length_type>(), DECODER, IE, UNEXP> ld{ decoder, ie, unexp };
+
+		if constexpr (std::is_void_v<pad_traits>)
 		{
-			using pad_t = padder<IE, DECODER>;
+			ie.decode(ld, unexp);
+			ld.restore_end();
+		}
+		else
+		{
+			using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
 			pad_t pad{decoder};
-			length_decoder<IE::template has<typename IE::length_type>(), DECODER, IE, UNEXP> ld{ decoder, ie, unexp };
 			ie.decode(ld, unexp);
 			//special case for empty elements w/o length placeholder
 			pad.enable(static_cast<bool>(ld));
@@ -238,12 +249,6 @@ inline void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp)
 			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
 			//if (std::size_t const left = ld.size() - padding_size(pad))
 			//MED_THROW_EXCEPTION(overflow, name<IE>(), left)
-		}
-		else
-		{
-			length_decoder<IE::template has<typename IE::length_type>(), DECODER, IE, UNEXP> ld{ decoder, ie, unexp };
-			ie.decode(ld, unexp);
-			ld.restore_end();
 		}
 	}
 	else

@@ -11,7 +11,6 @@ Distributed under the MIT License
 #pragma once
 
 #include <iterator>
-#include <limits>
 
 #include "ie_type.hpp"
 #include "name.hpp"
@@ -41,12 +40,6 @@ struct field_t : FIELD
 	//NOTE: since it's a wrapper the added MI goes 1st
 	using meta_info = meta::list_append_t<get_meta_info_t<META_INFO>..., get_meta_info_t<FIELD>>;
 };
-
-
-template <std::size_t N> struct arity : std::integral_constant<std::size_t, N> {};
-template <std::size_t N> struct pmax : std::integral_constant<std::size_t, N> {};
-using inf = pmax< std::numeric_limits<std::size_t>::max() >;
-
 
 namespace detail {
 

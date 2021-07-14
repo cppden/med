@@ -60,6 +60,8 @@ struct len_enc_impl
 {
 	using state_type = typename ENCODER::state_type;
 	using length_type = LEN;
+	template <class... PA>
+	using padder_type = typename ENCODER::template padder_type<PA...>;
 
 	explicit len_enc_impl(ENCODER& encoder) noexcept
 		: m_encoder{ encoder }
@@ -183,25 +185,26 @@ struct container_encoder
 		if constexpr (is_length_v<IE>)
 		{
 			using length_type = typename IE::length_type;
+			using pad_traits = typename get_padding<length_type>::type;
 
-			if constexpr (has_padding<IE>::value)
+			length_encoder<IE::template has<length_type>(), length_type, ENCODER> le{ encoder };
+
+			if constexpr (std::is_void_v<pad_traits>)
+			{
+				CODEC_TRACE("start %s with len_type=%s...:", name<IE>(), name<length_type>());
+				ie.encode(le);
+				le.set_length_ie();
+			}
+			else
 			{
 				CODEC_TRACE("start %s with padded len_type=%s...:", name<IE>(), name<length_type>());
-				using pad_t = padder<IE, ENCODER>;
+				using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
 				pad_t pad{encoder};
-				length_encoder<IE::template has<length_type>(), length_type, ENCODER> le{ encoder };
 				ie.encode(le);
 				//special case for empty elements w/o length placeholder
 				pad.enable(static_cast<bool>(le));
 				le.set_length_ie();
 				pad.add();
-			}
-			else
-			{
-				CODEC_TRACE("start %s with len_type=%s...:", name<IE>(), name<length_type>());
-				length_encoder<IE::template has<length_type>(), length_type, ENCODER> le{ encoder };
-				ie.encode(le);
-				le.set_length_ie();
 			}
 		}
 		else

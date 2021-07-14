@@ -1,5 +1,6 @@
 #pragma once
 #include "tag.hpp"
+#include "value.hpp"
 
 struct FLD_UC : med::value<uint8_t>
 {
