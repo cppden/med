@@ -233,16 +233,8 @@ inline void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp)
 			//special case for empty elements w/o length placeholder
 			pad.enable(static_cast<bool>(ld));
 			CODEC_TRACE("%sable padding bits=%zu for len=%zu", ld?"en":"dis", pad.size(), ld.size());
-			if constexpr (pad_t::pad_traits::inclusive)
-			{
-				pad.add();
-				ld.restore_end();
-			}
-			else
-			{
-				ld.restore_end();
-				return pad.add();
-			}
+			ld.restore_end();
+			return pad.add();
 			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
 			//if (std::size_t const left = ld.size() - padding_size(pad))
 			//MED_THROW_EXCEPTION(overflow, name<IE>(), left)

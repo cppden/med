@@ -20,30 +20,29 @@ namespace med {
 
 namespace detail {
 
-template <std::size_t SIZE, bool INCLUSIVE, uint8_t FILLER>
+template <std::size_t SIZE, uint8_t FILLER>
 struct pad
 {
-	static constexpr bool inclusive = INCLUSIVE;
 	static constexpr std::size_t pad_size = SIZE;
 	static constexpr uint8_t filler = FILLER;
 };
 
 } //end: namespace detail
 
-template <class UNIT, bool INCLUSIVE = false, uint8_t FILLER = 0, class Enable = void>
+template <class UNIT, uint8_t FILLER = 0, class Enable = void>
 struct padding;
 
-template <uint8_t BITS, bool INCLUSIVE, uint8_t FILLER>
-struct padding<bits<BITS>, INCLUSIVE, FILLER, void>
-	: detail::pad<BITS, INCLUSIVE, FILLER> {};
+template <uint8_t BITS, uint8_t FILLER>
+struct padding<bits<BITS>, FILLER, void>
+	: detail::pad<BITS, FILLER> {};
 
-template <uint8_t BYTES, bool INCLUSIVE, uint8_t FILLER>
-struct padding<bytes<BYTES>, INCLUSIVE, FILLER, void>
-	: detail::pad<BYTES, INCLUSIVE, FILLER> {};
+template <uint8_t BYTES, uint8_t FILLER>
+struct padding<bytes<BYTES>, FILLER, void>
+	: detail::pad<BYTES, FILLER> {};
 
-template <typename INT, bool INCLUSIVE, uint8_t FILLER>
-struct padding<INT, INCLUSIVE, FILLER, std::enable_if_t<std::is_integral<INT>::value>>
-	: detail::pad<sizeof(INT), INCLUSIVE, FILLER> {};
+template <typename INT, uint8_t FILLER>
+struct padding<INT, FILLER, std::enable_if_t<std::is_integral<INT>::value>>
+	: detail::pad<sizeof(INT), FILLER> {};
 
 template <class, class Enable = void>
 struct has_padding : std::false_type { };

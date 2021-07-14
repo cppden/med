@@ -67,18 +67,6 @@ struct exclusive : med::choice<
 	static constexpr char const* name() { return "Header"; }
 };
 
-struct inclusive : med::choice<
-	CASE< flag >,
-	CASE< port >,
-	CASE< pdu >,
-	CASE< ip >
->
-{
-	using length_type = med::value<uint8_t>;
-	using padding = med::padding<uint32_t, true>;
-	static constexpr char const* name() { return "Header"; }
-};
-
 } //end: namespace pad
 
 
@@ -125,50 +113,4 @@ TEST(padding, exclusive)
 	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded_4, buffer));
 }
-
-TEST(padding, inclusive)
-{
-	uint8_t buffer[16];
-	med::encoder_context<> ctx{ buffer };
-
-	pad::inclusive hdr;
-
-	//-- 1 byte
-	ctx.reset();
-	hdr.ref<pad::flag>().set(0x12);
-	encode(med::octet_encoder{ctx}, hdr);
-
-	uint8_t const encoded_1[] = { 1, 4, 0x12, 0 };
-	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_1, buffer));
-
-	//-- 2 bytes
-	ctx.reset();
-	hdr.ref<pad::port>().set(0x1234);
-	encode(med::octet_encoder{ctx}, hdr);
-
-	uint8_t const encoded_2[] = { 2, 4, 0x12, 0x34 };
-	EXPECT_EQ(sizeof(encoded_2), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_2, buffer));
-
-	//-- 3 bytes
-	ctx.reset();
-	hdr.ref<pad::pdu>().set(0x123456);
-	encode(med::octet_encoder{ctx}, hdr);
-
-	uint8_t const encoded_3[] = { 3, 8, 0x12, 0x34, 0x56, 0, 0, 0 };
-	EXPECT_EQ(sizeof(encoded_3), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_3, buffer));
-
-	//-- 4 bytes
-	ctx.reset();
-	hdr.ref<pad::ip>().set(0x12345678);
-	encode(med::octet_encoder{ctx}, hdr);
-
-	uint8_t const encoded_4[] = { 4, 8, 0x12, 0x34, 0x56, 0x78, 0, 0 };
-	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_4, buffer));
-}
-
-
 

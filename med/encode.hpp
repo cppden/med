@@ -193,16 +193,8 @@ struct container_encoder
 				ie.encode(le);
 				//special case for empty elements w/o length placeholder
 				pad.enable(static_cast<bool>(le));
-				if constexpr (pad_t::pad_traits::inclusive)
-				{
-					pad.add();
-					le.set_length_ie();
-				}
-				else
-				{
-					le.set_length_ie();
-					pad.add();
-				}
+				le.set_length_ie();
+				pad.add();
 			}
 			else
 			{

@@ -162,7 +162,7 @@ struct avp :
 	, med::add_meta_info< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
 {
 	using length_type = med::value<med::bytes<3>>;
-	using padding = med::padding<uint32_t, false>;
+	using padding = med::padding<uint32_t>;
 
 	auto const& flags() const                   { return this->template get<avp_flags>(); }
 	auto& flags()                               { return this->template ref<avp_flags>(); }
@@ -235,7 +235,7 @@ struct any_avp :
 	, med::add_meta_info< med::mi<med::mik::TAG, avp_code> >
 {
 	using length_type = med::value<med::bytes<3>>;
-	using padding = med::padding<uint32_t, false>;
+	using padding = med::padding<uint32_t>;
 
 	auto& body() const                  { return get<med::octet_string<>>(); }
 	bool is_set() const                 { return body().is_set(); }
