@@ -55,22 +55,20 @@ struct numeric_value : IE<IE_VALUE>
 	using value_type = typename traits::value_type;
 	using base_t     = numeric_value;
 
-	value_type get() const                      { return get_encoded(); }
-	auto set(value_type v)                      { return set_encoded(v); }
+	value_type get() const                          { return get_encoded(); }
+	auto set(value_type v)                          { return set_encoded(v); }
 
 	//NOTE: do not override!
 	static constexpr bool is_const = false;
-	value_type get_encoded() const              { return m_value; }
-	void set_encoded(value_type v)              { m_value = v; m_set = true; }
-	void clear()                                { m_set = false; }
-	bool is_set() const                         { return m_set; }
-	explicit operator bool() const              { return is_set(); }
+	value_type get_encoded() const                  { return m_value; }
+	void set_encoded(value_type v)                  { m_value = v; m_set = true; }
+	void clear()                                    { m_set = false; }
+	bool is_set() const                             { return m_set; }
+	explicit operator bool() const                  { return is_set(); }
 	template <class... ARGS>
-	void copy(base_t const& from, ARGS&&...)
-	{
-		m_value = from.m_value;
-		m_set = from.m_set;
-	}
+	void copy(base_t const& from, ARGS&&...)        { m_value = from.m_value; m_set = from.m_set; }
+
+	bool operator==(numeric_value const& rhs) const { return is_set() == rhs.is_set() && (!is_set() || get() == rhs.get()); }
 
 private:
 	bool       m_set{false};
@@ -206,6 +204,9 @@ struct value<bits<N>, void, EXT_TRAITS...>
  * generic value - a facade for numeric_values above
  */
 template <class T, class... EXT_TRAITS>
-struct value : detail::value<T, void, EXT_TRAITS...> {};
+struct value : detail::value<T, void, EXT_TRAITS...>
+{
+	bool operator==(value const& rhs) const { return detail::value<T, void, EXT_TRAITS...>::operator==(rhs); }
+};
 
 } //namespace med

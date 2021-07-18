@@ -61,25 +61,25 @@ set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 file(GLOB_RECURSE MED_SRCS med/*.hpp)
 # file(GLOB_RECURSE UT_SRCS ut/*.cpp)
 set(UT_SRCS 
-	ut/bits.cpp
-	ut/choice.cpp
-	ut/copy.cpp
-	ut/diameter.cpp
-	ut/gtpc.cpp
-#	ut/json.cpp
-	ut/length.cpp
-	ut/med.cpp
-	ut/meta.cpp
-	ut/multi.cpp
-	ut/octets.cpp
+#	ut/bits.cpp
+#	ut/choice.cpp
+#	ut/copy.cpp
+#	ut/diameter.cpp
+#	ut/gtpc.cpp
+##	ut/json.cpp
+#	ut/length.cpp
+#	ut/med.cpp
+#	ut/meta.cpp
+#	ut/multi.cpp
+#	ut/octets.cpp
 	ut/padding.cpp
-	ut/print.cpp
-	ut/protobuf.cpp
-	ut/sequence.cpp
-	ut/set.cpp
-	ut/unique.cpp
-	ut/value.cpp
-	ut/asn/ber.cpp
+#	ut/print.cpp
+#	ut/protobuf.cpp
+#	ut/sequence.cpp
+#	ut/set.cpp
+#	ut/unique.cpp
+#	ut/value.cpp
+#	ut/asn/ber.cpp
 )
 file(GLOB_RECURSE BM_SRCS benchmark/*.cpp)
 

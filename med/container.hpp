@@ -60,10 +60,7 @@ struct cont_copy
 
 struct cont_len
 {
-	static constexpr std::size_t op(std::size_t r1, std::size_t r2)
-	{
-		return r1 + r2;
-	}
+	static constexpr std::size_t op(std::size_t r1, std::size_t r2) { return r1 + r2; }
 
 	template <class IE, class SEQ, class ENCODER>
 	static std::size_t apply(SEQ const& seq, ENCODER& encoder)
@@ -92,18 +89,12 @@ struct cont_len
 	}
 
 	template <class SEQ, class ENCODER>
-	static constexpr std::size_t apply(SEQ const&, ENCODER&)
-	{
-		return 0;
-	}
+	static constexpr std::size_t apply(SEQ const&, ENCODER&)        { return 0; }
 };
 
 struct cont_is
 {
-	static constexpr bool op(bool r1, bool r2)
-	{
-		return r1 or r2;
-	}
+	static constexpr bool op(bool r1, bool r2)  { return r1 || r2; }
 
 	template <class IE, class SEQ>
 	static constexpr bool apply(SEQ const& seq)
@@ -129,7 +120,21 @@ struct cont_is
 	}
 
 	template <class SEQ>
-	static constexpr bool apply(SEQ const&) { return false; }
+	static constexpr bool apply(SEQ const&)     { return false; }
+};
+
+struct cont_eq
+{
+	static constexpr bool op(bool r1, bool r2)  { return r1 && r2; }
+
+	template <class IE, class SEQ>
+	static constexpr bool apply(SEQ const& lhs, SEQ const& rhs)
+	{
+		return static_cast<IE const&>(lhs) == static_cast<IE const&>(rhs);
+	}
+
+	template <class SEQ>
+	static constexpr bool apply(SEQ const&, SEQ const&)     { return true; }
 };
 
 //-----------------------------------------------------------------------
@@ -206,6 +211,8 @@ public:
 	void copy_to(TO& to, ARGS&&... args) const
 	{ meta::foreach<ies_types>(sl::cont_copy{}, to, *this, std::forward<ARGS>(args)...); }
 
+	bool operator==(container const& rhs) const { return meta::fold<ies_types>(sl::cont_eq{}, this->m_ies, rhs.m_ies); }
+	bool operator!=(container const& rhs) const { return !this->operator==(rhs); }
 
 protected:
 	friend struct sl::cont_copy;

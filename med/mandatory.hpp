@@ -40,6 +40,8 @@ struct mandatory<
 > : field_t<FIELD>
 {
 	using field_type = FIELD;
+
+	bool operator==(mandatory const& rhs) const { return FIELD::operator==(rhs); }
 };
 
 //M<FIELD, SETTER>

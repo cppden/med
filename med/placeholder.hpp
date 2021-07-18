@@ -27,6 +27,9 @@ struct _length
 	static constexpr void copy(Ts&&...) { }
 };
 
+template<int L, int R>
+static constexpr bool operator==(_length<L> const&, _length<R> const&) { return true; }
+
 }	//end: namespace placeholder
 
 }	//end: namespace med

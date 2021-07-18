@@ -202,9 +202,9 @@ struct container_encoder
 				pad_t pad{encoder};
 				ie.encode(le);
 				//special case for empty elements w/o length placeholder
-				pad.enable(static_cast<bool>(le));
+				pad.enable_padding(static_cast<bool>(le));
 				le.set_length_ie();
-				pad.add();
+				pad.add_padding();
 			}
 		}
 		else
@@ -246,7 +246,19 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 				//CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
 				auto const len = sl::ie_length<mi_rest>(ie, encoder);
 				//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
-				encode_len<typename mi::length_type>(encoder, len);
+				using length_type = typename mi::length_type;
+				encode_len<length_type>(encoder, len);
+
+				using pad_traits = typename get_padding<length_type>::type;
+				if constexpr (!std::is_void_v<pad_traits>)
+				{
+					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
+					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
+					pad_t pad{encoder};
+					ie_encode<mi_rest>(encoder, ie);
+					pad.add_padding();
+					return;
+				}
 			}
 
 			ie_encode<mi_rest>(encoder, ie);

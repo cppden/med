@@ -61,7 +61,7 @@ struct octet_encoder : sl::octet_info
 	void operator() (ADD_PADDING const& pad)          { ctx.buffer().template fill<ADD_PADDING>(pad.pad_size, pad.filler); }
 	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
 
-	template <class IE> constexpr std::size_t operator() (GET_LENGTH, IE const& ie)
+	template <class IE> constexpr std::size_t operator() (GET_LENGTH, IE const& ie) const
 	{
 		if constexpr (is_multi_field_v<IE>)
 		{

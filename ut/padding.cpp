@@ -121,6 +121,7 @@ TEST(padding, value)
 	med::encoder_context<> ctx{ buffer };
 
 	pad::msg msg;
+
 	msg.ref<pad::u16>().set(0x1122);
 	msg.ref<pad::u24>().set(0x334455);
 	encode(med::octet_encoder{ctx}, msg);
@@ -131,38 +132,53 @@ TEST(padding, value)
 	};
 	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded_1, buffer));
+
+	med::decoder_context<> dctx{ctx.buffer().get_start(), ctx.buffer().get_offset()};
+	pad::msg dmsg;
+	decode(med::octet_decoder{dctx}, dmsg);
+	ASSERT_TRUE(msg == dmsg);
 }
 
 
 TEST(padding, container)
 {
-	uint8_t buffer[16];
+	uint8_t buffer[64];
 	med::encoder_context<> ctx{ buffer };
 
-	pad::exclusive hdr;
+	pad::exclusive msg;
+
+	auto check_decode = [&msg](auto const& buf)
+	{
+		med::decoder_context<> dctx{buf.get_start(), buf.get_offset()};
+		pad::exclusive dmsg;
+		decode(med::octet_decoder{dctx}, dmsg);
+		ASSERT_TRUE(msg == dmsg);
+	};
 
 	//-- 1 byte
 	ctx.reset();
-	hdr.ref<pad::flag>().set(0x12);
-	encode(med::octet_encoder{ctx}, hdr);
+	msg.ref<pad::flag>().set(0x12);
+	encode(med::octet_encoder{ctx}, msg);
 
 	uint8_t const encoded_1[] = { 1, 3, 0x12, 0 };
 	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded_1, buffer));
+	check_decode(ctx.buffer());
 
 	//-- 2 bytes
 	ctx.reset();
-	hdr.ref<pad::port>().set(0x1234);
-	encode(med::octet_encoder{ctx}, hdr);
+	msg.ref<pad::port>().set(0x1234);
+	encode(med::octet_encoder{ctx}, msg);
 
 	uint8_t const encoded_2[] = { 2, 4, 0x12, 0x34 };
 	EXPECT_EQ(sizeof(encoded_2), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded_2, buffer));
+	check_decode(ctx.buffer());
 
 	//-- 3 bytes
 	ctx.reset();
-	hdr.ref<pad::pdu>().set(0x123456);
-	encode(med::octet_encoder{ctx}, hdr);
+	msg.ref<pad::pdu>().set(0x123456);
+	encode(med::octet_encoder{ctx}, msg);
 
 	uint8_t const encoded_3[] = { 3, 5, 0x12, 0x34, 0x56, 0, 0, 0 };
 	EXPECT_EQ(sizeof(encoded_3), ctx.buffer().get_offset());
@@ -170,11 +186,12 @@ TEST(padding, container)
 
 	//-- 4 bytes
 	ctx.reset();
-	hdr.ref<pad::ip>().set(0x12345678);
-	encode(med::octet_encoder{ctx}, hdr);
+	msg.ref<pad::ip>().set(0x12345678);
+	encode(med::octet_encoder{ctx}, msg);
 
 	uint8_t const encoded_4[] = { 4, 6, 0x12, 0x34, 0x56, 0x78, 0, 0 };
 	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded_4, buffer));
+	check_decode(ctx.buffer());
 }
 

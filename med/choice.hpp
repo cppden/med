@@ -90,6 +90,24 @@ struct choice_copy : choice_if
 	static constexpr void apply(FROM const&, TO&, ARGS&&...) { }
 };
 
+struct choice_eq : choice_if
+{
+	template <class IE, class CHOICE>
+	static bool apply(CHOICE const& lhs, CHOICE const& rhs)
+	{
+		if constexpr (!CHOICE::plain_header)
+		{
+			if (!(lhs.header() == rhs.header())) return false;
+		}
+		using field_type = get_field_type_t<IE>;
+		return static_cast<field_type const&>(lhs.template as<IE>()) == static_cast<field_type const&>(rhs.template as<IE>());
+		//to.template ref<>().clear();
+	}
+
+	template <class CHOICE>
+	static constexpr bool apply(CHOICE const&, CHOICE const&) { return false; }
+};
+
 template <class CODEC>
 struct choice_name
 {
@@ -268,7 +286,9 @@ public:
 		meta::for_if<ies_types>(sl::choice_clear{}, *this);
 		this->header().clear(); m_index = num_types;
 	}
+
 	bool is_set() const                     { return this->header().is_set() && index() != num_types; }
+
 	template <class ENC>
 	std::size_t calc_length(ENC& enc) const { return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len{}, *this, enc); }
 
@@ -306,6 +326,9 @@ public:
 	void copy(FROM const& from, ARGS&&... args)
 	{ meta::for_if<ies_types>(sl::choice_copy{}, from, *this, std::forward<ARGS>(args)...); }
 
+	bool operator==(choice const& rhs) const    { return index() == rhs.index() && meta::for_if<ies_types>(sl::choice_eq{}, *this, rhs); }
+	bool operator!=(choice const& rhs) const    { return !this->operator==(rhs); }
+
 	template <class TO, class... ARGS>
 	void copy_to(TO& to, ARGS&&... args) const
 	{ meta::for_if<ies_types>(sl::choice_copy{}, *this, to, std::forward<ARGS>(args)...); }
@@ -342,6 +365,7 @@ private:
 	friend struct sl::choice_copy;
 	friend struct sl::choice_enc;
 	friend struct sl::choice_dec;
+	friend struct sl::choice_eq;
 
 	using storage_type = typename detail::list_aligned_union<ies_types>::type;
 
