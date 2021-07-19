@@ -68,6 +68,8 @@ TEST(value, fixed)
 	EXPECT_EQ(1, v.get());
 	EXPECT_TRUE(v.set_encoded(1));
 	EXPECT_FALSE(v.set_encoded(2));
+	EXPECT_TRUE(v == tt{});
+	EXPECT_FALSE(v != tt{});
 }
 
 TEST(value, init)
@@ -78,6 +80,8 @@ TEST(value, init)
 	static_assert(tt::is_const);
 	EXPECT_TRUE(v.is_set());
 	EXPECT_EQ(1, v.get_encoded());
+	EXPECT_TRUE(v == tt{});
+	EXPECT_FALSE(v != tt{});
 }
 
 TEST(value, default)
@@ -90,18 +94,31 @@ TEST(value, default)
 	v.set(2);
 	EXPECT_TRUE(v.is_set());
 	EXPECT_EQ(2, v.get_encoded());
+
+	tt v2;
+	EXPECT_FALSE(v == v2);
+	v2.set(v.get());
+	EXPECT_TRUE(v == v2);
+	v2.set(v.get() + 1);
+	EXPECT_FALSE(v == v2);
 }
 
 TEST(value, integer)
 {
 	#define VT_TYPE(T) \
-	{                                                    \
-		med::value<T> v;                                 \
-		EXPECT_FALSE(v.is_set());                        \
-		v.set(1);                                      \
-		EXPECT_TRUE(v.is_set());                         \
-		EXPECT_EQ(1, v.get());                         \
-	}                                                    \
+	{                             \
+		med::value<T> v;          \
+		EXPECT_FALSE(v.is_set()); \
+		v.set(1);                 \
+		EXPECT_TRUE(v.is_set());  \
+		EXPECT_EQ(1, v.get());    \
+		med::value<T> v2;         \
+		EXPECT_FALSE(v == v2);    \
+		v2.set(v.get());          \
+		EXPECT_TRUE(v == v2);     \
+		v2.set(v.get() + 1);      \
+		EXPECT_FALSE(v == v2);    \
+	}                             \
 	/* VT_TYPE */
 	VT_TYPE(uint8_t);
 	VT_TYPE(uint16_t);

@@ -419,9 +419,6 @@ struct sequence : container<IES...>
 {
 	using ies_types = typename container<IES...>::ies_types;
 
-	bool operator==(sequence const& rhs) const  { return container<IES...>::operator==(rhs); }
-	bool operator!=(sequence const& rhs) const  { return !this->operator==(rhs); }
-
 	template <class ENCODER>
 	void encode(ENCODER& encoder) const
 	{

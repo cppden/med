@@ -69,6 +69,7 @@ struct numeric_value : IE<IE_VALUE>
 	void copy(base_t const& from, ARGS&&...)        { m_value = from.m_value; m_set = from.m_set; }
 
 	bool operator==(numeric_value const& rhs) const { return is_set() == rhs.is_set() && (!is_set() || get() == rhs.get()); }
+	bool operator!=(numeric_value const& rhs) const { return !this->operator==(rhs); }
 
 private:
 	bool       m_set{false};
@@ -100,6 +101,9 @@ struct const_integer : IE<IE_VALUE>
 	static constexpr bool match(value_type v)           { return traits::value == v; }
 	template <class... ARGS>
 	static constexpr void copy(base_t const&, ARGS&&...){ }
+
+	bool operator==(const_integer const&) const         { return true; } //equal to itself by definition
+	bool operator!=(const_integer const&) const         { return false; }
 };
 
 /**
@@ -122,6 +126,8 @@ struct init_integer : IE<IE_VALUE>
 	static constexpr bool is_set()                      { return true; }
 	template <class... ARGS>
 	static constexpr void copy(base_t const&, ARGS&&...){ }
+	bool operator==(init_integer const&) const          { return true; }
+	bool operator!=(init_integer const&) const          { return false; }
 };
 
 /**
@@ -204,9 +210,6 @@ struct value<bits<N>, void, EXT_TRAITS...>
  * generic value - a facade for numeric_values above
  */
 template <class T, class... EXT_TRAITS>
-struct value : detail::value<T, void, EXT_TRAITS...>
-{
-	bool operator==(value const& rhs) const { return detail::value<T, void, EXT_TRAITS...>::operator==(rhs); }
-};
+struct value : detail::value<T, void, EXT_TRAITS...> {};
 
 } //namespace med

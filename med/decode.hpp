@@ -266,6 +266,7 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp)
 	if constexpr (not meta::list_is_empty_v<META_INFO>)
 	{
 		using mi = meta::list_first_t<META_INFO>;
+		using mi_rest = meta::list_rest_t<META_INFO>;
 		CODEC_TRACE("%s[%s] w/ %s", __FUNCTION__, name<IE>(), class_name<mi>());
 
 		if constexpr (mi::kind == mik::TAG)
@@ -279,26 +280,39 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp)
 		}
 		else if constexpr (mi::kind == mik::LEN)
 		{
-			auto const len_value = decode_len<typename mi::length_type>(decoder);
+			using length_type = typename mi::length_type;
+			using pad_traits = typename get_padding<length_type>::type;
+
+			auto const len_value = decode_len<length_type>(decoder);
 			//TODO: may have fixed length like in BER:NULL/BOOL so need to check here
 			if (auto end = decoder(PUSH_SIZE{len_value}))
 			{
-				ie_decode<meta::list_rest_t<META_INFO>>(decoder, ie, unexp);
-				if (0 != end.size()) //TODO: ??? as warning not error
+				if constexpr (std::is_void_v<pad_traits>)
 				{
-					CODEC_TRACE("%s: end-size=%zu", name<IE>(), end.size());
-					MED_THROW_EXCEPTION(overflow, name<IE>(), len_value)
+					ie_decode<mi_rest>(decoder, ie, unexp);
+					//TODO: ??? as warning not error
+					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 				}
-				return;
+				else
+				{
+					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
+					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
+					pad_t pad{decoder};
+					ie_decode<mi_rest>(decoder, ie, unexp);
+					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+					end.restore_end();
+					pad.add_padding();
+				}
 			}
 			else
 			{
 				//TODO: something more informative: tried to set length beyond data end
-				MED_THROW_EXCEPTION(overflow, name<IE>(), len_value)
+				MED_THROW_EXCEPTION(overflow, name<IE>(), len_value);
 			}
+			return;
 		}
 
-		ie_decode<meta::list_rest_t<META_INFO>>(decoder, ie, unexp);
+		ie_decode<mi_rest>(decoder, ie, unexp);
 	}
 	else
 	{

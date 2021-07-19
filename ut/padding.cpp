@@ -151,6 +151,7 @@ TEST(padding, container)
 	{
 		med::decoder_context<> dctx{buf.get_start(), buf.get_offset()};
 		pad::exclusive dmsg;
+		ASSERT_TRUE(msg != dmsg);
 		decode(med::octet_decoder{dctx}, dmsg);
 		ASSERT_TRUE(msg == dmsg);
 	};
