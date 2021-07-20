@@ -25,8 +25,8 @@ jobs:
     steps:
     - run: |
         sudo apt-get update
-        sudo apt-get install -y ${{ matrix.compiler }}
-        sudo apt-get install -y libgtest-dev
+        sudo apt-get -y --no-upgrade install ${{ matrix.compiler }}
+        sudo apt-get -y install libgtest-dev
     - uses: actions/checkout@v2
     - run: cmake -E make_directory build
     - working-directory: build/
