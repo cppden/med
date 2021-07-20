@@ -7,7 +7,7 @@
 ## Description
 Zero-dependency (STL) header-only C++ library for definition of messages with generation of corresponding encoder and decoder via meta-programming.
 MED is extensible library which can be adopted to support many type of encoding rules. Currently it includes:
-* complete implementation of non-ASN.1 octet encoding rules;
+* extensible implementation of non-ASN.1 octet encoding rules;
 * initial implementation of Google ProtoBuf encoding rules;
 * initial implementation of JSON encoding rules.
 
@@ -20,23 +20,17 @@ See [repos](https://github.com/cppden/gtpu) for real-world examples of med usage
 #include "med/med.hpp"
 
 template <std::size_t TAG>
-using tag = med::value<med::fixed<TAG, uint8_t>>;
+using T = med::value<med::fixed<TAG, uint8_t>>;
 template <typename ...T>
 using M = med::mandatory<T...>;
 template <typename ...T>
 using O = med::optional<T...>;
 using L = med::length_t<med::value<uint8_t>>;
 
-struct FIELD1 : med::value<uint8_t>
-{ static constexpr char const* name() { return "byte"; } };
-
-struct FIELD2 : med::value<uint16_t>
-{ static constexpr char const* name() { return "word"; } };
-
-struct FIELD3 : med::value<med::bytes<3>>
-{ static constexpr char const* name() { return "3byte"; } };
-
-struct FIELD4 : med::value<uint32_t>
+struct BYTE : med::value<uint8_t> {};
+struct WORD : med::value<uint16_t> {};
+struct TRIBYTE : med::value<med::bytes<3>> {};
+struct IP4 : med::value<uint32_t>
 {
 	static constexpr char const* name() { return "ip-addr"; }
 	std::string print() const
@@ -48,37 +42,30 @@ struct FIELD4 : med::value<uint32_t>
 	}
 };
 
-struct FIELD5 : med::value<uint32_t>
-{ static constexpr char const* name() { return "dword"; } };
-
-struct VFLD1 : med::octet_string<med::min<5>, med::max<10>>, med::with_snapshot
-{ static constexpr char const* name() { return "url"; } };
+struct DWORD : med::value<uint32_t> {};
+struct URL : med::octet_string<med::min<5>, med::max<10>>, med::with_snapshot {};
 
 struct MSG1 : med::sequence<
-	M< FIELD1 >, //V
-	M< tag<0x21>, FIELD2 >, //TV
-	M< L, FIELD5 >, //LV(fixed)
-	O< tag<0x49>, FIELD3 >,
-	O< tag<0x89>, FIELD4 >,
-	O< tag<  3>, MSG1 >
->
-{ static constexpr char const* name() { return "Msg-One"; } };
+	M< BYTE >,
+	M< T<0x21>, WORD >,
+	M< L, URL >,
+	O< T<0x49>, TRIBYTE >,
+	O< T<0x89>, IP4 >,
+	O< T<0x03>, DWORD >
+>{};
 
 struct MSG2 : med::set<
-	M< tag<0x0b>,    FIELD1 >, //<TV>
-	M< tag<0x21>, L, FIELD2 >, //<TLV>
-	O< tag<0x49>, L, FIELD3 >, //[TLV]
-	O< tag<0x89>,    FIELD4 >, //[TV]
-	O< tag<0x22>, L, VFLD1 >   //[TLV(var)]
->
-{ static constexpr char const* name() { return "Msg-Set"; } };
-
+	M< tag<0x0b>,    BYTE >,
+	M< tag<0x21>, L, WORD >,
+	O< tag<0x49>, L, TRIBYTE >,
+	O< tag<0x89>,    IP4 >,
+	O< tag<0x22>, L, URL >
+>{};
 
 struct PROTO : med::choice<
-	med::tag<1, MSG1>,
-	med::tag<2, MSG2>
->
-{};
+	M<T<1>, MSG1>,
+	M<T<2>, MSG2>
+>{};
 ```
 
 ## Dependencies
