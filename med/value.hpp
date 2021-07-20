@@ -68,7 +68,15 @@ struct numeric_value : IE<IE_VALUE>
 	template <class... ARGS>
 	void copy(base_t const& from, ARGS&&...)        { m_value = from.m_value; m_set = from.m_set; }
 
+#if defined(__GNUC__) && (__GNUC__ < 9)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 	bool operator==(numeric_value const& rhs) const { return is_set() == rhs.is_set() && (!is_set() || get() == rhs.get()); }
+#if defined(__GNUC__) && (__GNUC__ < 9)
+#pragma GCC diagnostic pop
+#endif
+
 	bool operator!=(numeric_value const& rhs) const { return !this->operator==(rhs); }
 
 private:
