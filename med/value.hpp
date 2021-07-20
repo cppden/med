@@ -72,7 +72,9 @@ struct numeric_value : IE<IE_VALUE>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
+
 	bool operator==(numeric_value const& rhs) const { return is_set() == rhs.is_set() && (!is_set() || get() == rhs.get()); }
+
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 9)
 #pragma GCC diagnostic pop
 #endif
