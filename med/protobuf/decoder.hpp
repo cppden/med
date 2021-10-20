@@ -34,17 +34,17 @@ struct decoder : sl::octet_info
 	{
 	}
 
-	allocator_type& get_allocator()              { return ctx.get_allocator(); }
+	allocator_type& get_allocator()             { return ctx.get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE const& ps)        { return ctx.buffer().push_size(ps.size); }
+	auto operator() (PUSH_SIZE ps)              { return ctx.buffer().push_size(ps.size, ps.commit); }
 	template <class IE>
-	bool operator() (PUSH_STATE, IE const&)      { return ctx.buffer().push_state(); }
-	bool operator() (POP_STATE)                  { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE)                  { return ctx.buffer().get_state(); }
+	bool operator() (PUSH_STATE, IE const&)     { return ctx.buffer().push_state(); }
+	bool operator() (POP_STATE)                 { return ctx.buffer().pop_state(); }
+	auto operator() (GET_STATE)                 { return ctx.buffer().get_state(); }
 	template <class IE>
-	bool operator() (CHECK_STATE, IE const&)     { return !ctx.buffer().empty(); }
-	void operator() (ADVANCE_STATE const& ss)    { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	bool operator() (CHECK_STATE, IE const&)    { return !ctx.buffer().empty(); }
+	void operator() (ADVANCE_STATE ss)          { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
 
 	//IE_TAG
 	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)

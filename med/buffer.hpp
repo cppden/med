@@ -13,8 +13,6 @@ Distributed under the MIT License
 #include <cstdint>
 #include <algorithm>
 #include <iostream>
-//#include <iomanip>
-//#include <string_view>
 
 #include "exception.hpp"
 #include "name.hpp"
@@ -50,20 +48,17 @@ public:
 	class size_state
 	{
 	public:
-		size_state() noexcept
-			: m_buf{ nullptr }
-			, m_end{ nullptr }
-		{
-		}
+		size_state() = default;
 
 		size_state(size_state&& rhs) noexcept
 			: m_buf{ rhs.m_buf }
 			, m_end{ rhs.m_end }
+			, m_pending{ rhs.m_pending }
 		{
 			rhs.m_end = nullptr;
 		}
 
-		size_state& operator= (size_state&& rhs)
+		size_state& operator= (size_state&& rhs) noexcept
 		{
 			m_buf = rhs.m_buf;
 			m_end = rhs.m_end;
@@ -74,44 +69,74 @@ public:
 		~size_state()                           { restore_end(); }
 		void restore_end()
 		{
-			if (m_end)
+			if (!pending() && m_end)
 			{
-				CODEC_TRACE("restored end %p->%p: %s", (void*)m_buf->m_end, (void*)m_end, m_buf->toString());
+				CODEC_TRACE("%d: restored end %p->%p: %s", m_instance, (void*)m_buf->m_end, (void*)m_end, m_buf->toString());
 				m_buf->m_end = m_end;
 				m_end = nullptr;
 			}
 		}
 
-		std::size_t size() const                { return m_buf ? m_buf->size() : 0; }
-		explicit operator bool() const          { return nullptr != m_end; }
+		void commit(int delta)
+		{
+			if (pending())
+			{
+				m_pending = false;
+				auto pend = m_end + delta;
+				m_end = m_buf->m_end;
+				m_buf->m_end = pend;
+				CODEC_TRACE("%d: commit adjusted by %d end %p->%p: %s", m_instance, delta, (void*)m_end, (void*)m_buf->m_end, m_buf->toString());
+			}
+		}
+
+		std::size_t size() const noexcept       { return m_buf ? m_buf->size() : 0; }
+		explicit operator bool() const noexcept { return nullptr != m_end; }
+		bool pending() const noexcept           { return m_buf && m_end && m_pending; }
 
 	private:
 		friend class buffer;
 
-		size_state(buffer* buf, std::size_t size) noexcept
+		size_state(buffer* buf, std::size_t size, bool commit_)
 			: m_buf{ buf }
 			, m_end{ buf->end() }
+#ifdef CODEC_TRACE_ENABLE
+			, m_instance{ s_instance_count++ }
+#endif
 		{
-			m_buf->m_end = m_buf->begin() + size;
-			if (m_buf->end() > m_end)
+			if (auto* pend = buf->begin() + size; pend <= m_end) //within the current end of buffer
 			{
-				CODEC_TRACE("INVALID END ABOVE CURRENT BY %zd", m_buf->end() - m_end);
-				m_buf->m_end = m_end;
-				m_end = nullptr;
+				if (commit_)
+				{
+					buf->m_end = pend;
+					CODEC_TRACE("%d: changed by %zu end %p->%p: %s", m_instance, size, (void*)m_end, (void*)buf->end(), buf->toString());
+				}
+				else
+				{
+					m_pending = true;
+					m_end = pend;
+					CODEC_TRACE("%d: pending change by %zu end %p->%p: %s", m_instance, size, (void*)buf->end(), (void*)m_end, buf->toString());
+				}
 			}
 			else
 			{
-				CODEC_TRACE("changed size to %zu ends at %p (was %p): %s", size, (void*)m_buf->end(), (void*)m_end, m_buf->toString());
+				m_buf = nullptr;
+				MED_THROW_EXCEPTION(overflow, "end of buffer", pend - m_end);
 			}
 		}
 
 		size_state(size_state const&) = delete;
 		size_state& operator= (size_state const&) = delete;
 
-		buffer* m_buf;
-		pointer m_end;
+		buffer*     m_buf {nullptr};
+		pointer     m_end {nullptr};
+		bool        m_pending {false};
+#ifdef CODEC_TRACE_ENABLE
+		int const   m_instance{-1};
+		static int  s_instance_count;
+#endif
 	};
 
+	auto push_size(std::size_t s, bool c)  { return size_state{this, s, c}; }
 
 	void reset()                           { m_state.reset(get_start()); }
 
@@ -158,22 +183,19 @@ public:
 	bool empty() const                     { return begin() >= end(); }
 	explicit operator bool() const         { return !empty(); }
 
-	template <class IE>
-	void push(value_type v)
+	template <class IE> void push(value_type v)
 	{
 		if (not empty()) { *m_state.cursor++ = v; }
 		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this) }
 	}
 
-	template <class IE>
-	value_type pop()
+	template <class IE> value_type pop()
 	{
 		if (not empty()) { return *m_state.cursor++; }
 		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this) }
 	}
 
-	template <class IE, int DELTA>
-	pointer advance()
+	template <class IE, int DELTA> pointer advance()
 	{
 		pointer p = nullptr;
 		if constexpr (DELTA > 0)
@@ -203,8 +225,7 @@ public:
 		return p;
 	}
 
-	template <class IE = void>
-	pointer advance(int delta)
+	template <class IE = void> pointer advance(int delta)
 	{
 		pointer p = nullptr;
 		if (delta >= 0 && size() >= std::size_t(delta))
@@ -227,8 +248,7 @@ public:
 	/// similar to advance but no bounds check
 	void offset(int delta)                 { m_state.cursor += delta; }
 
-	template <class IE>
-	void fill(std::size_t count, uint8_t value)
+	template <class IE> void fill(std::size_t count, uint8_t value)
 	{
 		//CODEC_TRACE("padding %zu bytes=%u", count, value);
 		if (size() >= count)
@@ -250,8 +270,6 @@ public:
 	 * @param p new end of buffer
 	 */
 	void end(pointer p)                    { m_end = p > begin() ? p : begin(); }
-
-	auto push_size(std::size_t size)       { return size_state{this, size}; }
 
 #if 1
 	char const* toString() const
@@ -322,6 +340,11 @@ private:
 	pointer        m_start {nullptr};
 	state_type     m_store;
 };
+
+#ifdef CODEC_TRACE_ENABLE
+template <typename PTR>
+int buffer<PTR>::size_state::s_instance_count = 0;
+#endif
 
 }	//end: namespace med
 

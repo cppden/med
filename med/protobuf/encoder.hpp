@@ -54,8 +54,8 @@ struct encoder : sl::octet_info
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)           { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE)                       { ctx.buffer().pop_state(); }
-	void operator() (ADVANCE_STATE const& ss)         { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
-	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
+	void operator() (ADVANCE_STATE ss)                { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	void operator() (SNAPSHOT ss)                     { ctx.snapshot(ss); }
 
 	//IE_TAG/IE_LEN
 	template <class IE> void operator() (IE const& ie, IE_TAG)

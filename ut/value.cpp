@@ -69,7 +69,6 @@ TEST(value, fixed)
 	EXPECT_TRUE(v.set_encoded(1));
 	EXPECT_FALSE(v.set_encoded(2));
 	EXPECT_TRUE(v == tt{});
-	EXPECT_FALSE(v != tt{});
 }
 
 TEST(value, init)
@@ -81,7 +80,6 @@ TEST(value, init)
 	EXPECT_TRUE(v.is_set());
 	EXPECT_EQ(1, v.get_encoded());
 	EXPECT_TRUE(v == tt{});
-	EXPECT_FALSE(v != tt{});
 }
 
 TEST(value, default)

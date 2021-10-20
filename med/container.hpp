@@ -212,7 +212,6 @@ public:
 	{ meta::foreach<ies_types>(sl::cont_copy{}, to, *this, std::forward<ARGS>(args)...); }
 
 	bool operator==(container const& rhs) const { return meta::fold<ies_types>(sl::cont_eq{}, this->m_ies, rhs.m_ies); }
-	bool operator!=(container const& rhs) const { return !this->operator==(rhs); }
 
 protected:
 	friend struct sl::cont_copy;

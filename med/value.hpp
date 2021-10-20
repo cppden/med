@@ -72,12 +72,10 @@ struct numeric_value : IE<IE_VALUE>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-	bool operator==(numeric_value const& rhs) const { return is_set() == rhs.is_set() && (!is_set() || get() == rhs.get()); }
+	bool operator==(numeric_value const& rhs) const noexcept { return is_set() == rhs.is_set() && (!is_set() || get() == rhs.get()); }
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 9)
 #pragma GCC diagnostic pop
 #endif
-
-	bool operator!=(numeric_value const& rhs) const { return !this->operator==(rhs); }
 
 private:
 	bool       m_set{false};
@@ -110,8 +108,7 @@ struct const_integer : IE<IE_VALUE>
 	template <class... ARGS>
 	static constexpr void copy(base_t const&, ARGS&&...){ }
 
-	bool operator==(const_integer const&) const         { return true; } //equal to itself by definition
-	bool operator!=(const_integer const&) const         { return false; }
+	bool operator==(const_integer const&) const noexcept{ return true; } //equal to itself by definition
 };
 
 /**
@@ -135,7 +132,6 @@ struct init_integer : IE<IE_VALUE>
 	template <class... ARGS>
 	static constexpr void copy(base_t const&, ARGS&&...){ }
 	bool operator==(init_integer const&) const          { return true; }
-	bool operator!=(init_integer const&) const          { return false; }
 };
 
 /**

@@ -20,14 +20,16 @@ Distributed under the MIT License
 
 namespace med {
 
-template <class DEC_CTX>
-struct octet_decoder : sl::octet_info
+template <class DEC_CTX, class... DEPS>
+struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
 {
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
 	template <class... PA>
 	using padder_type = octet_padder<PA...>;
+	template <class... NEWDEPS>
+	using make_dependent = octet_decoder<DEC_CTX, NEWDEPS...>;
 
 	DEC_CTX& ctx;
 
@@ -36,19 +38,15 @@ struct octet_decoder : sl::octet_info
 	allocator_type& get_allocator()             { return ctx.get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE const& ps)       { return ctx.buffer().push_size(ps.size); }
+	auto operator() (PUSH_SIZE ps)              { return ctx.buffer().push_size(ps.size, ps.commit); }
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)     { return ctx.buffer().push_state(); }
 	bool operator() (POP_STATE)                 { return ctx.buffer().pop_state(); }
 	auto operator() (GET_STATE)                 { return ctx.buffer().get_state(); }
 	template <class IE>
 	bool operator() (CHECK_STATE, IE const&)    { return !ctx.buffer().empty(); }
-	void operator() (ADVANCE_STATE const& ss)   { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
-	void operator() (ADD_PADDING const& pad)
-	{
-		CODEC_TRACE("padding %zu bytes", pad.pad_size);
-		ctx.buffer().template advance<ADD_PADDING>(pad.pad_size);
-	}
+	void operator() (ADVANCE_STATE ss)          { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	void operator() (ADD_PADDING pad)           { ctx.buffer().template advance<ADD_PADDING>(pad.pad_size); }
 
 	//IE_TAG
 	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)

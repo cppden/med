@@ -172,8 +172,8 @@ struct choice_enc : choice_if
 
 struct choice_dec
 {
-	template <class IE, class TO, class HEADER, class DECODER, class UNEXP>
-	bool check(TO&, HEADER const& header, DECODER&, UNEXP&)
+	template <class IE, class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
+	bool check(TO&, HEADER const& header, DECODER&, UNEXP&, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = meta::list_first_t<mi>;
@@ -181,18 +181,18 @@ struct choice_dec
 		return type::match( get_tag(header) );
 	}
 
-	template <class IE, class TO, class HEADER, class DECODER, class UNEXP>
-	static void apply(TO& to, HEADER const&, DECODER& decoder, UNEXP& unexp)
+	template <class IE, class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
+	static void apply(TO& to, HEADER const&, DECODER& decoder, UNEXP& unexp, DEPS&... deps)
 	{
 		CODEC_TRACE("CASE[%s]", name<IE>());
 		auto& ie = static_cast<IE&>(to.template ref<get_field_type_t<IE>>());
 		//skip 1st TAG meta-info as it's decoded in header
 		using mi = meta::produce_info_t<DECODER, IE>;
-		sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp);
+		sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp, deps...);
 	}
 
-	template <class TO, class HEADER, class DECODER, class UNEXP>
-	void apply(TO& to, HEADER const& header, DECODER& decoder, UNEXP& unexp)
+	template <class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
+	void apply(TO& to, HEADER const& header, DECODER& decoder, UNEXP& unexp, DEPS&...)
 	{
 		unexp(decoder, to, header);
 	}
@@ -327,7 +327,6 @@ public:
 	{ meta::for_if<ies_types>(sl::choice_copy{}, from, *this, std::forward<ARGS>(args)...); }
 
 	bool operator==(choice const& rhs) const    { return index() == rhs.index() && meta::for_if<ies_types>(sl::choice_eq{}, *this, rhs); }
-	bool operator!=(choice const& rhs) const    { return !this->operator==(rhs); }
 
 	template <class TO, class... ARGS>
 	void copy_to(TO& to, ARGS&&... args) const
@@ -337,8 +336,8 @@ public:
 	void encode(ENCODER& encoder) const
 	{ meta::for_if<ies_types>(sl::choice_enc{}, *this, encoder); }
 
-	template <class DECODER, class UNEXP>
-	void decode(DECODER& decoder, UNEXP& unexp)
+	template <class DECODER, class UNEXP, class... DEPS>
+	void decode(DECODER& decoder, UNEXP& unexp, DEPS&... deps)
 	{
 		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
 			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
@@ -351,12 +350,12 @@ public:
 			using tag_t = meta::list_first_t<mi>;
 			value<std::size_t> tag;
 			tag.set_encoded(sl::decode_tag<tag_t, true>(decoder));
-			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, unexp);
+			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, unexp, deps...);
 		}
 		else
 		{
-			med::decode(decoder, this->header(), unexp);
-			meta::for_if<ies_types>(sl::choice_dec{}, *this, this->header(), decoder, unexp);
+			med::decode(decoder, this->header(), unexp, deps...);
+			meta::for_if<ies_types>(sl::choice_dec{}, *this, this->header(), decoder, unexp, deps...);
 		}
 	}
 

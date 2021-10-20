@@ -56,8 +56,8 @@ struct encoder : info
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)             { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE)                         { ctx.buffer().pop_state(); }
-	void operator() (ADVANCE_STATE const& ss)           { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
-	void operator() (SNAPSHOT const& ss)                { ctx.snapshot(ss); }
+	void operator() (ADVANCE_STATE ss)                  { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	void operator() (SNAPSHOT ss)                       { ctx.snapshot(ss); }
 
 	//calculate length of IE (can be either a data itself or TAG/LEN already extracted from META-INFO
 	template <class IE>

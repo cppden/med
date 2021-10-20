@@ -226,6 +226,11 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 	bool is_set() const                         { return m_value.is_set(); }
 	explicit operator bool() const              { return is_set(); }
 
+	bool operator==(octet_string_impl const& rhs) const noexcept
+	{
+		return size() == rhs.size() && 0 == std::memcmp(data(), rhs.data(), size());
+	}
+
 protected:
 	value_type  m_value;
 };

@@ -27,7 +27,7 @@ struct SET_STATE {};
 //Advance the buffer state by relative number of codec units
 struct ADVANCE_STATE
 {
-	int    delta;
+	int     delta;
 };
 
 //Get length of IE in codec units
@@ -35,14 +35,15 @@ struct GET_LENGTH {};
 //Set end of buffer (its size).
 struct PUSH_SIZE
 {
-	std::size_t  size; //in codec units
+	std::size_t size; //in codec units
+	bool        commit{true}; //commit the size or delay
 };
 
 //Pad buffer with specfied number of bits using filler value.
 struct ADD_PADDING
 {
-	std::size_t  pad_size; //in codec units
-	uint8_t      filler;
+	uint8_t pad_size; //in codec units
+	uint8_t filler;
 };
 
 
@@ -60,5 +61,13 @@ struct SNAPSHOT
 template <class IE>
 constexpr SNAPSHOT::id_type snapshot_id = IE::name();
 
+//inject typedefs to define that DEPENDENT depends on DEPENDENCY
+template <class...> struct dependency_relation {};
+template <class DEPENDENT, class DEPENDENCY>
+struct dependency_relation<DEPENDENT, DEPENDENCY>
+{
+	using dependent_type = DEPENDENT; //TODO: ever need this?
+	using dependency_type = DEPENDENCY;
+};
 
 }	//end: namespace med

@@ -244,9 +244,17 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				//CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
-				auto const len = sl::ie_length<mi_rest>(ie, encoder);
-				//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
+				auto len = sl::ie_length<mi_rest>(ie, encoder);
 				using length_type = typename mi::length_type;
+				using dependency_type = get_dependency_t<length_type>;
+				if constexpr (!std::is_void_v<dependency_type>)
+				{
+					auto const delta = length_type::dependency(ie.template get<dependency_type>());
+					len -= delta;
+					CODEC_TRACE("adjusted by %d L=%zxh [%s] dependent on %s", -delta, len, name<IE>(), name<dependency_type	>());
+				}
+
+				//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
 				encode_len<length_type>(encoder, len);
 
 				using pad_traits = typename get_padding<length_type>::type;

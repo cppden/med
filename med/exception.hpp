@@ -38,16 +38,6 @@ inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<T>, char const*>
 {
 	return t.toString();
 }
-//template <class T>
-//inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<t.buffer()>, char const*>
-//{
-//	return t.buffer().toString();
-//}
-//template <class T>
-//inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<t.ctx.buffer()>, char const*>
-//{
-//	return t.ctx.buffer().toString();
-//}
 
 }
 

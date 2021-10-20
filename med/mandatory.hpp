@@ -345,6 +345,7 @@ struct mandatory<
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
 > : field_t<FIELD, mi<mik::LEN, LEN>>
 {
+	bool operator==(mandatory const& rhs) const noexcept { return static_cast<FIELD const*>(this)->operator==(rhs); }
 };
 
 //M<LEN, FIELD, arity<NUM>>

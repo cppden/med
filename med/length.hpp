@@ -37,20 +37,40 @@ struct has_length_type<T, std::void_t<typename T::length_type>> : std::true_type
 template <class, typename Enable = void>
 struct has_get_length : std::false_type { };
 template <class T>
-struct has_get_length<T, std::void_t<decltype(std::declval<T const>().get_length())>> : std::true_type { };
+struct has_get_length<T, std::enable_if_t<std::is_integral_v<decltype(std::declval<T const>().get_length())>>> : std::true_type { };
+
+template <class, class Enable = void>
+struct get_dependency { using type = void; };
+template <class T>
+struct get_dependency<T, std::void_t<typename T::dependency_type>> { using type = typename T::dependency_type; };
 
 template <class, typename Enable = void>
 struct has_size : std::false_type { };
 template <class T>
-struct has_size<T, std::void_t<decltype(std::declval<T const>().size())>> : std::true_type { };
+struct has_size<T, std::enable_if_t<std::is_integral_v<decltype(std::declval<T const>().size())>>> : std::true_type { };
 
 template <class, typename Enable = void>
 struct has_set_length : std::false_type { };
 template <class T>
 struct has_set_length<T, std::void_t<decltype(std::declval<T>().set_length(0))>> : std::true_type { };
 
+//TODO: remove length converters in favor of get/set_length
+template<class T>
+static auto test_value_to_length(int, std::size_t val = 0) ->
+	std::enable_if_t<
+		std::is_same_v<bool, decltype(T::value_to_length(val))>, std::true_type
+	>;
+
+template<class>
+static auto test_value_to_length(long) -> std::false_type;
+
+template <class T>
+using has_length_converters = decltype(detail::test_value_to_length<T>(0));
+
 } //end: namespace detail
 
+template <class T>
+using get_dependency_t = typename detail::get_dependency<T>::type;
 
 template <class T> constexpr bool is_length_v = detail::has_length_type<T>::value;
 
@@ -83,6 +103,15 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 				//TODO: remove length_type, handle directly like TAG
 				//TODO: involve codec to get length type + may need to set its value like for BER
 				using length_type = typename mi::length_type;
+
+				using pad_traits = typename get_padding<length_type>::type;
+				if constexpr (!std::is_void_v<pad_traits>)
+				{
+					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
+					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
+					len += pad_t::calc_padding_size(len);
+				}
+
 				len += ie_length(length_type{}, encoder);
 			}
 		}
@@ -118,22 +147,6 @@ constexpr std::size_t field_length(IE const& ie, ENCODER& encoder)
 	return sl::ie_length<mi>(ie, encoder);
 }
 
-namespace detail {
-
-template<class T>
-static auto test_value_to_length(int, std::size_t val = 0) ->
-	std::enable_if_t<
-		std::is_same_v<bool, decltype(T::value_to_length(val))>, std::true_type
-	>;
-
-template<class>
-static auto test_value_to_length(long) -> std::false_type;
-
-template <class T>
-using has_length_converters = decltype(detail::test_value_to_length<T>(0));
-
-}	//end: namespace detail
-
 
 template <class FIELD>
 constexpr void length_to_value(FIELD& field, std::size_t len)
@@ -151,7 +164,7 @@ constexpr void length_to_value(FIELD& field, std::size_t len)
 	//set the length IE with the value
 	if constexpr (detail::has_set_length<FIELD>::value)
 	{
-		if constexpr (std::is_same_v<bool, decltype(field.set_length(len))>)
+		if constexpr (std::is_same_v<bool, decltype(field.set_length(0))>)
 		{
 			if (not field.set_length(len))
 			{
@@ -163,7 +176,7 @@ constexpr void length_to_value(FIELD& field, std::size_t len)
 			field.set_length(len);
 		}
 	}
-	else if constexpr (std::is_same_v<bool, decltype(field.set_encoded(len))>)
+	else if constexpr (std::is_same_v<bool, decltype(field.set_encoded(0))>)
 	{
 		if (not field.set_encoded(len))
 		{

@@ -57,9 +57,9 @@ struct octet_encoder : sl::octet_info
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)           { return ctx.buffer().push_state(); }
 	void operator() (POP_STATE)                       { ctx.buffer().pop_state(); }
-	void operator() (ADVANCE_STATE const& ss)         { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
-	void operator() (ADD_PADDING const& pad)          { ctx.buffer().template fill<ADD_PADDING>(pad.pad_size, pad.filler); }
-	void operator() (SNAPSHOT const& ss)              { ctx.snapshot(ss); }
+	void operator() (ADVANCE_STATE ss)                { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	void operator() (ADD_PADDING pad)                 { ctx.buffer().template fill<ADD_PADDING>(pad.pad_size, pad.filler); }
+	void operator() (SNAPSHOT ss)                     { ctx.snapshot(ss); }
 
 	template <class IE> constexpr std::size_t operator() (GET_LENGTH, IE const& ie) const
 	{

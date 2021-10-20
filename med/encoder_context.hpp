@@ -77,7 +77,7 @@ public:
 	 * Stores the buffer snapshot
 	 * @param snap
 	 */
-	void snapshot(SNAPSHOT const& snap)
+	void snapshot(SNAPSHOT snap)
 	{
 		CODEC_TRACE("snapshot %p{%zu}", static_cast<void const*>(snap.id), snap.size);
 		snapshot_s* p = get_allocator().template allocate<snapshot_s>();

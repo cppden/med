@@ -127,7 +127,7 @@ public:
 	}
 
 	//state
-	constexpr void operator() (SNAPSHOT const&) { }
+	constexpr void operator() (SNAPSHOT) { }
 	//length encoder
 	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
 	template <class IE>	constexpr std::size_t operator() (GET_LENGTH, IE const&) { return 0; }
@@ -206,7 +206,7 @@ public:
 	void operator() (IE const& ie, PRIMITIVE)   { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
 
 	//state
-	constexpr void operator() (SNAPSHOT const&) { }
+	constexpr void operator() (SNAPSHOT) { }
 	//length encoder
 	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
 

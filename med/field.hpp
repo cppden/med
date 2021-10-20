@@ -10,6 +10,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include <algorithm>
 #include <iterator>
 
 #include "ie_type.hpp"
@@ -201,6 +202,12 @@ public:
 		}
 		return end();
 	}
+
+	bool operator==(multi_field const& rhs) const noexcept
+	{
+		return count() == rhs.count() && std::equal(begin(), end(), rhs.begin());
+	}
+
 private:
 	//find unset inplace slot
 	field_value* get_free_inplace()
