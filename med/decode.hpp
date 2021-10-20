@@ -161,10 +161,6 @@ protected:
 		value_to_length(len_ie, len_value);
 		calc_buf_len<DELTA>(len_value);
 		m_size_state = m_decoder(PUSH_SIZE{len_value});
-		if (not m_size_state)
-		{
-			MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
-		}
 	}
 
 
@@ -288,26 +284,24 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 			if constexpr (std::is_void_v<dependency_type>)
 			{
 				//TODO: may have fixed length like in BER:NULL/BOOL so need to check here
-				if (auto end = decoder(PUSH_SIZE{len}))
+				auto end = decoder(PUSH_SIZE{len});
+				if constexpr (std::is_void_v<pad_traits>)
 				{
-					if constexpr (std::is_void_v<pad_traits>)
-					{
-						ie_decode<mi_rest>(decoder, ie, unexp, deps...);
-						//TODO: ??? as warning not error
-						if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
-					}
-					else
-					{
-						CODEC_TRACE("padded len_type=%s...:", name<length_type>());
-						using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
-						pad_t pad{decoder};
-						ie_decode<mi_rest>(decoder, ie, unexp, deps...);
-						if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
-						end.restore_end();
-						pad.add_padding();
-					}
-					return;
+					ie_decode<mi_rest>(decoder, ie, unexp, deps...);
+					//TODO: ??? as warning not error
+					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 				}
+				else
+				{
+					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
+					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
+					pad_t pad{decoder};
+					ie_decode<mi_rest>(decoder, ie, unexp, deps...);
+					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+					end.restore_end();
+					pad.add_padding();
+				}
+				return;
 			}
 			else
 			{
@@ -316,31 +310,27 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 				using dep_decoder_t = typename DECODER::template make_dependent<length_type, dependency_type>;
 				dep_decoder_t dep_decoder{decoder.ctx};
 
-				if (auto end = dep_decoder(PUSH_SIZE{len, false}))
+				auto end = dep_decoder(PUSH_SIZE{len, false});
+				if constexpr (std::is_void_v<pad_traits>)
 				{
-					if constexpr (std::is_void_v<pad_traits>)
-					{
-						ie_decode<mi_rest>(dep_decoder, ie, unexp, end, deps...);
-						//TODO: ??? as warning not error
-						CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
-						if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
-					}
-					else
-					{
-						CODEC_TRACE("padded %s...:", name<length_type>());
-						using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
-						pad_t pad{dep_decoder};
-						ie_decode<mi_rest>(dep_decoder, ie, unexp, end, deps...);
-						CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
-						if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
-						end.restore_end();
-						pad.add_padding();
-					}
-					return;
+					ie_decode<mi_rest>(dep_decoder, ie, unexp, end, deps...);
+					//TODO: ??? as warning not error
+					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
+					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 				}
+				else
+				{
+					CODEC_TRACE("padded %s...:", name<length_type>());
+					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
+					pad_t pad{dep_decoder};
+					ie_decode<mi_rest>(dep_decoder, ie, unexp, end, deps...);
+					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
+					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+					end.restore_end();
+					pad.add_padding();
+				}
+				return;
 			}
-			//TODO: something more informative: tried to set length beyond data end
-			MED_THROW_EXCEPTION(overflow, name<IE>(), len);
 		}
 
 		ie_decode<mi_rest>(decoder, ie, unexp, deps...);

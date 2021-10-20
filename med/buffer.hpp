@@ -25,8 +25,8 @@ class buffer
 public:
 	using pointer = PTR;
 	using value_type = std::remove_const_t<std::remove_pointer_t<pointer>>;
-	//static constexpr bool is_const = std::is_const_v<std::remove_pointer_t<pointer>>;
 
+	//captures current state of the buffer
 	class state_type
 	{
 	public:
@@ -45,10 +45,13 @@ public:
 		pointer cursor {nullptr};
 	};
 
+	//changes the size (end) of the buffer memorizing current end to rollback in dtor
 	class size_state
 	{
 	public:
 		size_state() = default;
+		size_state(size_state const&) = delete;
+		size_state& operator= (size_state const&) = delete;
 
 		size_state(size_state&& rhs) noexcept
 			: m_buf{ rhs.m_buf }
@@ -121,18 +124,17 @@ public:
 			{
 				m_buf = nullptr;
 				MED_THROW_EXCEPTION(overflow, "end of buffer", pend - m_end);
+//				MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
 			}
 		}
 
-		size_state(size_state const&) = delete;
-		size_state& operator= (size_state const&) = delete;
 
 		buffer*     m_buf {nullptr};
 		pointer     m_end {nullptr};
 		bool        m_pending {false};
 #ifdef CODEC_TRACE_ENABLE
 		int const   m_instance{-1};
-		static int  s_instance_count;
+		inline static int  s_instance_count = 0;
 #endif
 	};
 
@@ -340,11 +342,6 @@ private:
 	pointer        m_start {nullptr};
 	state_type     m_store;
 };
-
-#ifdef CODEC_TRACE_ENABLE
-template <typename PTR>
-int buffer<PTR>::size_state::s_instance_count = 0;
-#endif
 
 }	//end: namespace med
 
