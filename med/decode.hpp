@@ -174,7 +174,7 @@ protected:
 template <class DEPENDENT, class DEPENDENCY, class DEPS>
 constexpr void invoke_dependency(DEPENDENCY const& ie, DEPS& deps)
 {
-	//TODO: extent to multiple deps/types? now only one length
+	//TODO: extend to multiple deps/types? now only one length
 	deps.commit(DEPENDENT::dependency(ie));
 }
 

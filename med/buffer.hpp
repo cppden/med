@@ -13,15 +13,19 @@ Distributed under the MIT License
 #include <cstdint>
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
 #include "exception.hpp"
 #include "name.hpp"
 
 namespace med {
 
-template <typename PTR>
+template <typename PTR, std::size_t LEN_DEPTH = 16>
 class buffer
 {
+	using eob_index_t = uint8_t;
+	static constexpr eob_index_t max_eob_index = std::numeric_limits<eob_index_t>::max();
+
 public:
 	using pointer = PTR;
 	using value_type = std::remove_const_t<std::remove_pointer_t<pointer>>;
@@ -45,6 +49,7 @@ public:
 		pointer cursor {nullptr};
 	};
 
+
 	//changes the size (end) of the buffer memorizing current end to rollback in dtor
 	class size_state
 	{
@@ -54,91 +59,72 @@ public:
 		size_state& operator= (size_state const&) = delete;
 
 		size_state(size_state&& rhs) noexcept
-			: m_buf{ rhs.m_buf }
-			, m_end{ rhs.m_end }
-			, m_pending{ rhs.m_pending }
+			: m_buffer{ rhs.m_buffer }
+			, m_index{ rhs.m_index }
+			, m_commited{ rhs.m_commited }
 		{
-			rhs.m_end = nullptr;
+			rhs.clear();
 		}
 
 		size_state& operator= (size_state&& rhs) noexcept
 		{
-			m_buf = rhs.m_buf;
-			m_end = rhs.m_end;
-			rhs.m_end = nullptr;
+			m_buffer = rhs.m_buffer;
+			m_index = rhs.m_index;
+			m_commited = rhs.m_commited;
+			rhs.clear();
 			return *this;
 		}
 
 		~size_state()                           { restore_end(); }
-		void restore_end()
-		{
-			if (!pending() && m_end)
-			{
-				CODEC_TRACE("%d: restored end %p->%p: %s", m_instance, (void*)m_buf->m_end, (void*)m_end, m_buf->toString());
-				m_buf->m_end = m_end;
-				m_end = nullptr;
-			}
-		}
 
-		void commit(int delta)
-		{
-			if (pending())
-			{
-				m_pending = false;
-				auto pend = m_end + delta;
-				m_end = m_buf->m_end;
-				m_buf->m_end = pend;
-				CODEC_TRACE("%d: commit adjusted by %d end %p->%p: %s", m_instance, delta, (void*)m_end, (void*)m_buf->m_end, m_buf->toString());
-			}
-		}
+		void restore_end()                      { if (m_buffer) m_buffer->restore_end(*this); }
+		void commit(int delta)                  { m_buffer->commit_end(*this, delta); }
 
-		std::size_t size() const noexcept       { return m_buf ? m_buf->size() : 0; }
-		explicit operator bool() const noexcept { return nullptr != m_end; }
-		bool pending() const noexcept           { return m_buf && m_end && m_pending; }
+		std::size_t size() const noexcept       { return m_buffer ? m_buffer->size() : 0; }
+		explicit operator bool() const noexcept { return !empty(); }
 
 	private:
 		friend class buffer;
+		size_state(buffer* buf, eob_index_t idx, bool commit_)
+			: m_buffer{ buf }
+			, m_index{ idx }
+			, m_commited{ commit_ }
+		{}
 
-		size_state(buffer* buf, std::size_t size, bool commit_)
-			: m_buf{ buf }
-			, m_end{ buf->end() }
-#ifdef CODEC_TRACE_ENABLE
-			, m_instance{ s_instance_count++ }
-#endif
+		bool empty() const noexcept             { return m_index == max_eob_index; }
+		void clear() noexcept                   { m_index = max_eob_index; }
+
+		buffer*     m_buffer{ nullptr };
+		eob_index_t m_index{ max_eob_index };
+		bool        m_commited{ false };
+	};
+
+	auto push_size(std::size_t size, bool commit_)
+	{
+		if (auto* pend = begin() + size; pend <= end()) //within the current end of buffer
 		{
-			if (auto* pend = buf->begin() + size; pend <= m_end) //within the current end of buffer
+			pointer& ps = m_eob[m_eob_index];
+			//TODO: check and throw out of range
+
+			if (commit_)
 			{
-				if (commit_)
-				{
-					buf->m_end = pend;
-					CODEC_TRACE("%d: changed by %zu end %p->%p: %s", m_instance, size, (void*)m_end, (void*)buf->end(), buf->toString());
-				}
-				else
-				{
-					m_pending = true;
-					m_end = pend;
-					CODEC_TRACE("%d: pending change by %zu end %p->%p: %s", m_instance, size, (void*)buf->end(), (void*)m_end, buf->toString());
-				}
+				ps = end();
+				m_end = pend;
+				CODEC_TRACE("%u: changed by %zu end %p->%p: %s", m_eob_index, size, (void*)ps, (void*)pend, toString());
 			}
 			else
 			{
-				m_buf = nullptr;
-				MED_THROW_EXCEPTION(overflow, "end of buffer", pend - m_end);
-//				MED_THROW_EXCEPTION(overflow, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/)
+				ps = pend;
+				CODEC_TRACE("%u: pending change by %zu end %p->%p: %s", m_eob_index, size, (void*)end(), (void*)pend, toString());
 			}
+
+			return size_state{this, m_eob_index++, commit_};
 		}
-
-
-		buffer*     m_buf {nullptr};
-		pointer     m_end {nullptr};
-		bool        m_pending {false};
-#ifdef CODEC_TRACE_ENABLE
-		int const   m_instance{-1};
-		inline static int  s_instance_count = 0;
-#endif
-	};
-
-	auto push_size(std::size_t s, bool c)  { return size_state{this, s, c}; }
+		else
+		{
+			MED_THROW_EXCEPTION(overflow, "end of buffer", pend - end());
+		}
+	}
 
 	void reset()                           { m_state.reset(get_start()); }
 
@@ -337,10 +323,45 @@ public:
 private:
 	friend class size_state;
 
+	void restore_end(size_state& ss)
+	{
+		if (ss.m_commited && !ss.empty())
+		{
+			pointer& ps = m_eob[ss.m_index];
+			CODEC_TRACE("%u/%u: restored end %p->%p: %s", ss.m_index, m_eob_index, (void*)end(), (void*)ps, toString());
+			m_end = ps;
+			--m_eob_index; //TODO: may assert index is the last one: m_eob_index - 1 == ss.m_index?
+			ss.clear();
+		}
+	}
+
+	void commit_end(size_state& ss, int delta)
+	{
+		if (!(ss.m_commited || ss.empty()))
+		{
+			ss.m_commited = true;
+			pointer& ps1 = m_eob[ss.m_index];
+			ps1 += delta; //end to be set by dependent
+			CODEC_TRACE("%u/%u: commit adjusted by %d end %p: %s", ss.m_index, m_eob_index, delta, (void*)ps1, toString());
+			if (m_eob_index > ss.m_index + 1) //adjust the deeper level's ends
+			{
+				//TODO: can we have multiple pending commits?
+				pointer& ps2 = m_eob[ss.m_index+1];
+				std::swap(ps1, ps2);
+			}
+			else
+			{
+				MED_THROW_EXCEPTION(overflow, "invalid commit", ss.m_index);
+			}
+		}
+	}
+
 	state_type     m_state;
 	pointer        m_end;
 	pointer        m_start {nullptr};
 	state_type     m_store;
+	uint8_t        m_eob_index {0};
+	pointer        m_eob[LEN_DEPTH];
 };
 
 }	//end: namespace med

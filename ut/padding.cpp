@@ -175,8 +175,7 @@ struct ti_len : med::value<uint8_t>
 	static int dependency(PartType const& ie)
 	{
 		//round up to 4 then add 1 byte for length itself
-		auto const padded_len = (ie.size() + 3) & ~0x3;
-		return padded_len + 1;
+		return ((ie.size() + 3) & ~0x3) + 1;
 	}
 };
 
@@ -309,7 +308,7 @@ TEST(padding, container)
 	check_decode(ctx.buffer());
 }
 
-TEST(padding, DISABLED_dependent)
+TEST(padding, dependent)
 {
 	pad::DeepDep fc;
 	auto& ti = fc.ref<pad::TrackInfo>();
@@ -317,14 +316,16 @@ TEST(padding, DISABLED_dependent)
 	ti.ref<pad::PartType>().set("some1");
 	ti.ref<pad::FloorPartRef>().push_back()->set(0x10203040);
 	ti.ref<pad::FloorPartRef>().push_back()->set(0x20304050);
+	ti.ref<pad::FloorPartRef>().push_back()->set(0x30405060);
 
 	fc.ref<pad::QueCapa>().set(1);
 
 	uint8_t const encoded[] = {
-		114, 9/*TI-len*/, 0/*QC*/, 5/*PT-len*/,
+		114, 13/*TI-len*/, 0/*QC*/, 5/*PT-len*/,
 		's','o','m','e','1',0,0,0, /*PT*/
 		0x10,0x20,0x30,0x40, /*FPR1*/
 		0x20,0x30,0x40,0x50, /*FPR2*/
+		0x30,0x40,0x50,0x60, /*FPR3*/
 		115, 1, /*QC*/
 	};
 
