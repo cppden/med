@@ -66,7 +66,6 @@ struct exclusive : med::choice<
 };
 
 using PL = med::length_t<med::value<uint8_t, med::padding<uint32_t>>>;
-template <std::size_t TAG> using T = med::value<med::fixed<TAG, uint8_t>>;
 
 struct msg : med::sequence<
 	M< PL, u16>,
@@ -93,42 +92,9 @@ struct msg : med::sequence<
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 The <Track Info field ID> value is a binary value and is set according to table 8.2.3.1-2.
-The <Track Info length> value is a binary value and has a value indicating the total length in octets of the <Queueing
-Capability> value and one or more <Floor Participant Reference> value items.
-The <Queueing Capability> value is an 8 bit binary value where:
-
-The <Source field ID> value is a binary value and is set according to table 8.2.3.1-2.
-The <Source length> value is a binary value and has the value 2 indicating the total length in octets of the <Source>
-value item.
-The <Source> value is a 16 bit binary value where:
-'0'  the floor participant is the source
-'1'  the participating MCPTT function is the source
-'2'  the controlling MCPTT function is the source
-'3'  the non-controlling MCPTT function is the source
-All other values are reserved for future use.
-8.2.3.13 Track Info field
-The Track Info field contains the path a floor control message has been routed along with the priority and the queueing
-capability of the MCPTT client.
-Table 8.2.3.13-1 describes the coding of the Track Info field.
-Table 8.2.3.13-1: Track Info field coding
-0                   1                   2                   3
-0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|Track Info     |Track Info     |Queueing       |Participant    |
-|field ID value |length value   |Capability     |Type Length    |
-|               |               |value          |value          |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                         Participant Type value                |
-:                                                               :
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                  Floor Participant Reference 1                |
-:                               |                               :
-|                  Floor Participant Reference n                |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-The <Track Info length> value is a binary value and has a value indicating
-the total length in octets of the <Queueing Capability> value and one or
-more <Floor Participant Reference> value items.
+The <Track Info length> value is a binary value and has a value indicating the total length
+in octets of the <Queueing Capability> value and one or more <Floor Participant Reference>
+value items.
 
 The <Queueing Capability> value is an 8 bit binary value where:
 	'0'  the floor participant in the MCPTT client does not support queueing
@@ -145,47 +111,55 @@ a reference to the floor participant in the non-controlling MCPTT function
 of an MCPTT group.
 */
 
-struct QueCapa : med::value<uint8_t>
+struct que_capability : med::value<uint8_t>
 {
 	static constexpr char const* name() { return "Queueing Capability"; }
 };
-struct PartType : med::ascii_string<med::max<255>>
+struct participant_type : med::ascii_string<med::max<255>>
 {
 	static constexpr char const* name() { return "Participant Type"; }
 };
-struct FloorPartRef : med::value<uint32_t>
+struct floor_part_ref : med::value<uint32_t>
 {
 	static constexpr char const* name() { return "Floor Participant Reference"; }
 };
 
-struct TrackInfo : med::sequence<
-	M<QueCapa>,
-	M<PL, PartType>,
-	M<FloorPartRef, med::max<63>> //(0xFF-1)/4 = 63
+struct track_info : med::sequence<
+	M<que_capability>,
+	M<PL, participant_type>,
+	M<floor_part_ref, med::max<63>> //(0xFF-1)/4 = 63
 >
 {
 	static constexpr char const* name() { return "Track Info"; }
 };
 
-template <uint8_t C>
-using TAG = med::value<med::fixed<C, uint8_t>>;
 struct ti_len : med::value<uint8_t>
 {
-	using dependency_type = PartType;
-	static int dependency(PartType const& ie)
+	using dependency_type = participant_type;
+	static int dependency(participant_type const& ie)
 	{
 		//round up to 4 then add 1 byte for length itself
 		return ((ie.size() + 3) & ~0x3) + 1;
 	}
 };
 
-struct FloorControl : med::choice<
-	M<TAG<114>, med::length_t<ti_len>, TrackInfo>
->{};
+struct floor_prio : med::value<uint16_t>
+{
+	uint8_t get() const                 { return get_encoded() >> 8; }
+	void set(uint8_t v)                 { set_encoded(uint16_t(v) << 8); }
+	static constexpr char const* name() { return "Floor Priority"; }
+};
 
-struct DeepDep : med::sequence<
-	M<TAG<114>, med::length_t<ti_len>, TrackInfo>,
-	M<TAG<115>, QueCapa>
+struct user_id : med::ascii_string<med::max<255>>
+{
+	static constexpr char const* name() { return "Used ID"; }
+};
+
+using flen = med::value<uint8_t, med::padding<uint32_t/*, med::offset<-2>*/>>;
+struct FloorReq : med::sequence<
+	M<T<0>, med::length_t<med::value<uint8_t>>, floor_prio>,
+	O<T<6>, med::length_t<flen>, user_id>,
+	M<T<11>, med::length_t<ti_len>, track_info>
 >{};
 
 } //end: namespace pad
@@ -310,23 +284,28 @@ TEST(padding, container)
 
 TEST(padding, dependent)
 {
-	pad::DeepDep fc;
-	auto& ti = fc.ref<pad::TrackInfo>();
-	ti.ref<pad::QueCapa>().set(0);
-	ti.ref<pad::PartType>().set("some1");
-	ti.ref<pad::FloorPartRef>().push_back()->set(0x10203040);
-	ti.ref<pad::FloorPartRef>().push_back()->set(0x20304050);
-	ti.ref<pad::FloorPartRef>().push_back()->set(0x30405060);
+	pad::FloorReq fc;
 
-	fc.ref<pad::QueCapa>().set(1);
+	fc.ref<pad::floor_prio>().set(0xFF);
+	fc.ref<pad::user_id>().set("some");
+
+	auto& ti = fc.ref<pad::track_info>();
+	ti.ref<pad::que_capability>().set(3);
+	ti.ref<pad::participant_type>().set("some1");
+	ti.ref<pad::floor_part_ref>().push_back()->set(0x10203040);
+	ti.ref<pad::floor_part_ref>().push_back()->set(0x20304050);
+	ti.ref<pad::floor_part_ref>().push_back()->set(0x30405060);
+
 
 	uint8_t const encoded[] = {
-		114, 13/*TI-len*/, 0/*QC*/, 5/*PT-len*/,
+		0, 2, 0xFF, 0, //floor prio
+		6, 4, 's','o', //used id + padding
+		'm','e', 0, 0,
+		11, 13/*TI-len*/, 3/*QC*/, 5/*PT-len*/,
 		's','o','m','e','1',0,0,0, /*PT*/
 		0x10,0x20,0x30,0x40, /*FPR1*/
 		0x20,0x30,0x40,0x50, /*FPR2*/
 		0x30,0x40,0x50,0x60, /*FPR3*/
-		115, 1, /*QC*/
 	};
 
 	uint8_t buffer[64];
@@ -336,7 +315,38 @@ TEST(padding, dependent)
 	EXPECT_TRUE(Matches(encoded, buffer));
 
 	med::decoder_context<> dctx{ctx.buffer().get_start(), ctx.buffer().get_offset()};
-	pad::DeepDep fc2;
+	pad::FloorReq fc2;
 	decode(med::octet_decoder{dctx}, fc2);
 	ASSERT_TRUE(fc == fc2);
+}
+
+TEST(padding, tlv)
+{
+	struct fld : med::ascii_string<med::max<255>>
+	{
+		static constexpr char const* name() { return "ASCII"; }
+	};
+
+	using len = med::value<uint8_t, med::padding<uint32_t>>;
+	struct msg : med::sequence<
+		M<T<0>, med::length_t<len>, fld>
+	>{};
+
+	msg m1;
+	m1.ref<fld>().set("ABCD");
+
+	uint8_t const encoded[] = {
+		0, 4, 'A','B','C','D', 0, 0,
+	};
+
+	uint8_t buffer[64];
+	med::encoder_context<> ctx{ buffer };
+	encode(med::octet_encoder{ctx}, m1);
+	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded, buffer));
+
+	med::decoder_context<> dctx{ctx.buffer().get_start(), ctx.buffer().get_offset()};
+	msg m2;
+	decode(med::octet_decoder{dctx}, m2);
+	ASSERT_TRUE(m1 == m2);
 }

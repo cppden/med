@@ -26,16 +26,6 @@ public:
 	using buffer_type = BUFFER;
 	using state_t = typename buffer_type::state_type;
 
-private:
-	//TODO: support during decode (possibly different with_snapshot types for encoding/decoding)
-	struct snapshot_s
-	{
-		SNAPSHOT    snapshot;
-		state_t     state;
-		snapshot_s* next;
-	};
-
-public:
 	decoder_context(void const* data, std::size_t size, void* alloc_data, std::size_t alloc_size)
 	{
 		reset(data, size);
