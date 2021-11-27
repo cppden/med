@@ -155,9 +155,9 @@ struct user_id : med::ascii_string<med::max<255>>
 	static constexpr char const* name() { return "Used ID"; }
 };
 
-using flen = med::value<uint8_t, med::padding<uint32_t/*, med::offset<-2>*/>>;
+using flen = med::value<uint8_t, med::padding<uint32_t, med::offset<2>>>;
 struct FloorReq : med::sequence<
-	M<T<0>, med::length_t<med::value<uint8_t>>, floor_prio>,
+	M<T<0>, med::length_t<flen>, floor_prio>,
 	O<T<6>, med::length_t<flen>, user_id>,
 	M<T<11>, med::length_t<ti_len>, track_info>
 >{};
@@ -327,7 +327,7 @@ TEST(padding, tlv)
 		static constexpr char const* name() { return "ASCII"; }
 	};
 
-	using len = med::value<uint8_t, med::padding<uint32_t>>;
+	using len = med::value<uint8_t, med::padding<uint32_t, med::offset<2>>>;
 	struct msg : med::sequence<
 		M<T<0>, med::length_t<len>, fld>
 	>{};

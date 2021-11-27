@@ -18,36 +18,74 @@ Distributed under the MIT License
 
 namespace med {
 
+enum class filler_value : uint8_t {};
+template <uint8_t N> struct filler
+{
+	using type = std::integral_constant<filler_value, filler_value{N}>;
+};
+enum class offset_value : int8_t {};
+template <int N> struct offset
+{
+	using type = std::integral_constant<offset_value, offset_value{N}>;
+};
+enum class delta_value : int8_t {};
+template <int N> struct delta
+{
+	using type = std::integral_constant<delta_value, delta_value{N}>;
+};
+
 namespace detail {
 
-template <std::size_t SIZE, uint8_t FILLER>
+template <class T>
+using type_of = typename T::type;
+
+struct def_value
+{
+	using type = void;
+};
+
+template <class, class...> struct value_of;
+
+template <class R, R Val, class... Tail>
+struct value_of<R, std::integral_constant<R, Val>, Tail...> : std::integral_constant<R, Val> {};
+
+template <class R>
+struct value_of<R, void> : std::integral_constant<R, R{}> {};
+
+template <class R, class Head, class... Tail>
+struct value_of<R, Head, Tail...> : value_of<R, Tail...> {};
+
+template <std::size_t SIZE, class... DOF>
 struct pad_traits
 {
 	static constexpr std::size_t pad_bits = SIZE;
-	static constexpr uint8_t filler = FILLER;
+	static constexpr uint8_t filler = uint8_t(value_of<filler_value, type_of<DOF>...>::value);
+	static constexpr int offset = int(value_of<offset_value, type_of<DOF>...>::value);
+	static constexpr int delta = int(value_of<delta_value, type_of<DOF>...>::value);
 };
 
 } //end: namespace detail
 
-template <class T, uint8_t FILLER = 0, class Enable = void>
+
+template <class T, class D = detail::def_value, class O = detail::def_value, class F = detail::def_value, class Enable = void>
 struct padding;
 
-template <std::size_t BITS, uint8_t FILLER>
-struct padding<bits<BITS>, FILLER, std::enable_if_t<(BITS > 0)>>
+template <std::size_t BITS, class D, class O, class F>
+struct padding<bits<BITS>, D, O, F, std::enable_if_t<(BITS > 0)>>
 {
-	using padding_traits = detail::pad_traits<BITS, FILLER>;
+	using padding_traits = detail::pad_traits<BITS, D, O, F>;
 };
 
-template <std::size_t BYTES, uint8_t FILLER>
-struct padding<bytes<BYTES>, FILLER, std::enable_if_t<(BYTES > 0)>>
+template <std::size_t BYTES, class D, class O, class F>
+struct padding<bytes<BYTES>, D, O, F, std::enable_if_t<(BYTES > 0)>>
 {
-	using padding_traits = detail::pad_traits<BYTES*8, FILLER>;
+	using padding_traits = detail::pad_traits<BYTES*8, D, O, F>;
 };
 
-template <class T, uint8_t FILLER>
-struct padding<T, FILLER, std::enable_if_t<std::is_integral_v<T>>>
+template <class T, class D, class O, class F>
+struct padding<T, D, O, F, std::enable_if_t<std::is_integral_v<T>>>
 {
-	using padding_traits = detail::pad_traits<sizeof(T)*8, FILLER>;
+	using padding_traits = detail::pad_traits<sizeof(T)*8, D, O, F>;
 };
 
 template <class, class Enable = void>
@@ -78,7 +116,7 @@ struct octet_padder
 	static std::size_t calc_padding_size(std::size_t len)
 	{
 		constexpr auto pad_bytes = PAD_TRAITS::pad_bits/8;
-		return (pad_bytes - (len % pad_bytes)) % pad_bytes;
+		return (pad_bytes - ((len + PAD_TRAITS::offset) % pad_bytes) + PAD_TRAITS::delta) % pad_bytes;
 	}
 
 	void add_padding() const
