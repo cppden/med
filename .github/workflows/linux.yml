@@ -46,8 +46,6 @@ jobs:
       fail-fast: false
       matrix:
         compiler:
-          - g++-7
-          - g++-8
           - g++-11
         build_type: [Release]
 
