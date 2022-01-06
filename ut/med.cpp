@@ -3,6 +3,7 @@
 
 #include "update.hpp"
 
+static_assert (med::is_allocator_v<med::null_allocator>);
 
 TEST(name, tag)
 {
@@ -321,7 +322,9 @@ TEST(update, fixed)
 	ufld.set(0x12345678);
 
 	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
+	size_t albuf[128];
+	med::allocator alloc{albuf};
+	med::encoder_context<med::allocator> ctx{ buffer, &alloc };
 	med::octet_encoder encoder{ctx};
 
 	encode(encoder, msg);
@@ -335,6 +338,26 @@ TEST(update, fixed)
 
 	uint8_t const updated[] = {7, 4, 0x34,0x56,0x78,0x9A};
 	EXPECT_TRUE(Matches(updated, buffer));
+}
+
+TEST(update, unused)
+{
+	UMSG msg;
+	auto& ufld = msg.ref<UFLD>();
+	ufld.set(0x12345678);
+
+	uint8_t buffer[1024];
+	med::encoder_context<> ctx{ buffer };
+	med::octet_encoder encoder{ctx};
+
+	encode(encoder, msg);
+
+	uint8_t const encoded[] = {7, 4, 0x12,0x34,0x56,0x78};
+	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded, buffer));
+
+	ufld.set(0x3456789A);
+	EXPECT_THROW(update(encoder, ufld), med::missing_ie);
 }
 #endif
 

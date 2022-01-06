@@ -56,7 +56,7 @@ constexpr std::size_t encode_unsigned(std::size_t value, std::size_t init = 0)
 	std::size_t encoded = init;
 
 	//TODO: rewrite?
-	auto const num_bits = detail::least_bits(value);
+	auto const num_bits = detail::calc_least_bits(value);
 	for (std::size_t v = value << (sizeof(value) * 8 - num_bits), //bits value to write out
 		 bits = num_bits, //total number of bits in value to write
 		 step = (bits % 7) ? (bits % 7) : 7; //number of bits in single step
@@ -86,7 +86,7 @@ constexpr std::size_t tag_encoded(tg_class tagclass, bool constructed, std::size
 		tag |= TAG_MAX_IN_BYTE;
 		tag = encode_unsigned(value, tag);
 
-//		constexpr auto num_bits = detail::least_bits(TRAITS::AsnTagValue);
+//		constexpr auto num_bits = detail::calc_least_bits(TRAITS::AsnTagValue);
 //		for (std::size_t v = TRAITS::AsnTagValue << (sizeof(std::size_t) * 8 - num_bits), //bits value to write out
 //			 bits = num_bits, //total number of bits in value to write
 //			 step = (bits % 7) ? (bits % 7) : 7; //number of bits in single step

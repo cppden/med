@@ -62,6 +62,7 @@ struct len_enc_impl
 	using length_type = LEN;
 	template <class... PA>
 	using padder_type = typename ENCODER::template padder_type<PA...>;
+	using allocator_type = typename ENCODER::allocator_type;
 
 	explicit len_enc_impl(ENCODER& encoder) noexcept
 		: m_encoder{ encoder }
@@ -283,7 +284,10 @@ inline void ie_encode(ENCODER& encoder, IE const& ie)
 			}
 			else
 			{
-				snapshot(encoder, ie);
+				if constexpr (!std::is_same_v<null_allocator, typename ENCODER::allocator_type>)
+				{
+					put_snapshot(encoder, ie);
+				}
 				encoder(ie, ie_type{});
 			}
 		}

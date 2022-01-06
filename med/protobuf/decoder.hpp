@@ -27,29 +27,24 @@ struct decoder : sl::octet_info
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
 
-	DEC_CTX& ctx;
-
-	explicit decoder(DEC_CTX& ctx_)
-		: ctx{ctx_}
-	{
-	}
-
-	allocator_type& get_allocator()             { return ctx.get_allocator(); }
+	explicit decoder(DEC_CTX& ctx_) : m_ctx{ctx_} { }
+	DEC_CTX& get_context() noexcept             { return m_ctx; }
+	allocator_type& get_allocator()             { return get_context().get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE ps)              { return ctx.buffer().push_size(ps.size, ps.commit); }
+	auto operator() (PUSH_SIZE ps)              { return get_context().buffer().push_size(ps.size, ps.commit); }
 	template <class IE>
-	bool operator() (PUSH_STATE, IE const&)     { return ctx.buffer().push_state(); }
-	bool operator() (POP_STATE)                 { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE)                 { return ctx.buffer().get_state(); }
+	bool operator() (PUSH_STATE, IE const&)     { return get_context().buffer().push_state(); }
+	bool operator() (POP_STATE)                 { return get_context().buffer().pop_state(); }
+	auto operator() (GET_STATE)                 { return get_context().buffer().get_state(); }
 	template <class IE>
-	bool operator() (CHECK_STATE, IE const&)    { return !ctx.buffer().empty(); }
-	void operator() (ADVANCE_STATE ss)          { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	bool operator() (CHECK_STATE, IE const&)    { return !get_context().buffer().empty(); }
+	void operator() (ADVANCE_STATE ss)          { get_context().buffer().template advance<ADVANCE_STATE>(ss.delta); }
 
 	//IE_TAG
 	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
 	{
-		CODEC_TRACE("TAG[%s]: %s", name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("TAG[%s]: %s", name<IE>(), get_context().buffer().toString());
 		typename IE::writable ie;
 		(*this)(ie, typename IE::writable::ie_type{});
 		return ie.get_encoded();
@@ -61,8 +56,8 @@ struct decoder : sl::octet_info
 	void operator() (IE& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
-		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
-		typename IE::value_type val = ctx.buffer().template pop<IE>();
+		CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, get_context().buffer().toString());
+		typename IE::value_type val = get_context().buffer().template pop<IE>();
 		if (val & 0x80)
 		{
 			val &= 0x7F;
@@ -71,13 +66,13 @@ struct decoder : sl::octet_info
 			{
 				if (++count < MAX_VARINT_BYTES)
 				{
-					auto const byte = ctx.buffer().template pop<IE>();
+					auto const byte = get_context().buffer().template pop<IE>();
 					val |= static_cast<typename IE::value_type>(byte & 0x7F) << (7 * count);
 					if (0 == (byte & 0x80)) { break; }
 				}
 				else
 				{
-					MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer())
+					MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, get_context().buffer())
 				}
 			}
 		}
@@ -86,36 +81,36 @@ struct decoder : sl::octet_info
 		{
 			if (not ie.set_encoded(val))
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer())
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, get_context().buffer())
 			}
 		}
 		else
 		{
 			ie.set_encoded(val);
 		}
-		CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), ctx.buffer().toString());
+		CODEC_TRACE("<-VAL[%s]=%zx: %s", name<IE>(), std::size_t(val), get_context().buffer().toString());
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE& ie, IE_OCTET_STRING)
 	{
-		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
-		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))
+		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), get_context().buffer().size(), get_context().buffer().toString());
+		if (ie.set_encoded(get_context().buffer().size(), get_context().buffer().begin()))
 		{
 			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.size()));
-			ctx.buffer().template advance<IE>(ie.size());
+			get_context().buffer().template advance<IE>(ie.size());
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer())
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), get_context().buffer())
 		}
 	}
 
 private:
+	DEC_CTX& m_ctx;
 };
 
-template <class CTX>
-auto make_decoder(CTX& ctx) { return decoder<CTX>{ctx}; }
+template <class C> explicit decoder(C&) -> decoder<C>;
 
 }	//end: namespace med::protobuf

@@ -25,7 +25,7 @@ constexpr std::size_t bits_to_bytes(std::size_t num_bits)
 }
 
 //number of least significant bits = number of MSBits in the last octet
-constexpr uint8_t least_bits(std::size_t num_bits)
+constexpr uint8_t calc_least_bits(std::size_t num_bits)
 {
 	uint8_t const last_octet_bits = num_bits % 8;
 	return last_octet_bits ? last_octet_bits : 8;

@@ -208,7 +208,7 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 				return false;
 			}
 		}
-		if constexpr (traits::max_octets != med::inf())
+		if constexpr (traits::max_octets != inf())
 		{
 			if (len > traits::max_octets)
 			{

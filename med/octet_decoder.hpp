@@ -31,22 +31,20 @@ struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
 	template <class... NEWDEPS>
 	using make_dependent = octet_decoder<DEC_CTX, NEWDEPS...>;
 
-	DEC_CTX& ctx;
-
-	explicit octet_decoder(DEC_CTX& c) : ctx{c} { }
-
-	allocator_type& get_allocator()             { return ctx.get_allocator(); }
+	explicit octet_decoder(DEC_CTX& c) : m_ctx{c} { }
+	DEC_CTX& get_context() noexcept             { return m_ctx; }
+	allocator_type& get_allocator()             { return get_context().get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE ps)              { return ctx.buffer().push_size(ps.size, ps.commit); }
+	auto operator() (PUSH_SIZE ps)              { return get_context().buffer().push_size(ps.size, ps.commit); }
 	template <class IE>
-	bool operator() (PUSH_STATE, IE const&)     { return ctx.buffer().push_state(); }
-	bool operator() (POP_STATE)                 { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE)                 { return ctx.buffer().get_state(); }
+	bool operator() (PUSH_STATE, IE const&)     { return get_context().buffer().push_state(); }
+	bool operator() (POP_STATE)                 { return get_context().buffer().pop_state(); }
+	auto operator() (GET_STATE)                 { return get_context().buffer().get_state(); }
 	template <class IE>
-	bool operator() (CHECK_STATE, IE const&)    { return !ctx.buffer().empty(); }
-	void operator() (ADVANCE_STATE ss)          { ctx.buffer().template advance<ADVANCE_STATE>(ss.delta); }
-	void operator() (ADD_PADDING pad)           { ctx.buffer().template advance<ADD_PADDING>(pad.pad_size); }
+	bool operator() (CHECK_STATE, IE const&)    { return !get_context().buffer().empty(); }
+	void operator() (ADVANCE_STATE ss)          { get_context().buffer().template advance<ADVANCE_STATE>(ss.delta); }
+	void operator() (ADD_PADDING pad)           { get_context().buffer().template advance<ADD_PADDING>(pad.pad_size); }
 
 	//IE_TAG
 	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
@@ -64,42 +62,42 @@ struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
 	//IE_NULL
 	template <class IE> void operator() (IE&, IE_NULL)
 	{
-		CODEC_TRACE("NULL[%s]: %s", name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("NULL[%s]: %s", name<IE>(), get_context().buffer().toString());
 	}
 
 	//IE_VALUE
 	template <class IE> void operator() (IE& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
-		//CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, ctx.buffer().toString());
-		uint8_t const* pval = ctx.buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
+		//CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, get_context().buffer().toString());
+		uint8_t const* pval = get_context().buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
 		auto const val = get_bytes<IE>(pval);
 		if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
 		{
 			if (not ie.set_encoded(val))
 			{
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, ctx.buffer())
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), val, get_context().buffer())
 			}
 		}
 		else
 		{
 			ie.set_encoded(val);
 		}
-		CODEC_TRACE("VAL=%zxh [%s]: %s", std::size_t(val), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("VAL=%zxh [%s]: %s", std::size_t(val), name<IE>(), get_context().buffer().toString());
 	}
 
 	//IE_OCTET_STRING
 	template <class IE> void operator() (IE& ie, IE_OCTET_STRING)
 	{
-		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), ctx.buffer().size(), ctx.buffer().toString());
-		if (ie.set_encoded(ctx.buffer().size(), ctx.buffer().begin()))
+		CODEC_TRACE("STR[%s] <-(%zu bytes): %s", name<IE>(), get_context().buffer().size(), get_context().buffer().toString());
+		if (ie.set_encoded(get_context().buffer().size(), get_context().buffer().begin()))
 		{
 			CODEC_TRACE("STR[%s] -> len = %zu bytes", name<IE>(), std::size_t(ie.size()));
-			ctx.buffer().template advance<IE>(ie.size());
+			get_context().buffer().template advance<IE>(ie.size());
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer())
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), get_context().buffer())
 		}
 	}
 
@@ -128,8 +126,10 @@ private:
 		get_bytes_impl(input, value, std::make_index_sequence<NUM_BYTES>{});
 		return value;
 	}
+
+	DEC_CTX& m_ctx;
 };
 
-template <class C> explicit octet_decoder(C& ctx) -> octet_decoder<C>;
+template <class C> explicit octet_decoder(C&) -> octet_decoder<C>;
 
 }	//end: namespace med

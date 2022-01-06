@@ -72,7 +72,7 @@ private:
 		if (num_bytes > MAX) { throw invalid_value("number of bits", std::size_t(num_bits)); }
 
 		m_num_bytes = static_cast<decltype(m_num_bytes)>(num_bytes);
-		m_least_bits = med::least_bits(std::size_t(num_bits));
+		m_least_bits = calc_least_bits(std::size_t(num_bits));
 	}
 
 	uint16_t    m_num_bytes {0};
@@ -97,7 +97,7 @@ public:
 
 	static constexpr std::size_t size()     { return bits_to_bytes(NBITS); }
 	static constexpr nbits num_of_bits()    { return nbits{NBITS}; }
-	static constexpr nbits least_bits()     { return nbits{med::least_bits(NBITS)}; }
+	static constexpr nbits least_bits()     { return nbits{calc_least_bits(NBITS)}; }
 	uint8_t const* data() const             { return m_data; }
 
 	void clear()                            { m_data = nullptr; }
@@ -115,7 +115,7 @@ public:
 
 	static constexpr std::size_t size()     { return bits_to_bytes(NBITS); }
 	static constexpr nbits num_of_bits()    { return nbits{NBITS}; }
-	static constexpr nbits least_bits()     { return nbits{med::least_bits(NBITS)}; }
+	static constexpr nbits least_bits()     { return nbits{calc_least_bits(NBITS)}; }
 	uint8_t const* data() const             { return is_set() ? m_data : nullptr; }
 
 	void clear()                            { m_set = false; }
@@ -149,7 +149,7 @@ template <class TRAITS>
 struct bit_string_impl : IE<IE_BIT_STRING>
 {
 	using traits     = TRAITS;
-	using value_type = med::conditional_t<traits::min_bits == traits::max_bits, bits_fixed<traits::min_bits>, bits_variable>;
+	using value_type = conditional_t<traits::min_bits == traits::max_bits, bits_fixed<traits::min_bits>, bits_variable>;
 	using base_t = bit_string_impl;
 
 	constexpr std::size_t size() const      { return m_value.size(); }

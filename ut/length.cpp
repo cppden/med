@@ -348,16 +348,17 @@ TEST(length, m_lmv)
 		1, 2, 3
 	};
 
-	std::size_t alloc[32];
-	med::decoder_context<> ctx{encoded};
+	{
+		med::decoder_context<> ctx{encoded};
+		len::M_LMV msg;
+		EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::out_of_memory);
+	}
+
+	std::size_t alloc_buf[32];
+	med::allocator alloc{alloc_buf};
+	med::decoder_context<med::allocator> ctx{encoded, &alloc};
+
 	len::M_LMV msg;
-
-	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::out_of_memory);
-
-	ctx.get_allocator().reset(alloc); //assign allocation space
-	ctx.reset(); //reset from previous errors
-	msg.clear(); //clear message from previous decode
-
 	decode(med::octet_decoder{ctx}, msg);
 
 	auto const& vals = msg.get<len::MV>().get<len::U8>();

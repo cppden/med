@@ -20,7 +20,7 @@ constexpr std::size_t bits_in_byte = 8;
 namespace detail {
 
 template <typename T>
-constexpr auto least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_t>
+constexpr auto calc_least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_t>
 {
 	if constexpr (std::is_signed<T>())
 	{
@@ -75,7 +75,7 @@ constexpr auto least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_
 template <typename T>
 constexpr uint8_t least_bytes_encoded(T value)
 {
-	return (least_bits<T>(value) + 6) / 7;
+	return (calc_least_bits<T>(value) + 6) / 7;
 }
 
 } //end: namespace detail
@@ -83,7 +83,7 @@ constexpr uint8_t least_bytes_encoded(T value)
 namespace length {
 
 template <typename INT>
-constexpr uint8_t bits(INT x)    { return detail::least_bits<INT>(x); }
+constexpr uint8_t bits(INT x)    { return detail::calc_least_bits<INT>(x); }
 
 template <typename INT>
 constexpr uint8_t bytes(INT x)   { return (bits<INT>(x) + (bits_in_byte - 1)) / bits_in_byte; }

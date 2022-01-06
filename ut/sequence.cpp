@@ -1,3 +1,5 @@
+#include <memory_resource>
+
 #include "ut.hpp"
 #include "ut_proto.hpp"
 
@@ -797,7 +799,11 @@ struct MSEQ_OPEN : med::sequence<
 TEST(encode, mseq_open)
 {
 	uint8_t buffer[1024];
-	med::encoder_context<> ctx{ buffer };
+	size_t albuf[128];
+	//med::allocator alloc{albuf};
+	//med::encoder_context<med::allocator> ctx{ buffer, &alloc };
+	std::pmr::monotonic_buffer_resource pmr{albuf, sizeof(albuf)};
+	med::encoder_context<std::pmr::memory_resource> ctx{ buffer, &pmr };
 
 	MSEQ_OPEN msg;
 	static_assert(msg.arity<FLD_U16>() == med::inf(), "");

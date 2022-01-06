@@ -18,10 +18,10 @@ Distributed under the MIT License
 namespace med {
 
 template <
-		class BUFFER = buffer<uint8_t*>,
-		class ALLOCATOR = allocator<false, BUFFER>
+		class ALLOCATOR = null_allocator,
+		class BUFFER = buffer<uint8_t*>
 		>
-class encoder_context
+class encoder_context : public detail::allocator_holder<ALLOCATOR>
 {
 public:
 	using allocator_type = ALLOCATOR;
@@ -37,38 +37,32 @@ private:
 	};
 
 public:
-	encoder_context(void* data, std::size_t size)
-		: m_buffer{ }
-		, m_allocator{ m_buffer }
+	encoder_context(encoder_context const&) = delete;
+	encoder_context& operator=(encoder_context const&) = delete;
+
+	encoder_context(void* data, std::size_t size, allocator_type* alloc = nullptr)
+		: detail::allocator_holder<allocator_type>{alloc}
 	{
 		reset(data, size);
 	}
 
 	template <typename T, std::size_t SIZE>
-	explicit encoder_context(T (&buf)[SIZE])
-		: encoder_context(buf, sizeof(buf))
-	{
-	}
-
-	encoder_context(encoder_context const&) = delete;
-	encoder_context& operator=(encoder_context const&) = delete;
+	explicit encoder_context(T (&buf)[SIZE], allocator_type* alloc = nullptr)
+		: encoder_context(buf, sizeof(buf), alloc) {}
 
 	buffer_type& buffer()                   { return m_buffer; }
-	allocator_type& get_allocator()         { return m_allocator; }
 
 	template <typename T, std::size_t SIZE>
 	void reset(T (&data)[SIZE]) noexcept   { reset(data, SIZE * sizeof(T)); }
 
 	void reset(void* data, std::size_t size) noexcept
 	{
-		get_allocator().reset(static_cast<uint8_t*>(data), size);
 		m_buffer.reset(static_cast<typename buffer_type::pointer>(data), size);
 		m_snapshot = nullptr;
 	}
 
 	void reset()
 	{
-		get_allocator().reset();
 		m_buffer.reset();
 		m_snapshot = nullptr;
 	}
@@ -77,10 +71,10 @@ public:
 	 * Stores the buffer snapshot
 	 * @param snap
 	 */
-	void snapshot(SNAPSHOT snap)
+	void put_snapshot(SNAPSHOT snap)
 	{
 		CODEC_TRACE("snapshot %p{%zu}", static_cast<void const*>(snap.id), snap.size);
-		snapshot_s* p = get_allocator().template allocate<snapshot_s>();
+		snapshot_s* p = create<snapshot_s>(this->get_allocator());
 		p->snapshot = snap;
 		p->state = m_buffer.get_state();
 
@@ -112,9 +106,9 @@ public:
 	 * @return snapshot or empty snapshot if not found
 	 */
 	template <class IE>
-	snap_s snapshot(IE const&) const
+	snap_s get_snapshot(IE const&) const
 	{
-		static_assert(std::is_base_of<with_snapshot, IE>(), "IE WITH med::with_snapshot EXPECTED");
+		static_assert(std::is_base_of<with_snapshot, IE>(), "IE WITH with_snapshot EXPECTED");
 
 		for (snapshot_s const* p = m_snapshot; p != nullptr; p = p->next)
 		{
@@ -127,8 +121,6 @@ private:
 	using const_iterator = snapshot_s const*;
 
 	buffer_type    m_buffer;
-	allocator_type m_allocator;
-
 	snapshot_s*    m_snapshot{ nullptr };
 };
 

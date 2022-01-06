@@ -69,9 +69,11 @@ TEST(copy, seq_same)
 	cp::seq src_msg;
 	cp::seq dst_msg;
 
+
 	uint8_t dec_buf[128];
 	{
-		med::decoder_context<> ctx{ encoded, dec_buf };
+		med::allocator alloc{dec_buf};
+		med::decoder_context<med::allocator> ctx{ encoded, &alloc };
 		decode(med::octet_decoder{ctx}, src_msg);
 		//fails when need allocator but not provided one
 		ASSERT_THROW(dst_msg.copy(src_msg), med::exception);
@@ -105,7 +107,8 @@ TEST(copy, seq_diff)
 			   0xC0, 0x01, 0xCA, 0xFE, //CV(dword)
 		};
 
-		med::decoder_context<> ctx{ encoded, dec_buf };
+		med::allocator alloc{dec_buf};
+		med::decoder_context<med::allocator> ctx{ encoded, &alloc };
 		decode(med::octet_decoder{ctx}, src_msg);
 		dst_msg.copy(src_msg, ctx);
 	}

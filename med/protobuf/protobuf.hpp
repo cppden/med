@@ -36,10 +36,10 @@ constexpr auto field_tag(std::size_t field_number, wire_type type)
 	return static_cast<field_type>((field_number << 3) | static_cast<uint8_t>(type));
 }
 
-using int32  = med::value<int32_t>;
-using int64  = med::value<int64_t>;
-using uint32 = med::value<uint32_t>;
-using uint64 = med::value<uint64_t>;
+using int32  = value<int32_t>;
+using int64  = value<int64_t>;
+using uint32 = value<uint32_t>;
+using uint64 = value<uint64_t>;
 
 
 } //end: namespace med::protobuf

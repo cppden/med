@@ -16,37 +16,62 @@ Distributed under the MIT License
 
 namespace med {
 
-/**
- * Aligns pointer for the type T incrementing initial address if needed
- * @param p initial possibly unaligned pointer
- */
-template <class T>
-constexpr void* forward_aligned(void* p) noexcept
+struct null_allocator
 {
-	const auto uptr = reinterpret_cast<uintptr_t>(p);
-	return reinterpret_cast<void*>((uptr + alignof(T) - 1) & -alignof(T));
+	[[nodiscard]]
+	void* allocate(std::size_t bytes, std::size_t /*alignment*/)
+	{
+		MED_THROW_EXCEPTION(out_of_memory, __FUNCTION__, bytes);
+	}
+};
+
+template <typename T, class ALLOCATOR, class... ARGs>
+T* create(ALLOCATOR& alloc, ARGs&&... args)
+{
+	void* p = alloc.allocate(sizeof(T), alignof(T));
+	if (!p) { MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T)); }
+	return new (p) T{std::forward<ARGs>(args)...};
 }
 
-/**
- * Returns pointer to place aligned type T before the given pointer
- * @param p pointer to point after or to the end of T
- */
+namespace detail {
+
 template <class T>
-constexpr void* backward_aligned(void* p) noexcept
+struct allocator_holder
 {
-	const auto uptr = reinterpret_cast<uintptr_t>(p) - sizeof(T);
-	return reinterpret_cast<void*>(uptr & -alignof(T));
+	using allocator_type = T;
+	explicit allocator_holder(allocator_type* p) : m_ref{*p} {}
+	allocator_type& get_allocator() { return m_ref; }
+
+private:
+	T& m_ref;
+};
+
+template <>
+struct allocator_holder<null_allocator>
+{
+	static null_allocator instance;
+
+	using allocator_type = null_allocator;
+	explicit allocator_holder(allocator_type*)  {}
+	allocator_type& get_allocator() { return instance; }
+};
+
 }
 
-namespace internal {
-
-class base_allocator
+class allocator
 {
 public:
+	allocator(allocator const&) = delete;
+	allocator& operator=(allocator const&) = delete;
+	allocator() = default;
+	allocator(void* data, std::size_t size) { reset(data, size); }
+	template <typename T, std::size_t SIZE>
+	explicit allocator(T (&data)[SIZE])     { reset(data); }
+
 	/**
 	 * Resets to the current allocation buffer
 	 */
-	void reset() noexcept                  { m_begin = m_start; m_end = m_finish; }
+	void release() noexcept                   { m_begin = m_start; m_size = m_total; }
 
 	/**
 	 * Resets to new allocation buffer
@@ -55,87 +80,35 @@ public:
 	 */
 	void reset(void* data, std::size_t size) noexcept
 	{
-		m_start = static_cast<uint8_t*>(data);
-		m_finish = m_start + (m_start ? size : 0);
-		reset();
+		m_start = data;
+		m_total = size;
+		release();
 	}
 
 	template <typename T, std::size_t SIZE>
 	void reset(T (&data)[SIZE]) noexcept   { reset(data, SIZE * sizeof(T)); }
 
-	std::size_t size() const noexcept      { return m_end > m_begin ? std::size_t(m_end - m_begin) : 0; }
-
-	uint8_t* begin()                       { return m_begin; }
-	uint8_t* end()                         { return m_end; }
-
-protected:
-	void begin(void* p)                    { m_begin = static_cast<uint8_t*>(p); }
-	void end(void* p)                      { m_end = static_cast<uint8_t*>(p); }
-
-private:
-	uint8_t*    m_begin {nullptr}; //current starting allocation space
-	uint8_t*    m_end {nullptr}; //the end of current allocation space
-	uint8_t*    m_start {nullptr}; //start of assigned allocation buffer
-	uint8_t*    m_finish {nullptr}; //end of assigned allocation buffer
-};
-
-} //end: namespace
-
-template <bool FORWARD, class BUFFER>
-class allocator;
-
-template <class BUFFER>
-class allocator<true, BUFFER> : public internal::base_allocator
-{
-public:
 	/**
 	 * Allocates T from the beginning of current free buffer space
 	 * @return pointer to instance of T or nullptr/throw when out of space
 	 */
-	template <class T>
-	T* allocate()
+	[[nodiscard]]
+	void* allocate(std::size_t bytes, std::size_t alignment) noexcept
 	{
-		void* p = forward_aligned<T>(this->begin());
-		if (this->end() - static_cast<uint8_t*>(p) >= int(sizeof(T)))
+		void* p = std::align(alignment, bytes, m_begin, m_size);
+		if (p)
 		{
-			T* result = new (p) T{};
-			this->begin(result + 1);
-			return result;
+			m_begin = (uint8_t*)m_begin + bytes;
+			m_size -= bytes;
 		}
-		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T))
-	}
-};
-
-template <class BUFFER>
-class allocator<false, BUFFER> : public internal::base_allocator
-{
-public:
-	//TODO: anything better than depending on buffer? pointer to end doesn't look better though...
-	explicit allocator(BUFFER& buf) noexcept
-		: m_buffer{ buf }
-	{}
-
-	/**
-	 * Allocates T from the back of current free buffer space
-	 * @return pointer to instance of T or nullptr/throw when out of space
-	 */
-	template <class T>
-	T* allocate()
-	{
-		void* p = backward_aligned<T>(this->end());
-		if (this->begin() <= p)
-		{
-			T* result = new (p) T{};
-			this->end(p);
-			//also need to adjust the space left to the buffer
-			m_buffer.end(static_cast<typename BUFFER::pointer>(p));
-			return result;
-		}
-		MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T))
+		return p;
 	}
 
 private:
-	BUFFER&     m_buffer;
+	void*       m_begin {};
+	std::size_t m_size{};
+	void*       m_start {};
+	std::size_t m_total {};
 };
 
 
@@ -144,36 +117,36 @@ struct is_allocator : std::false_type { };
 template <class T>
 struct is_allocator<T,
 	std::enable_if_t<
-		std::is_same_v<int*, decltype(std::declval<T>().template allocate<int>())>
+		std::is_same_v<void*, decltype(std::declval<T>().allocate(std::size_t(1), std::size_t(1)))>
 	>
 > : std::true_type { };
 template <class T>
 constexpr bool is_allocator_v = is_allocator<T>::value;
 
+
 template <class T>
-inline auto get_allocator_ptr(T& t) -> std::enable_if_t<is_allocator_v<T>, T*>
+inline auto get_allocator(T& t) -> std::enable_if_t<is_allocator_v<T>, T&>
 {
-	return &t;
+	return t;
 }
 template <class T>
-inline auto get_allocator_ptr(T* pt) -> std::enable_if_t<is_allocator_v<T>, T*>
+inline auto get_allocator(T* pt) -> std::enable_if_t<is_allocator_v<T>, T&>
 {
-	return pt;
+	return *pt;
 }
 template <class T>
-inline auto get_allocator_ptr(T& t) -> std::add_pointer_t<decltype(t.get_allocator())>
+inline auto get_allocator(T& t) -> std::add_lvalue_reference_t<decltype(t.get_allocator())>
 {
 	auto& allocator = t.get_allocator();
 	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");
-	return &allocator;
+	return allocator;
 }
 template <class T>
-inline auto get_allocator_ptr(T* pt) -> std::add_pointer_t<decltype(pt->get_allocator())>
+inline auto get_allocator(T* pt) -> std::add_lvalue_reference_t<decltype(pt->get_allocator())>
 {
 	auto& allocator = pt->get_allocator();
 	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");
-	return &allocator;
+	return allocator;
 }
-
 
 } //end: namespace med

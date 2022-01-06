@@ -136,7 +136,7 @@ template<
 >
 struct transform_indexed<L<Ts...>, std::index_sequence<I...>, MF, F> {
 	using type = L<
-		typename MF<Ts, typename F<I, med::meta::list_size_v<L<Ts...>>>::type>::type...
+		typename MF<Ts, typename F<I, meta::list_size_v<L<Ts...>>>::type>::type...
 	>;
 };
 
@@ -146,7 +146,7 @@ template<
 	class L,
 	template<class...> class MF,
 	template<std::size_t, std::size_t> class F = detail::int_index>
-using transform_indexed_t = typename detail::transform_indexed<L, std::make_index_sequence<med::meta::list_size_v<L>>, MF, F>::type;
+using transform_indexed_t = typename detail::transform_indexed<L, std::make_index_sequence<meta::list_size_v<L>>, MF, F>::type;
 
 /* --- get index of type in list or sizeof...(Ts) if T not present --- */
 namespace detail {

@@ -15,7 +15,7 @@ private:
 	struct make_tag
 	{
 		template <class V>
-		using tag_of = med::value< med::fixed< V::value, med::bytes<V::num_bytes> > >;
+		using tag_of = value< fixed< V::value, bytes<V::num_bytes> > >;
 		using type = mi< mik::TAG, tag_of<tag_value<T, CONSTRUCTED::value>> >;
 	};
 
@@ -69,7 +69,7 @@ b) the contents octets shall be the same as the contents octets of the base enco
 			};
 
 			//!TODO: LENSIZE need to calc len to known its size (only 1 byte for now)
-			using len_t = mi<mik::LEN, med::length_t<med::value<uint8_t>>>;
+			using len_t = mi<mik::LEN, length_t<value<uint8_t>>>;
 			using meta_info = meta::interleave_t< meta::unwrap_t<decltype(get_tags())>, len_t>;
 			return meta::wrap<meta_info>{};
 		}

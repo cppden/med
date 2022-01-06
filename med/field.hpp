@@ -18,6 +18,7 @@ Distributed under the MIT License
 #include "exception.hpp"
 #include "debug.hpp"
 #include "meta/typelist.hpp"
+#include "allocator.hpp"
 
 
 namespace med {
@@ -146,7 +147,7 @@ public:
 	template <class CTX> field_type* push_back(CTX& ctx)
 	{
 		auto* pf = get_free_inplace(); //try inplace 1st then external
-		return append(pf ? pf : get_allocator_ptr(ctx)->template allocate<field_value>());
+		return append(pf ? pf : create<field_value>(get_allocator(ctx)));
 	}
 
 	//won't recover space if external storage was used

@@ -123,7 +123,7 @@ struct extra_ie : public ie_exception
 struct out_of_memory : public exception
 {
 	out_of_memory(char const* name, std::size_t bytes, char const* bufpos = nullptr) noexcept
-		{ format(bufpos, "No space to allocate IE '%.32s': %zu octets.", name, bytes); }
+		{ format(bufpos, "No space to allocate '%.32s': %zu octets.", name, bytes); }
 
 	template <class CTX>
 	out_of_memory(char const* name, std::size_t bytes, CTX const& ctx) noexcept

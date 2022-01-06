@@ -65,19 +65,19 @@ struct decoder : sl::octet_info
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
 
-	DEC_CTX& ctx;
 
-	explicit decoder(DEC_CTX& ctx_) : ctx{ ctx_ }   { }
-	allocator_type& get_allocator()                 { return ctx.get_allocator(); }
+	explicit decoder(DEC_CTX& ctx_) : m_ctx{ ctx_ } { }
+	DEC_CTX& get_context() noexcept                 { return m_ctx; }
+	allocator_type& get_allocator()                 { return get_context().get_allocator(); }
 
 	//state
-	auto operator() (PUSH_SIZE ps)                  { return ctx.buffer().push_size(ps.size, ps.commit); }
+	auto operator() (PUSH_SIZE ps)                  { return get_context().buffer().push_size(ps.size, ps.commit); }
 	template <class IE>
-	bool operator() (PUSH_STATE, IE const&)         { return this->template test_eof<IE>() && ctx.buffer().push_state(); }
-	bool operator() (POP_STATE)                     { return ctx.buffer().pop_state(); }
-	auto operator() (GET_STATE)                     { return ctx.buffer().get_state(); }
+	bool operator() (PUSH_STATE, IE const&)         { return this->template test_eof<IE>() && get_context().buffer().push_state(); }
+	bool operator() (POP_STATE)                     { return get_context().buffer().pop_state(); }
+	auto operator() (GET_STATE)                     { return get_context().buffer().get_state(); }
 	template <class IE>
-	bool operator() (CHECK_STATE, IE const&)        { return this->template test_eof<IE>() && not ctx.buffer().empty(); }
+	bool operator() (CHECK_STATE, IE const&)        { return this->template test_eof<IE>() && not get_context().buffer().empty(); }
 
 	template <class IE>
 	void operator() (ENTRY_CONTAINER, IE const&)
@@ -88,20 +88,20 @@ struct decoder : sl::octet_info
 			else return '{';
 		};
 
-		if (not skip_ws_after(ctx.buffer(), open_brace()))
+		if (not skip_ws_after(get_context().buffer(), open_brace()))
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), open_brace(), ctx.buffer());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), open_brace(), get_context().buffer());
 		}
-		CODEC_TRACE("entry<%c> [%s]: %s", open_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("entry<%c> [%s]: %s", open_brace(), name<IE>(), get_context().buffer().toString());
 	}
 	template <class IE>
 	void operator() (HEADER_CONTAINER, IE const&)
 	{
-		if (not skip_ws_after(ctx.buffer(), ':'))
+		if (not skip_ws_after(get_context().buffer(), ':'))
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ':', ctx.buffer());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ':', get_context().buffer());
 		}
-		CODEC_TRACE("head<:> [%s]: %s", name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("head<:> [%s]: %s", name<IE>(), get_context().buffer().toString());
 	}
 	template <class IE>
 	void operator() (EXIT_CONTAINER, IE const&)
@@ -112,32 +112,32 @@ struct decoder : sl::octet_info
 			else return '}';
 		};
 
-		if (not skip_ws_after(ctx.buffer(), closing_brace()))
+		if (not skip_ws_after(get_context().buffer(), closing_brace()))
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), closing_brace(), ctx.buffer());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), closing_brace(), get_context().buffer());
 		}
-		CODEC_TRACE("exit<%c> [%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("exit<%c> [%s]: %s", closing_brace(), name<IE>(), get_context().buffer().toString());
 	}
 
 	template <class IE>
 	void operator() (NEXT_CONTAINER_ELEMENT, IE const&)
 	{
-		if (not skip_ws_after(ctx.buffer(), ','))
+		if (not skip_ws_after(get_context().buffer(), ','))
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ',', ctx.buffer());
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), ',', get_context().buffer());
 		}
-		CODEC_TRACE("CONTAINER-,-[%s]: %s", name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("CONTAINER-,-[%s]: %s", name<IE>(), get_context().buffer().toString());
 	}
 
 	//IE_VALUE
 	template <class IE>
 	void operator() (IE& ie, IE_VALUE)
 	{
-		auto* p = ctx.buffer().template advance<IE, 1>();
+		auto* p = get_context().buffer().template advance<IE, 1>();
 		//CODEC_TRACE("->VAL[%s]: %.*s", name<IE>(), 5, p);
 		if constexpr (std::is_same_v<bool, typename IE::value_type>)
 		{
-			ctx.buffer().template advance<IE, 3>(); //min len of [t]rue, [f]alse
+			get_context().buffer().template advance<IE, 3>(); //min len of [t]rue, [f]alse
 			if ('t' == p[0] && 'r' == p[1] && 'u' == p[2] && 'e' == p[3]) //true
 			{
 				CODEC_TRACE("%s=true", name<IE>());
@@ -146,7 +146,7 @@ struct decoder : sl::octet_info
 			}
 			else
 			{
-				ctx.buffer().template pop<IE>(); //+1 over len(true)
+				get_context().buffer().template pop<IE>(); //+1 over len(true)
 				if ('f' == p[0] && 'a' == p[1] && 'l' == p[2] && 's' == p[3] && 'e' == p[4])
 				{
 					CODEC_TRACE("%s=false", name<IE>());
@@ -168,15 +168,15 @@ struct decoder : sl::octet_info
 			return convert<unsigned long long>(p, "%llu%n", ie);
 		}
 
-		MED_THROW_EXCEPTION(invalid_value, name<IE>(), p[0], ctx.buffer());
+		MED_THROW_EXCEPTION(invalid_value, name<IE>(), p[0], get_context().buffer());
 	}
 
 	//IE_OCTET_STRING
 	template <class IE>
 	void operator() (IE& ie, IE_OCTET_STRING)
 	{
-		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), ctx.buffer().toString());
-		auto p = ctx.buffer().begin(), pe = ctx.buffer().end();
+		//CODEC_TRACE("->STR[%s]: %s", name<IE>(), get_context().buffer().toString());
+		auto p = get_context().buffer().begin(), pe = get_context().buffer().end();
 		if (p != pe && '"' == *p++)
 		{
 			auto* const ps = p; //start of string
@@ -197,7 +197,7 @@ struct decoder : sl::octet_info
 						{
 							CODEC_TRACE("hash(%.*s)=%#zx", int(ie.size()), (char*)ie.data(), std::size_t(hash_val));
 							ie.set_hash(hash_val);
-							ctx.buffer().offset(p - ps + 1);
+							get_context().buffer().offset(p - ps + 1);
 							return;
 						}
 					}
@@ -213,14 +213,14 @@ struct decoder : sl::octet_info
 						if (ie.set_encoded(p - ps - 1, ps))
 						{
 							CODEC_TRACE("len(%.*s)=%zu", int(ie.size()), (char*)ie.data(), ie.size());
-							ctx.buffer().offset(p - ps + 1);
+							get_context().buffer().offset(p - ps + 1);
 							return;
 						}
 					}
 				}
 			}
 		}
-		MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), ctx.buffer());
+		MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.size(), get_context().buffer());
 	}
 
 private:
@@ -233,12 +233,12 @@ private:
 			else return '}';
 		};
 
-		if (skip_ws(ctx.buffer()) == closing_brace())
+		if (skip_ws(get_context().buffer()) == closing_brace())
 		{
-			CODEC_TRACE("EOF %c [%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+			CODEC_TRACE("EOF %c [%s]: %s", closing_brace(), name<IE>(), get_context().buffer().toString());
 			return false;
 		}
-		CODEC_TRACE("not EOF %c [%s]: %s", closing_brace(), name<IE>(), ctx.buffer().toString());
+		CODEC_TRACE("not EOF %c [%s]: %s", closing_brace(), name<IE>(), get_context().buffer().toString());
 		return true;
 	}
 
@@ -247,7 +247,7 @@ private:
 	{
 		VAL val;
 		int pos;
-		if (1 == std::sscanf(p, fmt, &val, &pos) && ctx.buffer().advance(pos - 1))
+		if (1 == std::sscanf(p, fmt, &val, &pos) && get_context().buffer().advance(pos - 1))
 		{
 			CODEC_TRACE("%s[%s]=%.*s", name<IE>(), fmt, pos, p);
 			if constexpr (not std::is_same_v<VAL, typename IE::value_type>)
@@ -265,8 +265,10 @@ private:
 				return;
 			}
 		}
-		MED_THROW_EXCEPTION(invalid_value, name<IE>(), p[0], ctx.buffer());
+		MED_THROW_EXCEPTION(invalid_value, name<IE>(), p[0], get_context().buffer());
 	}
+
+	DEC_CTX& m_ctx;
 };
 
 } //end: namespace med::json

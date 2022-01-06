@@ -139,7 +139,7 @@ protected:
 			if (len_value < std::size_t(-DELTA))
 			{
 				CODEC_TRACE("len=%zu less than delta=%+d", len_value, DELTA);
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/);
+				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.get_context().buffer()*/);
 			}
 		}
 		len_value += DELTA;
@@ -148,7 +148,7 @@ protected:
 		if (state_delta > len_value)
 		{
 			CODEC_TRACE("len=%zu less than buffer has been advanced=%zu", len_value, state_delta);
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.ctx.buffer()*/);
+			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.get_context().buffer()*/);
 		}
 		len_value -= state_delta;
 	}
@@ -308,7 +308,7 @@ inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 				CODEC_TRACE("'%s' depends on '%s'", name<length_type>(), name<dependency_type>());
 
 				using dep_decoder_t = typename DECODER::template make_dependent<length_type, dependency_type>;
-				dep_decoder_t dep_decoder{decoder.ctx};
+				dep_decoder_t dep_decoder{decoder.get_context()};
 
 				auto end = dep_decoder(PUSH_SIZE{len, false});
 				if constexpr (std::is_void_v<pad_traits>)
