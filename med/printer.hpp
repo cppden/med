@@ -64,7 +64,7 @@ class printer : public sl::octet_info
 	};
 
 public:
-	using allocator_type = null_allocator;
+	using allocator_type = const null_allocator;
 
 	class container_encoder
 	{
@@ -185,7 +185,7 @@ template <class SINK, std::size_t MAX_LINE>
 class dumper : public sl::octet_info
 {
 public:
-	using allocator_type = null_allocator;
+	using allocator_type = const null_allocator;
 
 	struct container_encoder
 	{

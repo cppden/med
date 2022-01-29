@@ -19,7 +19,7 @@ namespace med {
 struct null_allocator
 {
 	[[nodiscard]]
-	void* allocate(std::size_t bytes, std::size_t /*alignment*/)
+	void* allocate(std::size_t bytes, std::size_t /*alignment*/) const
 	{
 		MED_THROW_EXCEPTION(out_of_memory, __FUNCTION__, bytes);
 	}
@@ -47,11 +47,11 @@ private:
 };
 
 template <>
-struct allocator_holder<null_allocator>
+struct allocator_holder<const null_allocator>
 {
-	static null_allocator instance;
+	static constexpr null_allocator instance{};
 
-	using allocator_type = null_allocator;
+	using allocator_type = const null_allocator;
 	explicit constexpr allocator_holder(allocator_type*)  {}
 	constexpr allocator_type& get_allocator() { return instance; }
 };

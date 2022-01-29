@@ -284,7 +284,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			}
 			else
 			{
-				if constexpr (!std::is_same_v<null_allocator, typename ENCODER::allocator_type>)
+				if constexpr (!std::is_same_v<null_allocator, std::remove_const_t<typename ENCODER::allocator_type>>)
 				{
 					put_snapshot(encoder, ie);
 				}

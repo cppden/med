@@ -18,7 +18,7 @@ Distributed under the MIT License
 namespace med {
 
 template <
-		class ALLOCATOR = null_allocator,
+		class ALLOCATOR = const null_allocator,
 		class BUFFER = buffer<uint8_t*>
 		>
 class encoder_context : public detail::allocator_holder<ALLOCATOR>
