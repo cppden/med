@@ -20,7 +20,7 @@ namespace med{
 
 namespace debug {
 
-inline char const* filename(char const* fname)
+constexpr char const* filename(char const* fname)
 {
 	if (char const* p = std::strrchr(fname, '/'))
 	{

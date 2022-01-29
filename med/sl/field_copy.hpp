@@ -14,7 +14,7 @@ Distributed under the MIT License
 namespace med::sl {
 
 template <class IE, class ...ARGS>
-inline void field_copy(IE& to, IE const& from, ARGS&&... args)
+constexpr void field_copy(IE& to, IE const& from, ARGS&&... args)
 {
 	if (from.is_set())
 	{

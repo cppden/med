@@ -131,7 +131,7 @@ constexpr subid_t oid_subroot(subid_t v)
 }
 
 //construct subidentifier from two 1st components
-inline subid_t oid_make_1st(uint8_t root, subid_t subroot)
+constexpr subid_t oid_make_1st(uint8_t root, subid_t subroot)
 {
 	if ((root < 2 && subroot >= OID_ROOT_FACTOR)
 		|| root > 2)

@@ -29,7 +29,7 @@ namespace sl {
 
 //Tag
 template <class TAG_TYPE, class ENCODER>
-inline void encode_tag(ENCODER& encoder)
+constexpr void encode_tag(ENCODER& encoder)
 {
 	if constexpr (not is_peek_v<TAG_TYPE>) //do nothing if it's a peek preview
 	{
@@ -41,7 +41,7 @@ inline void encode_tag(ENCODER& encoder)
 
 //Length
 template <class LEN_TYPE, class ENCODER>
-inline void encode_len(ENCODER& encoder, std::size_t len)
+constexpr void encode_len(ENCODER& encoder, std::size_t len)
 {
 	if constexpr (not is_peek_v<LEN_TYPE>) //do nothing if it's a peek preview
 	{
@@ -228,7 +228,7 @@ struct container_encoder<T, std::void_t<typename T::container_encoder>>
 };
 
 template <class META_INFO, class ENCODER, class IE>
-inline void ie_encode(ENCODER& encoder, IE const& ie)
+constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 {
 	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
 	{

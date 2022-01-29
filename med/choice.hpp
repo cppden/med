@@ -28,7 +28,7 @@ namespace sl {
 struct choice_if
 {
 	template <class IE, class T, class... Ts>
-	static bool check(T const& v, Ts&&...)
+	static constexpr bool check(T const& v, Ts&&...)
 	{
 		//CODEC_TRACE("%s(%s): %zu ? %zu", __FUNCTION__, name<IE>(), v.index(), v.template index<get_field_type_t<IE>>());
 		return v.index() == v.template index<get_field_type_t<IE>>();
@@ -38,7 +38,7 @@ struct choice_if
 struct choice_len : choice_if
 {
 	template <class IE, class TO, class ENCODER>
-	static std::size_t apply(TO const& to, ENCODER& encoder)
+	static constexpr std::size_t apply(TO const& to, ENCODER& encoder)
 	{
 		if constexpr (TO::plain_header)
 		{
@@ -63,7 +63,7 @@ struct choice_len : choice_if
 struct choice_clear : choice_if
 {
 	template <class IE, class TO>
-	static void apply(TO& to)
+	static constexpr void apply(TO& to)
 	{
 		CODEC_TRACE("clear: %s", name<IE>());
 		to.template ref<get_field_type_t<IE>>().clear();
@@ -76,7 +76,7 @@ struct choice_clear : choice_if
 struct choice_copy : choice_if
 {
 	template <class IE, class FROM, class TO, class... ARGS>
-	static void apply(FROM const& from, TO& to, ARGS&&... args)
+	static constexpr void apply(FROM const& from, TO& to, ARGS&&... args)
 	{
 		//CODEC_TRACE("copy: %s", name<IE>());
 		to.template ref<get_field_type_t<IE>>().copy(from.template as<IE>(), std::forward<ARGS>(args)...);
@@ -93,7 +93,7 @@ struct choice_copy : choice_if
 struct choice_eq : choice_if
 {
 	template <class IE, class CHOICE>
-	static bool apply(CHOICE const& lhs, CHOICE const& rhs)
+	static constexpr bool apply(CHOICE const& lhs, CHOICE const& rhs)
 	{
 		if constexpr (!CHOICE::plain_header)
 		{
@@ -135,7 +135,7 @@ struct choice_name
 struct choice_enc : choice_if
 {
 	template <class IE, class TO, class ENCODER>
-	static void apply(TO const& to, ENCODER& encoder)
+	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
 		CODEC_TRACE("CASE[%s]", name<IE>());
 		if constexpr (TO::plain_header)
@@ -164,7 +164,7 @@ struct choice_enc : choice_if
 	}
 
 	template <class TO, class ENCODER>
-	static void apply(TO const& to, ENCODER&)
+	static constexpr void apply(TO const& to, ENCODER&)
 	{
 		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), to.index())
 	}
@@ -173,7 +173,7 @@ struct choice_enc : choice_if
 struct choice_dec
 {
 	template <class IE, class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
-	bool check(TO&, HEADER const& header, DECODER&, UNEXP&, DEPS&...)
+	constexpr bool check(TO&, HEADER const& header, DECODER&, UNEXP&, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = meta::list_first_t<mi>;
@@ -182,7 +182,7 @@ struct choice_dec
 	}
 
 	template <class IE, class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
-	static void apply(TO& to, HEADER const&, DECODER& decoder, UNEXP& unexp, DEPS&... deps)
+	static constexpr void apply(TO& to, HEADER const&, DECODER& decoder, UNEXP& unexp, DEPS&... deps)
 	{
 		CODEC_TRACE("CASE[%s]", name<IE>());
 		auto& ie = static_cast<IE&>(to.template ref<get_field_type_t<IE>>());
@@ -192,7 +192,7 @@ struct choice_dec
 	}
 
 	template <class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
-	void apply(TO& to, HEADER const& header, DECODER& decoder, UNEXP& unexp, DEPS&...)
+	constexpr void apply(TO& to, HEADER const& header, DECODER& decoder, UNEXP& unexp, DEPS&...)
 	{
 		unexp(decoder, to, header);
 	}
@@ -205,17 +205,17 @@ namespace detail {
 template <class T>
 struct selector
 {
-	explicit selector(T* that) noexcept
+	explicit constexpr selector(T* that) noexcept
 		: m_this(that)
 	{}
 
-	template <class U> operator U&()
+	template <class U> constexpr operator U&()
 	{
 		static_assert(!std::is_const<T>(), "CONST CHOICE RETURNS A POINTER, NOT REFERENCE!");
 		return m_this->template ref<U>();
 	}
 
-	template <class U> operator U const* ()
+	template <class U> constexpr operator U const* ()
 	{
 		return m_this->template get<U>();
 	}
@@ -237,7 +237,7 @@ struct choice_header : dummy_header
 {
 	static constexpr bool plain_header = true; //plain header e.g. a tag
 
-	auto& header() const                    { return *this; }
+	constexpr auto& header() const          { return *this; }
 };
 
 template <class HEADER>
@@ -246,8 +246,8 @@ struct choice_header<HEADER, std::enable_if_t<has_get_tag<HEADER>::value>>
 	static constexpr bool plain_header = false; //compound header e.g. a sequence
 
 	using header_type = HEADER;
-	header_type const& header() const       { return m_header; }
-	header_type& header()                   { return m_header; }
+	constexpr header_type const& header() const { return m_header; }
+	constexpr header_type& header()             { return m_header; }
 
 private:
 	header_type  m_header;
@@ -276,27 +276,28 @@ public:
 	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::field_at<T>>>; }
 
 	//current selected index (type)
-	std::size_t index() const               { return m_index; }
+	constexpr std::size_t index() const     { return m_index; }
 	//return index of given type
 	template <class T>
 	static constexpr std::size_t index()    { return meta::list_index_of_v<T, fields_types>; }
 
-	void clear()
+	constexpr void clear()
 	{
 		meta::for_if<ies_types>(sl::choice_clear{}, *this);
 		this->header().clear(); m_index = num_types;
 	}
 
-	bool is_set() const                     { return this->header().is_set() && index() != num_types; }
+	constexpr bool is_set() const           { return this->header().is_set() && index() != num_types; }
 
 	template <class ENC>
-	std::size_t calc_length(ENC& enc) const { return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len{}, *this, enc); }
+	constexpr std::size_t calc_length(ENC& enc) const
+		{ return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len{}, *this, enc); }
 
-	auto select()                           { return detail::selector{this}; }
-	auto select() const                     { return detail::selector{this}; }
-	auto cselect() const                    { return detail::selector{this}; }
+	constexpr auto select()                 { return detail::selector{this}; }
+	constexpr auto select() const           { return detail::selector{this}; }
+	constexpr auto cselect() const          { return detail::selector{this}; }
 
-	template <class T> T& ref()
+	template <class T> constexpr T& ref()
 	{
 		//TODO: how to prevent a copy when callee-side re-uses reference by mistake?
 		static_assert(!std::is_const<T>(), "REFERENCE IS NOT FOR ACCESSING AS CONST");
@@ -312,7 +313,7 @@ public:
 		return *ie;
 	}
 
-	template <class T> T const* get() const
+	template <class T> constexpr T const* get() const
 	{
 		using type = meta::find<ies_types, sl::field_at<T>>;
 		static_assert(!std::is_void<type>(), "NO SUCH CASE IN CHOICE");
@@ -323,21 +324,22 @@ public:
 	}
 
 	template <class FROM, class... ARGS>
-	void copy(FROM const& from, ARGS&&... args)
+	constexpr void copy(FROM const& from, ARGS&&... args)
 	{ meta::for_if<ies_types>(sl::choice_copy{}, from, *this, std::forward<ARGS>(args)...); }
 
-	bool operator==(choice const& rhs) const    { return index() == rhs.index() && meta::for_if<ies_types>(sl::choice_eq{}, *this, rhs); }
+	constexpr bool operator==(choice const& rhs) const
+		{ return index() == rhs.index() && meta::for_if<ies_types>(sl::choice_eq{}, *this, rhs); }
 
 	template <class TO, class... ARGS>
-	void copy_to(TO& to, ARGS&&... args) const
+	constexpr void copy_to(TO& to, ARGS&&... args) const
 	{ meta::for_if<ies_types>(sl::choice_copy{}, *this, to, std::forward<ARGS>(args)...); }
 
 	template <class ENCODER>
-	void encode(ENCODER& encoder) const
+	constexpr void encode(ENCODER& encoder) const
 	{ meta::for_if<ies_types>(sl::choice_enc{}, *this, encoder); }
 
 	template <class DECODER, class UNEXP, class... DEPS>
-	void decode(DECODER& decoder, UNEXP& unexp, DEPS&... deps)
+	constexpr void decode(DECODER& decoder, UNEXP& unexp, DEPS&... deps)
 	{
 		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
 			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
@@ -368,8 +370,8 @@ private:
 
 	using storage_type = typename detail::list_aligned_union<ies_types>::type;
 
-	template <class T> T& as()              { return *reinterpret_cast<T*>(&m_storage); }
-	template <class T> T const& as() const  { return *reinterpret_cast<T const*>(&m_storage); }
+	template <class T> constexpr T& as()                { return *reinterpret_cast<T*>(&m_storage); }
+	template <class T> constexpr T const& as() const    { return *reinterpret_cast<T const*>(&m_storage); }
 
 	std::size_t  m_index {num_types}; //index of selected type in storage
 	storage_type m_storage;

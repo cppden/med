@@ -28,7 +28,7 @@ struct _length
 };
 
 template<int L, int R>
-static constexpr bool operator==(_length<L> const&, _length<R> const&) { return true; }
+constexpr bool operator==(_length<L> const&, _length<R> const&) { return true; }
 
 }	//end: namespace placeholder
 

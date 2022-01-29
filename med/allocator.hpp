@@ -39,8 +39,8 @@ template <class T>
 struct allocator_holder
 {
 	using allocator_type = T;
-	explicit allocator_holder(allocator_type* p) : m_ref{*p} {}
-	allocator_type& get_allocator() { return m_ref; }
+	explicit constexpr allocator_holder(allocator_type* p) : m_ref{*p} {}
+	constexpr allocator_type& get_allocator() { return m_ref; }
 
 private:
 	T& m_ref;
@@ -52,8 +52,8 @@ struct allocator_holder<null_allocator>
 	static null_allocator instance;
 
 	using allocator_type = null_allocator;
-	explicit allocator_holder(allocator_type*)  {}
-	allocator_type& get_allocator() { return instance; }
+	explicit constexpr allocator_holder(allocator_type*)  {}
+	constexpr allocator_type& get_allocator() { return instance; }
 };
 
 }
@@ -63,22 +63,22 @@ class allocator
 public:
 	allocator(allocator const&) = delete;
 	allocator& operator=(allocator const&) = delete;
-	allocator() = default;
-	allocator(void* data, std::size_t size) { reset(data, size); }
+	constexpr allocator() noexcept = default;
+	constexpr allocator(void* data, std::size_t size) { reset(data, size); }
 	template <typename T, std::size_t SIZE>
-	explicit allocator(T (&data)[SIZE])     { reset(data); }
+	explicit constexpr allocator(T (&data)[SIZE])     { reset(data); }
 
 	/**
 	 * Resets to the current allocation buffer
 	 */
-	void release() noexcept                   { m_begin = m_start; m_size = m_total; }
+	constexpr void release() noexcept                 { m_begin = m_start; m_size = m_total; }
 
 	/**
 	 * Resets to new allocation buffer
 	 * @param data start of allocation buffer
 	 * @param size size of allocation buffer
 	 */
-	void reset(void* data, std::size_t size) noexcept
+	constexpr void reset(void* data, std::size_t size) noexcept
 	{
 		m_start = data;
 		m_total = size;
@@ -86,7 +86,7 @@ public:
 	}
 
 	template <typename T, std::size_t SIZE>
-	void reset(T (&data)[SIZE]) noexcept   { reset(data, SIZE * sizeof(T)); }
+	constexpr void reset(T (&data)[SIZE]) noexcept   { reset(data, SIZE * sizeof(T)); }
 
 	/**
 	 * Allocates T from the beginning of current free buffer space
@@ -96,6 +96,7 @@ public:
 	void* allocate(std::size_t bytes, std::size_t alignment) noexcept
 	{
 		void* p = std::align(alignment, bytes, m_begin, m_size);
+		//void* p = salign(alignment, bytes, m_begin, m_size);
 		if (p)
 		{
 			m_begin = (uint8_t*)m_begin + bytes;
@@ -105,6 +106,25 @@ public:
 	}
 
 private:
+#if 0
+	static constexpr void* salign(size_t __align, size_t __size, void*& __ptr, size_t& __space) noexcept
+	{
+		if (__space < __size) return nullptr;
+		const auto __intptr = std::bit_cast<uintptr_t>(__ptr);
+		const auto __aligned = (__intptr - 1u + __align) & -__align;
+		const auto __diff = __aligned - __intptr;
+		if (__diff > (__space - __size))
+		{
+			return nullptr;
+		}
+		else
+		{
+			__space -= __diff;
+			return __ptr = std::bit_cast<void*>(__aligned);
+		}
+	}
+#endif
+
 	void*       m_begin {};
 	std::size_t m_size{};
 	void*       m_start {};
@@ -125,24 +145,24 @@ constexpr bool is_allocator_v = is_allocator<T>::value;
 
 
 template <class T>
-inline auto get_allocator(T& t) -> std::enable_if_t<is_allocator_v<T>, T&>
+constexpr auto get_allocator(T& t) -> std::enable_if_t<is_allocator_v<T>, T&>
 {
 	return t;
 }
 template <class T>
-inline auto get_allocator(T* pt) -> std::enable_if_t<is_allocator_v<T>, T&>
+constexpr auto get_allocator(T* pt) -> std::enable_if_t<is_allocator_v<T>, T&>
 {
 	return *pt;
 }
 template <class T>
-inline auto get_allocator(T& t) -> std::add_lvalue_reference_t<decltype(t.get_allocator())>
+constexpr auto get_allocator(T& t) -> std::add_lvalue_reference_t<decltype(t.get_allocator())>
 {
 	auto& allocator = t.get_allocator();
 	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");
 	return allocator;
 }
 template <class T>
-inline auto get_allocator(T* pt) -> std::add_lvalue_reference_t<decltype(pt->get_allocator())>
+constexpr auto get_allocator(T* pt) -> std::add_lvalue_reference_t<decltype(pt->get_allocator())>
 {
 	auto& allocator = pt->get_allocator();
 	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");

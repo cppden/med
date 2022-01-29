@@ -41,7 +41,7 @@ constexpr bool is_counter_v = is_counter<T>::value;
 namespace detail {
 
 template <class FUNC, class IE>
-inline void check_n_arity(FUNC&, IE const&, std::size_t count)
+constexpr void check_n_arity(FUNC&, IE const&, std::size_t count)
 {
 	if (count >= IE::min)
 	{

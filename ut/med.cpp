@@ -254,6 +254,28 @@ TEST(field, empty)
 }
 #endif
 
+#if 0
+TEST(field, constexpr_empty)
+{
+	constexpr uint8_t buffer[16] = {};
+	//constexpr med::buffer<uint8_t*> bb;
+
+	constexpr FLD_CHO field;
+	field.ref<NO_THING>();
+
+	constexpr med::encoder_context<> ctx{ buffer };
+	encode(med::octet_encoder{ctx}, field);
+	static_assert(ctx.buffer().get_offset() == 1);
+	EXPECT_STRCASEEQ("06 ", as_string(ctx.buffer()));
+
+	decltype(field) dfield;
+	med::decoder_context<> dctx;
+	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+	decode(med::octet_decoder{dctx}, dfield);
+	EXPECT_NE(nullptr, dfield.get<NO_THING>());
+}
+#endif
+
 #if 1
 namespace init {
 
@@ -353,6 +375,7 @@ TEST(update, unused)
 	encode(encoder, msg);
 
 	uint8_t const encoded[] = {7, 4, 0x12,0x34,0x56,0x78};
+	//static_assert(sizeof(encoded) == ctx.buffer().get_offset());
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
 

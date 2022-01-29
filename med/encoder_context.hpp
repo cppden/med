@@ -40,28 +40,29 @@ public:
 	encoder_context(encoder_context const&) = delete;
 	encoder_context& operator=(encoder_context const&) = delete;
 
-	encoder_context(void* data, std::size_t size, allocator_type* alloc = nullptr)
+	constexpr encoder_context(void* data, std::size_t size, allocator_type* alloc = nullptr)
 		: detail::allocator_holder<allocator_type>{alloc}
 	{
 		reset(data, size);
 	}
 
 	template <typename T, std::size_t SIZE>
-	explicit encoder_context(T (&buf)[SIZE], allocator_type* alloc = nullptr)
+	explicit constexpr encoder_context(T (&buf)[SIZE], allocator_type* alloc = nullptr)
 		: encoder_context(buf, sizeof(buf), alloc) {}
 
-	buffer_type& buffer()                   { return m_buffer; }
+	constexpr buffer_type& buffer() noexcept            { return m_buffer; }
+	constexpr buffer_type const& buffer()const noexcept { return m_buffer; }
 
 	template <typename T, std::size_t SIZE>
-	void reset(T (&data)[SIZE]) noexcept   { reset(data, SIZE * sizeof(T)); }
+	constexpr void reset(T (&data)[SIZE]) noexcept      { reset(data, SIZE * sizeof(T)); }
 
-	void reset(void* data, std::size_t size) noexcept
+	constexpr void reset(void* data, std::size_t size) noexcept
 	{
 		m_buffer.reset(static_cast<typename buffer_type::pointer>(data), size);
 		m_snapshot = nullptr;
 	}
 
-	void reset()
+	constexpr void reset()
 	{
 		m_buffer.reset();
 		m_snapshot = nullptr;
@@ -71,7 +72,7 @@ public:
 	 * Stores the buffer snapshot
 	 * @param snap
 	 */
-	void put_snapshot(SNAPSHOT snap)
+	constexpr void put_snapshot(SNAPSHOT snap)
 	{
 		CODEC_TRACE("snapshot %p{%zu}", static_cast<void const*>(snap.id), snap.size);
 		snapshot_s* p = create<snapshot_s>(this->get_allocator());
@@ -85,7 +86,7 @@ public:
 	class snap_s : public state_t
 	{
 	public:
-		bool validate_length(std::size_t s) const
+		constexpr bool validate_length(std::size_t s) const
 		{
 			CODEC_TRACE("%s(%zu ? %zu)=%d", __FUNCTION__, m_length, s, m_length == s);
 			return m_length == s;
@@ -93,10 +94,10 @@ public:
 
 	private:
 		friend class encoder_context;
-		snap_s(state_t const& st, std::size_t len) : state_t{st}, m_length{len} {}
-		snap_s() : state_t{}, m_length{} {}
+		constexpr snap_s(state_t const& st, std::size_t len) : state_t{st}, m_length{len} {}
+		constexpr snap_s() = default;
 
-		std::size_t m_length;
+		std::size_t m_length{};
 	};
 
 	/**
@@ -106,7 +107,7 @@ public:
 	 * @return snapshot or empty snapshot if not found
 	 */
 	template <class IE>
-	snap_s get_snapshot(IE const&) const
+	constexpr snap_s get_snapshot(IE const&) const
 	{
 		static_assert(std::is_base_of<with_snapshot, IE>(), "IE WITH with_snapshot EXPECTED");
 

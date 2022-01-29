@@ -74,9 +74,6 @@ using get_dependency_t = typename detail::get_dependency<T>::type;
 
 template <class T> constexpr bool is_length_v = detail::has_length_type<T>::value;
 
-template <class IE, class ENCODER>
-constexpr std::size_t field_length(IE const& ie, ENCODER& encoder);
-
 namespace sl {
 
 template <class META_INFO = meta::typelist<>, class IE, class ENCODER>

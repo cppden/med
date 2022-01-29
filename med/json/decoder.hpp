@@ -25,7 +25,7 @@ constexpr bool is_whitespace(C const c)
 
 //returns last non-ws value or 0 for EoF
 template <typename BUFFER>
-inline int skip_ws(BUFFER& buffer)
+constexpr int skip_ws(BUFFER& buffer)
 {
 	auto p = buffer.begin(), pe = buffer.end();
 	while (p != pe && is_whitespace(*p)) ++p;
@@ -38,7 +38,7 @@ inline int skip_ws(BUFFER& buffer)
 }
 
 template <typename BUFFER>
-inline bool skip_ws_after(BUFFER& buffer, int expected)
+constexpr bool skip_ws_after(BUFFER& buffer, int expected)
 {
 	auto p = buffer.begin(), pe = buffer.end();
 	while (p != pe && is_whitespace(*p)) ++p;

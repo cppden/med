@@ -17,7 +17,7 @@ namespace med {
 
 //read-only access optional field returning a pointer or null if not set
 template <class FIELD, class IE>
-inline std::enable_if_t<!is_multi_field_v<IE> && is_optional_v<IE>, FIELD const*> get_field(IE const& ie)
+constexpr std::enable_if_t<!is_multi_field_v<IE> && is_optional_v<IE>, FIELD const*> get_field(IE const& ie)
 {
 	return ie.is_set() ? &ie : nullptr;
 }
@@ -70,17 +70,20 @@ struct access
 template <class C>
 struct accessor
 {
-	explicit accessor(C& c) noexcept : m_that(c)  { }
+	explicit constexpr accessor(C& c) noexcept : m_that(c)  { }
 
-	template <class T, class = std::enable_if_t<!std::is_pointer_v<T>>> operator T& ()
+	template <class T, class = std::enable_if_t<!std::is_pointer_v<T>>>
+	constexpr operator T& ()
 	{
 		return m_that.template ref<T>();
 	}
-	template <class T, class = std::enable_if_t<std::is_const_v<T>>> operator T* () const
+	template <class T, class = std::enable_if_t<std::is_const_v<T>>>
+	constexpr operator T* () const
 	{
 		return access<T>::as_optional(m_that.template get<std::remove_const_t<T>>());
 	}
-	template <class T, class = std::enable_if_t<std::is_pointer_v<T> && !std::is_const_v<T>>> operator T* ()
+	template <class T, class = std::enable_if_t<std::is_pointer_v<T> && !std::is_const_v<T>>>
+	constexpr operator T* ()
 	{
 		static_assert(!std::is_pointer<T>(), "INVALID ACCESS OF MANDATORY BY POINTER");
 		return T{};
@@ -93,13 +96,15 @@ private:
 template <class C>
 struct caccessor
 {
-	explicit caccessor(C const& c) noexcept : m_that(c) { }
-	template <class T> operator T const* () const
+	explicit constexpr caccessor(C const& c) noexcept : m_that(c) { }
+	template <class T>
+	constexpr operator T const* () const
 	{
 		return access<T>::as_optional(m_that.template get<T>());
 	}
 
-	template <class T> operator T const& () const
+	template <class T>
+	constexpr operator T const& () const
 	{
 		return access<T>::as_mandatory(m_that.template get<T>());
 	}
@@ -111,13 +116,13 @@ private:
 }	//end: namespace detail
 
 template <class C>
-inline auto make_accessor(C& c)
+constexpr auto make_accessor(C& c)
 {
 	return detail::accessor<C>{ c };
 }
 
 template <class C>
-inline auto make_accessor(C const& c)
+constexpr auto make_accessor(C const& c)
 {
 	return detail::caccessor<C>{ c };
 }

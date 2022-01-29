@@ -24,7 +24,7 @@ namespace sl {
 
 //TODO: more flexible is to compare current size read and how many bits to rewind for RO IE.
 template <class IE, class FUNC, class TAG>
-inline void clear_tag(FUNC& func, TAG& vtag)
+constexpr void clear_tag(FUNC& func, TAG& vtag)
 {
 	using type = get_meta_tag_t<meta::produce_info_t<FUNC, IE>>;
 	if constexpr (is_peek_v<type>)
@@ -35,7 +35,7 @@ inline void clear_tag(FUNC& func, TAG& vtag)
 }
 
 template <class FUNC, class TAG>
-inline void discard(FUNC& func, TAG& vtag)
+constexpr void discard(FUNC& func, TAG& vtag)
 {
 	if (vtag)
 	{
@@ -46,7 +46,7 @@ inline void discard(FUNC& func, TAG& vtag)
 }
 
 template <class FUNC, class IE>
-inline void encode_multi(FUNC& func, IE const& ie)
+constexpr void encode_multi(FUNC& func, IE const& ie)
 {
 	using field_mi = meta::produce_info_t<FUNC, typename IE::field_type>; //assuming MI of multi_field == MI of field
 

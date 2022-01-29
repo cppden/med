@@ -34,7 +34,7 @@ template <class T>
 constexpr bool has_to_str_v = has_to_str<T>::value;
 
 template <class T>
-inline auto to_str(T& t) -> std::enable_if_t<has_to_str_v<T>, char const*>
+constexpr auto to_str(T& t) -> std::enable_if_t<has_to_str_v<T>, char const*>
 {
 	return t.toString();
 }

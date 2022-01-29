@@ -39,7 +39,7 @@ struct default_handler
 //Tag
 //PEEK_SAVE - to preserve state in case of peek tag or not
 template <class TAG_TYPE, bool PEEK_SAVE, class DECODER>
-inline std::size_t decode_tag(DECODER& decoder)
+constexpr std::size_t decode_tag(DECODER& decoder)
 {
 	TAG_TYPE ie;
 	std::size_t value{};
@@ -61,7 +61,7 @@ inline std::size_t decode_tag(DECODER& decoder)
 }
 //Length
 template <class LEN_TYPE, class DECODER>
-inline std::size_t decode_len(DECODER& decoder)
+constexpr std::size_t decode_len(DECODER& decoder)
 {
 	LEN_TYPE ie;
 	if constexpr (is_peek_v<LEN_TYPE>)
@@ -182,6 +182,8 @@ constexpr void invoke_dependency(DEPENDENCY const& ie, DEPS& deps)
 template <class DECODER, class IE, class UNEXP>
 struct length_decoder<false, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEXP>
 {
+	template <class... NEWDEPS>
+	using make_dependent = typename DECODER::template make_dependent<NEWDEPS...>;
 	using length_type = typename IE::length_type;
 	using len_dec_impl<DECODER, IE, UNEXP>::len_dec_impl;
 	using len_dec_impl<DECODER, IE, UNEXP>::operator();
@@ -198,13 +200,15 @@ struct length_decoder<false, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNE
 template <class DECODER, class IE, class UNEXP>
 struct length_decoder<true, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEXP>
 {
+	template <class... NEWDEPS>
+	using make_dependent = typename DECODER::template make_dependent<NEWDEPS...>;
 	using length_type = typename IE::length_type;
 	using len_dec_impl<DECODER, IE, UNEXP>::len_dec_impl;
 	using len_dec_impl<DECODER, IE, UNEXP>::operator();
 
 	//length position by exact type match
 	template <class T, class ...ARGS>
-	auto operator () (T& len_ie, ARGS&&...) ->
+	constexpr auto operator () (T& len_ie, ARGS&&...) ->
 		std::enable_if_t<std::is_same_v<get_field_type_t<T>, length_type>, void>
 	{
 		CODEC_TRACE("len_dec[%s] by IE", name<length_type>());
@@ -215,7 +219,7 @@ struct length_decoder<true, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEX
 };
 
 template <class DECODER, class IE, class UNEXP, class... DEPS>
-inline void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
+constexpr void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 {
 	call_if<is_callable_with_v<DECODER, ENTRY_CONTAINER>>::call(decoder, ENTRY_CONTAINER{}, ie);
 
@@ -256,7 +260,7 @@ inline void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... de
 }
 
 template <class META_INFO, class DECODER, class IE, class UNEXP, class... DEPS>
-inline void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
+constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 {
 	if constexpr (not meta::list_is_empty_v<META_INFO>)
 	{
