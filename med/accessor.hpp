@@ -53,14 +53,14 @@ template <class T>
 struct access
 {
 	template <class R>
-	static auto as_mandatory(R&& ret)
+	static constexpr auto& as_mandatory(R& ret)
 	{
 		static_assert(!std::is_same<T const*, R>(), "ACCESSING OPTIONAL NOT BY POINTER");
 		return ret;
 	}
 
 	template <class R>
-	static auto as_optional(R&& ret)
+	static constexpr auto const* as_optional(R const& ret)
 	{
 		static_assert(std::is_same<T const*, R>(), "ACCESSING MANDATORY NOT BY REFERENCE");
 		return ret;
@@ -80,13 +80,14 @@ struct accessor
 	template <class T, class = std::enable_if_t<std::is_const_v<T>>>
 	constexpr operator T* () const
 	{
-		return access<T>::as_optional(m_that.template get<std::remove_const_t<T>>());
+		auto const* ptr = m_that.template get<std::remove_const_t<T>>();
+		return access<T>::as_optional(ptr);
 	}
 	template <class T, class = std::enable_if_t<std::is_pointer_v<T> && !std::is_const_v<T>>>
 	constexpr operator T* ()
 	{
 		static_assert(!std::is_pointer<T>(), "INVALID ACCESS OF MANDATORY BY POINTER");
-		return T{};
+		return nullptr;
 	}
 
 private:
