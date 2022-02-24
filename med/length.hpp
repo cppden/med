@@ -61,6 +61,12 @@ static auto test_value_to_length(int, std::size_t val = 0) ->
 		std::is_same_v<bool, decltype(T::value_to_length(val))>, std::true_type
 	>;
 
+template<class T>
+static auto test_value_to_length(int, std::size_t val = 0) ->
+	std::enable_if_t<
+		std::is_same_v<void, decltype(T::value_to_length(val))>, std::true_type
+	>;
+
 template<class>
 static auto test_value_to_length(long) -> std::false_type;
 
@@ -151,9 +157,16 @@ constexpr void length_to_value(FIELD& field, std::size_t len)
 	//convert length to raw value if needed
 	if constexpr (detail::has_length_converters<FIELD>::value)
 	{
-		if (not FIELD::length_to_value(len))
+		if constexpr (std::is_void_v<decltype(FIELD::length_to_value(len))>)
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len)
+			FIELD::length_to_value(len);
+		}
+		else
+		{
+			if (not FIELD::length_to_value(len))
+			{
+				MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len)
+			}
 		}
 		CODEC_TRACE("L=%zXh [%s]:", len, name<FIELD>());
 	}
@@ -202,9 +215,16 @@ constexpr void value_to_length(FIELD& field, std::size_t& len)
 	//convert raw value to length if needed
 	if constexpr (detail::has_length_converters<FIELD>::value)
 	{
-		if (not FIELD::value_to_length(len))
+		if constexpr (std::is_void_v<decltype(FIELD::value_to_length(len))>)
 		{
-			MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len)
+			FIELD::value_to_length(len);
+		}
+		else
+		{
+			if (not FIELD::value_to_length(len))
+			{
+				MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len)
+			}
 		}
 		CODEC_TRACE("LEN=%zu [%s]", len, name<FIELD>());
 	}
