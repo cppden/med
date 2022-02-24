@@ -60,9 +60,9 @@ struct access
 	}
 
 	template <class R>
-	static constexpr auto* as_optional(R& ret)
+    static constexpr auto* as_optional(R ret)
 	{
-		static_assert(std::is_same<T const*, R>(), "ACCESSING MANDATORY NOT BY REFERENCE");
+        static_assert(std::is_same<T const*, R>(), "ACCESSING MANDATORY NOT BY REFERENCE");
 		return ret;
 	}
 };
