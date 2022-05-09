@@ -177,7 +177,7 @@ private:
 };
 
 
-template <class T, typename Enable = void>
+template <class EXPOSED, class T, typename Enable = void>
 struct container_encoder
 {
 	template <class ENCODER, class IE>
@@ -210,15 +210,22 @@ struct container_encoder
 		}
 		else
 		{
-			CODEC_TRACE("%s...:", name<IE>());
-			ie.encode(encoder);
+			CODEC_TRACE("%s w/o length exposed=%s...:", name<IE>(), name<EXPOSED>());
+			if constexpr (std::is_void_v<EXPOSED>)
+			{
+				ie.encode(encoder);
+			}
+			else
+			{
+				ie.template encode<meta::list_rest_t<typename IE::ies_types>>(encoder);
+			}
 		}
 	}
 };
 
 //special case for printer
-template <class T>
-struct container_encoder<T, std::void_t<typename T::container_encoder>>
+template <class EXPOSED, class T>
+struct container_encoder<EXPOSED, T, std::void_t<typename T::container_encoder>>
 {
 	template <class ENCODER, class IE>
 	static void encode(ENCODER& encoder, IE const& ie)
@@ -227,7 +234,7 @@ struct container_encoder<T, std::void_t<typename T::container_encoder>>
 	}
 };
 
-template <class META_INFO, class ENCODER, class IE>
+template <class META_INFO, class EXPOSED, class ENCODER, class IE>
 constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 {
 	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
@@ -236,7 +243,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 		{
 			using mi = meta::list_first_t<META_INFO>;
 			using mi_rest = meta::list_rest_t<META_INFO>;
-			CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
+			CODEC_TRACE("%s[%s-%s]: %s", __FUNCTION__, name<IE>(), name<EXPOSED>(), class_name<mi>());
 
 			if constexpr (mi::kind == mik::TAG)
 			{
@@ -245,7 +252,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				//CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
-				auto len = sl::ie_length<mi_rest>(ie, encoder);
+				auto len = sl::ie_length<EXPOSED, mi_rest>(ie, encoder);
 				using length_type = typename mi::length_type;
 				using dependency_type = get_dependency_t<length_type>;
 				if constexpr (!std::is_void_v<dependency_type>)
@@ -255,7 +262,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 					CODEC_TRACE("adjusted by %d L=%zxh [%s] dependent on %s", -delta, len, name<IE>(), name<dependency_type	>());
 				}
 
-				//CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
+				CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
 				encode_len<length_type>(encoder, len);
 
 				using pad_traits = typename get_padding<length_type>::type;
@@ -264,13 +271,13 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
 					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
 					pad_t pad{encoder};
-					ie_encode<mi_rest>(encoder, ie);
+					ie_encode<mi_rest, EXPOSED>(encoder, ie);
 					pad.add_padding();
 					return;
 				}
 			}
 
-			ie_encode<mi_rest>(encoder, ie);
+			ie_encode<mi_rest, EXPOSED>(encoder, ie);
 		}
 		else
 		{
@@ -279,7 +286,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
 				call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
-				container_encoder<ENCODER>::encode(encoder, ie);
+				container_encoder<EXPOSED, ENCODER>::encode(encoder, ie);
 				call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
 			}
 			else
@@ -303,7 +310,7 @@ constexpr void encode(ENCODER&& encoder, IE const& ie)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
 		CODEC_TRACE("mi=%s", class_name<mi>());
-		sl::ie_encode<mi>(encoder, ie);
+		sl::ie_encode<mi, void>(encoder, ie);
 	}
 	else //special cases like passing a placeholder
 	{

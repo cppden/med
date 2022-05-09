@@ -48,7 +48,7 @@ struct choice_len : choice_if
 		{
 			return field_length(to.header(), encoder)
 				//skip TAG as 1st metainfo which is encoded in header
-				+ sl::ie_length<meta::list_rest_t<
+				+ sl::ie_length<void, meta::list_rest_t<
 					meta::produce_info_t<ENCODER, IE>>>>(to.template as<IE>(), encoder);
 		}
 	}
@@ -137,14 +137,27 @@ struct choice_enc : choice_if
 	template <class IE, class TO, class ENCODER>
 	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
-		CODEC_TRACE("CASE[%s]", name<IE>());
+		using mi = meta::produce_info_t<ENCODER, IE>;
+		CODEC_TRACE("CASE[%s] mi=%s %s", name<IE>(), class_name<mi>(), TO::plain_header?"plain":"compaund");
 		if constexpr (TO::plain_header)
 		{
+			if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+			{
+				using type = typename meta::list_first_t<mi>::info_type;
+				using exposed = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
+				if constexpr(std::is_same_v<exposed, type>)
+				{
+					CODEC_TRACE("exposed[%s]", name<exposed>());
+					//encoode 1st TAG meta-info via exposed
+					sl::ie_encode<meta::typelist<>, void>(encoder, to.template as<exposed>());
+					//skip 1st TAG meta-info and encode it via exposed
+					return sl::ie_encode<meta::list_rest_t<mi>, exposed>(encoder, to.template as<IE>());
+				}
+			}
 			med::encode(encoder, to.template as<IE>());
 		}
 		else
 		{
-			using mi = meta::produce_info_t<ENCODER, IE>;
 			//tag of this IE isn't in header
 			if constexpr (!explicit_meta_in<mi, typename TO::header_type>())
 			{
@@ -159,7 +172,7 @@ struct choice_enc : choice_if
 			}
 			med::encode(encoder, to.header());
 			//skip 1st TAG meta-info as it's encoded in header
-			sl::ie_encode<meta::list_rest_t<mi>>(encoder, to.template as<IE>());
+			sl::ie_encode<meta::list_rest_t<mi>, void>(encoder, to.template as<IE>());
 		}
 	}
 
@@ -172,8 +185,8 @@ struct choice_enc : choice_if
 
 struct choice_dec
 {
-	template <class IE, class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
-	constexpr bool check(TO&, HEADER const& header, DECODER&, UNEXP&, DEPS&...)
+	template <class IE, class TO, class HEADER, class DECODER, class... DEPS>
+	constexpr bool check(TO&, HEADER const& header, DECODER&, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = meta::list_first_t<mi>;
@@ -181,20 +194,33 @@ struct choice_dec
 		return type::match( get_tag(header) );
 	}
 
-	template <class IE, class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
-	static constexpr void apply(TO& to, HEADER const&, DECODER& decoder, UNEXP& unexp, DEPS&... deps)
+	template <class IE, class TO, class HEADER, class DECODER, class... DEPS>
+	static constexpr void apply(TO& to, HEADER const& header, DECODER& decoder, DEPS&... deps)
 	{
 		CODEC_TRACE("CASE[%s]", name<IE>());
 		auto& ie = static_cast<IE&>(to.template ref<get_field_type_t<IE>>());
 		//skip 1st TAG meta-info as it's decoded in header
 		using mi = meta::produce_info_t<DECODER, IE>;
-		sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp, deps...);
+		if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+		{
+			using type = typename meta::list_first_t<mi>::info_type;
+//			using exposed = meta::find<typename IE::ies_types, sl::field_at<type>>;
+			using exposed = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
+			if constexpr(std::is_same_v<exposed, type>)
+			{
+				CODEC_TRACE("exposed[%s] = %#zx", name<exposed>(), size_t(header.get()));
+				ie.template ref<type>().set(header.get());
+				return sl::ie_decode<meta::list_rest_t<mi>, exposed>(decoder, ie, deps...);
+			}
+		}
+
+		sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, ie, deps...);
 	}
 
-	template <class TO, class HEADER, class DECODER, class UNEXP, class... DEPS>
-	constexpr void apply(TO& to, HEADER const& header, DECODER& decoder, UNEXP& unexp, DEPS&...)
+	template <class TO, class HEADER, class DECODER, class... DEPS>
+	constexpr void apply(TO&, HEADER const& header, DECODER&, DEPS&...)
 	{
-		unexp(decoder, to, header);
+		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(header))
 	}
 };
 
@@ -226,17 +252,13 @@ struct selector
 template <class L> struct list_aligned_union;
 template <template <class...> class L, class... Ts> struct list_aligned_union<L<Ts...>> : std::aligned_union<0, Ts...> {};
 
-struct dummy_header
-{
-	static constexpr bool is_set()          { return true; }
-	static constexpr void clear()           { }
-};
-
 template <class HEADER, class = void>
-struct choice_header : dummy_header
+struct choice_header
 {
 	static constexpr bool plain_header = true; //plain header e.g. a tag
 
+	static constexpr bool is_set()          { return true; }
+	static constexpr void clear()           { }
 	constexpr auto& header() const          { return *this; }
 };
 
@@ -338,8 +360,8 @@ public:
 	constexpr void encode(ENCODER& encoder) const
 	{ meta::for_if<ies_types>(sl::choice_enc{}, *this, encoder); }
 
-	template <class DECODER, class UNEXP, class... DEPS>
-	constexpr void decode(DECODER& decoder, UNEXP& unexp, DEPS&... deps)
+	template <class DECODER, class... DEPS>
+	constexpr void decode(DECODER& decoder, DEPS&... deps)
 	{
 		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
 			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
@@ -350,14 +372,14 @@ public:
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
 			using tag_t = meta::list_first_t<mi>;
-			value<std::size_t> tag;
+			as_writable_t<tag_t> tag;
 			tag.set_encoded(sl::decode_tag<tag_t, true>(decoder));
-			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, unexp, deps...);
+			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, deps...);
 		}
 		else
 		{
-			med::decode(decoder, this->header(), unexp, deps...);
-			meta::for_if<ies_types>(sl::choice_dec{}, *this, this->header(), decoder, unexp, deps...);
+			med::decode(decoder, this->header(), deps...);
+			meta::for_if<ies_types>(sl::choice_dec{}, *this, this->header(), decoder, deps...);
 		}
 	}
 

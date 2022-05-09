@@ -27,22 +27,13 @@ namespace med {
 //structure layer
 namespace sl {
 
-struct default_handler
-{
-	template <class DECODER, class IE, class HEADER>
-	constexpr void operator()(DECODER&, IE const&, HEADER const& header) const
-	{
-		MED_THROW_EXCEPTION(unknown_tag, name<IE>(), get_tag(header))
-	}
-};
-
 //Tag
 //PEEK_SAVE - to preserve state in case of peek tag or not
 template <class TAG_TYPE, bool PEEK_SAVE, class DECODER>
-constexpr std::size_t decode_tag(DECODER& decoder)
+constexpr auto decode_tag(DECODER& decoder)
 {
 	TAG_TYPE ie;
-	std::size_t value{};
+	typename as_writable_t<TAG_TYPE>::value_type value{};
 	if constexpr (PEEK_SAVE && is_peek_v<TAG_TYPE>)
 	{
 		CODEC_TRACE("PEEK TAG %s", class_name<TAG_TYPE>());
@@ -56,7 +47,7 @@ constexpr std::size_t decode_tag(DECODER& decoder)
 	{
 		value = decoder(ie, IE_TAG{});
 	}
-	CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, value, class_name<TAG_TYPE>());
+	CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
 	return value;
 }
 //Length
@@ -83,10 +74,10 @@ constexpr std::size_t decode_len(DECODER& decoder)
 	return value;
 }
 
-template <bool REF_BY_IE, class DECODER, class IE, class UNEXP>
+template <bool REF_BY_IE, class DECODER, class IE>
 struct length_decoder;
 
-template <class DECODER, class IE, class UNEXP>
+template <class DECODER, class IE>
 struct len_dec_impl
 {
 	using state_type = typename DECODER::state_type;
@@ -97,11 +88,10 @@ struct len_dec_impl
 
 	using length_type = typename IE::length_type;
 
-	len_dec_impl(DECODER& decoder, IE& ie, UNEXP& unexp) noexcept
+	len_dec_impl(DECODER& decoder, IE& ie) noexcept
 		: m_decoder{ decoder }
 		, m_ie{ ie }
 		, m_start{ m_decoder(GET_STATE{}) }
-		, m_unexp{ unexp }
 	{
 		CODEC_TRACE("start %s with len=%s...:", name<IE>(), name<length_type>());
 	}
@@ -156,7 +146,7 @@ protected:
 	template <int DELTA>
 	void decode_len_ie(length_type& len_ie)
 	{
-		decode(m_decoder, len_ie, m_unexp);
+		decode(m_decoder, len_ie);
 		std::size_t len_value = 0;
 		value_to_length(len_ie, len_value);
 		calc_buf_len<DELTA>(len_value);
@@ -168,7 +158,6 @@ protected:
 	IE&              m_ie;
 	state_type const m_start;
 	size_state       m_size_state; //to switch end of buffer for this IE
-	UNEXP&           m_unexp;
 };
 
 template <class DEPENDENT, class DEPENDENCY, class DEPS>
@@ -179,14 +168,14 @@ constexpr void invoke_dependency(DEPENDENCY const& ie, DEPS& deps)
 }
 
 
-template <class DECODER, class IE, class UNEXP>
-struct length_decoder<false, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEXP>
+template <class DECODER, class IE>
+struct length_decoder<false, DECODER, IE> : len_dec_impl<DECODER, IE>
 {
 	template <class... NEWDEPS>
 	using make_dependent = typename DECODER::template make_dependent<NEWDEPS...>;
 	using length_type = typename IE::length_type;
-	using len_dec_impl<DECODER, IE, UNEXP>::len_dec_impl;
-	using len_dec_impl<DECODER, IE, UNEXP>::operator();
+	using len_dec_impl<DECODER, IE>::len_dec_impl;
+	using len_dec_impl<DECODER, IE>::operator();
 
 	template <int DELTA>
 	void operator() (placeholder::_length<DELTA>&)
@@ -197,14 +186,14 @@ struct length_decoder<false, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNE
 	}
 };
 
-template <class DECODER, class IE, class UNEXP>
-struct length_decoder<true, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEXP>
+template <class DECODER, class IE>
+struct length_decoder<true, DECODER, IE> : len_dec_impl<DECODER, IE>
 {
 	template <class... NEWDEPS>
 	using make_dependent = typename DECODER::template make_dependent<NEWDEPS...>;
 	using length_type = typename IE::length_type;
-	using len_dec_impl<DECODER, IE, UNEXP>::len_dec_impl;
-	using len_dec_impl<DECODER, IE, UNEXP>::operator();
+	using len_dec_impl<DECODER, IE>::len_dec_impl;
+	using len_dec_impl<DECODER, IE>::operator();
 
 	//length position by exact type match
 	template <class T, class ...ARGS>
@@ -218,8 +207,8 @@ struct length_decoder<true, DECODER, IE, UNEXP> : len_dec_impl<DECODER, IE, UNEX
 	}
 };
 
-template <class DECODER, class IE, class UNEXP, class... DEPS>
-constexpr void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
+template <class EXPOSED, class DECODER, class IE, class... DEPS>
+constexpr void container_decoder(DECODER& decoder, IE& ie, DEPS&... deps)
 {
 	call_if<is_callable_with_v<DECODER, ENTRY_CONTAINER>>::call(decoder, ENTRY_CONTAINER{}, ie);
 
@@ -230,16 +219,16 @@ constexpr void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&...
 
 		if constexpr (std::is_void_v<pad_traits>)
 		{
-			length_decoder<IE::template has<length_type>(), DECODER, IE, UNEXP> ld{ decoder, ie, unexp };
-			ie.decode(ld, unexp, deps...);
+			length_decoder<IE::template has<length_type>(), DECODER, IE> ld{ decoder, ie};
+			ie.decode(ld, deps...);
 		}
 		else
 		{
 			using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
 			pad_t pad{decoder};
 			{
-				length_decoder<IE::template has<length_type>(), DECODER, IE, UNEXP> ld{ decoder, ie, unexp };
-				ie.decode(ld, unexp, deps...);
+				length_decoder<IE::template has<length_type>(), DECODER, IE> ld{decoder, ie};
+				ie.decode(ld, deps...);
 				//special case for empty elements w/o length placeholder
 				pad.enable_padding(static_cast<bool>(ld));
 				CODEC_TRACE("%sable padding for len=%zu", ld?"en":"dis", ld.size());
@@ -252,21 +241,28 @@ constexpr void decode_container(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&...
 	}
 	else
 	{
-		CODEC_TRACE("%s w/o length...:", name<IE>());
-		ie.decode(decoder, unexp, deps...);
+		CODEC_TRACE("%s w/o length exposed=%s...:", name<IE>(), name<EXPOSED>());
+		if constexpr (std::is_void_v<EXPOSED>)
+		{
+			ie.decode(decoder, deps...);
+		}
+		else
+		{
+			ie.template decode<meta::list_rest_t<typename IE::ies_types>>(decoder, deps...);
+		}
 	}
 
 	call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
 }
 
-template <class META_INFO, class DECODER, class IE, class UNEXP, class... DEPS>
-constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
+template <class META_INFO, class EXPOSED, class DECODER, class IE, class... DEPS>
+constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 {
 	if constexpr (not meta::list_is_empty_v<META_INFO>)
 	{
 		using mi = meta::list_first_t<META_INFO>;
 		using mi_rest = meta::list_rest_t<META_INFO>;
-		CODEC_TRACE("%s[%s](%zu) w/ %s", __FUNCTION__, name<IE>(), sizeof... (deps), class_name<mi>());
+		CODEC_TRACE("%s[%s-%s](%zu) w/ %s", __FUNCTION__, name<IE>(), name<EXPOSED>(), sizeof... (deps), class_name<mi>());
 
 		if constexpr (mi::kind == mik::TAG)
 		{
@@ -291,7 +287,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 				auto end = decoder(PUSH_SIZE{len});
 				if constexpr (std::is_void_v<pad_traits>)
 				{
-					ie_decode<mi_rest>(decoder, ie, unexp, deps...);
+					ie_decode<mi_rest, EXPOSED>(decoder, ie, deps...);
 					//TODO: ??? as warning not error
 					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 				}
@@ -300,7 +296,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
 					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
 					pad_t pad{decoder};
-					ie_decode<mi_rest>(decoder, ie, unexp, deps...);
+					ie_decode<mi_rest, EXPOSED>(decoder, ie, deps...);
 					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 					end.restore_end();
 					pad.add_padding();
@@ -317,7 +313,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 				auto end = dep_decoder(PUSH_SIZE{len, false});
 				if constexpr (std::is_void_v<pad_traits>)
 				{
-					ie_decode<mi_rest>(dep_decoder, ie, unexp, end, deps...);
+					ie_decode<mi_rest, EXPOSED>(dep_decoder, ie, end, deps...);
 					//TODO: ??? as warning not error
 					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
 					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
@@ -327,7 +323,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 					CODEC_TRACE("padded %s...:", name<length_type>());
 					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
 					pad_t pad{dep_decoder};
-					ie_decode<mi_rest>(dep_decoder, ie, unexp, end, deps...);
+					ie_decode<mi_rest, EXPOSED>(dep_decoder, ie, end, deps...);
 					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
 					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 					end.restore_end();
@@ -337,7 +333,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 			}
 		}
 
-		ie_decode<mi_rest>(decoder, ie, unexp, deps...);
+		ie_decode<mi_rest, EXPOSED>(decoder, ie, deps...);
 	}
 	else
 	{
@@ -345,7 +341,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 		CODEC_TRACE("%s[%.30s](%zu): %s", __FUNCTION__, class_name<IE>(), sizeof... (deps), class_name<ie_type>());
 		if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 		{
-			decode_container(decoder, ie, unexp, deps...);
+			container_decoder<EXPOSED>(decoder, ie, deps...);
 		}
 		else
 		{
@@ -377,13 +373,13 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, UNEXP& unexp, DEPS&... deps)
 
 }	//end: namespace sl
 
-template <class DECODER, class IE, class UNEXP = sl::default_handler, class... DEPS>
-constexpr void decode(DECODER&& decoder, IE& ie, UNEXP&& unexp = sl::default_handler{}, DEPS&... deps)
+template <class DECODER, class IE, class... DEPS>
+constexpr void decode(DECODER&& decoder, IE& ie, DEPS&... deps)
 {
 	if constexpr (has_ie_type_v<IE>)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
-		sl::ie_decode<mi>(decoder, ie, unexp, deps...);
+		sl::ie_decode<mi, void>(decoder, ie, deps...);
 	}
 	else //special cases like passing a placeholder
 	{

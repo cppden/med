@@ -139,7 +139,7 @@ struct SEQOF_3 : med::sequence<
 };
 
 template <std::size_t TAG>
-struct HT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
+struct HT : med::value<med::fixed<TAG, uint8_t>>, med::peek_t
 {
 	static_assert(0 == (TAG & 0xF), "HIGH NIBBLE TAG EXPECTED");
 	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF0); }
@@ -147,7 +147,7 @@ struct HT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
 
 //low nibble selector
 template <std::size_t TAG>
-struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
+struct LT : med::value<med::fixed<TAG, uint8_t>>, med::peek_t
 {
 	static_assert(0 == (TAG & 0xF0), "LOW NIBBLE TAG EXPECTED");
 	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF); }

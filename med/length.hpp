@@ -82,7 +82,7 @@ template <class T> constexpr bool is_length_v = detail::has_length_type<T>::valu
 
 namespace sl {
 
-template <class META_INFO = meta::typelist<>, class IE, class ENCODER>
+template <class EXPOSED = void, class META_INFO = meta::typelist<>, class IE, class ENCODER>
 constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 {
 	std::size_t len = 0;
@@ -95,11 +95,11 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
 
 			//TODO: pass calculated length to length_type when sizeof(len) depends on value like in ASN.1 BER
-			len += ie_length<meta::list_rest_t<META_INFO>>(ie, encoder);
+			len += ie_length<EXPOSED, meta::list_rest_t<META_INFO>>(ie, encoder);
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				len += ie_length(mi{}, encoder);
+				len += ie_length<EXPOSED>(mi{}, encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
@@ -115,7 +115,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 					len += pad_t::calc_padding_size(len);
 				}
 
-				len += ie_length(length_type{}, encoder);
+				len += ie_length<EXPOSED>(length_type{}, encoder);
 			}
 		}
 		else //data itself
@@ -124,7 +124,14 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			CODEC_TRACE("%s[%.30s] multi=%d: %s", __FUNCTION__, class_name<IE>(), is_multi_field_v<IE>, class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				len += ie.calc_length(encoder);
+				if constexpr (std::is_void_v<EXPOSED>)
+				{
+					len += ie.calc_length(encoder);
+				}
+				else
+				{
+					len += ie.template calc_length<meta::list_rest_t<typename IE::ies_types>>(encoder);
+				}
 				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 			}
 			//NOTE: can't unroll multi-field here because for ASN.1 the OID and SEQENCE-OF
@@ -147,7 +154,7 @@ constexpr std::size_t field_length(IE const& ie, ENCODER& encoder)
 {
 	using mi = meta::produce_info_t<ENCODER, IE>;
 	//CODEC_TRACE("%s[%s]", __FUNCTION__, name<IE>());
-	return sl::ie_length<mi>(ie, encoder);
+	return sl::ie_length<void, mi>(ie, encoder);
 }
 
 

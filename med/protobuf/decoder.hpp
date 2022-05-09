@@ -42,11 +42,11 @@ struct decoder : sl::octet_info
 	void operator() (ADVANCE_STATE ss)          { get_context().buffer().template advance<ADVANCE_STATE>(ss.delta); }
 
 	//IE_TAG
-	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
+	template <class IE> [[nodiscard]] auto operator() (IE&, IE_TAG)
 	{
 		CODEC_TRACE("TAG[%s]: %s", name<IE>(), get_context().buffer().toString());
-		typename IE::writable ie;
-		(*this)(ie, typename IE::writable::ie_type{});
+		as_writable_t<IE> ie;
+		(*this)(ie, typename as_writable_t<IE>::ie_type{});
 		return ie.get_encoded();
 	}
 

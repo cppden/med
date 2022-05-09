@@ -76,11 +76,11 @@ struct set_enc
 
 				if constexpr (explicit_meta)
 				{
-					sl::ie_encode<meta::list_rest_t<mi>>(encoder, field);
+					sl::ie_encode<meta::list_rest_t<mi>, void>(encoder, field);
 				}
 				else
 				{
-					sl::ie_encode<mi>(encoder, field);
+					sl::ie_encode<mi, void>(encoder, field);
 				}
 				first = false;
 			}
@@ -94,11 +94,11 @@ struct set_enc
 				call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, to);
 				if constexpr (explicit_meta)
 				{
-					sl::ie_encode<meta::list_rest_t<mi>>(encoder, ie);
+					sl::ie_encode<meta::list_rest_t<mi>, void>(encoder, ie);
 				}
 				else
 				{
-					sl::ie_encode<mi>(encoder, ie);
+					sl::ie_encode<mi, void>(encoder, ie);
 				}
 			}
 			else if constexpr (!is_optional_v<IE>)
@@ -114,16 +114,16 @@ struct set_enc
 
 struct set_dec
 {
-	template <class IE, class TO, class DECODER, class UNEXP, class HEADER, class... DEPS>
-	static bool check(TO&, DECODER&, UNEXP&, HEADER const& header, DEPS&...)
+	template <class IE, class TO, class DECODER, class HEADER, class... DEPS>
+	static bool check(TO&, DECODER&, HEADER const& header, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using tag_t = meta::list_first_t<mi>;
 		return tag_t::match( get_tag(header) );
 	}
 
-	template <class IE, class TO, class DECODER, class UNEXP, class HEADER, class... DEPS>
-	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, HEADER const&, DEPS&... deps)
+	template <class IE, class TO, class DECODER, class HEADER, class... DEPS>
+	static constexpr void apply(TO& to, DECODER& decoder, HEADER const&, DEPS&... deps)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		//pop back the tag we've read as we have non-fixed tag inside
@@ -151,7 +151,7 @@ struct set_dec
 						}
 					}
 					auto* field = ie.push_back(decoder);
-					sl::ie_decode<meta::list_rest_t<mi>>(decoder, *field, unexp, deps...);
+					sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, *field, deps...);
 				}
 			}
 			else
@@ -161,7 +161,7 @@ struct set_dec
 					MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 				}
 				auto* field = ie.push_back(decoder);
-				sl::ie_decode<meta::list_rest_t<mi>>(decoder, *field, unexp, deps...);
+				sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, *field, deps...);
 			}
 
 			call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
@@ -171,18 +171,17 @@ struct set_dec
 			CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
 			if (not ie.is_set())
 			{
-				return sl::ie_decode<meta::list_rest_t<mi>>(decoder, ie, unexp, deps...);
-				//return med::decode(decoder, ie, unexp);
+				return sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, ie, deps...);
+				//return med::decode(decoder, ie);
 			}
 			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)
 		}
 	}
 
-	template <class TO, class DECODER, class UNEXP, class HEADER, class... DEPS>
-	//static constexpr void apply(TO&, DECODER&, UNEXP&, HEADER const&)
-	static constexpr void apply(TO& to, DECODER& decoder, UNEXP& unexp, HEADER const& header, DEPS&...)
+	template <class TO, class DECODER, class HEADER, class... DEPS>
+	static constexpr void apply(TO&, DECODER&, HEADER const& header, DEPS&...)
 	{
-		unexp(decoder, to, header);
+		MED_THROW_EXCEPTION(unknown_tag, name<TO>(), get_tag(header))
 	}
 };
 
@@ -246,8 +245,8 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 		meta::foreach_prev<ies_types>(sl::set_enc{}, this->m_ies, encoder);
 	}
 
-	template <class DECODER, class UNEXP, class... DEPS>
-	void decode(DECODER& decoder, UNEXP& unexp, DEPS&... deps)
+	template <class DECODER, class... DEPS>
+	void decode(DECODER& decoder, DEPS&... deps)
 	{
 		static_assert(std::is_void_v<meta::unique_t<tag_getter<DECODER>, ies_types>>
 			, "SEE ERROR ON INCOMPLETE TYPE/UNDEFINED TEMPLATE HOLDING IEs WITH CLASHED TAGS");
@@ -270,7 +269,7 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 					header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
 					CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
 					call_if<is_callable_with_v<DECODER, HEADER_CONTAINER>>::call(decoder, HEADER_CONTAINER{}, *this);
-					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header, deps...);
+					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 					first = false;
 				}
 			}
@@ -281,7 +280,7 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 					value<std::size_t> header;
 					header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
 					CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
-					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header, deps...);
+					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 				}
 			}
 		}
@@ -291,10 +290,10 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 			while (decoder(PUSH_STATE{}, *this))
 			{
 				header_type header;
-				med::decode(decoder, header, unexp, deps...);
+				med::decode(decoder, header, deps...);
 				decoder(POP_STATE{}); //restore back for IE to decode itself (?TODO: better to copy instead)
 				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
-				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, unexp, header, deps...);
+				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 			}
 		}
 		meta::foreach<ies_types>(sl::set_check{}, this->m_ies, decoder);

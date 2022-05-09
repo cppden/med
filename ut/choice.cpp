@@ -1,16 +1,12 @@
 #include "traits.hpp"
-#include "compound.hpp"
+//#include "compound.hpp"
 #include "ut.hpp"
 
 namespace cho {
 
 //low nibble selector
-//struct LT : med::peek<med::value<uint8_t>>
-//{
-//	void set_encoded(value_type v)            { base_t::set_encoded(v & 0xF); }
-//};
 template <std::size_t TAG>
-struct LT : med::peek<med::value<med::fixed<TAG, uint8_t>>>
+struct LT : med::value<med::fixed<TAG, uint8_t>>, med::peek_t
 {
 	static_assert(0 == (TAG & 0xF0), "LOW NIBBLE TAG EXPECTED");
 	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF); }
@@ -62,17 +58,106 @@ struct FLD_NSCHO : med::choice<
 {
 };
 
+struct ANY_TAG : med::value<uint8_t>
+{
+	static constexpr char const* name()     { return "ANY"; }
+	static constexpr bool match(value_type) { return true; }
+};
+
+struct ANY_DATA : med::octet_string<>
+{
+	static constexpr char const* name() { return "RAW data"; }
+};
+
+struct UNKNOWN : med::sequence<
+	M< ANY_TAG >,
+	M< ANY_DATA >
+>
+{
+	using container_t::get;
+
+	ANY_TAG::value_type get() const             { return this->get<ANY_TAG>().get(); }
+	void set(ANY_TAG::value_type v)             { this->ref<ANY_TAG>().set(v); }
+
+	std::size_t size() const                    { return this->get<ANY_DATA>().size(); }
+	uint8_t const* data() const                 { return this->get<ANY_DATA>().data(); }
+	void set(std::size_t len, void const* data) { this->ref<ANY_DATA>().set(len, data); }
+};
+
+
+struct U8  : med::value<uint8_t>{};
+struct U16 : med::value<uint16_t>{};
+struct U32 : med::value<uint32_t>{};
 
 //choice based on plain value selector
 struct PLAIN : med::choice<
-	M<C<0x00>, cmp::U8>,
-	M<C<0x02>, cmp::U16>,
-	M<C<0x04>, cmp::U32>
+	M< C<0x00>, L, U8  >,
+	M< C<0x02>, L, U16 >,
+	M< C<0x04>, L, U32 >,
+	M< ANY_TAG, L, UNKNOWN >
 >
-{};
+{
+	using length_type = L::length_type;
+};
+
+struct code : U16 {};
+
+template <uint16_t CODE>
+struct fixed : med::value<med::fixed<CODE, code::value_type>>
+{
+};
+
+template <code::value_type CODE = 0, class BODY = med::empty<>>
+struct hdr : med::sequence<
+	med::placeholder::_length<>,
+	M< fixed<CODE> >,
+	M< BODY >
+>
+{
+	BODY const& body() const              { return this->template get<BODY>(); }
+	BODY& body()                          { return this->template ref<BODY>(); }
+};
+
+template <>
+struct hdr<0, med::empty<>> : med::sequence<
+	med::placeholder::_length<>,
+	M<code>
+>
+{
+	std::size_t get_tag() const           { return this->template get<code>().get(); }
+	void set_tag(std::size_t val)         { this->template ref<code>().set(val); }
+};
+
+
+template <code::value_type CODE, class BODY>
+struct avp : hdr<CODE, BODY>, med::add_meta_info< med::mi<med::mik::TAG, fixed<CODE>> >
+{
+	using length_type = U16;
+
+	bool is_set() const                   { return this->body().is_set(); }
+	//using hdr<CODE, BODY>::get;
+	decltype(auto) get() const            { return this->body().get(); }
+	template <typename... ARGS>
+	auto set(ARGS&&... args)              { return this->body().set(std::forward<ARGS>(args)...); }
+};
+
+struct string : avp<0x1, med::ascii_string<>> {};
+struct number : avp<0x2, U32> {};
+
+//choice based on compound selector
+struct CHOICE : med::choice< hdr<>
+	, M< string >
+	, M< number >
+>
+{
+	using length_type = U16;
+};
 
 
 } //end: namespace cho
+
+using namespace std::string_view_literals;
+using namespace cho;
 
 TEST(choice, plain)
 {
@@ -80,22 +165,19 @@ TEST(choice, plain)
 	med::encoder_context<> ctx{ buffer };
 	med::octet_encoder encoder{ctx};
 
-	using namespace cho;
-	using namespace cmp;
-
 	PLAIN msg;
 	EXPECT_EQ(0, msg.calc_length(encoder));
-	msg.ref<cmp::U8>().set(0);
-	EXPECT_EQ(2, msg.calc_length(encoder));
-	msg.ref<cmp::U16>().set(0);
+	msg.ref<U8>().set(0);
 	EXPECT_EQ(3, msg.calc_length(encoder));
+	msg.ref<U16>().set(0);
+	EXPECT_EQ(4, msg.calc_length(encoder));
 
 	constexpr uint16_t magic = 0x1234;
 	msg.ref<U16>().set(magic);
 	encode(encoder, msg);
-	EXPECT_STRCASEEQ("02 12 34 ", as_string(ctx.buffer()));
+	EXPECT_STRCASEEQ("02 02 12 34 ", as_string(ctx.buffer()));
 
-	decltype(msg) dmsg;
+	PLAIN dmsg;
 	med::decoder_context<> dctx;
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 	decode(med::octet_decoder{dctx}, dmsg);
@@ -104,9 +186,33 @@ TEST(choice, plain)
 	EXPECT_EQ(magic, pf->get());
 
 	EXPECT_TRUE(pf->is_set());
+
+	ctx.buffer().reset(buffer, sizeof(buffer));
+	encode(encoder, dmsg);
+	EXPECT_STRCASEEQ("02 02 12 34 ", as_string(ctx.buffer()));
+
 	dmsg.clear();
 //TODO: gcc-11.1.0 bug?
 //	EXPECT_FALSE(pf->is_set());
+}
+
+TEST(choice, any)
+{
+	uint8_t encoded[] = {3, 4, 5,6,7,8};
+	med::decoder_context<> ctx{encoded};
+	PLAIN msg;
+	decode(med::octet_decoder{ctx}, msg);
+
+	auto* pf = msg.get<UNKNOWN>();
+	ASSERT_NE(nullptr, pf);
+	EXPECT_EQ(3, pf->get<ANY_TAG>().get());
+	EXPECT_EQ(4, pf->get<ANY_DATA>().size());
+
+	uint8_t buffer[32];
+	med::encoder_context<> ectx{ buffer };
+	med::octet_encoder encoder{ectx};
+	encode(encoder, msg);
+	EXPECT_STRCASEEQ("03 04 05 06 07 08 ", as_string(ectx.buffer()));
 }
 
 TEST(choice, peek)
@@ -114,9 +220,6 @@ TEST(choice, peek)
 	uint8_t buffer[32];
 	med::encoder_context<> ctx{ buffer };
 	med::octet_encoder encoder{ctx};
-
-	using namespace cho;
-	using namespace cmp;
 
 	uint8_t const bcd[] = {0x34, 0x56};
 	FLD_NSCHO msg;
@@ -139,13 +242,11 @@ TEST(choice, peek)
 
 TEST(choice, compound)
 {
-	using namespace std::string_view_literals;
-
 	uint8_t buffer[128];
 	med::encoder_context<> ctx{ buffer };
 
-	cmp::CHOICE msg;
-	msg.ref<cmp::string>().set("12345678"sv);
+	CHOICE msg;
+	msg.ref<string>().set("12345678"sv);
 
 	encode(med::octet_encoder{ctx}, msg);
 	EXPECT_STRCASEEQ(
@@ -158,9 +259,9 @@ TEST(choice, compound)
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	auto* pf = dmsg.get<cmp::string>();
+	auto* pf = dmsg.get<string>();
 	ASSERT_NE(nullptr, pf);
-	EXPECT_EQ(msg.get<cmp::string>()->get(), dmsg.get<cmp::string>()->get());
+	EXPECT_EQ(msg.get<string>()->get(), dmsg.get<string>()->get());
 
 	EXPECT_TRUE(pf->is_set());
 	dmsg.clear();

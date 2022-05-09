@@ -101,7 +101,8 @@ struct caccessor
 	template <class T>
 	constexpr operator T const* () const
 	{
-		return access<T>::as_optional(m_that.template get<T>());
+		auto const* ptr = m_that.template get<std::remove_const_t<T>>();
+		return access<T>::as_optional(ptr);
 	}
 
 	template <class T>

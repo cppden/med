@@ -60,15 +60,15 @@ struct empty : IE<IE_NULL>
 template <class T>
 constexpr bool is_empty_v = std::is_same_v<IE_NULL, typename T::ie_type>;
 
+//marker for the optional IEs
+struct optional_t {};
+template <class T> constexpr bool is_optional_v = std::is_base_of<optional_t, T>::value;
+
 //read during decode w/o changing buffer state
 //skipped during encode and length calculation
 struct peek_t {};
-
-template <class T>
-struct peek : T, peek_t {};
-
-template <class T>
-constexpr bool is_peek_v = std::is_base_of<peek_t, T>::value;
+template <class T> constexpr bool is_peek_v = std::is_base_of<peek_t, T>::value;
+//template <class T> struct peek : T, peek_t {};
 
 //check if type used in meta-information is also used inside container
 //this means we shouldn't encode this meta-data implicitly

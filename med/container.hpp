@@ -72,7 +72,7 @@ struct cont_len
 			std::size_t len = 0;
 			for (auto& v : ie)
 			{
-				len += sl::ie_length<mi>(v, encoder);
+				len += sl::ie_length<void, mi>(v, encoder);
 			}
 			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
@@ -81,7 +81,7 @@ struct cont_len
 		{
 			IE const& ie = seq;
 			std::size_t const len = has_setter_type_v<IE> || ie.is_set()
-					? sl::ie_length<mi>(ie, encoder)
+					? sl::ie_length<void, mi>(ie, encoder)
 					: 0;
 			CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
@@ -200,8 +200,10 @@ public:
 	void clear()                            { m_ies.template as<FIELD>().clear(); }
 	void clear()                            { meta::foreach<ies_types>(sl::cont_clear{}, this->m_ies); }
 	bool is_set() const                     { return meta::fold<ies_types>(sl::cont_is{}, this->m_ies); }
+	template <class IE_LIST, class ENC>
+	std::size_t calc_length(ENC& enc) const { return meta::fold<IE_LIST>(sl::cont_len{}, this->m_ies, enc); }
 	template <class ENC>
-	std::size_t calc_length(ENC& enc) const { return meta::fold<ies_types>(sl::cont_len{}, this->m_ies, enc); }
+	std::size_t calc_length(ENC& enc) const { return calc_length<ies_types>(enc); }
 
 	template <class FROM, class... ARGS>
 	void copy(FROM const& from, ARGS&&... args)

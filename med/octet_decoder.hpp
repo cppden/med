@@ -47,10 +47,10 @@ struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
 	void operator() (ADD_PADDING pad)           { get_context().buffer().template advance<ADD_PADDING>(pad.pad_size); }
 
 	//IE_TAG
-	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
+	template <class IE> [[nodiscard]] auto operator() (IE&, IE_TAG)
 	{
-		typename IE::writable ie;
-		(*this)(ie, typename IE::writable::ie_type{});
+		as_writable_t<IE> ie;
+		(*this)(ie, typename as_writable_t<IE>::ie_type{});
 		return ie.get_encoded();
 	}
 	//IE_LEN

@@ -57,15 +57,6 @@ struct avp : hdr<CODE, BODY>
 struct string : avp<0x1, med::ascii_string<>> {};
 struct number : avp<0x2, med::value<uint32_t>> {};
 
-//choice based on compound selector
-struct CHOICE : med::choice< hdr<>
-	, med::mandatory< string >
-	, med::mandatory< number >
->
-{
-	using length_type = length;
-};
-
 //set based on compound selector
 struct SET : med::set< hdr<>
 	, med::mandatory< string >

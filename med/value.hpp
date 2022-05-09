@@ -40,8 +40,9 @@ struct defaults : value_traits<T, EXT_TRAITS...>
 template <std::size_t VAL, class T, class... EXT_TRAITS>
 struct init : fixed<VAL, T, EXT_TRAITS...>
 {
-	static constexpr bool is_const = false;
+    static constexpr bool is_const = false;
 };
+
 
 namespace detail {
 
@@ -92,7 +93,6 @@ struct const_integer : IE<IE_VALUE>
 	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
 	using base_t = const_integer;
-	using writable = numeric_value<traits>;
 
 	static constexpr void clear()                       { }
 	static constexpr value_type get()                   { return get_encoded(); }
@@ -209,6 +209,9 @@ struct value<bits<N>, void, EXT_TRAITS...>
 		: numeric_value<value_traits<bits<N>, EXT_TRAITS...>> {};
 
 } //end: namespace detail
+
+template <class VALUE>
+using as_writable_t = detail::numeric_value<typename VALUE::traits>;
 
 /**
  * generic value - a facade for numeric_values above

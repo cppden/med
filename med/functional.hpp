@@ -37,11 +37,6 @@ struct get_field_type<T, std::enable_if_t<has_field_type<T>::value>>
 };
 template <class T> using get_field_type_t = typename get_field_type<T>::type;
 
-
-struct optional_t {};
-
-template <class T> constexpr bool is_optional_v = std::is_base_of<optional_t, T>::value;
-
 //checks if T looks like a functor to test condition of a field presense
 template <typename T, typename = void> struct is_condition : std::false_type {};
 template <typename T> struct is_condition<T,
