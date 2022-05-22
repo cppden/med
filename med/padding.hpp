@@ -113,10 +113,13 @@ struct octet_padder
 
 	void enable_padding(bool v) const           { m_enable = v; }
 
-	static std::size_t calc_padding_size(std::size_t len)
+	static constexpr std::size_t calc_padding_size(std::size_t len)
 	{
 		constexpr auto pad_bytes = PAD_TRAITS::pad_bits/8;
-		return (pad_bytes - ((len + PAD_TRAITS::offset) % pad_bytes) + PAD_TRAITS::delta) % pad_bytes;
+		auto const padding_size = (pad_bytes - ((len + PAD_TRAITS::offset) % pad_bytes) + PAD_TRAITS::delta) % pad_bytes;
+		CODEC_TRACE("%s: pad=%zu bytes for len=%zu+%d delta=%d => %zu", __FUNCTION__
+					, pad_bytes, len, PAD_TRAITS::offset, PAD_TRAITS::delta, padding_size);
+		return padding_size;
 	}
 
 	void add_padding() const
@@ -128,12 +131,12 @@ struct octet_padder
 		}
 	}
 
+	//current padding size in units of codec
+	uint8_t padding_size() const        { return m_enable ? calc_padding_size(m_func(GET_STATE{}) - m_start) : 0; }
+
 private:
 	octet_padder(octet_padder const&) = delete;
 	octet_padder& operator= (octet_padder const&) = delete;
-
-	//current padding size in units of codec
-	uint8_t padding_size() const        { return m_enable ? calc_padding_size(m_func(GET_STATE{}) - m_start) : 0; }
 
 	FUNC&                     m_func;
 	typename FUNC::state_type m_start;

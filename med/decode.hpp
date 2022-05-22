@@ -293,11 +293,12 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 				}
 				else
 				{
-					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
+					CODEC_TRACE("padded %s...:", name<length_type>());
 					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
 					pad_t pad{decoder};
 					ie_decode<mi_rest, EXPOSED>(decoder, ie, deps...);
-					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+					CODEC_TRACE("before padding %s: end=%zu padding=%u", name<length_type>(), end.size(), pad.padding_size());
+					//if (end.size() != pad.padding_size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 					end.restore_end();
 					pad.add_padding();
 				}
@@ -325,7 +326,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 					pad_t pad{dep_decoder};
 					ie_decode<mi_rest, EXPOSED>(dep_decoder, ie, end, deps...);
 					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
-					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+					//if (end.size() != pad.padding_size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 					end.restore_end();
 					pad.add_padding();
 				}

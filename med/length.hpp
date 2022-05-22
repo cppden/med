@@ -110,9 +110,14 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 				using pad_traits = typename get_padding<length_type>::type;
 				if constexpr (!std::is_void_v<pad_traits>)
 				{
-					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
 					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
+#ifdef CODEC_TRACE_ENABLE
+					auto const add_len = pad_t::calc_padding_size(len);
+					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<length_type>(), size_t(len), add_len, len + add_len);
+					len += add_len;
+#else
 					len += pad_t::calc_padding_size(len);
+#endif
 				}
 
 				len += ie_length<EXPOSED>(length_type{}, encoder);
@@ -233,7 +238,7 @@ constexpr void value_to_length(FIELD& field, std::size_t& len)
 				MED_THROW_EXCEPTION(invalid_value, name<FIELD>(), len)
 			}
 		}
-		CODEC_TRACE("LEN=%zu [%s]", len, name<FIELD>());
+		CODEC_TRACE("%s=%zu [%s]", __FUNCTION__, len, name<FIELD>());
 	}
 }
 
