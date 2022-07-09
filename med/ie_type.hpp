@@ -68,7 +68,6 @@ template <class T> constexpr bool is_optional_v = std::is_base_of<optional_t, T>
 //skipped during encode and length calculation
 struct peek_t {};
 template <class T> constexpr bool is_peek_v = std::is_base_of<peek_t, T>::value;
-//template <class T> struct peek : T, peek_t {};
 
 //check if type used in meta-information is also used inside container
 //this means we shouldn't encode this meta-data implicitly

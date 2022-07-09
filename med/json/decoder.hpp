@@ -74,7 +74,7 @@ struct decoder : sl::octet_info
 	auto operator() (PUSH_SIZE ps)                  { return get_context().buffer().push_size(ps.size, ps.commit); }
 	template <class IE>
 	bool operator() (PUSH_STATE, IE const&)         { return this->template test_eof<IE>() && get_context().buffer().push_state(); }
-	bool operator() (POP_STATE)                     { return get_context().buffer().pop_state(); }
+	void operator() (POP_STATE)                     { get_context().buffer().pop_state(); }
 	auto operator() (GET_STATE)                     { return get_context().buffer().get_state(); }
 	template <class IE>
 	bool operator() (CHECK_STATE, IE const&)        { return this->template test_eof<IE>() && not get_context().buffer().empty(); }

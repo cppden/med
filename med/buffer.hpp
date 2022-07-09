@@ -145,26 +145,23 @@ public:
 		if (not empty())
 		{
 			m_store = m_state;
-			CODEC_TRACE("push_state: %s", toString());
+			CODEC_TRACE("%s: %s", __FUNCTION__, toString());
 			return true;
 		}
-		else
-		{
-			m_store.reset();
-			return false;
-		}
+		CODEC_TRACE("%s: %s", __FUNCTION__, toString());
+		m_store.reset();
+		return false;
 	}
 
-	constexpr bool pop_state()
+	constexpr void pop_state()
 	{
+		CODEC_TRACE("%s: stored=%d", __FUNCTION__, (bool)m_store);
 		if (m_store)
 		{
 			m_state = m_store;
 			m_store.reset();
-			CODEC_TRACE("pop_state: %s", toString());
-			return true;
+			CODEC_TRACE("%s: %s", __FUNCTION__, toString());
 		}
-		return false;
 	}
 
 	constexpr pointer get_start() const              { return m_start; }

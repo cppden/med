@@ -9,7 +9,7 @@ TEST(ooo, seq) //out-of-order
 	msg.ref<FLD_U8>().set(1);
 	msg.ref<FLD_U24>().set(3);
 
-	uint8_t buffer[32];
+	uint8_t buffer[32] = {};
 	med::encoder_context<> ctx{ buffer };
 	encode(med::octet_encoder{ctx}, msg);
 	uint8_t const encoded1[] = {1,1, 3,0,0,3 };

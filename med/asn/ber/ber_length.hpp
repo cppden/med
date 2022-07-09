@@ -86,7 +86,14 @@ template <typename INT>
 constexpr uint8_t bits(INT x)    { return detail::calc_least_bits<INT>(x); }
 
 template <typename INT>
-constexpr uint8_t bytes(INT x)   { return (bits<INT>(x) + (bits_in_byte - 1)) / bits_in_byte; }
+constexpr uint8_t bytes(INT x)
+{
+#if defined(__GNUC__) //FIXME: gcc optimizer bug for x=0 :(
+	return x ? (bits<INT>(x) + (bits_in_byte - 1)) / bits_in_byte : 1;
+#else
+	return (bits<INT>(x) + (bits_in_byte - 1)) / bits_in_byte;
+#endif
+}
 
 } //end: namespace length
 

@@ -40,14 +40,15 @@ constexpr auto decode_tag(DECODER& decoder)
 		if (decoder(PUSH_STATE{}, ie))
 		{
 			value = decoder(ie, IE_TAG{});
+			CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
 			decoder(POP_STATE{});
 		}
 	}
 	else
 	{
 		value = decoder(ie, IE_TAG{});
+		CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
 	}
-	CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
 	return value;
 }
 //Length
