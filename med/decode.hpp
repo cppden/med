@@ -211,8 +211,6 @@ struct length_decoder<true, DECODER, IE> : len_dec_impl<DECODER, IE>
 template <class EXPOSED, class DECODER, class IE, class... DEPS>
 constexpr void container_decoder(DECODER& decoder, IE& ie, DEPS&... deps)
 {
-	call_if<is_callable_with_v<DECODER, ENTRY_CONTAINER>>::call(decoder, ENTRY_CONTAINER{}, ie);
-
 	if constexpr (is_length_v<IE>) //container with length_type defined
 	{
 		using length_type = typename IE::length_type;
@@ -252,8 +250,6 @@ constexpr void container_decoder(DECODER& decoder, IE& ie, DEPS&... deps)
 			ie.template decode<meta::list_rest_t<typename IE::ies_types>>(decoder, deps...);
 		}
 	}
-
-	call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
 }
 
 template <class META_INFO, class EXPOSED, class DECODER, class IE, class... DEPS>
@@ -267,8 +263,9 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 
 		if constexpr (mi::kind == mik::TAG)
 		{
-			auto const tag = decode_tag<mi, true>(decoder);
-			if (not mi::match(tag))
+			using tag_type = typename mi::info_type;
+			auto const tag = decode_tag<tag_type, true>(decoder);
+			if (not tag_type::match(tag))
 			{
 				//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
 				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), tag)
@@ -276,7 +273,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 		}
 		else if constexpr (mi::kind == mik::LEN)
 		{
-			using length_type = typename mi::length_type;
+			using length_type = typename mi::info_type;
 			using pad_traits = typename get_padding<length_type>::type;
 
 			auto len = decode_len<length_type>(decoder);

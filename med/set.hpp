@@ -29,7 +29,7 @@ struct set_name
 	static constexpr bool check(TAG const& tag, CODEC&)
 	{
 		using mi = meta::produce_info_t<CODEC, IE>;
-		using tag_t = meta::list_first_t<mi>;
+		using tag_t = typename meta::list_first_t<mi>::info_type;
 		return tag_t::match(tag);
 	}
 
@@ -51,10 +51,6 @@ struct set_enc
 	template <class PREV_IE, class IE, class TO, class ENCODER>
 	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
-		call_if<not std::is_void_v<PREV_IE>
-				&& is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>
-			>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to);
-
 		using mi = meta::produce_info_t<ENCODER, IE>;
 		IE const& ie = to;
 		constexpr bool explicit_meta = explicit_meta_in<mi, get_field_type_t<IE>>();
@@ -64,15 +60,10 @@ struct set_enc
 			CODEC_TRACE("[%s]*%zu: %s", name<IE>(), ie.count(), class_name<mi>());
 			check_arity(encoder, ie);
 
-			call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, ie);
-			call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
-
-			bool first = true;
 			for (auto& field : ie)
 			{
 				//field was pushed but not set... do we need a new error?
 				if (not field.is_set()) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), ie.count(), ie.count()-1) }
-				if (not first) { call_if<is_callable_with_v<ENCODER, NEXT_CONTAINER_ELEMENT>>::call(encoder, NEXT_CONTAINER_ELEMENT{}, to); }
 
 				if constexpr (explicit_meta)
 				{
@@ -82,16 +73,13 @@ struct set_enc
 				{
 					sl::ie_encode<mi, void>(encoder, field);
 				}
-				first = false;
 			}
-			call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
 		}
 		else //single-instance field
 		{
 			if (ie.is_set())
 			{
 				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<mi>());
-				call_if<is_callable_with_v<ENCODER, HEADER_CONTAINER>>::call(encoder, HEADER_CONTAINER{}, to);
 				if constexpr (explicit_meta)
 				{
 					sl::ie_encode<meta::list_rest_t<mi>, void>(encoder, ie);
@@ -118,7 +106,7 @@ struct set_dec
 	static bool check(TO&, DECODER&, HEADER const& header, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
-		using tag_t = meta::list_first_t<mi>;
+		using tag_t = typename meta::list_first_t<mi>::info_type;
 		return tag_t::match( get_tag(header) );
 	}
 
@@ -127,44 +115,19 @@ struct set_dec
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		//pop back the tag we've read as we have non-fixed tag inside
-		using tag_t = meta::list_first_t<mi>;
+		using tag_t = typename meta::list_first_t<mi>::info_type;
 		if constexpr (not tag_t::is_const) { decoder(POP_STATE{}); }
 
 		IE& ie = to;
 		if constexpr (is_multi_field_v<IE>)
 		{
 			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
-			//TODO: looks strange since it doesn't match encode's calls
-			//call_if<is_callable_with_v<DECODER, HEADER_CONTAINER>>::call(decoder, HEADER_CONTAINER{}, ie);
-			call_if<is_callable_with_v<DECODER, ENTRY_CONTAINER>>::call(decoder, ENTRY_CONTAINER{}, ie);
-
-			if constexpr (is_callable_with_v<DECODER, NEXT_CONTAINER_ELEMENT>)
+			if (ie.count() >= IE::max)
 			{
-				while (decoder(PUSH_STATE{}, ie))
-				{
-					if (auto const num = ie.count())
-					{
-						decoder(NEXT_CONTAINER_ELEMENT{}, ie);
-						if (num >= IE::max)
-						{
-							MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, num)
-						}
-					}
-					auto* field = ie.push_back(decoder);
-					sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, *field, deps...);
-				}
+				MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 			}
-			else
-			{
-				if (ie.count() >= IE::max)
-				{
-					MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
-				}
-				auto* field = ie.push_back(decoder);
-				sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, *field, deps...);
-			}
-
-			call_if<is_callable_with_v<DECODER, EXIT_CONTAINER>>::call(decoder, EXIT_CONTAINER{}, ie);
+			auto* field = ie.push_back(decoder);
+			sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, *field, deps...);
 		}
 		else //single-instance field
 		{
@@ -256,32 +219,14 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 		{
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
-			using tag_t = meta::list_first_t<mi>;
+			using tag_t = typename meta::list_first_t<mi>::info_type;
 
-			//TODO: how to join 2 branches w/o having unused bool
-			if constexpr (is_callable_with_v<DECODER, NEXT_CONTAINER_ELEMENT>) //json-like
+			while (decoder(PUSH_STATE{}, *this))
 			{
-				bool first = true;
-				while (decoder(PUSH_STATE{}, *this)) //NOTE: this usage doesn't address IE which corresponds to PUSH_STATE
-				{
-					if (not first) { decoder(NEXT_CONTAINER_ELEMENT{}, *this); }
-					value<std::size_t> header;
-					header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
-					CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
-					call_if<is_callable_with_v<DECODER, HEADER_CONTAINER>>::call(decoder, HEADER_CONTAINER{}, *this);
-					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
-					first = false;
-				}
-			}
-			else
-			{
-				while (decoder(PUSH_STATE{}, *this))
-				{
-					value<std::size_t> header;
-					header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
-					CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
-					meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
-				}
+				value<std::size_t> header;
+				header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
+				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 			}
 		}
 		else //compound header

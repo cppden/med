@@ -164,7 +164,7 @@ struct FLD_TN : med::value<uint8_t>
 	};
 
 	value_type get() const                { return base_t::get() & mask; }
-	void set(value_type v)                { set_encoded( med::meta::list_first_t<meta_info>::get() | (v & mask) ); }
+	void set(value_type v)                { set_encoded( med::meta::list_first_t<meta_info>::info_type::get() | (v & mask) ); }
 
 	static constexpr char const* name()   { return "Tagged-Bits"; }
 	template <std::size_t N>

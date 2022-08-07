@@ -30,12 +30,6 @@ struct IE_BIT_STRING   : PRIMITIVE {};
 struct IE_TAG {}; //tag
 struct IE_LEN {}; //length
 
-//for structured codecs
-struct ENTRY_CONTAINER{};
-struct HEADER_CONTAINER{};
-struct EXIT_CONTAINER{};
-struct NEXT_CONTAINER_ELEMENT{}; //NOTE: not issued for the 1st element
-
 template <class IE_TYPE>
 struct IE
 {

@@ -57,10 +57,6 @@ constexpr void encode_multi(FUNC& func, IE const& ie)
 		if (field.is_set())
 		{
 			sl::ie_encode<field_mi, void>(func, field);
-			if constexpr (is_callable_with_v<FUNC, NEXT_CONTAINER_ELEMENT>)
-			{
-				if (ie.last() != &field) { func(NEXT_CONTAINER_ELEMENT{}, ie); }
-			}
 		}
 		else
 		{
@@ -176,10 +172,6 @@ struct seq_dec
 					while (decoder(CHECK_STATE{}, ie) && count < IE::max)
 					{
 						auto* field = ie.push_back(decoder);
-						if constexpr (is_callable_with_v<DECODER, NEXT_CONTAINER_ELEMENT>)
-						{
-							if (count > 0) { decoder(NEXT_CONTAINER_ELEMENT{}, ie); }
-						}
 						sl::ie_decode<mi, void>(decoder, *field, deps...);
 						++count;
 					}

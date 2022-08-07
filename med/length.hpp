@@ -99,28 +99,28 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				len += ie_length<EXPOSED>(mi{}, encoder);
+				using tag_t = typename mi::info_type;
+				len += ie_length<EXPOSED>(tag_t{}, encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
-				//TODO: remove length_type, handle directly like TAG
 				//TODO: involve codec to get length type + may need to set its value like for BER
-				using length_type = typename mi::length_type;
+				using length_t = typename mi::info_type;
 
-				using pad_traits = typename get_padding<length_type>::type;
+				using pad_traits = typename get_padding<length_t>::type;
 				if constexpr (!std::is_void_v<pad_traits>)
 				{
 					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
 #ifdef CODEC_TRACE_ENABLE
 					auto const add_len = pad_t::calc_padding_size(len);
-					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<length_type>(), size_t(len), add_len, len + add_len);
+					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<length_t>(), size_t(len), add_len, len + add_len);
 					len += add_len;
 #else
 					len += pad_t::calc_padding_size(len);
 #endif
 				}
 
-				len += ie_length<EXPOSED>(length_type{}, encoder);
+				len += ie_length<EXPOSED>(length_t{}, encoder);
 			}
 		}
 		else //data itself

@@ -40,7 +40,7 @@ if (WITH_BM)
 		message(STATUS "Google benchmark found.   ${BENCHMARK_LIBS}")
 	else (BENCHMARK_FOUND)
 		message(FATAL_ERROR "Google benchmark not found. Disable WITH_BM or install it.")
-	    endif (BENCHMARK_FOUND)
+		endif (BENCHMARK_FOUND)
 else (WITH_BM)
 	message(STATUS "\tWITH_BM=false (no benchmark)")
 endif (WITH_BM)
@@ -60,13 +60,12 @@ set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -L\".\" ")
 
 file(GLOB_RECURSE MED_SRCS med/*.hpp)
 # file(GLOB_RECURSE UT_SRCS ut/*.cpp)
-set(UT_SRCS 
+set(UT_SRCS
 	ut/bits.cpp
 	ut/choice.cpp
 	ut/copy.cpp
 	ut/diameter.cpp
 	ut/gtpc.cpp
-#	ut/json.cpp
 	ut/length.cpp
 	ut/med.cpp
 	ut/meta.cpp

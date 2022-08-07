@@ -343,7 +343,7 @@ struct mandatory<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
-> : field_t<FIELD, mi<mik::LEN, LEN>>
+> : field_t<FIELD, mi<mik::LEN, typename LEN::length_type>>
 {
 	bool operator==(mandatory const& rhs) const noexcept { return static_cast<FIELD const*>(this)->operator==(rhs); }
 };
@@ -357,7 +357,7 @@ struct mandatory<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
-> : multi_field<FIELD, NUM, max<NUM>, void, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, NUM, max<NUM>, void, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -371,7 +371,7 @@ struct mandatory<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
-> : field_t<FIELD, mi<mik::TAG, TAG>, mi<mik::LEN, LEN>>
+> : field_t<FIELD, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>
 {
 };
 
@@ -384,7 +384,7 @@ struct mandatory<
 	arity<NUM>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
-> : multi_field<FIELD, NUM, max<NUM>, void, mi<mik::TAG, TAG>, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, NUM, max<NUM>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -398,7 +398,7 @@ struct mandatory<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
-> : multi_field<FIELD, 1, max<MAX>, void, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, 1, max<MAX>, void, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -412,7 +412,7 @@ struct mandatory<
 	min<1>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_length_v<LEN>>
-> : multi_field<FIELD, 1, pmax<MAX>, void, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, 1, pmax<MAX>, void, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -426,7 +426,7 @@ struct mandatory<
 	max<MAX>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
-> : multi_field<FIELD, 1, max<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, 1, max<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -440,7 +440,7 @@ struct mandatory<
 	pmax<MAX>,
 	max<1>,
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
-> : multi_field<FIELD, 1, pmax<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, 1, pmax<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -454,7 +454,7 @@ struct mandatory<
 	min<MIN>,
 	max<MAX>,
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
-> : multi_field<FIELD, MIN, max<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, MIN, max<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
@@ -469,7 +469,7 @@ struct mandatory<
 	min<MIN>,
 	pmax<MAX>,
 	std::enable_if_t<is_field_v<FIELD> && is_tag_v<TAG> && is_length_v<LEN>>
-> : multi_field<FIELD, MIN, pmax<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, LEN>>
+> : multi_field<FIELD, MIN, pmax<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");

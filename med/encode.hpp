@@ -247,25 +247,26 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				encode_tag<mi>(encoder);
+				using tag_t = typename mi::info_type;
+				encode_tag<tag_t>(encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				//CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
 				auto len = sl::ie_length<EXPOSED, mi_rest>(ie, encoder);
-				using length_type = typename mi::length_type;
-				using dependency_type = get_dependency_t<length_type>;
+				using length_t = typename mi::info_type;
+				using dependency_type = get_dependency_t<length_t>;
 				if constexpr (!std::is_void_v<dependency_type>)
 				{
-					auto const delta = length_type::dependency(ie.template get<dependency_type>());
+					auto const delta = length_t::dependency(ie.template get<dependency_type>());
 					len -= delta;
 					CODEC_TRACE("adjusted by %d L=%zxh [%s] dependent on %s", -delta, len, name<IE>(), name<dependency_type	>());
 				}
 
 				CODEC_TRACE("LV=%zxh [%s]", len, name<IE>());
-				encode_len<length_type>(encoder, len);
+				encode_len<length_t>(encoder, len);
 
-				using pad_traits = typename get_padding<length_type>::type;
+				using pad_traits = typename get_padding<length_t>::type;
 				if constexpr (!std::is_void_v<pad_traits>)
 				{
 					CODEC_TRACE("padded len_type=%s...:", name<length_type>());
@@ -285,9 +286,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				call_if<is_callable_with_v<ENCODER, ENTRY_CONTAINER>>::call(encoder, ENTRY_CONTAINER{}, ie);
 				container_encoder<EXPOSED, ENCODER>::encode(encoder, ie);
-				call_if<is_callable_with_v<ENCODER, EXIT_CONTAINER>>::call(encoder, EXIT_CONTAINER{}, ie);
 			}
 			else
 			{

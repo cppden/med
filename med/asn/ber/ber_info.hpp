@@ -16,7 +16,7 @@ private:
 	{
 		template <class V>
 		using tag_of = value< fixed< V::value, bytes<V::num_bytes> > >;
-		using type = mi< mik::TAG, tag_of<tag_value<T, CONSTRUCTED::value>> >;
+		using type = mi< mik::TAG, tag_of<tag_value<typename T::info_type, CONSTRUCTED::value>> >;
 	};
 
 	template <std::size_t I, std::size_t N>
@@ -69,7 +69,7 @@ b) the contents octets shall be the same as the contents octets of the base enco
 			};
 
 			//!TODO: LENSIZE need to calc len to known its size (only 1 byte for now)
-			using len_t = mi<mik::LEN, length_t<value<uint8_t>>>;
+			using len_t = mi<mik::LEN, value<uint8_t>>;
 			using meta_info = meta::interleave_t< meta::unwrap_t<decltype(get_tags())>, len_t>;
 			return meta::wrap<meta_info>{};
 		}

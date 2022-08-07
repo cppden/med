@@ -114,9 +114,9 @@ struct choice_name
 	template <class IE, typename TAG, class... Ts>
 	static constexpr bool check(TAG const& tag, Ts&&...)
 	{
-		using type = typename meta::list_first<meta::produce_info_t<CODEC, IE>>::type;
+		using tag_t = typename meta::list_first<meta::produce_info_t<CODEC, IE>>::type::info_type;
 		//static_assert (type::mik == mik::TAG, "NOT A TAG");
-		return type::match( tag );
+		return tag_t::match( tag );
 	}
 
 	template <class IE, typename TAG, class... Ts>
@@ -161,7 +161,7 @@ struct choice_enc : choice_if
 			//tag of this IE isn't in header
 			if constexpr (!explicit_meta_in<mi, typename TO::header_type>())
 			{
-				using tag_t = meta::list_first_t<mi>;
+				using tag_t = typename meta::list_first_t<mi>::info_type;
 				tag_t const tag{};
 #if 0 //TODO: how to not modify? problem to copy with length placeholder...
 				auto hdr = to.header();
@@ -189,9 +189,9 @@ struct choice_dec
 	constexpr bool check(TO&, HEADER const& header, DECODER&, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
-		using type = meta::list_first_t<mi>;
+		using tag_t = typename meta::list_first_t<mi>::info_type;
 		//static_assert (type::mik = kind::TAG, "NOT A TAG");
-		return type::match( get_tag(header) );
+		return tag_t::match( get_tag(header) );
 	}
 
 	template <class IE, class TO, class HEADER, class DECODER, class... DEPS>
@@ -371,7 +371,7 @@ public:
 		{
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
-			using tag_t = meta::list_first_t<mi>;
+			using tag_t = typename meta::list_first_t<mi>::info_type;
 			as_writable_t<tag_t> tag;
 			tag.set_encoded(sl::decode_tag<tag_t, true>(decoder));
 			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, deps...);
