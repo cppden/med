@@ -11,7 +11,6 @@ Distributed under the MIT License
 
 #include <utility>
 #include <string_view>
-#include <cstring>
 
 #include "field.hpp"
 #include "debug.hpp"
@@ -247,7 +246,9 @@ struct ascii_string : octet_string<T...>
 	using base_t::set;
 
 	std::string_view get() const            { return std::string_view{(char const*)this->data(), this->size()}; }
-	bool set(char const* psz)               { return this->set_encoded(std::strlen(psz), psz); }
+	bool set(char const* psz)               { return this->set(std::string_view{psz}); }
+	template <std::size_t N>
+	bool set(char const(&arr)[N])           { return this->set(std::string_view{arr, strnlen(arr, N)}); }
 
 	template <std::size_t N>
 	void print(char (&sz)[N]) const

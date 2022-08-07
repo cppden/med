@@ -306,3 +306,11 @@ TEST(octets, var_extern_min_limits)
 		EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
 	}
 }
+
+TEST(octets, ascii_string)
+{
+	char arr[] = "str";
+	med::ascii_string s;
+	s.set(arr);
+	EXPECT_EQ(s.get().size(), std::strlen(arr));
+}
