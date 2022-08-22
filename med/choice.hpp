@@ -15,6 +15,7 @@ Distributed under the MIT License
 #include "accessor.hpp"
 #include "tag.hpp"
 #include "length.hpp"
+#include "value.hpp"
 #include "encode.hpp"
 #include "decode.hpp"
 #include "meta/unique.hpp"

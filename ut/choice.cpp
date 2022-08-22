@@ -4,6 +4,22 @@
 
 namespace cho {
 
+struct nid_type : med::value<uint8_t>
+{
+	enum : value_type { IPv4 = 0x00, IPv6 = 0x01 };
+	value_type get() const { return get_encoded() & 0x0f; }
+};
+
+struct ipv4_addr : med::octet_string<med::octets_fix_intern<4>> {};
+struct ipv6_addr : med::octet_string<med::octets_fix_intern<16>> {};
+
+struct nid : med::choice<
+	M<med::value<med::fixed<nid_type::IPv4, uint8_t>>, ipv4_addr>,
+	M<med::value<med::fixed<nid_type::IPv6, uint8_t>>, ipv6_addr>
+> {};
+
+
+
 //low nibble selector
 template <std::size_t TAG>
 struct LT : med::value<med::fixed<TAG, uint8_t>>, med::peek_t
@@ -96,9 +112,9 @@ struct PLAIN : med::choice<
 	M< C<0x04>, L, U32 >,
 	M< ANY_TAG, L, UNKNOWN >
 >
-{
-	using length_type = L::length_type;
-};
+{};
+
+using PLAIN_MSG = M<L, PLAIN>;
 
 struct code : U16 {};
 
@@ -165,7 +181,7 @@ TEST(choice, plain)
 	med::encoder_context<> ctx{ buffer };
 	med::octet_encoder encoder{ctx};
 
-	PLAIN msg;
+	PLAIN_MSG msg;
 	EXPECT_EQ(0, msg.calc_length(encoder));
 	msg.ref<U8>().set(0);
 	EXPECT_EQ(3, msg.calc_length(encoder));
@@ -175,9 +191,9 @@ TEST(choice, plain)
 	constexpr uint16_t magic = 0x1234;
 	msg.ref<U16>().set(magic);
 	encode(encoder, msg);
-	EXPECT_STRCASEEQ("02 02 12 34 ", as_string(ctx.buffer()));
+	EXPECT_STRCASEEQ("04 02 02 12 34 ", as_string(ctx.buffer()));
 
-	PLAIN dmsg;
+	PLAIN_MSG dmsg;
 	med::decoder_context<> dctx;
 	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
 	decode(med::octet_decoder{dctx}, dmsg);
@@ -189,11 +205,31 @@ TEST(choice, plain)
 
 	ctx.buffer().reset(buffer, sizeof(buffer));
 	encode(encoder, dmsg);
-	EXPECT_STRCASEEQ("02 02 12 34 ", as_string(ctx.buffer()));
+	EXPECT_STRCASEEQ("04 02 02 12 34 ", as_string(ctx.buffer()));
 
 	dmsg.clear();
 //TODO: gcc-11.1.0 bug?
 //	EXPECT_FALSE(pf->is_set());
+}
+
+TEST(choice, DISABLED_plain2)
+{
+	uint8_t buffer[32];
+	med::encoder_context<> ctx{buffer};
+	med::octet_encoder encoder{ctx};
+
+	cho::nid msg;
+	msg.ref<cho::ipv6_addr>().set();
+	encode(encoder, msg);
+	EXPECT_STRCASEEQ("02 02 12 34 ", as_string(ctx.buffer()));
+
+	cho::nid dmsg;
+	med::decoder_context<> dctx;
+	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+	decode(med::octet_decoder{dctx}, dmsg);
+	ctx.buffer().reset(buffer, sizeof(buffer));
+	encode(encoder, dmsg);
+	EXPECT_STRCASEEQ("02 02 12 34 ", as_string(ctx.buffer()));
 }
 
 TEST(choice, any)
@@ -267,4 +303,3 @@ TEST(choice, compound)
 	dmsg.clear();
 	EXPECT_FALSE(pf->is_set());
 }
-
