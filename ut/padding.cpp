@@ -8,61 +8,36 @@ struct u16 : med::value<uint16_t> {};
 struct u24 : med::value<med::bytes<3>> {};
 struct u32 : med::value<uint32_t> {};
 
-template <class T>
-using CASE = M< med::value<med::fixed<T::id, uint8_t>>, T>;
-
-struct flag : med::sequence<
-	med::placeholder::_length<>,
-	M< u8 >
->
+struct len32 : med::value<uint8_t, med::padding<uint32_t>>
 {
-	static constexpr uint8_t id = 1;
-	using container_t::get;
-	uint8_t get() const         { return get<u8>().get(); }
-	void set(uint8_t v)         { ref<u8>().set(v); }
+	static void value_to_length(std::size_t &v)
+	{
+		v -= 1;
+	}
+
+	static void length_to_value(std::size_t &v)
+	{
+		v += 1;
+	}
 };
 
-struct port : med::sequence<
-	med::placeholder::_length<>,
-	M< u16 >
->
-{
-	static constexpr uint8_t id = 2;
-	using container_t::get;
-	uint16_t get() const        { return get<u16>().get(); }
-	void set(uint16_t v)        { ref<u16>().set(v); }
-};
+using L32 = med::length_t<len32>;
 
-struct pdu : med::sequence<
-	med::placeholder::_length<>,
-	M< u24 >
->
-{
-	static constexpr uint8_t id = 3;
-	using container_t::get;
-	u24::value_type get() const  { return get<u24>().get(); }
-	void set(u24::value_type v)  { ref<u24>().set(v); }
-};
+struct flag : u8 {};
 
-struct ip : med::sequence<
-	med::placeholder::_length<>,
-	M< u32 >
->
-{
-	static constexpr uint8_t id = 4;
-	using container_t::get;
-	u32::value_type get() const  { return get<u32>().get(); }
-	void set(u32::value_type v)  { ref<u32>().set(v); }
-};
+struct port : u16 {};
+
+struct pdu : u24 {};
+
+struct ip : u32 {};
 
 struct exclusive : med::choice<
-	CASE< flag >,
-	CASE< port >,
-	CASE< pdu >,
-	CASE< ip >
+	M<T<1>, L32, flag >,
+	M<T<2>, L32, port >,
+	M<T<3>, L32, pdu >,
+	M<T<4>, L32, ip >
 >
 {
-	using length_type = med::value<uint8_t, med::padding<uint32_t>>;
 };
 
 using PL = med::length_t<med::value<uint8_t, med::padding<uint32_t>>>;
@@ -247,9 +222,7 @@ TEST(padding, container)
 	msg.ref<pad::flag>().set(0x12);
 	encode(med::octet_encoder{ctx}, msg);
 
-	uint8_t const encoded_1[] = { 1, 3, 0x12, 0 };
-	EXPECT_EQ(sizeof(encoded_1), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_1, buffer));
+	EXPECT_STREQ("01 03 12 00 ", as_string(ctx.buffer()));
 	check_decode(ctx.buffer());
 
 	//-- 2 bytes
@@ -257,9 +230,7 @@ TEST(padding, container)
 	msg.ref<pad::port>().set(0x1234);
 	encode(med::octet_encoder{ctx}, msg);
 
-	uint8_t const encoded_2[] = { 2, 4, 0x12, 0x34 };
-	EXPECT_EQ(sizeof(encoded_2), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_2, buffer));
+	EXPECT_STREQ("02 04 12 34 ", as_string(ctx.buffer()));
 	check_decode(ctx.buffer());
 
 	//-- 3 bytes
@@ -267,18 +238,14 @@ TEST(padding, container)
 	msg.ref<pad::pdu>().set(0x123456);
 	encode(med::octet_encoder{ctx}, msg);
 
-	uint8_t const encoded_3[] = { 3, 5, 0x12, 0x34, 0x56, 0, 0, 0 };
-	EXPECT_EQ(sizeof(encoded_3), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_3, buffer));
+	EXPECT_STREQ("03 05 12 34 56 00 00 00 ", as_string(ctx.buffer()));
 
 	//-- 4 bytes
 	ctx.reset();
 	msg.ref<pad::ip>().set(0x12345678);
 	encode(med::octet_encoder{ctx}, msg);
 
-	uint8_t const encoded_4[] = { 4, 6, 0x12, 0x34, 0x56, 0x78, 0, 0 };
-	EXPECT_EQ(sizeof(encoded_4), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded_4, buffer));
+	EXPECT_STREQ("04 06 12 34 56 78 00 00 ", as_string(ctx.buffer()));
 	check_decode(ctx.buffer());
 }
 

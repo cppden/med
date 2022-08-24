@@ -1,6 +1,19 @@
 #pragma once
-#include "tag.hpp"
-#include "value.hpp"
+#include "med.hpp"
+
+template <typename... T>
+using M = med::mandatory<T...>;
+template <typename... T>
+using O = med::optional<T...>;
+
+using L = med::length_t<med::value<uint8_t>>;
+using CNT = med::counter_t<med::value<uint16_t>>;
+template <std::size_t TAG>
+using T = med::value<med::fixed<TAG, uint8_t>>;
+template <std::size_t TAG>
+using T16 = med::value<med::fixed<TAG, uint16_t>>;
+template <std::size_t TAG>
+using C = med::value<med::fixed<TAG, uint8_t>>;
 
 struct FLD_UC : med::value<uint8_t>
 {
@@ -69,8 +82,6 @@ struct custom_length : med::value<uint8_t>
 		}
 		return false;
 	}
-
-	static constexpr char const* name() { return "Custom-Length"; }
 };
 using CLEN = med::length_t<custom_length>;
 

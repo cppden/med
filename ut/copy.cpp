@@ -20,8 +20,7 @@ struct dword : med::value<uint32_t> {};
 
 struct hdr : med::sequence<
 	M<byte>,
-	M<word>,
-	med::placeholder::_length<0>
+	M<word>
 >
 {
 	auto get_tag() const    { return get<byte>().get(); }
@@ -38,7 +37,6 @@ struct hdr_cho : med::choice< hdr
 	, M<T<2>, L, fix_extern>
 >
 {
-	using length_type = med::value<uint16_t>;
 };
 
 

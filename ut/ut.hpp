@@ -19,6 +19,20 @@ using namespace std::string_view_literals;
 #include "octet_encoder.hpp"
 #include "octet_decoder.hpp"
 
+template <typename... T>
+using M = med::mandatory<T...>;
+template <typename... T>
+using O = med::optional<T...>;
+
+using L = med::length_t<med::value<uint8_t>>;
+using CNT = med::counter_t<med::value<uint16_t>>;
+template <std::size_t TAG>
+using T = med::value<med::fixed<TAG, uint8_t>>;
+template <std::size_t TAG>
+using T16 = med::value<med::fixed<TAG, uint16_t>>;
+template <std::size_t TAG>
+using C = med::value<med::fixed<TAG, uint8_t>>;
+
 /*
  * EXPECT_TRUE(Matches(buff, out_buff, size));
  */
@@ -242,17 +256,3 @@ struct dummy_sink
 		}
 	}
 };
-
-template <typename ...T>
-using M = med::mandatory<T...>;
-template <typename ...T>
-using O = med::optional<T...>;
-
-using L = med::length_t<med::value<uint8_t>>;
-using CNT = med::counter_t<med::value<uint16_t>>;
-template <std::size_t TAG>
-using T = med::value<med::fixed<TAG, uint8_t>>;
-template <std::size_t TAG>
-using T16 = med::value<med::fixed<TAG, uint16_t>>;
-template <std::size_t TAG>
-using C = med::value<med::fixed<TAG, uint8_t>>;
