@@ -5,9 +5,6 @@ namespace diameter {
 //to concat message code and request/answer bit
 constexpr std::size_t REQUEST = 0x80000000;
 
-struct version : med::value<med::fixed<1, uint8_t>> {};
-struct length : med::value<med::bytes<3>> {};
-
 struct cmd_flags : med::value<uint8_t>
 {
 	enum : value_type
@@ -71,13 +68,11 @@ struct end_to_end_id : med::value<uint32_t>
  |  AVPs ...
  +-+-+-+-+-+-+-+-+-+-+-+-+- */
 struct header : med::sequence<
-	med::mandatory< version >,
-	med::placeholder::_length<>,
-	med::mandatory< cmd_flags >,
-	med::mandatory< cmd_code >,
-	med::mandatory< app_id >,
-	med::mandatory< hop_by_hop_id >,
-	med::mandatory< end_to_end_id >
+	med::mandatory<cmd_flags>,
+	med::mandatory<cmd_code>,
+	med::mandatory<app_id>,
+	med::mandatory<hop_by_hop_id>,
+	med::mandatory<end_to_end_id>
 >
 {
 	std::size_t get_tag() const                 { return get<cmd_code>().get() + (flags().request() ? REQUEST : 0); }
@@ -108,20 +103,27 @@ struct avp_code : med::value<uint32_t>
 template <avp_code::value_type CODE>
 struct avp_code_fixed : med::value<med::fixed<CODE, typename avp_code::value_type>> {};
 
-struct avp_flags : med::value<uint8_t>
+//includes length
+struct avp_flags : med::value<uint32_t, med::padding<uint32_t>>
 {
 	enum : value_type
 	{
-		V = 0x80, //vendor specific/vendor-id is present
-		M = 0x40, //AVP is mandatory
-		P = 0x20, //protected
+		V = 0x8000'0000, //vendor specific/vendor-id is present
+		M = 0x4000'0000, //AVP is mandatory
+		P = 0x2000'0000, //protected
 	};
+	static constexpr uint8_t LEN_BITS = 24;
+	static constexpr value_type LEN_MASK = (1u << LEN_BITS) - 1;
 
-	bool mandatory() const              { return get() & M; }
-	void mandatory(bool v)              { set(v ? (get() | M) : (get() & ~M)); }
+	bool mandatory() const              { return get_encoded() & M; }
+	void mandatory(bool v)              { set_encoded(v ? (get_encoded() | M) : (get_encoded() & ~M)); }
 
-	bool protect() const                { return get() & P; }
-	void protect(bool v)                { set(v ? (get() | P) : (get() & ~P)); }
+	bool protect() const                { return get_encoded() & P; }
+	void protect(bool v)                { set_encoded(v ? (get_encoded() | P) : (get_encoded() & ~P)); }
+
+	// length part
+	value_type get_length() const noexcept   { return get_encoded() & LEN_MASK; }
+	void set_length(value_type v) noexcept   { set_encoded(v | (get_encoded() & ~LEN_MASK)); }
 
 	static constexpr char const* name() { return "AVP-Flags"; }
 };
@@ -151,18 +153,18 @@ struct vendor : med::value<uint32_t>
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  |    Data ...
  +-+-+-+-+-+-+-+-+                                                 */
-template <class BODY, avp_code::value_type CODE, uint8_t FLAGS = 0, vendor::value_type VENDOR = 0>
+template <class BODY, avp_code::value_type CODE, uint32_t FLAGS = 0, vendor::value_type VENDOR = 0>
 struct avp :
 	med::sequence<
 		M< avp_flags >,
-		med::placeholder::_length<-4>, //include AVP Code
 		O< vendor, vendor::has >,
 		M< BODY >
 	>
-	, med::add_meta_info< med::mi<med::mik::TAG, avp_code_fixed<CODE>> >
+	, med::add_meta_info<
+		med::mi<med::mik::TAG, avp_code_fixed<CODE>>,
+		med::mi<med::mik::LEN, avp_flags>
+	>
 {
-	using length_type = med::value<med::bytes<3>, med::padding<uint32_t>>;
-
 	auto const& flags() const                   { return this->template get<avp_flags>(); }
 	auto& flags()                               { return this->template ref<avp_flags>(); }
 	vendor const* get_vendor() const            { return this->template get<vendor>(); }
@@ -227,14 +229,14 @@ struct any_avp :
 	med::sequence<
 		M< avp_code >,
 		M< avp_flags >,
-		med::placeholder::_length<>,
 		O< vendor, vendor::has >,
 		M< med::octet_string<> >
 	>
-	, med::add_meta_info< med::mi<med::mik::TAG, avp_code> >
+	, med::add_meta_info<
+		med::mi<med::mik::TAG, avp_code> ,
+		med::mi<med::mik::LEN, avp_flags>
+	>
 {
-	using length_type = med::value<med::bytes<3>, med::padding<uint32_t>>;
-
 	auto& body() const                  { return get<med::octet_string<>>(); }
 	bool is_set() const                 { return body().is_set(); }
 };
@@ -294,13 +296,17 @@ template <class MSG>
 using answer = M<med::value<med::fixed<MSG::code, uint32_t>>, MSG>;
 
 //couple of messages from base protocol for testing
+using version = med::value<med::fixed<1, uint8_t>>;
 struct base : med::choice< header
 	, request<DPR>
 	, answer<DPA>
 	, M<cmd_code, ANY>
->
+>,
+	med::add_meta_info<
+		med::mi<med::mik::TAG, version>,
+		med::mi<med::mik::LEN, med::value<med::bytes<3>>>
+	>
 {
-	using length_type = length;
 };
 
 uint8_t const dpr[] = {
@@ -347,8 +353,9 @@ TEST(diameter, padding_encode)
 	med::encoder_context<> ctx{ buffer };
 	encode(med::octet_encoder{ctx}, base);
 
-	EXPECT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
-	ASSERT_TRUE(Matches(diameter::dpr, buffer));
+	EXPECT_STREQ(as_string(diameter::dpr), as_string(ctx.buffer()));
+	// EXPECT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
+	// ASSERT_TRUE(Matches(diameter::dpr, buffer));
 }
 
 TEST(diameter, padding_decode)
@@ -573,4 +580,3 @@ TEST(diameter, any_msg)
 	EXPECT_EQ(sizeof(dwa), ectx.buffer().get_offset());
 	ASSERT_TRUE(Matches(dwa, buffer));
 }
-

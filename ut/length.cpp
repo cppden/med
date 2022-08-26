@@ -58,7 +58,7 @@ struct M_LMV : med::sequence<
 	M<L, MV>
 >{};
 
-struct VAR : med::ascii_string<med::min<3>, med::max<15>> {};
+using VAR = med::ascii_string<med::min<3>, med::max<15>>;
 
 //conditional LV
 struct true_cond
@@ -79,15 +79,15 @@ struct VL : med::value<uint16_t>
 	void set(value_type v)          { set_encoded(v & 0xF); }
 	//length part
 	value_type get_length() const   { return get_encoded() >> 4; }
-	bool set_length(value_type v)   { return (v < 0x10) ? set_encoded((v << 4)|get()), true : false; }
+	bool set_length(value_type v)   { return (v < 0x1000) ? set_encoded((v << 4)|get()), true : false; }
 };
 
 struct VLVAR : med::sequence<
 	M<VL>,
 	M<VAR>
 >
+, med::add_meta_info<med::mi<med::mik::LEN, VL>>
 {
-	using length_type = VL;
 };
 
 struct VLARR : med::sequence<
@@ -160,8 +160,8 @@ struct s_nssai : med::sequence<
 	, O< mapped_sst, s_nssai_length::has_mapped_sst >
 	, O< mapped_sd, s_nssai_length::has_mapped_sd >
 >
+, med::add_meta_info<med::mi<med::mik::LEN, s_nssai_length>>
 {
-	using length_type = s_nssai_length;
 	static constexpr char const* name() { return "S-NSSAI"; }
 };
 
@@ -343,6 +343,15 @@ TEST(length, vlvar)
 	uint8_t buffer[128];
 	med::encoder_context<> ctx{ buffer };
 
+	{
+		len::VLVAR vlvar;
+		vlvar.ref<len::VL>().set(7);
+		vlvar.ref<len::VAR>().set("ABCDEF");
+		encode(med::octet_encoder{ctx}, vlvar);
+		ASSERT_STREQ(" 00 87 41 42 43 44 45 46 ", as_string(ctx.buffer()));
+		check_decode(vlvar, ctx.buffer());
+	}
+
 	len::VMSG msg;
 	std::string_view const data[] = {"123"sv, "123456"sv};
 
@@ -354,6 +363,7 @@ TEST(length, vlvar)
 		vlvar->ref<len::VAR>().set(data[i]);
 	}
 
+	ctx.reset();
 	encode(med::octet_encoder{ctx}, msg);
 
 	uint8_t encoded[] = {
@@ -362,8 +372,7 @@ TEST(length, vlvar)
 		0,0,0,1, 0x00,0x62, //len=6, val=2
 		'1','2','3','4','5','6',
 	};
-	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-	ASSERT_TRUE(Matches(encoded, buffer));
+	ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
 
 	//check decode
 	med::decoder_context<> dctx{encoded};
@@ -466,7 +475,7 @@ TEST(length, seq)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
 }
 
-TEST(length, val_cond)
+TEST(length, explicit)
 {
 	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };
@@ -618,4 +627,3 @@ TEST(length, setter_with_length)
 	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
 	EXPECT_TRUE(Matches(encoded, buffer));
 }
-

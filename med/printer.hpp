@@ -129,9 +129,8 @@ public:
 
 	//state
 	constexpr void operator() (SNAPSHOT) { }
-	//length encoder
-	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
-	template <class IE>	constexpr std::size_t operator() (GET_LENGTH, IE const&) { return 0; }
+	// length encoder
+	template <class IE> constexpr std::size_t operator()(GET_LENGTH, IE const &) { return 0; }
 
 private:
 	friend class container_encoder;
@@ -211,10 +210,10 @@ public:
 	//state
 	constexpr void operator() (SNAPSHOT) { }
 	//length encoder
-	template <int DELTA> constexpr void operator() (placeholder::_length<DELTA> const&) { }
+	template <class IE> constexpr std::size_t operator()(GET_LENGTH, IE const &) { return 0; }
 
-//	template <class IE>
-//	void dump(IE const& ie)                     { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
+	//	template <class IE>
+	//	void dump(IE const& ie)                     { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
 
 	friend struct container_encoder;
 

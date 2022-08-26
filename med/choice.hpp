@@ -50,7 +50,7 @@ struct choice_len : choice_if
 			return field_length(to.header(), encoder)
 				//skip TAG as 1st metainfo which is encoded in header
 				+ sl::ie_length<void, meta::list_rest_t<
-					meta::produce_info_t<ENCODER, IE>>>>(to.template as<IE>(), encoder);
+					meta::produce_info_t<ENCODER, IE>>>(to.template as<IE>(), encoder);
 		}
 	}
 
@@ -164,12 +164,8 @@ struct choice_enc : choice_if
 			{
 				using tag_t = typename meta::list_first_t<mi>::info_type;
 				tag_t const tag{};
-#if 0 //TODO: how to not modify? problem to copy with length placeholder...
-				auto hdr = to.header();
-				hdr.set_tag(tag.get());
-#else
+				//TODO: how to not modify?
 				const_cast<TO&>(to).header().set_tag(tag.get());
-#endif
 			}
 			med::encode(encoder, to.header());
 			//skip 1st TAG meta-info as it's encoded in header

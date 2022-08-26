@@ -21,14 +21,6 @@ include_directories(
 	${PROJECT_SOURCE_DIR}/med
 )
 
-#find_package(Boost)
-#if(Boost_FOUND)
-#	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
-#else()
-#	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBRIGAND_NO_BOOST_SUPPORT")
-#endif()
-
 # -----------------------------------------------------------------------------
 # Benchmarks
 # -----------------------------------------------------------------------------
@@ -47,11 +39,11 @@ endif (WITH_BM)
 
 
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
-if (COMPILER_SUPPORTS_CXX17)
-	add_compile_options(-std=c++17)
+check_cxx_compiler_flag("-std=c++20" COMPILER_SUPPORTS_CXX20)
+if (COMPILER_SUPPORTS_CXX20)
+	add_compile_options(-std=c++20)
 else ()
-	message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler.")
+	message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++20 support. Please use a different C++ compiler.")
 endif ()
 
 

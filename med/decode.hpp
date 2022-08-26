@@ -17,7 +17,6 @@ Distributed under the MIT License
 #include "padding.hpp"
 #include "length.hpp"
 #include "name.hpp"
-#include "placeholder.hpp"
 #include "value.hpp"
 #include "meta/typelist.hpp"
 
@@ -75,92 +74,6 @@ constexpr std::size_t decode_len(DECODER& decoder)
 	return value;
 }
 
-template <bool REF_BY_IE, class DECODER, class IE>
-struct length_decoder;
-
-template <class DECODER, class IE>
-struct len_dec_impl
-{
-	using state_type = typename DECODER::state_type;
-	using size_state = typename DECODER::size_state;
-	using allocator_type = typename DECODER::allocator_type;
-	template <class... PA>
-	using padder_type = typename DECODER::template padder_type<PA...>;
-
-	using length_type = typename IE::length_type;
-
-	len_dec_impl(DECODER& decoder, IE& ie) noexcept
-		: m_decoder{ decoder }
-		, m_ie{ ie }
-		, m_start{ m_decoder(GET_STATE{}) }
-	{
-		CODEC_TRACE("start %s with len=%s...:", name<IE>(), name<length_type>());
-	}
-
-#ifdef CODEC_TRACE_ENABLE
-	~len_dec_impl() noexcept
-	{
-		CODEC_TRACE("finish %s with len=%s...:", name<IE>(), name<length_type>());
-	}
-#endif
-
-	//check if placeholder was visited
-	explicit operator bool() const                     { return static_cast<bool>(m_size_state); }
-	auto size() const                                  { return m_size_state.size(); }
-
-	//forward regular types to decoder
-	template <class... Args> //NOTE: decltype is needed to expose actually defined operators
-	auto operator() (Args&&... args) -> decltype(std::declval<DECODER>()(std::forward<Args>(args)...))
-	{
-		return m_decoder(std::forward<Args>(args)...);
-	}
-
-	template <class T>
-	static constexpr auto produce_meta_info()          { return DECODER::template produce_meta_info<T>(); }
-
-	allocator_type& get_allocator()                    { return m_decoder.get_allocator(); }
-
-protected:
-	//reduce size of the buffer for current length and elements from the start of IE
-	template <int DELTA>
-	void calc_buf_len(std::size_t& len_value) const
-	{
-		if constexpr (DELTA < 0)
-		{
-			if (len_value < std::size_t(-DELTA))
-			{
-				CODEC_TRACE("len=%zu less than delta=%+d", len_value, DELTA);
-				MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.get_context().buffer()*/);
-			}
-		}
-		len_value += DELTA;
-		auto const state_delta = std::size_t(m_decoder(GET_STATE{}) - m_start);
-		CODEC_TRACE("len<%d>=%zu state-delta=%zu", DELTA, len_value, state_delta);
-		if (state_delta > len_value)
-		{
-			CODEC_TRACE("len=%zu less than buffer has been advanced=%zu", len_value, state_delta);
-			MED_THROW_EXCEPTION(invalid_value, name<IE>(), len_value/*, m_decoder.get_context().buffer()*/);
-		}
-		len_value -= state_delta;
-	}
-
-	template <int DELTA>
-	void decode_len_ie(length_type& len_ie)
-	{
-		decode(m_decoder, len_ie);
-		std::size_t len_value = 0;
-		value_to_length(len_ie, len_value);
-		calc_buf_len<DELTA>(len_value);
-		m_size_state = m_decoder(PUSH_SIZE{len_value});
-	}
-
-
-	DECODER&         m_decoder;
-	IE&              m_ie;
-	state_type const m_start;
-	size_state       m_size_state; //to switch end of buffer for this IE
-};
-
 template <class DEPENDENT, class DEPENDENCY, class DEPS>
 constexpr void invoke_dependency(DEPENDENCY const& ie, DEPS& deps)
 {
@@ -168,87 +81,17 @@ constexpr void invoke_dependency(DEPENDENCY const& ie, DEPS& deps)
 	deps.commit(DEPENDENT::dependency(ie));
 }
 
-
-template <class DECODER, class IE>
-struct length_decoder<false, DECODER, IE> : len_dec_impl<DECODER, IE>
-{
-	template <class... NEWDEPS>
-	using make_dependent = typename DECODER::template make_dependent<NEWDEPS...>;
-	using length_type = typename IE::length_type;
-	using len_dec_impl<DECODER, IE>::len_dec_impl;
-	using len_dec_impl<DECODER, IE>::operator();
-
-	template <int DELTA>
-	void operator() (placeholder::_length<DELTA>&)
-	{
-		CODEC_TRACE("len_dec[%s] %+d by placeholder", name<length_type>(), DELTA);
-		length_type len_ie;
-		return this->template decode_len_ie<DELTA>(len_ie);
-	}
-};
-
-template <class DECODER, class IE>
-struct length_decoder<true, DECODER, IE> : len_dec_impl<DECODER, IE>
-{
-	template <class... NEWDEPS>
-	using make_dependent = typename DECODER::template make_dependent<NEWDEPS...>;
-	using length_type = typename IE::length_type;
-	using len_dec_impl<DECODER, IE>::len_dec_impl;
-	using len_dec_impl<DECODER, IE>::operator();
-
-	//length position by exact type match
-	template <class T, class ...ARGS>
-	constexpr auto operator () (T& len_ie, ARGS&&...) ->
-		std::enable_if_t<std::is_same_v<get_field_type_t<T>, length_type>, void>
-	{
-		CODEC_TRACE("len_dec[%s] by IE", name<length_type>());
-		//don't count the size of length IE itself just like with regular LV
-		constexpr auto len_ie_size = +DECODER::template size_of<length_type>();
-		return this->template decode_len_ie<len_ie_size>(len_ie);
-	}
-};
-
 template <class EXPOSED, class DECODER, class IE, class... DEPS>
 constexpr void container_decoder(DECODER& decoder, IE& ie, DEPS&... deps)
 {
-	if constexpr (is_length_v<IE>) //container with length_type defined
+	CODEC_TRACE("%s w/o length exposed=%s...:", name<IE>(), name<EXPOSED>());
+	if constexpr (std::is_void_v<EXPOSED>)
 	{
-		using length_type = typename IE::length_type;
-		using pad_traits = typename get_padding<length_type>::type;
-
-		if constexpr (std::is_void_v<pad_traits>)
-		{
-			length_decoder<IE::template has<length_type>(), DECODER, IE> ld{ decoder, ie};
-			ie.decode(ld, deps...);
-		}
-		else
-		{
-			using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
-			pad_t pad{decoder};
-			{
-				length_decoder<IE::template has<length_type>(), DECODER, IE> ld{decoder, ie};
-				ie.decode(ld, deps...);
-				//special case for empty elements w/o length placeholder
-				pad.enable_padding(static_cast<bool>(ld));
-				CODEC_TRACE("%sable padding for len=%zu", ld?"en":"dis", ld.size());
-			}
-			pad.add_padding();
-			//TODO: treat this case as warning? happens only in case of last IE with padding ended prematuraly
-			//if (std::size_t const left = ld.size() - padding_size(pad))
-			//MED_THROW_EXCEPTION(overflow, name<IE>(), left)
-		}
+		ie.decode(decoder, deps...);
 	}
 	else
 	{
-		CODEC_TRACE("%s w/o length exposed=%s...:", name<IE>(), name<EXPOSED>());
-		if constexpr (std::is_void_v<EXPOSED>)
-		{
-			ie.decode(decoder, deps...);
-		}
-		else
-		{
-			ie.template decode<meta::list_rest_t<typename IE::ies_types>>(decoder, deps...);
-		}
+		ie.template decode<meta::list_rest_t<typename IE::ies_types>>(decoder, deps...);
 	}
 }
 
@@ -273,12 +116,12 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 		}
 		else if constexpr (mi::kind == mik::LEN)
 		{
-			using length_type = typename mi::info_type;
-			using pad_traits = typename get_padding<length_type>::type;
+			using length_t = typename mi::info_type;
+			using pad_traits = typename get_padding<length_t>::type;
 
-			auto len = decode_len<length_type>(decoder);
+			auto len = decode_len<length_t>(decoder);
 
-			using dependency_type = get_dependency_t<length_type>;
+			using dependency_type = get_dependency_t<length_t>;
 			if constexpr (std::is_void_v<dependency_type>)
 			{
 				//TODO: may have fixed length like in BER:NULL/BOOL so need to check here
@@ -291,11 +134,11 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 				}
 				else
 				{
-					CODEC_TRACE("padded %s...:", name<length_type>());
+					CODEC_TRACE("padded %s...:", name<length_t>());
 					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
 					pad_t pad{decoder};
 					ie_decode<mi_rest, EXPOSED>(decoder, ie, deps...);
-					CODEC_TRACE("before padding %s: end=%zu padding=%u", name<length_type>(), end.size(), pad.padding_size());
+					CODEC_TRACE("before padding %s: end=%zu padding=%u", name<length_t>(), end.size(), pad.padding_size());
 					//if (end.size() != pad.padding_size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 					end.restore_end();
 					pad.add_padding();
@@ -304,9 +147,9 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 			}
 			else
 			{
-				CODEC_TRACE("'%s' depends on '%s'", name<length_type>(), name<dependency_type>());
+				CODEC_TRACE("'%s' depends on '%s'", name<length_t>(), name<dependency_type>());
 
-				using dep_decoder_t = typename DECODER::template make_dependent<length_type, dependency_type>;
+				using dep_decoder_t = typename DECODER::template make_dependent<length_t, dependency_type>;
 				dep_decoder_t dep_decoder{decoder.get_context()};
 
 				auto end = dep_decoder(PUSH_SIZE{len, false});
@@ -314,16 +157,16 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 				{
 					ie_decode<mi_rest, EXPOSED>(dep_decoder, ie, end, deps...);
 					//TODO: ??? as warning not error
-					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
+					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_t>(), name<dependency_type>());
 					if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 				}
 				else
 				{
-					CODEC_TRACE("padded %s...:", name<length_type>());
+					CODEC_TRACE("padded %s...:", name<length_t>());
 					using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
 					pad_t pad{dep_decoder};
 					ie_decode<mi_rest, EXPOSED>(dep_decoder, ie, end, deps...);
-					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_type>(), name<dependency_type>());
+					CODEC_TRACE("decoded '%s' depends on '%s'", name<length_t>(), name<dependency_type>());
 					//if (end.size() != pad.padding_size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
 					end.restore_end();
 					pad.add_padding();

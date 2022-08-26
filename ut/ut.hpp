@@ -33,6 +33,16 @@ using T16 = med::value<med::fixed<TAG, uint16_t>>;
 template <std::size_t TAG>
 using C = med::value<med::fixed<TAG, uint8_t>>;
 
+template <class MSG, class RANGE>
+void check_decode(MSG const& msg, RANGE const& binary)
+{
+	med::decoder_context<> ctx{std::begin(binary), std::size(binary)};
+	MSG decoded_msg;
+	ASSERT_FALSE(msg == decoded_msg);
+	decode(med::octet_decoder{ctx}, decoded_msg);
+	ASSERT_TRUE(msg == decoded_msg);
+};
+
 /*
  * EXPECT_TRUE(Matches(buff, out_buff, size));
  */
@@ -70,17 +80,27 @@ inline testing::AssertionResult Matches(T const(&expected)[size], T const* actua
 	return Matches(expected, actual, size);
 }
 
+template <std::size_t SIZE>
+char const *as_string(uint8_t const (&buffer)[SIZE])
+{
+	static char sz[64 * 1024];
+
+	auto psz = sz, end = psz + sizeof(sz);
+	for (auto b : buffer)
+	{
+		psz += std::snprintf(psz, end - psz, "%02X ", b);
+	}
+
+	return sz;
+}
+
 template <class T>
 char const* as_string(T const& buffer)
 {
 	static char sz[64*1024];
-	auto* it = buffer.get_start();
-	auto* ite = it + buffer.get_offset();
 
-	char* psz = sz;
-	char* end = psz + sizeof(sz);
-	*psz = '\0';
-	for (; it != ite; ++it)
+	auto psz = sz, end = psz + sizeof(sz);
+	for (auto it = buffer.get_start(), ite = it + buffer.get_offset(); it != ite; ++it)
 	{
 		psz += std::snprintf(psz, end - psz, "%02X ", *it);
 	}
