@@ -19,23 +19,15 @@ Distributed under the MIT License
 #include "debug.hpp"
 #include "meta/typelist.hpp"
 #include "allocator.hpp"
+#include "concepts.hpp"
 
 
 namespace med {
 
-template <class T, class = void> struct is_field : std::false_type {};
-template <class T> struct is_field<T, std::enable_if_t<std::is_same_v<bool, decltype(std::declval<T>().is_set())>>> : std::true_type {};
-template <class T> constexpr bool is_field_v = is_field<T>::value;
-
-template <class, class = void> struct is_multi_field : std::false_type { };
-template <class T> struct is_multi_field<T, std::void_t<typename T::field_value>> : std::true_type { };
-template <class T> constexpr bool is_multi_field_v = is_multi_field<T>::value;
-
-template <class FIELD, class... META_INFO>
+template <AField FIELD, class... META_INFO>
 struct field_t : FIELD
 {
 	using field_type = FIELD;
-	//static_assert (is_field_v<FIELD>, "NOT A FIELD");
 
 	//NOTE: since field may have meta_info already we have to override it directly
 	// w/o inheritance to avoid ambiguity
@@ -64,12 +56,11 @@ struct define_meta_info<void> {};
 
 } //end: namespace detail
 
-template <class FIELD, std::size_t MIN, class CMAX, class META_INFO = void, class... FIELD_META_INFO>
+template <AField FIELD, std::size_t MIN, class CMAX, class META_INFO = void, class... FIELD_META_INFO>
 class multi_field : public detail::define_meta_info<META_INFO>
 {
 	static_assert(MIN > 0, "MIN SHOULD BE GREATER ZERO");
 	static_assert(CMAX::value >= MIN, "MAX SHOULD BE GREATER OR EQUAL TO MIN");
-	static_assert(is_field_v<FIELD>, "FIELD IS REQUIRED");
 
 public:
 	using ie_type = typename FIELD::ie_type;
@@ -111,7 +102,7 @@ private:
 		explicit operator bool() const              { return nullptr != m_curr; }
 
 	private:
-		template <class, std::size_t, class, class, class...> friend class multi_field;
+		template <AField, std::size_t, class, class, class...> friend class multi_field;
 		value_type* m_curr;
 	};
 

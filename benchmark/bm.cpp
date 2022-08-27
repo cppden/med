@@ -58,21 +58,16 @@ struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>, med::with_snapshot
 
 struct custom_length : med::value<uint8_t>
 {
-	static bool value_to_length(std::size_t& v)
+	std::size_t get_length() const noexcept
 	{
-		if (v < 5)
-		{
-			v = 2*(v + 1);
-			return true;
-		}
-		return false;
+		return 2 * (get_encoded() + 1);
 	}
 
-	static bool length_to_value(std::size_t& v)
+	bool set_length(std::size_t v)
 	{
 		if (0 == (v & 1)) //should be even
 		{
-			v = (v - 2) / 2;
+			set_encoded((v - 2) / 2);
 			return true;
 		}
 		return false;

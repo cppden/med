@@ -62,7 +62,7 @@ constexpr void check_n_arity(FUNC&, IE const&, std::size_t count)
 template <class FUNC, class IE>
 constexpr void check_arity(FUNC& func, IE const& ie, std::size_t count)
 {
-	if constexpr (is_optional_v<IE>)
+	if constexpr (AOptional<IE>)
 	{
 		if (count) { detail::check_n_arity(func, ie, count); }
 	}

@@ -38,7 +38,7 @@ struct cont_copy
 		if (from_field.is_set())
 		{
 			auto& to_field = to.m_ies.template as<field_t>();
-			if constexpr (is_multi_field_v<IE>)
+			if constexpr (AMultiField<IE>)
 			{
 				to_field.clear();
 				for (auto const& rhs : from_field)
@@ -66,7 +66,7 @@ struct cont_len
 	static std::size_t apply(SEQ const& seq, ENCODER& encoder)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			IE const& ie = seq;
 			std::size_t len = 0;
@@ -100,7 +100,7 @@ struct cont_is
 	static constexpr bool apply(SEQ const& seq)
 	{
 		//optional or mandatory field w/ setter => can be set implicitly
-		if constexpr (is_optional_v<IE> || has_setter_type_v<IE>)
+		if constexpr (AOptional<IE> || has_setter_type_v<IE>)
 		{
 			//CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
 			return static_cast<IE const&>(seq).is_set();
@@ -141,7 +141,7 @@ struct cont_eq
 template <class IE>
 constexpr std::size_t field_arity()
 {
-	if constexpr (is_multi_field_v<IE>)
+	if constexpr (AMultiField<IE>)
 	{
 		return IE::max;
 	}
@@ -169,7 +169,7 @@ public:
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = remove_cref_t<decltype(ie)>;
-		if constexpr (is_multi_field<IE>())
+		if constexpr (AMultiField<IE>)
 		{
 			return static_cast<IE&>(ie);
 		}

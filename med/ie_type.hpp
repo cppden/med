@@ -54,10 +54,6 @@ struct empty : IE<IE_NULL>
 template <class T>
 constexpr bool is_empty_v = std::is_same_v<IE_NULL, typename T::ie_type>;
 
-//marker for the optional IEs
-struct optional_t {};
-template <class T> constexpr bool is_optional_v = std::is_base_of<optional_t, T>::value;
-
 //read during decode w/o changing buffer state
 //skipped during encode and length calculation
 struct peek_t {};

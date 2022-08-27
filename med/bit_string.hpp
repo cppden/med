@@ -86,11 +86,11 @@ private:
 };
 
 //fixed length bits
-template <std::size_t NBITS, class Enable = void>
+template <std::size_t NBITS>
 class bits_fixed;
 
-template <std::size_t NBITS>
-class bits_fixed<NBITS, std::enable_if_t<(NBITS > 8*sizeof(uint64_t))>>
+template <std::size_t NBITS> requires (NBITS > 8*sizeof(uint64_t))
+class bits_fixed<NBITS>
 {
 public:
 	bool is_set() const                     { return nullptr != data(); }
@@ -107,8 +107,8 @@ private:
 	uint8_t const* m_data {nullptr};
 };
 
-template <std::size_t NBITS>
-class bits_fixed<NBITS, std::enable_if_t<(NBITS <= 8*sizeof(uint64_t))>>
+template <std::size_t NBITS> requires (NBITS <= 8*sizeof(uint64_t))
+class bits_fixed<NBITS>
 {
 public:
 	bool is_set() const                     { return m_set; }

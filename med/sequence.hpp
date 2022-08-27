@@ -74,13 +74,13 @@ struct seq_dec
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = get_meta_tag_t<mi>;
 
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			CODEC_TRACE("[%s]*", name<IE>());
 			if constexpr (not std::is_void_v<type>) //multi-field with tag
 			{
 				//multi-instance optional or mandatory field w/ tag w/o counter
-				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !has_condition_v<IE>, "TO IMPLEMENT!");
+				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !AHasCondition<IE>, "TO IMPLEMENT!");
 
 				if (!vtag && decoder(PUSH_STATE{}, ie))
 				{
@@ -146,7 +146,7 @@ struct seq_dec
 						med::decode(decoder, *field, deps...);
 					}
 				}
-				else if constexpr (has_condition_v<IE>) //conditional multi-field
+				else if constexpr (AHasCondition<IE>) //conditional multi-field
 				{
 					if (typename IE::condition{}(to))
 					{
@@ -182,7 +182,7 @@ struct seq_dec
 		}
 		else //single-instance field
 		{
-			if constexpr (is_optional_v<IE>)
+			if constexpr (AOptional<IE>)
 			{
 				if constexpr (not std::is_void_v<type>) //optional field with tag
 				{
@@ -216,12 +216,12 @@ struct seq_dec
 					CODEC_TRACE("O<%s> w/o TAG", name<IE>());
 					//discard tag if needed
 					using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;
-					if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_t>)
+					if constexpr (AOptional<PREV_IE> and not std::is_void_v<prev_tag_t>)
 					{
 						discard(decoder, vtag);
 					}
 
-					if constexpr (has_condition_v<IE>) //conditional field
+					if constexpr (AHasCondition<IE>) //conditional field
 					{
 						bool const was_set = typename IE::condition{}(to);
 						if (was_set || has_default_value_v<IE>)
@@ -259,7 +259,7 @@ struct seq_dec
 
 				//if switched from optional with tag then discard it since mandatory is read as whole
 				using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;
-				if constexpr (is_optional_v<PREV_IE> and not std::is_void_v<prev_tag_t>)
+				if constexpr (AOptional<PREV_IE> and not std::is_void_v<prev_tag_t>)
 				{
 					discard(decoder, vtag);
 				}
@@ -277,12 +277,12 @@ struct seq_enc
 	template <class PREV_IE, class IE, class TO, class ENCODER>
 	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			if constexpr (is_counter_v<IE>)
 			{
 				//optional multi-field w/ counter w/o tag
-				if constexpr (is_optional_v<IE>)
+				if constexpr (AOptional<IE>)
 				{
 					IE const& ie = to;
 					std::size_t const count = field_count(ie);
@@ -317,7 +317,7 @@ struct seq_enc
 		}
 		else //single-instance field
 		{
-			if constexpr (is_optional_v<IE>) //optional field
+			if constexpr (AOptional<IE>) //optional field
 			{
 				if constexpr (has_setter_type_v<IE>) //with setter
 				{
@@ -386,7 +386,7 @@ struct seq_enc
 				{
 					IE const& ie = to;
 					//CODEC_TRACE("%c{%s}", ie.is_set()?'+':'-', class_name<IE>());
-					if (detail::has_set_length<IE>::value || ie.is_set())
+					if (AHasSetLength<IE> || ie.is_set())
 					{
 						med::encode(encoder, ie);
 					}
@@ -430,4 +430,3 @@ struct sequence : container<IES...>
 };
 
 } //end: namespace med
-

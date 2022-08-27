@@ -10,14 +10,14 @@ struct u32 : med::value<uint32_t> {};
 
 struct len32 : med::value<uint8_t, med::padding<uint32_t>>
 {
-	static void value_to_length(std::size_t &v)
+	std::size_t get_length() const noexcept
 	{
-		v -= 1;
+		return get_encoded() - 1;
 	}
 
-	static void length_to_value(std::size_t &v)
+	void set_length(std::size_t v)
 	{
-		v += 1;
+		set_encoded(v + 1);
 	}
 };
 

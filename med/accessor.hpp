@@ -16,22 +16,22 @@ Distributed under the MIT License
 namespace med {
 
 //read-only access optional field returning a pointer or null if not set
-template <class FIELD, class IE>
-constexpr std::enable_if_t<!is_multi_field_v<IE> && is_optional_v<IE>, FIELD const*> get_field(IE const& ie)
+template <class FIELD, class IE> requires (!AMultiField<IE> && AOptional<IE>)
+FIELD const* get_field(IE const& ie)
 {
 	return ie.is_set() ? &ie : nullptr;
 }
 
 //read-only access mandatory field returning a reference
-template <class FIELD, class IE>
-constexpr std::enable_if_t<!is_multi_field_v<IE> && !is_optional_v<IE>, FIELD const&> get_field(IE const& ie)
+template <class FIELD, class IE> requires (!AMultiField<IE> && !AOptional<IE>)
+FIELD const& get_field(IE const& ie)
 {
 	return ie;
 }
 
 //read-only access of any multi-field
-template <class FIELD, class IE>
-constexpr std::enable_if_t<is_multi_field_v<IE>, IE const&> get_field(IE const& ie)
+template <class FIELD, AMultiField IE>
+constexpr IE const& get_field(IE const& ie)
 {
 	return ie;
 }
@@ -72,18 +72,18 @@ struct accessor
 {
 	explicit constexpr accessor(C& c) noexcept : m_that(c)  { }
 
-	template <class T, class = std::enable_if_t<!std::is_pointer_v<T>>>
+	template <class T> requires (!std::is_pointer_v<T>)
 	constexpr operator T& ()
 	{
 		return m_that.template ref<T>();
 	}
-	template <class T, class = std::enable_if_t<std::is_const_v<T>>>
+	template <class T> requires std::is_const_v<T>
 	constexpr operator T* () const
 	{
 		auto const* ptr = m_that.template get<std::remove_const_t<T>>();
 		return access<T>::as_optional(ptr);
 	}
-	template <class T, class = std::enable_if_t<std::is_pointer_v<T> && !std::is_const_v<T>>>
+	template <class T> requires (std::is_pointer_v<T> && !std::is_const_v<T>)
 	constexpr operator T* ()
 	{
 		static_assert(!std::is_pointer<T>(), "INVALID ACCESS OF MANDATORY BY POINTER");

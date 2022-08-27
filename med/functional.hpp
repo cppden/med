@@ -12,6 +12,8 @@ Distributed under the MIT License
 #include <utility>
 #include <type_traits>
 
+#include "concepts.hpp"
+
 namespace med {
 
 template <typename T> struct remove_cref : std::remove_reference<std::remove_const_t<T>> {};
@@ -43,11 +45,6 @@ template <typename T> struct is_condition<T,
 	std::enable_if_t<std::is_same_v<bool, decltype(std::declval<T>()(std::false_type{}))>>
 > : std::true_type {};
 template <class T> constexpr bool is_condition_v = is_condition<T>::value;
-
-
-template <class, class = void> struct has_condition : std::false_type {};
-template <class T> struct has_condition<T, std::void_t<typename T::condition>> : std::true_type {};
-template <class T> constexpr bool has_condition_v = has_condition<T>::value;
 
 
 template<class, class, class = void> struct is_setter : std::false_type {};

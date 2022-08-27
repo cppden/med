@@ -55,7 +55,7 @@ struct set_enc
 		IE const& ie = to;
 		constexpr bool explicit_meta = explicit_meta_in<mi, get_field_type_t<IE>>();
 
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			CODEC_TRACE("[%s]*%zu: %s", name<IE>(), ie.count(), class_name<mi>());
 			check_arity(encoder, ie);
@@ -89,7 +89,7 @@ struct set_enc
 					sl::ie_encode<mi, void>(encoder, ie);
 				}
 			}
-			else if constexpr (!is_optional_v<IE>)
+			else if constexpr (!AOptional<IE>)
 			{
 				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
 			}
@@ -119,7 +119,7 @@ struct set_dec
 		if constexpr (not tag_t::is_const) { decoder(POP_STATE{}); }
 
 		IE& ie = to;
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			CODEC_TRACE("[%s]*%zu", name<IE>(), ie.count());
 			if (ie.count() >= IE::max)
@@ -154,13 +154,13 @@ struct set_check
 	static constexpr void apply(TO const& to, DECODER& decoder)
 	{
 		IE const& ie = to;
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			check_arity(decoder, ie);
 		}
 		else //single-instance field
 		{
-			if (not (is_optional_v<IE> || ie.is_set()))
+			if (not (AOptional<IE> || ie.is_set()))
 			{
 				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
 			}
@@ -176,15 +176,15 @@ struct set_check
 namespace detail {
 
 
-template <class L, class = void> struct set_container;
-template <template <class...> class L, class HEADER, class... IEs>
-struct set_container<L<HEADER, IEs...>, std::enable_if_t<has_get_tag<HEADER>::value>> : container<IEs...>
+template <class L> struct set_container;
+template <template <class...> class L, AHasGetTag HEADER, class... IEs>
+struct set_container<L<HEADER, IEs...>> : container<IEs...>
 {
 	using header_type = HEADER;
 	static constexpr bool plain_header = false; //compound header e.g. a sequence
 };
 template <template <class...> class L, class IE1, class... IEs>
-struct set_container<L<IE1, IEs...>, std::enable_if_t<!has_get_tag<IE1>::value>> : container<IE1, IEs...>
+struct set_container<L<IE1, IEs...>> : container<IE1, IEs...>
 {
 	static constexpr bool plain_header = true; //plain header e.g. a tag
 };

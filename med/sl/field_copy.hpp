@@ -18,7 +18,7 @@ constexpr void field_copy(IE& to, IE const& from, ARGS&&... args)
 {
 	if (from.is_set())
 	{
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			to.clear();
 			for (auto const& rhs : from)

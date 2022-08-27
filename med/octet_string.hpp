@@ -21,7 +21,7 @@ namespace med {
 template <std::size_t MIN, std::size_t MAX>
 struct octets
 {
-	template <typename TO, typename FROM, class Enable = std::enable_if_t<sizeof(TO) == sizeof(FROM)>>
+	template <typename TO, typename FROM> requires (sizeof(TO) == sizeof(FROM))
 	static void copy(TO* out, FROM const* in, std::size_t size)
 	{
 		if constexpr (MIN != MAX) //varying string
@@ -186,12 +186,7 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 
 	bool set(std::size_t len, void const* data) { return set_encoded(len, data); }
 	bool set()                                  { return set_encoded(0, this); }
-	template <class ARR>
-	auto set(ARR const& s) -> std::enable_if_t<
-		std::is_integral_v<decltype(s.size())> && std::is_pointer_v<decltype(s.data())>, bool>
-	{
-		return this->set(s.size(), s.data());
-	}
+	bool set(ADataContainer auto const& s)      { return this->set(s.size(), s.data()); }
 	template <typename T, std::size_t N>
 	bool set(T const(&arr)[N])                  { return set(N * sizeof(T), arr); }
 

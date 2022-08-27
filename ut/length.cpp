@@ -211,14 +211,14 @@ struct response : med::sequence<
 
 struct ppp_len : med::value<uint16_t>
 {
-	static void value_to_length(std::size_t &v)
+	std::size_t get_length() const noexcept
 	{
-		v -= 4;
+		return get_encoded() - 4;
 	}
 
-	static void length_to_value(std::size_t &v)
+	void set_length(std::size_t v)
 	{
-		v += 4;
+		set_encoded(v + 4);
 	}
 };
 

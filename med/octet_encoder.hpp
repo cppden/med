@@ -64,7 +64,7 @@ struct octet_encoder : sl::octet_info
 
 	template <class IE> constexpr std::size_t operator() (GET_LENGTH, IE const& ie) const
 	{
-		if constexpr (is_multi_field_v<IE>)
+		if constexpr (AMultiField<IE>)
 		{
 			std::size_t len = 0;
 			for (auto& field : ie)
@@ -73,7 +73,7 @@ struct octet_encoder : sl::octet_info
 			}
 			return len;
 		}
-		else if constexpr (detail::has_size<IE>::value)
+		else if constexpr (AHasSize<IE>)
 		{
 			CODEC_TRACE("length(%s) = %zu", name<IE>(), std::size_t(ie.size()));
 			return ie.size();

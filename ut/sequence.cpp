@@ -549,7 +549,7 @@ TEST(decode, seq_fail)
 		, 0x12, 5, 't', 'e', 's', 't', 'e', 's', 't', 'e', 's', 't', 'e'
 	};
 	ctx.reset(bad_var_len_hi, sizeof(bad_var_len_hi));
-	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::invalid_value);
+	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::overflow);
 }
 
 TEST(decode, mseq_ok)
@@ -860,4 +860,3 @@ TEST(decode, alloc_fail)
 
 	ASSERT_THROW(decode(med::octet_decoder{ctx}, msg), med::out_of_memory);
 }
-

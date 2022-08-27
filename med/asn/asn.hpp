@@ -165,14 +165,11 @@ using object_identifier = object_identifier_t<CMAX, traits<tg_value::OBJECT_IDEN
 
 
 template <class, class = void> struct is_oid : std::false_type { };
-template <class T> struct is_oid<T, std::enable_if_t<
-		is_multi_field_v<T> and !has_meta_info_v<typename T::field_type>>> : std::true_type { };
+template <AMultiField T> struct is_oid<T, std::enable_if_t<!has_meta_info_v<typename T::field_type>>> : std::true_type { };
 template <class T> constexpr bool is_oid_v = is_oid<T>::value;
 
 template <class, class = void> struct is_seqof : std::false_type { };
-template <class T> struct is_seqof<T, std::enable_if_t<
-		is_multi_field_v<T> and has_meta_info_v<typename T::field_type>>> : std::true_type { };
+template <AMultiField T> struct is_seqof<T, std::enable_if_t<has_meta_info_v<typename T::field_type>>> : std::true_type { };
 template <class T> constexpr bool is_seqof_v = is_seqof<T>::value;
 
 } //end: namespace med::asn
-

@@ -103,16 +103,16 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 				{
 					if constexpr (IE::template has<length_t>())
 					{
-						CODEC_TRACE("LV=!? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
+						CODEC_TRACE("LV=!? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), AMultiField<IE>);
 					}
 					else
 					{
-						CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
+						CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), AMultiField<IE>);
 					}
 				}
 				else
 				{
-					CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), is_multi_field_v<IE>);
+					CODEC_TRACE("LV=? [%s] rest=%s multi=%d", name<IE>(), class_name<mi_rest>(), AMultiField<IE>);
 				}
 				auto len = sl::ie_length<EXPOSED, mi_rest>(ie, encoder);
 				using dependency_type = get_dependency_t<length_t>;

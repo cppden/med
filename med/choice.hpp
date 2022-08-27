@@ -249,7 +249,7 @@ struct selector
 template <class L> struct list_aligned_union;
 template <template <class...> class L, class... Ts> struct list_aligned_union<L<Ts...>> : std::aligned_union<0, Ts...> {};
 
-template <class HEADER, class = void>
+template <class HEADER>
 struct choice_header
 {
 	static constexpr bool plain_header = true; //plain header e.g. a tag
@@ -259,8 +259,8 @@ struct choice_header
 	constexpr auto& header() const          { return *this; }
 };
 
-template <class HEADER>
-struct choice_header<HEADER, std::enable_if_t<has_get_tag<HEADER>::value>>
+template <AHasGetTag HEADER>
+struct choice_header<HEADER>
 {
 	static constexpr bool plain_header = false; //compound header e.g. a sequence
 
@@ -281,7 +281,7 @@ class choice : public IE<CONTAINER>
 {
 public:
 	using ies_types = conditional_t<
-		detail::has_get_tag< meta::list_first_t<meta::typelist<IEs...>> >::value,
+		AHasGetTag< meta::list_first_t<meta::typelist<IEs...>> >,
 		meta::list_rest_t<meta::typelist<IEs...>>,
 		meta::typelist<IEs...>>;
 	using fields_types = meta::transform_t<ies_types, get_field_type>;
