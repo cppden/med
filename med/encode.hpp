@@ -51,7 +51,7 @@ constexpr void encode_len(ENCODER& encoder, std::size_t len)
 	}
 }
 
-template <class EXPOSED, class T, typename Enable = void>
+template <class EXPOSED, class T>
 struct container_encoder
 {
 	template <class ENCODER, class IE>
@@ -70,8 +70,8 @@ struct container_encoder
 };
 
 //special case for printer
-template <class EXPOSED, class T>
-struct container_encoder<EXPOSED, T, std::void_t<typename T::container_encoder>>
+template <class EXPOSED, class T> requires requires(T v) { typename T::container_encoder; }
+struct container_encoder<EXPOSED, T>
 {
 	template <class ENCODER, class IE>
 	static void encode(ENCODER& encoder, IE const& ie)
@@ -165,7 +165,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 template <class ENCODER, class IE>
 constexpr void encode(ENCODER&& encoder, IE const& ie)
 {
-	if constexpr (has_ie_type_v<IE>)
+	if constexpr (AHasIeType<IE>)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
 		CODEC_TRACE("mi=%s", class_name<mi>());

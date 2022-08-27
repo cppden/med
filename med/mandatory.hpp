@@ -21,8 +21,8 @@ template<
 	class FLD_LEN_NUM = void,
 	class FLD_NUM     = void,
 	class MIN_MAX     = min<1>,
-	class MAX_MIN     = max<1>,
-	typename Enable   = void >
+	class MAX_MIN     = max<1>
+>
 struct mandatory
 {
 	static_assert(std::is_void<TAG_FLD_LEN>(), "MALFORMED MANDATORY");
@@ -42,14 +42,13 @@ struct mandatory<
 };
 
 //M<FIELD, SETTER>
-template <AField FIELD, class SETTER>
+template <AField FIELD, class SETTER> requires ASetter<FIELD, SETTER>
 struct mandatory<
 	FIELD,
 	SETTER,
 	void,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_setter_v<FIELD, SETTER>>
+	max<1>
 > : field_t<FIELD>
 {
 	using setter_type = SETTER;
@@ -70,46 +69,43 @@ struct mandatory<
 };
 
 //M<FIELD, min<MIN>, max<MAX>, CNT_GETTER>
-template <AField FIELD, std::size_t MIN, std::size_t MAX, class COUNT_GETTER>
+template <AField FIELD, std::size_t MIN, std::size_t MAX, ACountGetter COUNTER>
 struct mandatory<
 	FIELD,
 	min<MIN>,
 	max<MAX>,
-	COUNT_GETTER,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNT_GETTER>>
+	COUNTER,
+	max<1>
 > : multi_field<FIELD, MIN, max<MAX>>
 {
-	using count_getter = COUNT_GETTER;
+	using count_getter = COUNTER;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
 //M<FIELD, min<MIN>, Pmax<MAX>, CNT_GETTER>
-template <AField FIELD, std::size_t MIN, std::size_t MAX, class COUNT_GETTER>
+template <AField FIELD, std::size_t MIN, std::size_t MAX, ACountGetter COUNTER>
 struct mandatory<
 	FIELD,
 	min<MIN>,
 	pmax<MAX>,
-	COUNT_GETTER,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNT_GETTER>>
+	COUNTER,
+	max<1>
 > : multi_field<FIELD, MIN, pmax<MAX>>
 {
-	using count_getter = COUNT_GETTER;
+	using count_getter = COUNTER;
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN");
 };
 
 //M<CNT, FIELD, min<MIN>, max<MAX>>
-template <class COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	COUNTER,
 	FIELD,
 	min<MIN>,
 	max<MAX>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, MIN, max<MAX>>, COUNTER
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -117,14 +113,13 @@ struct mandatory<
 };
 
 //M<CNT, FIELD, min<MIN>, Pmax<MAX>>
-template <class COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
 struct mandatory<
 	COUNTER,
 	FIELD,
 	min<MIN>,
 	pmax<MAX>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, MIN, pmax<MAX>>, COUNTER
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -185,59 +180,55 @@ struct mandatory<
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-//M<FIELD, max<MAX>, COUNT_GETTER>
-template <AField FIELD, std::size_t MAX, class COUNT_GETTER>
+//M<FIELD, max<MAX>, COUNTER>
+template <AField FIELD, std::size_t MAX, ACountGetter COUNTER>
 struct mandatory<
 	FIELD,
 	max<MAX>,
-	COUNT_GETTER,
+	COUNTER,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNT_GETTER>>
+	max<1>
 > : multi_field<FIELD, 1, max<MAX>>
 {
-	using count_getter = COUNT_GETTER;
+	using count_getter = COUNTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-//M<FIELD, Pmax<MAX>, COUNT_GETTER>
-template <AField FIELD, std::size_t MAX, class COUNT_GETTER>
+//M<FIELD, Pmax<MAX>, COUNTER>
+template <AField FIELD, std::size_t MAX, ACountGetter COUNTER>
 struct mandatory<
 	FIELD,
 	pmax<MAX>,
-	COUNT_GETTER,
+	COUNTER,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNT_GETTER>>
+	max<1>
 > : multi_field<FIELD, 1, pmax<MAX>>
 {
-	using count_getter = COUNT_GETTER;
+	using count_getter = COUNTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
 //M<CNT, FIELD, max<MAX>>
-template <class COUNTER, AField FIELD, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MAX>
 struct mandatory<
 	COUNTER,
 	FIELD,
 	max<MAX>,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, 1, max<MAX>>, COUNTER
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
 //M<CNT, FIELD, Pmax<MAX>>
-template <class COUNTER, AField FIELD, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MAX>
 struct mandatory<
 	COUNTER,
 	FIELD,
 	pmax<MAX>,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, 1, pmax<MAX>>, COUNTER
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");

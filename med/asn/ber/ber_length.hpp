@@ -19,8 +19,8 @@ constexpr std::size_t bits_in_byte = 8;
 
 namespace detail {
 
-template <typename T>
-constexpr auto calc_least_bits(T x) -> std::enable_if_t<std::is_integral_v<T>, uint8_t>
+template <std::integral T>
+constexpr uint8_t calc_least_bits(T x)
 {
 	if constexpr (std::is_signed<T>())
 	{
@@ -98,4 +98,3 @@ constexpr uint8_t bytes(INT x)
 } //end: namespace length
 
 } //end: namespace med::asn::ber
-

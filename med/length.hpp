@@ -36,10 +36,13 @@ concept AHasGetLength = requires(T const& v)
 	{ v.get_length() } -> std::integral;
 };
 
-template <class, class Enable = void>
+template <class>
 struct get_dependency { using type = void; };
-template <class T>
-struct get_dependency<T, std::void_t<typename T::dependency_type>> { using type = typename T::dependency_type; };
+template <class T> requires requires(T v){ typename T::dependency_type; }
+struct get_dependency<T>
+{
+	using type = typename T::dependency_type;
+};
 
 } //end: namespace detail
 

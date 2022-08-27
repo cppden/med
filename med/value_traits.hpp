@@ -56,38 +56,38 @@ struct octet_traits : EXT_TRAITS...
 //infer value_type to hold given bits
 template <std::size_t BITS, typename Enabler = void> struct bits_infer;
 
-template <std::size_t BITS>
-struct bits_infer<BITS, std::enable_if_t<BITS == 0>>
+template <std::size_t BITS> requires (BITS == 0)
+struct bits_infer<BITS>
 {
 	using type = void;
 };
 
-template <std::size_t BITS>
-struct bits_infer<BITS, std::enable_if_t<(BITS > 0 && BITS <= 8)>>
+template <std::size_t BITS> requires (BITS > 0 && BITS <= 8)
+struct bits_infer<BITS>
 {
 	using type = uint8_t;
 };
 
-template <std::size_t BITS>
-struct bits_infer<BITS, std::enable_if_t<(BITS > 8 && BITS <= 16)>>
+template <std::size_t BITS> requires (BITS > 8 && BITS <= 16)
+struct bits_infer<BITS>
 {
 	using type = uint16_t;
 };
 
-template <std::size_t BITS>
-struct bits_infer<BITS, std::enable_if_t<(BITS > 16 && BITS <= 32)>>
+template <std::size_t BITS> requires (BITS > 16 && BITS <= 32)
+struct bits_infer<BITS>
 {
 	using type = uint32_t;
 };
 
-template <std::size_t BITS>
-struct bits_infer<BITS, std::enable_if_t<(BITS > 32 && BITS <= 64)>>
+template <std::size_t BITS> requires (BITS > 32 && BITS <= 64)
+struct bits_infer<BITS>
 {
 	using type = uint64_t;
 };
 
-template <std::size_t BITS>
-struct bits_infer<BITS, std::enable_if_t<(BITS > 64)>>
+template <std::size_t BITS> requires (BITS > 64)
+struct bits_infer<BITS>
 {
 	using type = std::array<uint8_t, bits_to_bytes(BITS)>;
 };
@@ -107,11 +107,5 @@ struct value_traits<bits<BITS>, EXT_TRAITS...> : detail::bit_traits<typename det
 
 template <std::size_t BYTES, class... EXT_TRAITS>
 struct value_traits<bytes<BYTES>, EXT_TRAITS...> : detail::bit_traits<typename detail::bits_infer<BYTES*8>::type, BYTES*8, EXT_TRAITS...> {};
-
-template <class, class Enable = void>
-struct is_value_traits : std::false_type {};
-
-template <class T>
-struct is_value_traits<T, std::enable_if_t<(T::bits >= 0), std::void_t<typename T::value_type>>> : std::true_type {};
 
 }	//end:	namespace med

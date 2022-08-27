@@ -188,26 +188,6 @@ struct value_selector<T,
 	using type = def_integer<T>;
 };
 
-
-template <class T, class Enable, class... EXT_TRAITS>
-struct value;
-
-template <class T>
-struct value<T, std::enable_if_t<is_value_traits<T>::value>>
-		: value_selector<T>::type {};
-
-template<class T, class... EXT_TRAITS>
-struct value<T, std::enable_if_t<std::is_arithmetic_v<T>>, EXT_TRAITS...>
-		: numeric_value<value_traits<T, EXT_TRAITS...>> {};
-
-template<std::size_t N, class... EXT_TRAITS>
-struct value<bytes<N>, void, EXT_TRAITS...>
-		: numeric_value<value_traits<bytes<N>, EXT_TRAITS...>> {};
-
-template<std::size_t N, class... EXT_TRAITS>
-struct value<bits<N>, void, EXT_TRAITS...>
-		: numeric_value<value_traits<bits<N>, EXT_TRAITS...>> {};
-
 } //end: namespace detail
 
 template <class VALUE>
@@ -217,6 +197,21 @@ using as_writable_t = detail::numeric_value<typename VALUE::traits>;
  * generic value - a facade for numeric_values above
  */
 template <class T, class... EXT_TRAITS>
-struct value : detail::value<T, void, EXT_TRAITS...> {};
+struct value;
+
+template <AValueTraits T>
+struct value<T> : detail::value_selector<T>::type {};
+
+template<Arithmetic T, class... EXT_TRAITS>
+struct value<T, EXT_TRAITS...>
+		: detail::numeric_value<value_traits<T, EXT_TRAITS...>> {};
+
+template<std::size_t N, class... EXT_TRAITS>
+struct value<bytes<N>, EXT_TRAITS...>
+		: detail::numeric_value<value_traits<bytes<N>, EXT_TRAITS...>> {};
+
+template<std::size_t N, class... EXT_TRAITS>
+struct value<bits<N>, EXT_TRAITS...>
+		: detail::numeric_value<value_traits<bits<N>, EXT_TRAITS...>> {};
 
 } //namespace med

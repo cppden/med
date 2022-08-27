@@ -40,23 +40,20 @@ const char* class_name()
 	return psz;
 }
 
-template <class, class Enable = void>
-struct has_name : std::false_type { };
-
 template <class T>
-struct has_name<T, std::void_t<decltype(T::name())>> : std::true_type { };
-
-template <class T>
-constexpr bool has_name_v = has_name<T>::value;
+concept AHasName = requires(T v)
+{
+	{ T::name() } -> std::same_as<char const*>;
+};
 
 template <class IE, class...>
 constexpr char const* name()
 {
-	if constexpr (has_name_v<IE>)
+	if constexpr (AHasName<IE>)
 	{
 		return IE::name();
 	}
-	else if constexpr (has_field_type_v<IE>)
+	else if constexpr (AHasFieldType<IE>)
 	{
 		//gradually peel-off indirections looking for ::name() in each step
 		return name<typename IE::field_type>();

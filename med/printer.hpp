@@ -72,7 +72,7 @@ public:
 		template <class IE>
 		void operator()(printer& me, IE const& ie)
 		{
-			if constexpr (has_name_v<IE>)
+			if constexpr (AHasName<IE>)
 			{
 				return print_named(me, ie, typename has_print<IE>::type{});
 			}
@@ -121,7 +121,7 @@ public:
 	template <class IE, class IE_TYPE>
 	constexpr void operator() (IE const& ie, IE_TYPE const&)
 	{
-		if constexpr (has_name_v<IE>)
+		if constexpr (AHasName<IE>)
 		{
 			print_named(ie, typename has_print<IE>::type{});
 		}

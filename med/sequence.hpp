@@ -80,7 +80,7 @@ struct seq_dec
 			if constexpr (not std::is_void_v<type>) //multi-field with tag
 			{
 				//multi-instance optional or mandatory field w/ tag w/o counter
-				static_assert(!has_count_getter_v<IE> && !is_counter_v<IE> && !AHasCondition<IE>, "TO IMPLEMENT!");
+				static_assert(!AHasCountGetter<IE> && !ACounter<IE> && !AHasCondition<IE>, "TO IMPLEMENT!");
 
 				if (!vtag && decoder(PUSH_STATE{}, ie))
 				{
@@ -121,22 +121,23 @@ struct seq_dec
 					discard(decoder, vtag);
 				}
 
-				if constexpr (has_count_getter_v<IE>) //multi-field w/ count-getter
+				//multi-field w/ count-getter or counter
+				if constexpr (AHasCountGetter<IE> || ACounter<IE>)
 				{
-					std::size_t count = typename IE::count_getter{}(to);
-					CODEC_TRACE("[%s]*%zu", name<IE>(), count);
-					check_arity(decoder, ie, count);
-					while (count--)
+					auto count = [&]
 					{
-						auto* field = ie.push_back(decoder);
-						med::decode(decoder, *field, deps...);
-					}
-				}
-				else if constexpr (is_counter_v<IE>) //multi-field w/ counter
-				{
-					typename IE::counter_type counter_ie;
-					med::decode(decoder, counter_ie, deps...);
-					auto count = counter_ie.get_encoded();
+						if constexpr(AHasCountGetter<IE>)
+						{
+							return typename IE::count_getter{}(to);
+						}
+						else
+						{
+							typename IE::counter_type counter_ie;
+							med::decode(decoder, counter_ie, deps...);
+							return counter_ie.get_encoded();
+						}
+					}();
+
 					CODEC_TRACE("[%s] CNT=%zu", name<IE>(), std::size_t(count));
 					check_arity(decoder, ie, count);
 					while (count--)
@@ -224,11 +225,11 @@ struct seq_dec
 					if constexpr (AHasCondition<IE>) //conditional field
 					{
 						bool const was_set = typename IE::condition{}(to);
-						if (was_set || has_default_value_v<IE>)
+						if (was_set || AHasDefaultValue<IE>)
 						{
 							CODEC_TRACE("C[%s]", name<IE>());
 							med::decode(decoder, ie, deps...);
-							if constexpr (has_default_value_v<IE>)
+							if constexpr (AHasDefaultValue<IE>)
 							{
 								if (not was_set) { ie.clear(); } //discard since it's a default
 							}
@@ -279,7 +280,7 @@ struct seq_enc
 	{
 		if constexpr (AMultiField<IE>)
 		{
-			if constexpr (is_counter_v<IE>)
+			if constexpr (ACounter<IE>)
 			{
 				//optional multi-field w/ counter w/o tag
 				if constexpr (AOptional<IE>)
@@ -319,7 +320,7 @@ struct seq_enc
 		{
 			if constexpr (AOptional<IE>) //optional field
 			{
-				if constexpr (has_setter_type_v<IE>) //with setter
+				if constexpr (AHasSetterType<IE>) //with setter
 				{
 					CODEC_TRACE("[%s] with setter", name<IE>());
 					IE ie;
@@ -347,7 +348,7 @@ struct seq_enc
 				{
 					IE const& ie = to;
 					CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
-					if (ie.is_set() || has_default_value_v<IE>)
+					if (ie.is_set() || AHasDefaultValue<IE>)
 					{
 						med::encode(encoder, ie);
 					}
@@ -355,7 +356,7 @@ struct seq_enc
 			}
 			else //mandatory field
 			{
-				if constexpr (has_setter_type_v<IE>) //with setter
+				if constexpr (AHasSetterType<IE>) //with setter
 				{
 					CODEC_TRACE("{%s} with setter", name<IE>());
 					IE ie;

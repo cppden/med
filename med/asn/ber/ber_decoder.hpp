@@ -20,14 +20,15 @@ Distributed under the MIT License
 namespace med::asn::ber {
 
 //http://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
-template <typename T, uint8_t B>
-constexpr auto signextend(T x) -> std::enable_if_t<std::is_signed_v<T>, T>
+template <std::signed_integral T, uint8_t B>
+constexpr T signextend(T x)
 {
 	struct {T x:B;} s {};
 	return s.x = x;
 }
-template <typename T, uint8_t B>
-constexpr auto signextend(T x) -> std::enable_if_t<std::is_unsigned_v<T>, T>
+
+template <std::unsigned_integral T, uint8_t B>
+constexpr T signextend(T x)
 {
 	return x;
 }

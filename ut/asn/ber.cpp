@@ -270,9 +270,8 @@ TEST(asn_ber, tag)
 	static_assert(tv32bit::value == 0b00011111'10001111'11111111'11111111'11111111'01111111);
 }
 
-template <class IE>
-auto encoded(typename IE::value_type const& val)
-	-> std::enable_if_t<std::is_arithmetic_v<typename IE::value_type>, char const*>
+template <class IE> requires med::Arithmetic<typename IE::value_type>
+char const* encoded(typename IE::value_type const& val)
 {
 	uint8_t enc_buf[128] = {};
 	med::encoder_context<> ectx{ enc_buf };
@@ -917,4 +916,3 @@ TEST(asn_ber, relative_oid)
 //8.24 Encoding for values of the unrestricted character string type
 //8.25 Encoding for values of the useful types
 //8.26 Encoding for values of the TIME type and the useful time types
-

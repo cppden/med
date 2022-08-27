@@ -22,8 +22,8 @@ template<
 	class FLD_LEN = void,
 	class FLD_NUM = void,
 	class MIN_MAX = min<1>,
-	class MAX_MIN = max<1>,
-	typename Enable = void >
+	class MAX_MIN = max<1>
+>
 struct optional
 {
 	static_assert(std::is_void<TAG_FLD>(), "MALFORMED OPTIONAL");
@@ -69,28 +69,26 @@ struct optional<
 #if 1 ///<<<--- Cond-V
 
 //single-instance conditional field
-template <AField FIELD, class CONDITION>
+template <AField FIELD, ACondition CONDITION>
 struct optional<
 	FIELD,
 	CONDITION,
 	void,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_condition_v<CONDITION>>
+	max<1>
 > : field_t<FIELD>, optional_t
 {
 	using condition = CONDITION;
 };
 
 //single-instance conditional field w/ setter
-template <AField FIELD, class SETTER, class CONDITION>
+template <AField FIELD, class SETTER, ACondition CONDITION> requires ASetter<FIELD, SETTER>
 struct optional<
 	FIELD,
 	SETTER,
 	CONDITION,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_setter_v<FIELD, SETTER> && is_condition_v<CONDITION>>
+	max<1>
 > : field_t<FIELD>, optional_t
 {
 	using setter_type = SETTER;
@@ -98,28 +96,26 @@ struct optional<
 };
 
 //multi-instance conditional field
-template <AField FIELD, std::size_t MAX, class CONDITION>
+template <AField FIELD, std::size_t MAX, ACondition CONDITION>
 struct optional<
 	FIELD,
 	max<MAX>,
 	CONDITION,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_condition_v<CONDITION>>
+	max<1>
 > : multi_field<FIELD, 1, max<MAX>>, optional_t
 {
 	using condition = CONDITION;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <AField FIELD, std::size_t MAX, class CONDITION>
+template <AField FIELD, std::size_t MAX, ACondition CONDITION>
 struct optional<
 	FIELD,
 	pmax<MAX>,
 	CONDITION,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_condition_v<CONDITION>>
+	max<1>
 > : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	using condition = CONDITION;
@@ -127,28 +123,26 @@ struct optional<
 };
 
 //multi-instance conditional field
-template <AField FIELD, class CONDITION, std::size_t MAX>
+template <AField FIELD, ACondition CONDITION, std::size_t MAX>
 struct optional<
 	FIELD,
 	CONDITION,
 	max<MAX>,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_condition_v<CONDITION>>
+	max<1>
 > : multi_field<FIELD, 1, max<MAX>>, optional_t
 {
 	using condition = CONDITION;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <AField FIELD, class CONDITION, std::size_t MAX>
+template <AField FIELD, ACondition CONDITION, std::size_t MAX>
 struct optional<
 	FIELD,
 	CONDITION,
 	pmax<MAX>,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_condition_v<CONDITION>>
+	max<1>
 > : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	using condition = CONDITION;
@@ -159,55 +153,51 @@ struct optional<
 
 #if 1 ///<<<--- CV
 //multi-instance field w/ counter
-template <class COUNTER, AField FIELD, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MAX>
 struct optional<
 	COUNTER,
 	FIELD,
 	max<MAX>,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, 1, max<MAX>>, COUNTER, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <class COUNTER, AField FIELD, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MAX>
 struct optional<
 	COUNTER,
 	FIELD,
 	pmax<MAX>,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, 1, pmax<MAX>>, COUNTER, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
 //multi-instance field w/ count-getter
-template <AField FIELD, std::size_t MAX, class COUNTER>
+template <AField FIELD, std::size_t MAX, ACountGetter COUNTER>
 struct optional<
 	FIELD,
 	max<MAX>,
 	COUNTER,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, 1, max<MAX>>, optional_t
 {
 	using count_getter = COUNTER;
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
 
-template <AField FIELD, std::size_t MAX, class COUNTER>
+template <AField FIELD, std::size_t MAX, ACountGetter COUNTER>
 struct optional<
 	FIELD,
 	pmax<MAX>,
 	COUNTER,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, 1, pmax<MAX>>, optional_t
 {
 	using count_getter = COUNTER;
@@ -215,14 +205,13 @@ struct optional<
 };
 
 //multi-instance field w/ count-getter
-template <AField FIELD, std::size_t MIN, std::size_t MAX, class COUNTER>
+template <AField FIELD, std::size_t MIN, std::size_t MAX, ACountGetter COUNTER>
 struct optional<
 	FIELD,
 	min<MIN>,
 	max<MAX>,
 	COUNTER,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, MIN, max<MAX>>, optional_t
 {
 	using count_getter = COUNTER;
@@ -230,14 +219,13 @@ struct optional<
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
 
-template <AField FIELD, std::size_t MIN, std::size_t MAX, class COUNTER>
+template <AField FIELD, std::size_t MIN, std::size_t MAX, ACountGetter COUNTER>
 struct optional<
 	FIELD,
 	min<MIN>,
 	pmax<MAX>,
 	COUNTER,
-	max<1>,
-	std::enable_if_t<is_count_getter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, MIN, pmax<MAX>>, optional_t
 {
 	using count_getter = COUNTER;
@@ -246,28 +234,26 @@ struct optional<
 };
 
 //multi-instance field w/ counter
-template <class COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
 struct optional<
 	COUNTER,
 	FIELD,
 	min<MIN>,
 	max<MAX>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, MIN, max<MAX>>, COUNTER, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
 };
 
-template <class COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
+template <ACounter COUNTER, AField FIELD, std::size_t MIN, std::size_t MAX>
 struct optional<
 	COUNTER,
 	FIELD,
 	min<MIN>,
 	pmax<MAX>,
-	max<1>,
-	std::enable_if_t<is_counter_v<COUNTER>>
+	max<1>
 > : multi_field<FIELD, MIN, pmax<MAX>>, COUNTER, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
@@ -457,14 +443,13 @@ struct optional<
 };
 
 //optional field as a part of compound
-template <ALength LEN, AField FIELD, class CONDITION>
+template <ALength LEN, AField FIELD, ACondition CONDITION>
 struct optional<
 	LEN,
 	FIELD,
 	CONDITION,
 	min<1>,
-	max<1>,
-	std::enable_if_t<is_condition_v<CONDITION>>
+	max<1>
 > : field_t<FIELD, mi<mik::LEN, typename LEN::length_type>>, optional_t
 {
 	using condition = CONDITION;

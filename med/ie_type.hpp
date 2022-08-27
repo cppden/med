@@ -57,7 +57,7 @@ constexpr bool is_empty_v = std::is_same_v<IE_NULL, typename T::ie_type>;
 //read during decode w/o changing buffer state
 //skipped during encode and length calculation
 struct peek_t {};
-template <class T> constexpr bool is_peek_v = std::is_base_of<peek_t, T>::value;
+template <class T> constexpr bool is_peek_v = std::is_base_of_v<peek_t, T>;
 
 //check if type used in meta-information is also used inside container
 //this means we shouldn't encode this meta-data implicitly

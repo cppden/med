@@ -218,7 +218,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 template <class DECODER, class IE, class... DEPS>
 constexpr void decode(DECODER&& decoder, IE& ie, DEPS&... deps)
 {
-	if constexpr (has_ie_type_v<IE>)
+	if constexpr (AHasIeType<IE>)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		sl::ie_decode<mi, void>(decoder, ie, deps...);

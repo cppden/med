@@ -13,6 +13,7 @@ Distributed under the MIT License
 #include "bit_string.hpp"
 #include "sequence.hpp"
 #include "set.hpp"
+#include "concepts.hpp"
 
 namespace med::asn {
 
@@ -164,12 +165,14 @@ template <class CMAX = inf>
 using object_identifier = object_identifier_t<CMAX, traits<tg_value::OBJECT_IDENTIFIER>>;
 
 
-template <class, class = void> struct is_oid : std::false_type { };
-template <AMultiField T> struct is_oid<T, std::enable_if_t<!has_meta_info_v<typename T::field_type>>> : std::true_type { };
+template <class T> struct is_oid : std::false_type { };
+template <AMultiField T> requires (!AHasMetaInfo<typename T::field_type>)
+struct is_oid<T> : std::true_type { };
 template <class T> constexpr bool is_oid_v = is_oid<T>::value;
 
-template <class, class = void> struct is_seqof : std::false_type { };
-template <AMultiField T> struct is_seqof<T, std::enable_if_t<has_meta_info_v<typename T::field_type>>> : std::true_type { };
+template <class T> struct is_seqof : std::false_type { };
+template <AMultiField T>  requires AHasMetaInfo<typename T::field_type>
+struct is_seqof<T> : std::true_type { };
 template <class T> constexpr bool is_seqof_v = is_seqof<T>::value;
 
 } //end: namespace med::asn

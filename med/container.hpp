@@ -80,7 +80,7 @@ struct cont_len
 		else
 		{
 			IE const& ie = seq;
-			std::size_t const len = has_setter_type_v<IE> || ie.is_set()
+			std::size_t const len = AHasSetterType<IE> || ie.is_set()
 					? sl::ie_length<void, mi>(ie, encoder)
 					: 0;
 			CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
@@ -100,14 +100,14 @@ struct cont_is
 	static constexpr bool apply(SEQ const& seq)
 	{
 		//optional or mandatory field w/ setter => can be set implicitly
-		if constexpr (AOptional<IE> || has_setter_type_v<IE>)
+		if constexpr (AOptional<IE> || AHasSetterType<IE>)
 		{
 			//CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
 			return static_cast<IE const&>(seq).is_set();
 		}
 		else //mandatory field w/o setter => s.b. set explicitly
 		{
-			if constexpr (is_predefined_v<IE>) //don't account predefined IEs like init/const/def
+			if constexpr (APredefined<IE>) //don't account predefined IEs like init/const/def
 			{
 				return false;
 			}
@@ -168,7 +168,7 @@ public:
 	{
 		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
-		using IE = remove_cref_t<decltype(ie)>;
+		using IE = std::remove_cvref_t<decltype(ie)>;
 		if constexpr (AMultiField<IE>)
 		{
 			return static_cast<IE&>(ie);

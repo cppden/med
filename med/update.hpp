@@ -17,10 +17,9 @@ Distributed under the MIT License
 
 namespace med {
 
-template <class FUNC, class IE>
+template <class FUNC, AHasIeType IE>
 constexpr void update(FUNC&& func, IE const& ie)
 {
-	static_assert(has_ie_type<IE>(), "IE IS EXPECTED");
 	static_assert(std::is_base_of<with_snapshot, IE>(), "IE WITH med::with_snapshot IS EXPECTED");
 	CODEC_TRACE("update %s", name<IE>());
 	func(SET_STATE{}, ie);

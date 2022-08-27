@@ -67,23 +67,23 @@ struct pad_traits
 } //end: namespace detail
 
 
-template <class T, class D = detail::def_value, class O = detail::def_value, class F = detail::def_value, class Enable = void>
+template <class T, class D = detail::def_value, class O = detail::def_value, class F = detail::def_value>
 struct padding;
 
-template <std::size_t BITS, class D, class O, class F>
-struct padding<bits<BITS>, D, O, F, std::enable_if_t<(BITS > 0)>>
+template <std::size_t BITS, class D, class O, class F> requires (BITS > 0)
+struct padding<bits<BITS>, D, O, F>
 {
 	using padding_traits = detail::pad_traits<BITS, D, O, F>;
 };
 
-template <std::size_t BYTES, class D, class O, class F>
-struct padding<bytes<BYTES>, D, O, F, std::enable_if_t<(BYTES > 0)>>
+template <std::size_t BYTES, class D, class O, class F> requires (BYTES > 0)
+struct padding<bytes<BYTES>, D, O, F>
 {
 	using padding_traits = detail::pad_traits<BYTES*8, D, O, F>;
 };
 
-template <class T, class D, class O, class F>
-struct padding<T, D, O, F, std::enable_if_t<std::is_integral_v<T>>>
+template <std::integral T, class D, class O, class F>
+struct padding<T, D, O, F>
 {
 	using padding_traits = detail::pad_traits<sizeof(T)*8, D, O, F>;
 };
