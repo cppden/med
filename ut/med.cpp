@@ -7,7 +7,7 @@ static_assert (med::AAllocator<med::null_allocator>);
 
 TEST(name, tag)
 {
-	PROTO proto;
+	//PROTO proto;
 	med::encoder_context<> ctx{nullptr, 0};
 	med::octet_encoder enc{ctx};
 
