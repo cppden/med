@@ -3,7 +3,7 @@
 
 #include "update.hpp"
 
-static_assert (med::is_allocator_v<med::null_allocator>);
+static_assert (med::AAllocator<med::null_allocator>);
 
 TEST(name, tag)
 {
@@ -260,8 +260,7 @@ TEST(field, constexpr_empty)
 	constexpr uint8_t buffer[16] = {};
 	//constexpr med::buffer<uint8_t*> bb;
 
-	constexpr FLD_CHO field;
-	field.ref<NO_THING>();
+	constexpr FLD_CHO field{???NO_THING};
 
 	constexpr med::encoder_context<> ctx{ buffer };
 	encode(med::octet_encoder{ctx}, field);
@@ -277,55 +276,25 @@ TEST(field, constexpr_empty)
 #endif
 
 #if 1
-namespace init {
-
-struct MSG1 : med::sequence<
-	M< med::value<med::init<0,uint8_t>> >, //spare
-	M< FLD_UC >
->{};
-
-struct MSG2 : med::sequence<
-	M< FLD_UC >
->{};
-
-struct PROTO : med::sequence<
-	O< T<1>, L, MSG1>,
-	O< T<2>, L, MSG2>
->{};
-
-} //end: namespace init
-
 TEST(field, init)
 {
-	using namespace init;
+	struct MSG : med::sequence<
+		M< med::value<med::init<0,uint8_t>> >, //spare
+		M< FLD_UC >
+	>{};
 
-	auto dec = [](auto& ctx)
-	{
-		init::PROTO msg;
-		med::decoder_context<> dctx;
-		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
-		decode(med::octet_decoder{dctx}, msg);
-		FLD_UC const* v = nullptr;
-		if (auto* p = msg.get<MSG1>()) { v = &p->get<FLD_UC>(); }
-		else if (auto* p = msg.get<MSG2>()) { v = &p->get<FLD_UC>(); }
-		ASSERT_NE(nullptr, v);
-		EXPECT_EQ(7, v->get());
-	};
+	struct PROTO : med::sequence<
+		O< T<1>, L, MSG>
+	>{};
 
 	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };
 
-	init::PROTO msg;
-	msg.ref<MSG1>().ref<FLD_UC>().set(7);
+	PROTO msg;
+	msg.ref<MSG>().ref<FLD_UC>().set(7);
 	encode(med::octet_encoder{ctx}, msg);
 	EXPECT_STRCASEEQ("01 02 00 07 ", as_string(ctx.buffer()));
-	dec(ctx);
-
-	msg.clear(); ctx.reset();
-	msg.ref<MSG2>().ref<FLD_UC>().set(7);
-	encode(med::octet_encoder{ctx}, msg);
-	EXPECT_STRCASEEQ("02 01 07 ", as_string(ctx.buffer()));
-	dec(ctx);
+	check_decode(msg, ctx.buffer());
 }
 #endif
 

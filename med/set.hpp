@@ -116,7 +116,7 @@ struct set_dec
 		using mi = meta::produce_info_t<DECODER, IE>;
 		//pop back the tag we've read as we have non-fixed tag inside
 		using tag_t = typename meta::list_first_t<mi>::info_type;
-		if constexpr (not tag_t::is_const) { decoder(POP_STATE{}); }
+		if constexpr (!APredefinedValue<tag_t>) { decoder(POP_STATE{}); }
 
 		IE& ie = to;
 		if constexpr (AMultiField<IE>)

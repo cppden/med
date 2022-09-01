@@ -62,8 +62,6 @@ TEST(value, fixed)
 	using tt = med::value<med::fixed<1, uint8_t>>;
 	tt v;
 	static_assert(std::is_same_v<uint8_t, tt::value_type>);
-	static_assert(tt::is_const);
-	static_assert(!med::as_writable_t<tt>::is_const);
 	EXPECT_TRUE(v.is_set());
 	EXPECT_EQ(1, v.get());
 	EXPECT_TRUE(v.set_encoded(1));
@@ -76,29 +74,17 @@ TEST(value, init)
 	using tt = med::value<med::init<1, uint8_t>>;
 	tt v;
 	static_assert(std::is_same_v<uint8_t, tt::value_type>);
-	static_assert(tt::is_const);
 	EXPECT_TRUE(v.is_set());
 	EXPECT_EQ(1, v.get_encoded());
 	EXPECT_TRUE(v == tt{});
-}
-
-TEST(value, default)
-{
-	using tt = med::value<med::defaults<1, uint8_t>>;
-	tt v;
-	static_assert(std::is_same_v<uint8_t, tt::value_type>);
-	EXPECT_FALSE(v.is_set());
-	EXPECT_EQ(1, v.get_encoded());
 	v.set(2);
 	EXPECT_TRUE(v.is_set());
 	EXPECT_EQ(2, v.get_encoded());
 
 	tt v2;
 	EXPECT_FALSE(v == v2);
-	v2.set(v.get());
+	v.clear();
 	EXPECT_TRUE(v == v2);
-	v2.set(v.get() + 1);
-	EXPECT_FALSE(v == v2);
 }
 
 TEST(value, integer)

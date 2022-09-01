@@ -8,7 +8,7 @@ namespace gtpc {
 //     [   Msg Prio  ] [   Spare     ]
 // The relative priority of the GTP-C message may take any value between 0 and 15,
 // where 0 corresponds to the highest priority and 15 the lowest priority.
-struct message_priority : med::value<med::defaults<0, uint8_t>>
+struct message_priority : med::value<med::init<0, uint8_t>>
 {
 	static constexpr char const* name()         { return "Message-Priority"; }
 
@@ -46,7 +46,14 @@ struct version_flags : med::value<uint8_t>
 		void operator()(version_flags& flags, HDR const& hdr) const
 		{
 			auto bits = flags.get();
-			if (hdr.template as<message_priority>().is_set()) { bits |= MP; } else { bits &= ~MP; }
+			if (hdr.template as<message_priority>().is_default())
+			{
+				bits &= ~MP;
+			}
+			else
+			{
+				bits |= MP;
+			}
 			flags.set(bits);
 		}
 	};
@@ -98,64 +105,27 @@ struct header : med::sequence<
 
 TEST(opt_defs, unset)
 {
-	uint8_t const encoded[] = {
-		0x40,
-		1,2,3,
-		0
-	};
-	uint8_t buffer[1024] = {};
+	uint8_t buffer[1024];
 
-	{
-		gtpc::header header;
-		header.sn(0x010203);
+	gtpc::header header;
+	header.sn(0x010203);
 
-		med::encoder_context<> ctx{ buffer };
-		encode(med::octet_encoder{ctx}, header);
-		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-		ASSERT_TRUE(Matches(encoded, buffer));
-	}
-	{
-		std::memcpy(buffer, encoded, sizeof(encoded));
-		med::decoder_context<> ctx;
-		gtpc::header header;
-		ctx.reset(buffer, sizeof(encoded));
-		decode(med::octet_decoder{ctx}, header);
-
-		gtpc::message_priority const* prio = header.field();
-		EXPECT_EQ(nullptr, prio);
-		ASSERT_EQ(0x010203, header.sn());
-	}
+	med::encoder_context<> ctx{ buffer };
+	encode(med::octet_encoder{ctx}, header);
+	ASSERT_STREQ("40 01 02 03 00 ", as_string(ctx.buffer()));
+	check_decode(header, ctx.buffer());
 }
 
 TEST(opt_defs, set)
 {
-	uint8_t const encoded[] = {
-		0x44,
-		1,2,3,
-		0x70
-	};
 	uint8_t buffer[1024] = {};
 
-	{
-		gtpc::header header;
-		header.sn(0x010203);
-		header.ref<gtpc::message_priority>().set(7);
+	gtpc::header header;
+	header.sn(0x010203);
+	header.ref<gtpc::message_priority>().set(7);
 
-		med::encoder_context<> ctx{ buffer };
-		encode(med::octet_encoder{ctx}, header);
-		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-		ASSERT_TRUE(Matches(encoded, buffer));
-	}
-	{
-		std::memcpy(buffer, encoded, sizeof(encoded));
-		med::decoder_context<> ctx;
-		gtpc::header header;
-		ctx.reset(buffer, sizeof(encoded));
-		decode(med::octet_decoder{ctx}, header);
-		gtpc::message_priority const* prio = header.cfield();
-		ASSERT_NE(nullptr, prio);
-		EXPECT_EQ(7, prio->get());
-		ASSERT_EQ(0x010203, header.sn());
-	}
+	med::encoder_context<> ctx{ buffer };
+	encode(med::octet_encoder{ctx}, header);
+	ASSERT_STREQ("44 01 02 03 70 ", as_string(ctx.buffer()));
+	check_decode(header, ctx.buffer());
 }
-

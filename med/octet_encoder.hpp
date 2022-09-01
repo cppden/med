@@ -100,9 +100,9 @@ struct octet_encoder : sl::octet_info
 	template <class IE> void operator() (IE const& ie, IE_VALUE)
 	{
 		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
-		CODEC_TRACE("V=%#zxh %zu bits[%s]: %s", std::size_t(ie.get_encoded()), IE::traits::bits, name<IE>(), get_context().buffer().toString());
 		uint8_t* out = get_context().buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
 		put_bytes(ie, out);
+		CODEC_TRACE("V=%#zxh %zu bits[%s]: %s", std::size_t(ie.get_encoded()), IE::traits::bits, name<IE>(), get_context().buffer().toString());
 	}
 
 	//IE_OCTET_STRING

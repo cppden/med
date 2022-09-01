@@ -84,14 +84,17 @@ constexpr void invoke_dependency(DEPENDENCY const& ie, DEPS& deps)
 template <class EXPOSED, class DECODER, class IE, class... DEPS>
 constexpr void container_decoder(DECODER& decoder, IE& ie, DEPS&... deps)
 {
-	CODEC_TRACE("%s w/o length exposed=%s...:", name<IE>(), name<EXPOSED>());
 	if constexpr (std::is_void_v<EXPOSED>)
 	{
+		CODEC_TRACE(">>> %s", name<IE>());
 		ie.decode(decoder, deps...);
+		CODEC_TRACE("<<< %s", name<IE>());
 	}
 	else
 	{
+		CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXPOSED>());
 		ie.template decode<meta::list_rest_t<typename IE::ies_types>>(decoder, deps...);
+		CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXPOSED>());
 	}
 }
 

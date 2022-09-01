@@ -323,7 +323,7 @@ struct mandatory<
 	max<1>
 > : field_t<FIELD, mi<mik::LEN, typename LEN::length_type>>
 {
-	bool operator==(mandatory const& rhs) const noexcept { return static_cast<FIELD const*>(this)->operator==(rhs); }
+	//bool operator==(mandatory const& rhs) const noexcept { return static_cast<FIELD const*>(this)->operator==(rhs); }
 };
 
 //M<LEN, FIELD, arity<NUM>>

@@ -12,6 +12,8 @@ Distributed under the MIT License
 #include <type_traits>
 #include <concepts>
 
+#include "meta/typelist.hpp"
+
 namespace med {
 
 template<typename T>
@@ -118,21 +120,11 @@ concept AHasCount = requires(T const& v)
 	{ v.count() } -> std::unsigned_integral;
 };
 
-template<class, class, class = void> struct is_setter : std::false_type {};
-template<class IE, class FUNC>
-struct is_setter<IE, FUNC,
-	std::void_t<decltype(std::declval<FUNC>()(std::declval<IE&>(), std::false_type{}))>
-> : std::true_type {};
-
 template <class IE, class FUNC>
-concept ASetter = is_setter<IE, FUNC>::value;
-//TODO: how to make if work w/o enable_if?
-// template <class IE, class FUNC>
-// concept ASetter = requires(IE& ie, FUNC&& setter)
-// {
-// 	//requires AField<F>;
-// 	{ setter(ie, std::false_type{}) } -> std::same_as<void>;
-// };
+concept ASetter = AField<IE> && requires(IE& ie, FUNC setter)
+{
+	setter(ie, std::false_type{});
+};
 
 template <class T>
 concept AHasSetterType = requires(T v)
@@ -162,34 +154,18 @@ concept AValueTraits = requires (T v)
 	{ T::bits + 0 } -> std::unsigned_integral;
 };
 
+template <class L>
+concept AEmptyTypeList = meta::list_is_empty_v<L>;
+
+template <class T> concept APredefinedValue = (T::is_const == true);
+
 template <class T>
-concept AHasDefaultValue = requires(T v)
+concept AHasMetaInfo = !AEmptyTypeList<typename T::meta_info>;
+
+template <class T>
+concept AAllocator = requires (T v)
 {
-	{ T::traits::default_value + 0 } -> Arithmetic;
+	{ v.allocate(std::size_t{}, std::size_t{}) } -> std::convertible_to<void*>;
 };
-
-template <class T>
-constexpr T make_identity(T v) { return v; }
-
-template<typename T, typename = void> struct is_predefined : std::false_type {};
-template <class T> struct is_predefined<T, std::enable_if_t<T::is_const>> : std::true_type {};
-
-template <class T>
-concept APredefined = is_predefined<T>::value;
-//TODO: wtf?
-// template <class T>
-// concept APredefined = requires(T v)
-// {
-// 	{ make_identity(T::is_const) } -> std::same_as<bool>;
-// };
-
-//TODO: how?
-template <class, class Enable = void>
-struct has_meta_info : std::false_type { };
-template <class T>
-struct has_meta_info<T, std::enable_if_t<!meta::list_is_empty_v<typename T::meta_info>>> : std::true_type { };
-
-template <class T>
-concept AHasMetaInfo = has_meta_info<T>::value;
 
 }	//end: namespace med

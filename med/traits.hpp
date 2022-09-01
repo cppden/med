@@ -1,6 +1,6 @@
 #pragma once
 
-#include "meta/typelist.hpp"
+#include "concepts.hpp"
 
 namespace med {
 
@@ -41,13 +41,14 @@ struct get_meta_info<T>
 };
 template <class T> using get_meta_info_t = typename get_meta_info<T>::type;
 
-template <class L, class Enable = void>
+template <class L>
 struct get_meta_tag
 {
 	using type = void;
 };
-template <class L>
-struct get_meta_tag<L, std::enable_if_t<!meta::list_is_empty_v<L>>>
+
+template <class L> requires (!AEmptyTypeList<L>)
+struct get_meta_tag<L>
 {
 	using type = conditional_t<meta::list_first_t<L>::kind == mik::TAG, typename meta::list_first_t<L>::info_type, void>;
 };

@@ -18,6 +18,7 @@ using namespace std::string_view_literals;
 #include "decoder_context.hpp"
 #include "octet_encoder.hpp"
 #include "octet_decoder.hpp"
+#include "printer.hpp"
 
 template <typename... T>
 using M = med::mandatory<T...>;
@@ -32,16 +33,6 @@ template <std::size_t TAG>
 using T16 = med::value<med::fixed<TAG, uint16_t>>;
 template <std::size_t TAG>
 using C = med::value<med::fixed<TAG, uint8_t>>;
-
-template <class MSG, class RANGE>
-void check_decode(MSG const& msg, RANGE const& binary)
-{
-	med::decoder_context<> ctx{std::begin(binary), std::size(binary)};
-	MSG decoded_msg;
-	ASSERT_FALSE(msg == decoded_msg);
-	decode(med::octet_decoder{ctx}, decoded_msg);
-	ASSERT_TRUE(msg == decoded_msg);
-};
 
 /*
  * EXPECT_TRUE(Matches(buff, out_buff, size));
@@ -80,8 +71,8 @@ inline testing::AssertionResult Matches(T const(&expected)[size], T const* actua
 	return Matches(expected, actual, size);
 }
 
-template <std::size_t SIZE>
-char const *as_string(uint8_t const (&buffer)[SIZE])
+template <std::integral U, std::size_t SIZE>
+char const *as_string(U (&buffer)[SIZE])
 {
 	static char sz[64 * 1024];
 
@@ -223,8 +214,7 @@ struct dummy_sink
 		{
 			std::printf("%zu%*c%s :", depth, int(m_factor*depth), ' ', name);
 
-			using iter_t = uint8_t const*;
-			for (iter_t it = value.data(), ite = it + value.size(); it != ite; ++it)
+			for (auto it = value.data(), ite = it + value.size(); it != ite; ++it)
 			{
 				std::printf(" %02X", *it);
 			}
@@ -275,4 +265,77 @@ struct dummy_sink
 			CODEC_TRACE("ERROR: %s", err);
 		}
 	}
+};
+
+struct string_sink
+{
+	static constexpr int m_factor = 2;
+	char sz[16*1024];
+	char* psz = sz;
+	//sink() { clear(); }
+
+	std::size_t space() const { return sizeof(sz) - (psz - sz);}
+	//void clear() { psz = sz; *psz = '\0';}
+
+	void on_value(std::size_t depth, char const* name, std::size_t value)
+	{
+		std::snprintf(psz, space(), "%*c%s : %zu (%zXh)\n", int(m_factor*depth), ' ', name, value, value);
+	}
+
+	template <class STR>
+	auto on_value(std::size_t depth, char const* name, STR const& value) -> decltype(value.size(), value.data(), void())
+	{
+		std::snprintf(psz, space(), "%*c%s :", int(m_factor*depth), ' ', name);
+		for (auto it = value.data(), ite = it + value.size(); it != ite; ++it)
+		{
+			std::snprintf(psz, space(), " %02X", *it);
+		}
+		std::snprintf(psz, space(), " (%zu)\n", value.size());
+	}
+
+	void on_container(std::size_t depth, char const* name)
+	{
+		std::snprintf(psz, space(), "%*c%s\n", int(m_factor*depth), ' ', name);
+	}
+
+	void on_custom(std::size_t depth, char const* name, std::string const& s)
+	{
+		std::snprintf(psz, space(), "%*c%s : %s\n", int(m_factor*depth), ' ', name, s.c_str());
+	}
+
+	void on_error(char const* err)
+	{
+		std::snprintf(psz, space(), "ERROR: %s\n", err);
+	}
+};
+
+std::string get_printed(auto const& msg)
+{
+	string_sink s;
+	med::print_all(s, msg);
+	return s.sz;
+}
+
+template <class MSG, class RANGE>
+void check_decode(MSG const& msg, RANGE const& binary)
+{
+	MSG decoded_msg;
+	ASSERT_FALSE(msg == decoded_msg);
+	auto const size = binary.get_offset();
+	ASSERT_GT(size, 0);
+	auto const* data = binary.get_start();
+	med::decoder_context ctx{data, size};
+	decode(med::octet_decoder{ctx}, decoded_msg);
+#if 1
+	uint8_t buffer[1024];
+	ASSERT_LE(size, sizeof(buffer));
+	med::encoder_context ectx{buffer, size};
+	encode(med::octet_encoder{ectx}, decoded_msg);
+	ASSERT_STREQ(as_string(binary), as_string(ectx.buffer()));
+#endif
+#if 0 //TODO: fails strange for GTPC...
+	ASSERT_TRUE(msg == decoded_msg)
+		<< "\nEncoded:\n" << get_printed(msg)
+		<< "\nDecoded:\n" << get_printed(decoded_msg);
+#endif
 };

@@ -15,6 +15,7 @@ Distributed under the MIT License
 #include "ie_type.hpp"
 #include "name.hpp"
 #include "exception.hpp"
+#include "concepts.hpp"
 
 
 namespace med {
@@ -24,23 +25,14 @@ namespace med {
 template <std::size_t VAL, typename T, class... EXT_TRAITS>
 struct fixed : value_traits<T, EXT_TRAITS...>
 {
-	static constexpr bool is_const = true;
 	static constexpr typename value_traits<T, EXT_TRAITS...>::value_type value = VAL;
 };
 
-//traits representing a fixed value with default
+//traits representing initialized value with a default
 template <std::size_t VAL, class T, class... EXT_TRAITS>
-struct defaults : value_traits<T, EXT_TRAITS...>
+struct init : value_traits<T, EXT_TRAITS...>
 {
-	static constexpr typename value_traits<T, EXT_TRAITS...>::value_type default_value = VAL;
-};
-
-//traits representing initialized value which is encoded with the fixed value
-//but can have any value when decoded
-template <std::size_t VAL, class T, class... EXT_TRAITS>
-struct init : fixed<VAL, T, EXT_TRAITS...>
-{
-    static constexpr bool is_const = false;
+	static constexpr typename value_traits<T, EXT_TRAITS...>::value_type value = VAL;
 };
 
 
@@ -73,7 +65,19 @@ struct numeric_value : IE<IE_VALUE>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-	bool operator==(numeric_value const& rhs) const noexcept { return is_set() == rhs.is_set() && (!is_set() || get() == rhs.get()); }
+	bool operator==(numeric_value const& rhs) const noexcept
+	{
+		auto const res = (is_set() == rhs.is_set())
+					&& (!is_set() || get_encoded() == rhs.get_encoded());
+#ifdef CODEC_TRACE_ENABLE
+		if (!res)
+		{
+			if (is_set() != rhs.is_set()) CODEC_TRACE("??? is_set differs: %d != %d", is_set(), rhs.is_set());
+			else CODEC_TRACE("??? value differs: %#zX != %#zX", size_t(get_encoded()), size_t(rhs.get_encoded()));
+		}
+#endif //CODEC_TRACE_ENABLE
+		return res;
+	}
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 9)
 #pragma GCC diagnostic pop
 #endif
@@ -88,11 +92,11 @@ private:
  * gives error if decoded value doesn't match the fixed one
  */
 template <class TRAITS>
-struct const_integer : IE<IE_VALUE>
+struct const_value : IE<IE_VALUE>
 {
 	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
-	using base_t = const_integer;
+	using base_t     = const_value;
 
 	static constexpr void clear()                       { }
 	static constexpr value_type get()                   { return get_encoded(); }
@@ -108,7 +112,7 @@ struct const_integer : IE<IE_VALUE>
 	template <class... ARGS>
 	static constexpr void copy(base_t const&, ARGS&&...){ }
 
-	bool operator==(const_integer const&) const noexcept{ return true; } //equal to itself by definition
+	bool operator==(base_t const&) const noexcept       { return true; } //equal to itself by definition
 };
 
 /**
@@ -116,76 +120,64 @@ struct const_integer : IE<IE_VALUE>
  * decoded even if doesn't match initial value
  */
 template <class TRAITS>
-struct init_integer : IE<IE_VALUE>
+struct init_value : IE<IE_VALUE>
 {
 	using traits     = TRAITS;
 	using value_type = typename traits::value_type;
-	using base_t     = init_integer;
+	using base_t     = init_value;
 
-	static constexpr void clear()                       { }
-	explicit operator bool() const                      { return is_set(); }
+	constexpr void clear()                              { set_encoded(traits::value); }
+	constexpr value_type get() const                    { return get_encoded(); }
+	constexpr auto set(value_type v)                    { return set_encoded(v); }
 	//NOTE: do not override!
 	static constexpr bool is_const = true;
-	static constexpr value_type get_encoded()           { return traits::value; }
-	static constexpr void set_encoded(value_type)       { }
-	static constexpr bool is_set()                      { return true; }
+	constexpr value_type get_encoded() const noexcept   { return m_value; }
+	constexpr void set_encoded(value_type v)            { m_value = v; }
+	bool is_default() const noexcept                    { return get_encoded() == traits::value; }
+	static constexpr bool is_set() noexcept             { return true; }
+	explicit operator bool() const noexcept             { return is_set(); }
 	template <class... ARGS>
-	static constexpr void copy(base_t const&, ARGS&&...){ }
-	bool operator==(init_integer const&) const          { return true; }
-};
+	void copy(base_t const& from, ARGS&&...)            { m_value = from.m_value; }
 
-/**
- * integer with a default value
- */
-template <class TRAITS>
-struct def_integer : numeric_value<TRAITS>
-{
-	using traits     = TRAITS;
-	using value_type = typename traits::value_type;
-	using base_t     = def_integer;
-
-	//NOTE: do not override!
-	value_type get_encoded() const
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 9)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+	bool operator==(base_t const& rhs) const noexcept
 	{
-		return this->is_set() ? numeric_value<TRAITS>::get_encoded() : traits::default_value;
+		auto const res = get_encoded() == rhs.get_encoded();
+#ifdef CODEC_TRACE_ENABLE
+		if (!res)
+		{
+			CODEC_TRACE("??? value differs: %#zX != %#zX", size_t(get_encoded()), size_t(rhs.get_encoded()));
+		}
+#endif //CODEC_TRACE_ENABLE
+		return res;
 	}
-};
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 9)
+#pragma GCC diagnostic pop
+#endif
 
+private:
+	value_type m_value {traits::value};
+};
 
 //meta-function to select proper implementation of numeric value
-template <class T, typename Enable = void>
-struct value_selector;
+template <class T> struct value_selector;
 
 template <class T>
-struct value_selector<T,
-	std::enable_if_t<
-		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::value)>>
-		&& T::is_const
-	>
->
+concept AValueDefined = std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::value)>>;
+
+template <std::size_t VAL, class... ETS>
+struct value_selector<fixed<VAL, ETS...>>
 {
-	using type = const_integer<T>;
+	using type = const_value<init<VAL, ETS...>>;
 };
 
-template <class T>
-struct value_selector<T,
-	std::enable_if_t<
-		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::value)>>
-		&& !T::is_const
-	>
->
+template <std::size_t VAL, class... ETS>
+struct value_selector<init<VAL, ETS...>>
 {
-	using type = init_integer<T>;
-};
-
-template <class T>
-struct value_selector<T,
-	std::enable_if_t<
-		std::is_same_v<typename T::value_type, std::remove_const_t<decltype(T::default_value)>>
-	>
->
-{
-	using type = def_integer<T>;
+	using type = init_value<init<VAL, ETS...>>;
 };
 
 } //end: namespace detail

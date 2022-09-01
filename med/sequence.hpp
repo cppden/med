@@ -225,14 +225,10 @@ struct seq_dec
 					if constexpr (AHasCondition<IE>) //conditional field
 					{
 						bool const was_set = typename IE::condition{}(to);
-						if (was_set || AHasDefaultValue<IE>)
+						if (was_set)
 						{
 							CODEC_TRACE("C[%s]", name<IE>());
 							med::decode(decoder, ie, deps...);
-							if constexpr (AHasDefaultValue<IE>)
-							{
-								if (not was_set) { ie.clear(); } //discard since it's a default
-							}
 						}
 						else
 						{
@@ -348,7 +344,7 @@ struct seq_enc
 				{
 					IE const& ie = to;
 					CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
-					if (ie.is_set() || AHasDefaultValue<IE>)
+					if (ie.is_set())
 					{
 						med::encode(encoder, ie);
 					}

@@ -181,9 +181,8 @@ void print(SINK&& sink, IE const& ie, std::size_t max_depth = 0)
 
 
 template <class SINK, std::size_t MAX_LINE>
-class dumper : public sl::octet_info
+struct dumper : public sl::octet_info
 {
-public:
 	using allocator_type = const null_allocator;
 
 	struct container_encoder
@@ -198,24 +197,19 @@ public:
 		}
 	};
 
-	explicit dumper(SINK&& sink) noexcept
-		: m_sink{ std::forward<SINK>(sink) }
-	{
-	}
+	explicit dumper(SINK&& sink) : m_sink{ std::forward<SINK>(sink) } {}
 
 	//primitives
 	template <class IE>
 	void operator() (IE const& ie, PRIMITIVE)   { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
 
 	//state
-	constexpr void operator() (SNAPSHOT) { }
+	constexpr void operator() (SNAPSHOT) const noexcept { }
 	//length encoder
 	template <class IE> constexpr std::size_t operator()(GET_LENGTH, IE const &) { return 0; }
 
-	//	template <class IE>
-	//	void dump(IE const& ie)                     { m_sink.on_value(m_depth, name<IE>(), ie.get()); }
-
-	friend struct container_encoder;
+	template <class IE> constexpr void operator() (IE const&, IE_TAG) const noexcept {}
+	template <class IE> constexpr void operator() (IE const&, IE_LEN) const noexcept {}
 
 	SINK        m_sink;
 	std::size_t m_depth {0};

@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include <memory>
+#include <bit>
 
 #include "name.hpp"
 #include "exception.hpp"
@@ -93,10 +94,10 @@ public:
 	 * @return pointer to instance of T or nullptr/throw when out of space
 	 */
 	[[nodiscard]]
-	void* allocate(std::size_t bytes, std::size_t alignment) noexcept
+	constexpr void* allocate(std::size_t bytes, std::size_t alignment) noexcept
 	{
-		void* p = std::align(alignment, bytes, m_begin, m_size);
-		//void* p = salign(alignment, bytes, m_begin, m_size);
+		//void* p = std::align(alignment, bytes, m_begin, m_size);
+		void* p = salign(alignment, bytes, m_begin, m_size);
 		if (p)
 		{
 			m_begin = (uint8_t*)m_begin + bytes;
@@ -106,7 +107,6 @@ public:
 	}
 
 private:
-#if 0
 	static constexpr void* salign(size_t __align, size_t __size, void*& __ptr, size_t& __space) noexcept
 	{
 		if (__space < __size) return nullptr;
@@ -123,7 +123,6 @@ private:
 			return __ptr = std::bit_cast<void*>(__aligned);
 		}
 	}
-#endif
 
 	void*       m_begin {};
 	std::size_t m_size{};
@@ -132,40 +131,24 @@ private:
 };
 
 
-template <class, class Enable = void >
-struct is_allocator : std::false_type { };
-template <class T>
-struct is_allocator<T,
-	std::enable_if_t<
-		std::is_same_v<void*, decltype(std::declval<T>().allocate(std::size_t(1), std::size_t(1)))>
-	>
-> : std::true_type { };
-template <class T>
-constexpr bool is_allocator_v = is_allocator<T>::value;
 
 
-template <class T>
-constexpr auto get_allocator(T& t) -> std::enable_if_t<is_allocator_v<T>, T&>
-{
-	return t;
-}
-template <class T>
-constexpr auto get_allocator(T* pt) -> std::enable_if_t<is_allocator_v<T>, T&>
-{
-	return *pt;
-}
-template <class T>
+template <AAllocator T>
+constexpr T& get_allocator(T& t) { return t; }
+template <AAllocator T>
+constexpr T& get_allocator(T* pt) { return *pt; }
+template <class T> //requires requires(T v) { v.get_allocator() }
 constexpr auto get_allocator(T& t) -> std::add_lvalue_reference_t<decltype(t.get_allocator())>
 {
 	auto& allocator = t.get_allocator();
-	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");
+	static_assert(AAllocator<decltype(allocator)>, "IS NOT ALLOCATOR!");
 	return allocator;
 }
 template <class T>
 constexpr auto get_allocator(T* pt) -> std::add_lvalue_reference_t<decltype(pt->get_allocator())>
 {
 	auto& allocator = pt->get_allocator();
-	static_assert(is_allocator_v<decltype(allocator)>, "IS NOT ALLOCATOR!");
+	static_assert(AAllocator<decltype(allocator)>, "IS NOT ALLOCATOR!");
 	return allocator;
 }
 

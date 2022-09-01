@@ -107,7 +107,7 @@ struct cont_is
 		}
 		else //mandatory field w/o setter => s.b. set explicitly
 		{
-			if constexpr (APredefined<IE>) //don't account predefined IEs like init/const/def
+			if constexpr (APredefinedValue<IE>) //don't account predefined IEs like init/const
 			{
 				return false;
 			}
@@ -166,7 +166,7 @@ public:
 	template <class FIELD>
 	decltype(auto) ref()
 	{
-		static_assert(!std::is_const<FIELD>(), "ATTEMPT TO COPY FROM CONST REF");
+		static_assert(!std::is_const_v<FIELD>, "ATTEMPT TO COPY FROM CONST REF");
 		auto& ie = m_ies.template as<FIELD>();
 		using IE = std::remove_cvref_t<decltype(ie)>;
 		if constexpr (AMultiField<IE>)

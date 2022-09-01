@@ -57,14 +57,17 @@ struct container_encoder
 	template <class ENCODER, class IE>
 	static constexpr void encode(ENCODER& encoder, IE const& ie)
 	{
-		CODEC_TRACE("%s w/o length exposed=%s...:", name<IE>(), name<EXPOSED>());
 		if constexpr (std::is_void_v<EXPOSED>)
 		{
+			CODEC_TRACE(">>> %s", name<IE>());
 			ie.encode(encoder);
+			CODEC_TRACE("<<< %s", name<IE>());
 		}
 		else
 		{
+			CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXPOSED>());
 			ie.template encode<meta::list_rest_t<typename IE::ies_types>>(encoder);
+			CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXPOSED>());
 		}
 	}
 };

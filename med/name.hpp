@@ -20,21 +20,21 @@ namespace med {
 template <class T>
 const char* class_name()
 {
-	char const* psz = typeid(T).name();
-
-	int status;
-	if (char* sane = abi::__cxa_demangle(psz, 0, 0, &status))
+	static char const* psz = nullptr;
+	static char sz[128];
+	if (!psz)
 	{
-		constexpr std::size_t LEN = 4*1024;
-		constexpr std::size_t NUM = 8;
-		static char szbuf[NUM][LEN];
-		static uint8_t index = 0;
-		index = (index + 1) % NUM;
-		char* sz = szbuf[index];
-		std::strncpy(sz, sane, LEN-1);
-		sz[LEN-1] = '\0';
-		std::free(sane);
-		psz = sz;
+		psz = typeid(T).name();
+		if (char* sane = abi::__cxa_demangle(psz, nullptr, nullptr, nullptr))
+		{
+			auto* plain = std::strrchr(sane, ':');
+			if (plain) plain++;
+			else plain = sane;
+			std::strncpy(sz, plain, sizeof(sz)-1);
+			sz[sizeof(sz) - 1] = '\0';
+			std::free(sane);
+			psz = sz;
+		}
 	}
 
 	return psz;

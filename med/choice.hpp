@@ -234,7 +234,7 @@ struct selector
 
 	template <class U> constexpr operator U&()
 	{
-		static_assert(!std::is_const<T>(), "CONST CHOICE RETURNS A POINTER, NOT REFERENCE!");
+		static_assert(!std::is_const_v<T>, "CONST CHOICE RETURNS A POINTER, NOT REFERENCE!");
 		return m_this->template ref<U>();
 	}
 
@@ -319,7 +319,7 @@ public:
 	template <class T> constexpr T& ref()
 	{
 		//TODO: how to prevent a copy when callee-side re-uses reference by mistake?
-		static_assert(!std::is_const<T>(), "REFERENCE IS NOT FOR ACCESSING AS CONST");
+		static_assert(!std::is_const_v<T>, "REFERENCE IS NOT FOR ACCESSING AS CONST");
 		using type = meta::find<ies_types, sl::field_at<T>>;
 		static_assert(!std::is_void<type>(), "NO SUCH TYPE IN CHOICE");
 		constexpr auto idx = choice::template index<T>();
