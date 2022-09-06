@@ -17,7 +17,7 @@ find_path(BENCHMARK_INCLUDE_DIRS NAMES benchmark/benchmark.h
   /opt/include
 )
 
-find_library(BENCHMARK_LIBS NAMES libbenchmark.a)
+find_library(BENCHMARK_LIBS NAMES libbenchmark.so)
 
 
 include(FindPackageHandleStandardArgs)
@@ -25,4 +25,3 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(BENCHMARK DEFAULT_MSG BENCHMARK_INCLUDE_DIRS B
 
 
 mark_as_advanced(BENCHMARK_INCLUDE_DIRS BENCHMARK_LIBS)
-

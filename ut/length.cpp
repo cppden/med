@@ -75,18 +75,18 @@ struct C_LV : med::sequence<
 struct VL : med::value<uint16_t>
 {
 	//value part
-	value_type get() const          { return get_encoded() & 0xF; }
-	void set(value_type v)          { set_encoded(v & 0xF); }
+	value_type get() const          { return (get_encoded() & 0xFFF0) >> 4; }
+	void set(value_type v)          { set_encoded((v & 0xFFF) << 4); }
 	//length part
-	value_type get_length() const   { return get_encoded() >> 4; }
-	bool set_length(value_type v)   { return (v < 0x1000) ? set_encoded((v << 4)|get()), true : false; }
+	value_type get_length() const   { return get_encoded() & 0xF; }
+	bool set_length(value_type v)   { return (v < 0x10) ? set_encoded(v|(get_encoded() & 0xFFF0)), true : false; }
 };
 
 struct VLVAR : med::sequence<
+	M<U8>,
 	M<VL>,
 	M<VAR>
->
-, med::add_meta_info<med::mi<med::mik::LEN, VL>>
+>, med::add_meta_info<med::mi<med::mik::LEN, VL>>
 {
 };
 
@@ -345,49 +345,40 @@ TEST(length, vlvar)
 
 	{
 		len::VLVAR vlvar;
-		vlvar.ref<len::VL>().set(7);
+		vlvar.ref<len::U8>().set(7);
+		vlvar.ref<len::VL>().set(0x123);
 		vlvar.ref<len::VAR>().set("ABCDEF");
 		encode(med::octet_encoder{ctx}, vlvar);
-		ASSERT_STREQ(" 00 87 41 42 43 44 45 46 ", as_string(ctx.buffer()));
+		ASSERT_STREQ("07 12 39 41 42 43 44 45 46 ", as_string(ctx.buffer()));
 		check_decode(vlvar, ctx.buffer());
 	}
 
 	len::VMSG msg;
-	std::string_view const data[] = {"123"sv, "123456"sv};
-
-	for (std::size_t i = 0; i < std::size(data); ++i)
+	for (auto sv : {"123"sv, "123456"sv})
 	{
 		auto* vlvar = msg.ref<len::VLVAR>().push_back();
 		ASSERT_NE(nullptr, vlvar);
-		vlvar->ref<len::VL>().set(i + 1);
-		vlvar->ref<len::VAR>().set(data[i]);
+		vlvar->ref<len::U8>().set(sv.size());
+		vlvar->ref<len::VL>().set(sv.size());
+		vlvar->ref<len::VAR>().set(sv);
 	}
 
 	ctx.reset();
 	encode(med::octet_encoder{ctx}, msg);
 
 	uint8_t encoded[] = {
-		0,0,0,1, 0x00,0x31, //len=3, val=1
-		'1','2','3',
-		0,0,0,1, 0x00,0x62, //len=6, val=2
+		0,0,0,1, //T<1>
+		3,    // M<U8>
+		0, 0x36, // M<VL> val=3, len=1+2+3
+		'1','2','3', // M<VAR>
+
+		0,0,0,1, //T<1>
+		6,    // M<U8>
+		0, 0x69, // M<VL> val=6, len=1+2+3
 		'1','2','3','4','5','6',
 	};
 	ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
-
-	//check decode
-	med::decoder_context<> dctx{encoded};
-	msg.clear();
-
-	decode(med::octet_decoder{dctx}, msg);
-
-	std::size_t index = 1;
-	for (auto const& v : msg.get<len::VLVAR>())
-	{
-		EXPECT_EQ(index, v.get<len::VL>().get());
-		EXPECT_EQ(index*3, v.get<len::VL>().get_length());
-		EXPECT_EQ(data[index-1], v.get<len::VAR>().get());
-		++index;
-	}
+	check_decode(msg, ctx.buffer());
 }
 
 TEST(length, lvlarr)
@@ -406,12 +397,6 @@ TEST(length, lvlarr)
 	}
 
 	encode(med::octet_encoder{ctx}, msg);
-	size_t size = ctx.buffer().get_offset();
-
-	std::cout << "{";
-	for(std::size_t i = 0; i < size; i++)
-		std::cout << "0x" << std::hex << (uint32_t)buffer[i] << ((i == size-1) ? "}\n" : ", ");
-
 	uint8_t encoded[] = {
 		0x0D, //len=11
 		0x00,0x31, //len=3, val=1
@@ -419,24 +404,8 @@ TEST(length, lvlarr)
 		0x00,0x62, //len=6, val=2
 		'1','2','3','4','5','6',
 	};
-
-	ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-	ASSERT_TRUE(Matches(encoded, buffer));
-
-	//check decode
-	med::decoder_context<> dctx{encoded};
-	msg.clear();
-
-	decode(med::octet_decoder{dctx}, msg);
-
-	std::size_t index = 1;
-	for (auto const& v : msg.get<len::VLARR>().get<len::VLVAR>())
-	{
-		EXPECT_EQ(index, v.get<len::VL>().get());
-		EXPECT_EQ(index*3, v.get<len::VL>().get_length());
-		EXPECT_EQ(data[index-1], v.get<len::VAR>().get());
-		++index;
-	}
+	ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
+	check_decode(msg, ctx.buffer());
 }
 
 TEST(length, seq)
@@ -479,7 +448,6 @@ TEST(length, explicit)
 {
 	uint8_t buffer[16];
 	med::encoder_context<> ctx{ buffer };
-	med::decoder_context<> dctx;
 
 	len::s_nssai msg;
 
@@ -487,14 +455,8 @@ TEST(length, explicit)
 		msg.ref<len::sst>().set(2);
 		encode(med::octet_encoder{ctx}, msg);
 		uint8_t const encoded[] = {1, 0x02};
-		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-		ASSERT_TRUE(Matches(encoded, buffer));
-
-		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
-		len::s_nssai dmsg;
-		decode(med::octet_decoder{dctx}, dmsg);
-		EXPECT_EQ(1, dmsg.get<len::s_nssai_length>().get());
-		EXPECT_EQ(msg.get<len::sst>().get(), dmsg.get<len::sst>().get());
+		ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
+		check_decode(msg, ctx.buffer());
 	}
 	msg.clear();
 	ctx.reset();
@@ -503,16 +465,8 @@ TEST(length, explicit)
 		msg.ref<len::sd>().set(3);
 		encode(med::octet_encoder{ctx}, msg);
 		uint8_t const encoded[] = {4, 0x02, 0, 0, 0x03};
-		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-		ASSERT_TRUE(Matches(encoded, buffer));
-
-		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
-		len::s_nssai dmsg;
-		decode(med::octet_decoder{dctx}, dmsg);
-		EXPECT_EQ(4, dmsg.get<len::s_nssai_length>().get());
-		EXPECT_EQ(msg.get<len::sst>().get(), dmsg.get<len::sst>().get());
-		ASSERT_EQ(msg.count<len::sd>(), dmsg.count<len::sd>());
-		EXPECT_EQ(msg.get<len::sd>()->get(), dmsg.get<len::sd>()->get());
+		ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
+		check_decode(msg, ctx.buffer());
 	}
 	msg.clear();
 	ctx.reset();
@@ -523,20 +477,8 @@ TEST(length, explicit)
 		msg.ref<len::mapped_sd>().set(5);
 		encode(med::octet_encoder{ctx}, msg);
 		uint8_t const encoded[] = {8, 0x02, 0,0,0x03, 0x04, 0,0,0x05};
-		ASSERT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-		ASSERT_TRUE(Matches(encoded, buffer));
-
-		dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
-		len::s_nssai dmsg;
-		decode(med::octet_decoder{dctx}, dmsg);
-		EXPECT_EQ(8, dmsg.get<len::s_nssai_length>().get());
-		EXPECT_EQ(msg.get<len::sst>().get(), dmsg.get<len::sst>().get());
-		ASSERT_EQ(msg.count<len::sd>(), dmsg.count<len::sd>());
-		EXPECT_EQ(msg.get<len::sd>()->get(), dmsg.get<len::sd>()->get());
-		ASSERT_EQ(msg.count<len::mapped_sst>(), dmsg.count<len::mapped_sst>());
-		EXPECT_EQ(msg.get<len::mapped_sst>()->get(), dmsg.get<len::mapped_sst>()->get());
-		ASSERT_EQ(msg.count<len::mapped_sd>(), dmsg.count<len::mapped_sd>());
-		EXPECT_EQ(msg.get<len::mapped_sd>()->get(), dmsg.get<len::mapped_sd>()->get());
+		ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
+		check_decode(msg, ctx.buffer());
 	}
 }
 
@@ -624,6 +566,6 @@ TEST(length, setter_with_length)
 		3, 1, 0x55, 0xAA,
 		8, 7, 0,1,2,3,4,5,6
 	};
-	EXPECT_EQ(sizeof(encoded), ctx.buffer().get_offset());
-	EXPECT_TRUE(Matches(encoded, buffer));
+	ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
+	check_decode(msg, ctx.buffer());
 }

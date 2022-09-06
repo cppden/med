@@ -1,0 +1,18 @@
+2022-09-06T13:04:40+03:00
+Running ./bm_med
+Run on (4 X 4200 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x4)
+  L1 Instruction 32 KiB (x4)
+  L2 Unified 256 KiB (x4)
+  L3 Unified 8192 KiB (x1)
+Load Average: 0.73, 0.88, 0.82
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+---------------------------------------------------------
+Benchmark               Time             CPU   Iterations
+---------------------------------------------------------
+BM_encode_ok         8.92 ns         8.91 ns     76065372
+BM_encode_fail       1167 ns         1166 ns       602014
+BM_decode_ok         20.6 ns         20.6 ns     33964187
+BM_decode_fail       1696 ns         1696 ns       411906
+

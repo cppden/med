@@ -34,7 +34,8 @@ struct get_meta_info<T>
 {
 	using type = typename T::meta_info;
 };
-template <class T> requires requires(T v) { { int(T::kind) + 0 } -> std::integral; }
+template <class T> concept AKind = std::same_as<mik const, decltype(T::kind)>;
+template <AKind T>
 struct get_meta_info<T>
 {
 	using type = meta::typelist<T>;

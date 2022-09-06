@@ -92,7 +92,7 @@ struct seq_dec
 				{
 					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count()+1);
 					auto* field = ie.push_back(decoder);
-					sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, *field, deps...);
+					sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, *field, deps...);
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
@@ -173,7 +173,7 @@ struct seq_dec
 					while (decoder(CHECK_STATE{}, ie) && count < IE::max)
 					{
 						auto* field = ie.push_back(decoder);
-						sl::ie_decode<mi, void>(decoder, *field, deps...);
+						sl::ie_decode<sl::decode_type_context<mi>>(decoder, *field, deps...);
 						++count;
 					}
 
@@ -209,7 +209,7 @@ struct seq_dec
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, ie, deps...);
+						sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
 					}
 				}
 				else //optional w/o tag

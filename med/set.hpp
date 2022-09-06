@@ -127,14 +127,14 @@ struct set_dec
 				MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 			}
 			auto* field = ie.push_back(decoder);
-			sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, *field, deps...);
+			sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, *field, deps...);
 		}
 		else //single-instance field
 		{
 			CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
 			if (not ie.is_set())
 			{
-				return sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, ie, deps...);
+				return sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
 				//return med::decode(decoder, ie);
 			}
 			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)

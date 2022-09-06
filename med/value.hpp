@@ -52,7 +52,7 @@ struct numeric_value : IE<IE_VALUE>
 	auto set(value_type v)                          { return set_encoded(v); }
 
 	//NOTE: do not override!
-	static constexpr bool is_const = false;
+	static constexpr bool is_defined = false;
 	value_type get_encoded() const                  { return m_value; }
 	void set_encoded(value_type v)                  { m_value = v; m_set = true; }
 	void clear()                                    { m_set = false; }
@@ -103,7 +103,7 @@ struct const_value : IE<IE_VALUE>
 
 
 	//NOTE: do not override!
-	static constexpr bool is_const = true;
+	static constexpr bool is_defined = true;
 	explicit operator bool() const                      { return is_set(); }
 	static constexpr value_type get_encoded()           { return traits::value; }
 	static constexpr bool set_encoded(value_type v)     { return traits::value == v; }
@@ -130,7 +130,7 @@ struct init_value : IE<IE_VALUE>
 	constexpr value_type get() const                    { return get_encoded(); }
 	constexpr auto set(value_type v)                    { return set_encoded(v); }
 	//NOTE: do not override!
-	static constexpr bool is_const = true;
+	static constexpr bool is_defined = true;
 	constexpr value_type get_encoded() const noexcept   { return m_value; }
 	constexpr void set_encoded(value_type v)            { m_value = v; }
 	bool is_default() const noexcept                    { return get_encoded() == traits::value; }

@@ -20,7 +20,7 @@ jobs:
         compiler:
           - g++-12
           - clang++-14
-        build_type: [Debug, Release]
+        build_type: [Release]
 
     runs-on: ubuntu-22.04
 

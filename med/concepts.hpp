@@ -157,7 +157,7 @@ concept AValueTraits = requires (T v)
 template <class L>
 concept AEmptyTypeList = meta::list_is_empty_v<L>;
 
-template <class T> concept APredefinedValue = (T::is_const == true);
+template <class T> concept APredefinedValue = (T::is_defined == true);
 
 template <class T>
 concept AHasMetaInfo = !AEmptyTypeList<typename T::meta_info>;
@@ -167,5 +167,8 @@ concept AAllocator = requires (T v)
 {
 	{ v.allocate(std::size_t{}, std::size_t{}) } -> std::convertible_to<void*>;
 };
+
+template <class NEEDLE, class HAY>
+concept APresentIn = HAY::template has<NEEDLE>();
 
 }	//end: namespace med

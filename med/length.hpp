@@ -64,7 +64,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			using mi = meta::list_first_t<META_INFO>;
 			CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
 
-			//TODO: pass calculated length to length_type when sizeof(len) depends on value like in ASN.1 BER
+			//TODO: pass calculated length to length_t when sizeof(len) depends on value like in ASN.1 BER
 			len += ie_length<EXPOSED, meta::list_rest_t<META_INFO>>(ie, encoder);
 
 			if constexpr (mi::kind == mik::TAG)
@@ -75,22 +75,22 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				//TODO: involve codec to get length type + may need to set its value like for BER
-				using length_t = typename mi::info_type;
+				using len_t = typename mi::info_type;
 
-				using pad_traits = typename get_padding<length_t>::type;
+				using pad_traits = typename get_padding<len_t>::type;
 				if constexpr (!std::is_void_v<pad_traits>)
 				{
 					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
 #ifdef CODEC_TRACE_ENABLE
 					auto const add_len = pad_t::calc_padding_size(len);
-					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<length_t>(), size_t(len), add_len, len + add_len);
+					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<len_t>(), size_t(len), add_len, len + add_len);
 					len += add_len;
 #else
 					len += pad_t::calc_padding_size(len);
 #endif
 				}
 
-				len += ie_length<EXPOSED>(length_t{}, encoder);
+				len += ie_length<EXPOSED>(len_t{}, encoder);
 			}
 		}
 		else //data itself
@@ -166,17 +166,20 @@ constexpr void length_to_value(FIELD& field, std::size_t len)
 }
 
 template <class FIELD>
-constexpr void value_to_length(FIELD& field, std::size_t& len)
+constexpr std::size_t value_to_length(FIELD& field)
 {
 	//use proper length accessor
 	if constexpr (detail::AHasGetLength<FIELD>)
 	{
-		len = field.get_length();
-		CODEC_TRACE("%s=%zu [%s]", __FUNCTION__, len, name<FIELD>());
+		std::size_t len = field.get_length();
+		CODEC_TRACE("LV[%s]=%zu", name<FIELD>(), len);
+		return len;
 	}
 	else
 	{
-		len = field.get_encoded();
+		std::size_t len = field.get_encoded();
+		CODEC_TRACE("LV[%s]=%zX", name<FIELD>(), len);
+		return len;
 	}
 }
 

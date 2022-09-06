@@ -26,7 +26,7 @@ include_directories(
 # -----------------------------------------------------------------------------
 if (WITH_BM)
 	message(STATUS "\tWITH_BM=true (google benchmark)")
-	find_package(Benchmark REQUIRED)
+	find_package(BENCHMARK REQUIRED)
 	if (BENCHMARK_FOUND)
 		include_directories( ${BENCHMARK_INCLUDE_DIRS})
 		message(STATUS "Google benchmark found.   ${BENCHMARK_LIBS}")

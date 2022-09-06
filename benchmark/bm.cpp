@@ -16,45 +16,15 @@ namespace {
 
 template <typename ...T> using M = med::mandatory<T...>;
 template <typename ...T> using O = med::optional<T...>;
-
 using L = med::length_t<med::value<uint8_t>>;
-using CNT = med::counter_t<med::value<uint16_t>>;
-template <std::size_t TAG> using T = med::value<med::fixed<TAG, uint8_t>>;
-template <std::size_t TAG> using C = med::value<med::fixed<TAG, uint8_t>>;
+template <uint8_t TAG> using T = med::value<med::fixed<TAG, uint8_t>>;
 
-struct FLD_UC : med::value<uint8_t>
-{
-	static constexpr char const* name() { return "UC"; }
-};
-struct FLD_U16 : med::value<uint16_t>
-{
-	static constexpr char const* name() { return "U16"; }
-};
-struct FLD_U24 : med::value<med::bytes<3>>
-{
-	static constexpr char const* name() { return "U24"; }
-};
-
-struct FLD_IP : med::value<uint32_t>
-{
-	static constexpr char const* name() { return "IP-Address"; }
-	template <std::size_t N>
-	void print(char (&sz)[N]) const
-	{
-		uint32_t ip = get();
-		std::snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
-	}
-};
-
-struct FLD_DW : med::value<uint32_t>
-{
-	static constexpr char const* name() { return "Double-Word"; }
-};
-
-struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>, med::with_snapshot
-{
-	static constexpr char const* name() { return "url"; }
-};
+struct FLD_UC : med::value<uint8_t>{};
+struct FLD_U16 : med::value<uint16_t>{};
+struct FLD_U24 : med::value<med::bytes<3>>{};
+struct FLD_IP : med::value<uint32_t>{};
+struct FLD_DW : med::value<uint32_t>{};
+struct VFLD1 : med::ascii_string<med::min<5>, med::max<10>>{};
 
 struct custom_length : med::value<uint8_t>
 {
@@ -72,8 +42,6 @@ struct custom_length : med::value<uint8_t>
 		}
 		return false;
 	}
-
-	static constexpr char const* name() { return "Custom-Length"; }
 };
 using CLEN = med::length_t<custom_length>;
 
@@ -86,12 +54,10 @@ struct MSG_SEQ : med::sequence<
 	O< T<0x12>, CLEN, VFLD1 > //TLV(var)
 >
 {
-	static constexpr char const* name() { return "Msg-Seq"; }
 };
 
-
-struct PROTO : med::choice< med::value<uint8_t>
-	, M< C<0x01>, MSG_SEQ >
+struct PROTO : med::choice<
+	M< T<0x01>, MSG_SEQ >
 >
 {
 };
@@ -197,9 +163,10 @@ void BM_decode_fail(benchmark::State& state)
 		try
 		{
 			decode(med::octet_decoder{ctx}, proto);
+			std::printf("SHOULD NOT REACH HERE!\n");
 			std::abort();
 		}
-		catch (med::invalid_value const& ex)
+		catch (med::exception const& ex)
 		{
 		}
 	}

@@ -207,11 +207,11 @@ struct choice_dec
 			{
 				CODEC_TRACE("exposed[%s] = %#zx", name<exposed>(), size_t(header.get()));
 				ie.template ref<type>().set(header.get());
-				return sl::ie_decode<meta::list_rest_t<mi>, exposed>(decoder, ie, deps...);
+				return sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>, exposed>>(decoder, ie, deps...);
 			}
 		}
 
-		sl::ie_decode<meta::list_rest_t<mi>, void>(decoder, ie, deps...);
+		sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
 	}
 
 	template <class TO, class HEADER, class DECODER, class... DEPS>
