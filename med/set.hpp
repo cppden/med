@@ -95,9 +95,6 @@ struct set_enc
 			}
 		}
 	}
-
-	template <class PREV_IE, class TO, class ENCODER>
-	static constexpr void apply(TO const&, ENCODER&) {}
 };
 
 struct set_dec

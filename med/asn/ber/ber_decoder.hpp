@@ -9,6 +9,7 @@ Distributed under the MIT License
 */
 
 #include "debug.hpp"
+#include "bytes.hpp"
 #include "name.hpp"
 #include "state.hpp"
 #include "count.hpp"
@@ -57,12 +58,9 @@ struct decoder : info
 	//IE_TAG
 	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
 	{
-		//constexpr auto nbytes = IE::traits::num_bytes(); TODO: expose asn traits directly
-		constexpr std::size_t nbytes = bits_to_bytes(IE::traits::bits);
-		uint8_t const* input = get_context().buffer().template advance<IE, nbytes>();
-		std::size_t vtag = 0;
-		get_bytes_impl(input, vtag, std::make_index_sequence<nbytes>{});
-		CODEC_TRACE("T=%zX [%s] %zu bytes: %s", vtag, name<IE>(), nbytes, get_context().buffer().toString());
+		uint8_t const* input = get_context().buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
+		std::size_t const vtag = get_bytes<IE>(input);
+		CODEC_TRACE("T=%zX [%s] %zu bits: %s", vtag, name<IE>(), IE::traits::bits, get_context().buffer().toString());
 		return vtag;
 	}
 	//IE_LEN
@@ -118,7 +116,7 @@ struct decoder : info
 				{
 					CODEC_TRACE("\t%zu octets: %s", len, get_context().buffer().toString());
 					auto* input = get_context().buffer().template advance<IE>(len); //value
-					ie.set_encoded(get_bytes<typename IE::value_type>(input, len));
+					ie.set_encoded(read_bytes<typename IE::value_type>(input, len));
 				}
 				else
 				{
@@ -182,7 +180,7 @@ private:
 		bytes &= 0x7F;
 		if (bytes)
 		{
-			return get_bytes<std::size_t>(get_context().buffer().template advance<IE>(bytes), bytes);
+			return read_bytes<std::size_t>(get_context().buffer().template advance<IE>(bytes), bytes);
 		}
 		else //indefinite form (X.690 8.1.3.6)
 		//8.1.3.6 length octets indicate that the contents octets are terminated by end-of-contents octets
@@ -192,33 +190,8 @@ private:
 		}
 	}
 
-	template <typename VALUE>
-	static constexpr void get_byte(uint8_t const*, VALUE&) { }
-
-	template <typename VALUE, std::size_t OFS, std::size_t... Is>
-	static void get_byte(uint8_t const* input, VALUE& value)
-	{
-		value = (value << 8) | *input;
-		get_byte<VALUE, Is...>(++input, value);
-	}
-
-	template<typename VALUE, std::size_t... Is>
-	static void get_bytes_impl(uint8_t const* input, VALUE& value, std::index_sequence<Is...>)
-	{
-		get_byte<VALUE, Is...>(input, value);
-	}
-
-	template <class IE>
-	static auto get_bytes(uint8_t const* input)
-	{
-		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
-		typename IE::value_type value{};
-		get_bytes_impl(input, value, std::make_index_sequence<NUM_BYTES>{});
-		return value;
-	}
-
 	template <typename T>
-	static T get_bytes(uint8_t const* input, uint8_t num_bytes)
+	static T read_bytes(uint8_t const* input, uint8_t num_bytes)
 	{
 		//TODO: template to unwrap w/o duck-typing and allow char/short/int/long...
 		switch (num_bytes)

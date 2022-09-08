@@ -20,7 +20,6 @@ Distributed under the MIT License
 #include "decode.hpp"
 #include "meta/unique.hpp"
 #include "meta/typelist.hpp"
-#include "meta/foreach.hpp"
 
 namespace med {
 
@@ -145,14 +144,14 @@ struct choice_enc : choice_if
 			if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
 			{
 				using type = typename meta::list_first_t<mi>::info_type;
-				using exposed = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
-				if constexpr(std::is_same_v<exposed, type>)
+				using EXPOSED = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
+				if constexpr(std::is_same_v<EXPOSED, type>)
 				{
-					CODEC_TRACE("exposed[%s]", name<exposed>());
+					CODEC_TRACE("exposed[%s]", name<EXPOSED>());
 					//encoode 1st TAG meta-info via exposed
-					sl::ie_encode<meta::typelist<>, void>(encoder, to.template as<exposed>());
+					sl::ie_encode<meta::typelist<>, void>(encoder, to.template as<EXPOSED>());
 					//skip 1st TAG meta-info and encode it via exposed
-					return sl::ie_encode<meta::list_rest_t<mi>, exposed>(encoder, to.template as<IE>());
+					return sl::ie_encode<meta::list_rest_t<mi>, EXPOSED>(encoder, to.template as<IE>());
 				}
 			}
 			med::encode(encoder, to.template as<IE>());
@@ -201,16 +200,14 @@ struct choice_dec
 		if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
 		{
 			using type = typename meta::list_first_t<mi>::info_type;
-//			using exposed = meta::find<typename IE::ies_types, sl::field_at<type>>;
-			using exposed = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
-			if constexpr(std::is_same_v<exposed, type>)
+			using EXPOSED = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
+			if constexpr(std::is_same_v<EXPOSED, type>)
 			{
-				CODEC_TRACE("exposed[%s] = %#zx", name<exposed>(), size_t(header.get()));
+				CODEC_TRACE("exposed[%s] = %#zx", name<EXPOSED>(), size_t(header.get()));
 				ie.template ref<type>().set(header.get());
-				return sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>, exposed>>(decoder, ie, deps...);
+				return sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>, EXPOSED>>(decoder, ie, deps...);
 			}
 		}
-
 		sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
 	}
 

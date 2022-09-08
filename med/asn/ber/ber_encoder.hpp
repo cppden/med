@@ -188,7 +188,7 @@ struct encoder : info
 					auto const encoded = detail::encode_unsigned(field.get());
 					auto const len = detail::least_bytes_encoded(field.get());
 					uint8_t* out = get_context().buffer().template advance<IE>(len); //value
-					put_bytes(encoded, out, len); //value
+					write_bytes(encoded, out, len); //value
 				}
 				else
 				{
@@ -212,7 +212,7 @@ struct encoder : info
 				auto const len = length::bytes<value_type>(ie.get_encoded());
 				uint8_t* out = get_context().buffer().template advance<IE>(len); //value
 				//*out++ = len; //length in 1 byte, no sense in more than 9 (17 in future?) bytes for integer
-				put_bytes(ie.get_encoded(), out, len); //value
+				write_bytes(ie.get_encoded(), out, len); //value
 				CODEC_TRACE("INT[%s]=%lld %u bytes: %s", name<IE>(), (long long)ie.get_encoded(), len, get_context().buffer().toString());
 			}
 			else if constexpr (std::is_floating_point_v<value_type>)
@@ -274,40 +274,12 @@ private:
 			uint8_t const bytes = length::bytes(len);
 			uint8_t* out = get_context().buffer().template advance<IE>(1 + bytes);
 			*out++ = bytes | 0x80;
-			put_bytes(len, out, bytes);
+			write_bytes(len, out, bytes);
 		}
 	}
 
-	template <std::size_t NUM_BYTES, typename T>
-	static constexpr void put_byte(uint8_t*, T const) { }
-
-	template <std::size_t NUM_BYTES, typename T, std::size_t OFS, std::size_t... Is>
-	static void put_byte(uint8_t* output, T const value)
-	{
-		output[OFS] = uint8_t(value >> ((NUM_BYTES - OFS - 1) << 3));
-		put_byte<NUM_BYTES, T, Is...>(output, value);
-	}
-
-	template<std::size_t NUM_BYTES, typename T, std::size_t... Is>
-	static void put_bytes_impl(uint8_t* output, T const value, std::index_sequence<Is...>)
-	{
-		put_byte<NUM_BYTES, T, Is...>(output, value);
-	}
-
-	template <std::size_t NUM_BYTES>
-	static void put_bytes(std::size_t value, uint8_t* output)
-	{
-		put_bytes_impl<NUM_BYTES>(output, value, std::make_index_sequence<NUM_BYTES>{});
-	}
-
-	template <class IE>
-	static void put_bytes(IE const& ie, uint8_t* output)
-	{
-		put_bytes<bits_to_bytes(IE::traits::bits)>(ie.get_encoded(), output);
-	}
-
 	template <typename T>
-	static void put_bytes(T const value, uint8_t* output, uint8_t num_bytes)
+	static void write_bytes(T const value, uint8_t* output, uint8_t num_bytes)
 	{
 		switch (num_bytes)
 		{

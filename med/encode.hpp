@@ -90,12 +90,12 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 				using len_t = typename mi::info_type;
 				auto len = sl::ie_length<EXPOSED, mi_rest>(ie, encoder);
 				CODEC_TRACE("LV[%s]=%zX%c rest=%s", name<len_t>(), len, AMultiField<IE>?'*':' ', class_name<mi_rest>());
-				using dependency_type = get_dependency_t<len_t>;
-				if constexpr (!std::is_void_v<dependency_type>)
+				using dependency_t = get_dependency_t<len_t>;
+				if constexpr (!std::is_void_v<dependency_t>)
 				{
-					auto const delta = len_t::dependency(ie.template get<dependency_type>());
+					auto const delta = len_t::dependency(ie.template get<dependency_t>());
 					len -= delta;
-					CODEC_TRACE("adjusted by %d L=%zxh [%s] dependent on %s", -delta, len, name<IE>(), name<dependency_type	>());
+					CODEC_TRACE("adjusted by %d L=%zxh [%s] dependent on %s", -delta, len, name<IE>(), name<dependency_t>());
 				}
 
 				if constexpr (APresentIn<len_t, IE>)

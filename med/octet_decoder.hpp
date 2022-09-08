@@ -9,8 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
-#include <utility>
-
+#include "bytes.hpp"
 #include "exception.hpp"
 #include "state.hpp"
 #include "name.hpp"
@@ -102,31 +101,6 @@ struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
 	}
 
 private:
-	template <typename VALUE>
-	static constexpr void get_byte(uint8_t const*, VALUE&) { }
-
-	template <typename VALUE, std::size_t OFS, std::size_t... Is>
-	static void get_byte(uint8_t const* input, VALUE& value)
-	{
-		value = (value << 8) | *input;
-		get_byte<VALUE, Is...>(++input, value);
-	}
-
-	template<typename VALUE, std::size_t... Is>
-	static void get_bytes_impl(uint8_t const* input, VALUE& value, std::index_sequence<Is...>)
-	{
-		get_byte<VALUE, Is...>(input, value);
-	}
-
-	template <class IE>
-	static auto get_bytes(uint8_t const* input)
-	{
-		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
-		typename IE::value_type value{};
-		get_bytes_impl(input, value, std::make_index_sequence<NUM_BYTES>{});
-		return value;
-	}
-
 	DEC_CTX& m_ctx;
 };
 

@@ -5,7 +5,7 @@ tiny metaprogramming type list
 
 @copyright Denis Priyomov 2019
 Distributed under the MIT License
-(See accompanying file LICENSE or visit https://github.com/cppden/ctstring)
+(See accompanying file LICENSE or visit https://github.com/cppden/med)
 */
 #include <type_traits>
 #include <utility>
@@ -59,6 +59,40 @@ template <template <class...> class L, class T1, class... T> struct list_first<L
 };
 template <class L> using list_first_t = typename list_first<L>::type;
 template <class L> using list_rest_t = typename list_first<L>::rest;
+
+/*- find an element (type) with comparator (metafunction) -*/
+namespace detail {
+
+template <class... Ts>
+struct find;
+
+template <class T0, class... Ts>
+struct find<T0, Ts...>
+{
+	template <class CMP>
+	using type = conditional_t<CMP::template type<T0>::value, T0, typename find<Ts...>::template type<CMP>>;
+};
+
+template <>
+struct find<>
+{
+	template <class CMP>
+	using type = void; //not found
+};
+
+template <class L, class CMP>
+struct find_impl;
+
+template <template<class...> class L, class... Elems, class CMP>
+struct find_impl<L<Elems...>, CMP>
+{
+	using type = typename find<Elems...>::template type<CMP>;
+};
+
+} //end: namespace detail
+
+template <class L, class CMP>
+using find = typename detail::find_impl<L, CMP>::type;
 
 /* --- push front/back a type in list --- */
 template <class L, class... T> struct list_push
@@ -180,4 +214,3 @@ using produce_info_t = unwrap_t<decltype(std::remove_reference_t<F>::template pr
 
 } //end: namespace meta
 } //end: namespace med
-

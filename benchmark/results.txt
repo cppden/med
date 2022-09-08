@@ -1,3 +1,5 @@
+model name	: Intel(R) Core(TM) i7-8650U CPU @ 1.90GHz
+
 2022-09-06T13:04:40+03:00
 Running ./bm_med
 Run on (4 X 4200 MHz CPU s)

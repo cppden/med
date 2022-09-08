@@ -4,15 +4,28 @@ on: [push, pull_request]
 
 jobs:
   code-coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - g++-12
+        build_type: [Release]
+
+    env:
+      CXX: ${{ matrix.compiler }}
 
     steps:
     - run: |
         sudo apt-get update
+        sudo apt-get -y --no-upgrade install ${{ matrix.compiler }}
         sudo apt-get install -y libgtest-dev
 
     - uses: actions/checkout@v2
+
     - run: cmake -E make_directory build
+
     - working-directory: build/
       run: |
         cmake $GITHUB_WORKSPACE -DCMAKE_CXX_FLAGS="-coverage" -DCOVERAGE=ON

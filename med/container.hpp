@@ -24,8 +24,6 @@ struct cont_clear
 {
 	template <class IE, class SEQ>
 	static void apply(SEQ& s)           { static_cast<IE&>(s).clear(); }
-	template <class SEQ>
-	static constexpr void apply(SEQ&)   { }
 };
 
 struct cont_copy
@@ -53,9 +51,6 @@ struct cont_copy
 			}
 		}
 	}
-
-	template <class TO, class FROM, class... ARGS>
-	static void apply(TO&, FROM const&, ARGS&&...)  { }
 };
 
 struct cont_len

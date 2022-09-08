@@ -66,7 +66,7 @@ template <class...> struct dependency_relation {};
 template <class DEPENDENT, class DEPENDENCY>
 struct dependency_relation<DEPENDENT, DEPENDENCY>
 {
-	using dependent_type = DEPENDENT; //TODO: ever need this?
+	using dependent_type = DEPENDENT;
 	using dependency_type = DEPENDENCY;
 };
 

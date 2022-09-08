@@ -15,24 +15,23 @@ namespace med::meta {
 
 namespace detail {
 
-template <class... Ts>
-struct foreach;
+template <class... Ts> struct foreach;
 
 template <class T0, class... Ts>
 struct foreach<T0, Ts...>
 {
 	template <class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr void exec(F&& f, Args&&... args)
 	{
 		f.template apply<T0>(std::forward<Args>(args)...);
-		return foreach<Ts...>::template exec(f, std::forward<Args>(args)...);
+		foreach<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	template <class PREV, class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr void exec(F&& f, Args&&... args)
 	{
 		f.template apply<PREV, T0>(std::forward<Args>(args)...);
-		return foreach<Ts...>::template exec<T0>(f, std::forward<Args>(args)...);
+		foreach<Ts...>::template exec<T0>(std::forward<F>(f), std::forward<Args>(args)...);
 	}
 };
 
@@ -40,42 +39,36 @@ template <>
 struct foreach<>
 {
 	template <class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
-	{
-		return f.template apply(std::forward<Args>(args)...);
-	}
+	static constexpr void exec(F&&, Args&&...) {}
 
 	template <class PREV, class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
-	{
-		return f.template apply<PREV>(std::forward<Args>(args)...);
-	}
+	static constexpr void exec(F&&, Args&&...) {}
 };
-
-template <template<class...> class L, class... Elems, class F, class... Args>
-constexpr auto foreach_impl(L<Elems...>&&, F f, Args&&... args)
-{
-	return foreach<Elems...>::exec(f, std::forward<Args>(args)...);
-}
-
-template <template<class...> class L, class... Elems, class F, class... Args>
-constexpr auto foreach_impl_prev(L<Elems...>&&, F f, Args&&... args)
-{
-	return foreach<Elems...>::template exec<void>(f, std::forward<Args>(args)...);
-}
 
 } //end: namespace detail
 
-template <class L, class F, class... Args>
-constexpr auto foreach(F f, Args&&... args)
+template <class L, class F, class... Ts>
+constexpr auto foreach(F&& f, Ts&&... args)
 {
-	return detail::foreach_impl(L{}, f, std::forward<Args>(args)...);
+	return []
+	<template<class...> class List, class... Elems, class Func, class... Args>
+	(List<Elems...>&&, Func&& f, Args&&... args)
+	{
+		return detail::foreach<Elems...>::exec(std::forward<Func>(f), std::forward<Args>(args)...);
+	}
+	(L{}, std::forward<F>(f), std::forward<Ts>(args)...);
 }
 
-template <class L, class F, class... Args>
-constexpr auto foreach_prev(F f, Args&&... args)
+template <class L, class F, class... Ts>
+constexpr auto foreach_prev(F&& f, Ts&&... args)
 {
-	return detail::foreach_impl_prev(L{}, f, std::forward<Args>(args)...);
+	return []
+	<template<class...> class List, class... Elems, class Func, class... Args>
+	(List<Elems...>&&, Func&& f, Args&&... args)
+	{
+		return detail::foreach<Elems...>::template exec<void>(std::forward<Func>(f), std::forward<Args>(args)...);
+	}
+	(L{}, std::forward<F>(f), std::forward<Ts>(args)...);
 }
 
 /////////////////////////////////////////////
@@ -89,10 +82,10 @@ template <class T0, class... Ts>
 struct fold<T0, Ts...>
 {
 	template <class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		auto const r1 = f.template apply<T0>(std::forward<Args>(args)...);
-		auto const r2 = fold<Ts...>::template exec(f, std::forward<Args>(args)...);
+		auto const r2 = fold<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
 		return f.op(r1, r2);
 	}
 };
@@ -101,24 +94,24 @@ template <>
 struct fold<>
 {
 	template <class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		return f.template apply(std::forward<Args>(args)...);
 	}
 };
 
-template <template<class...> class L, class... Elems, class F, class... Args>
-constexpr auto fold_impl(L<Elems...>&&, F f, Args&&... args)
-{
-	return fold<Elems...>::exec(f, std::forward<Args>(args)...);
-}
-
 } //end: namespace detail
 
-template <class L, class F, class... Args>
-constexpr auto fold(F f, Args&&... args)
+template <class L, class F, class... Ts>
+constexpr auto fold(F&& f, Ts&&... args)
 {
-	return detail::fold_impl(L{}, f, std::forward<Args>(args)...);
+	return []
+	<template<class...> class List, class... Elems, class Func, class... Args>
+	(List<Elems...>&&, Func&& f, Args&&... args)
+	{
+		return detail::fold<Elems...>::exec(std::forward<Func>(f), std::forward<Args>(args)...);
+	}
+	(L{}, std::forward<F>(f), std::forward<Ts>(args)...);
 }
 
 /////////////////////////////////////////////
@@ -132,7 +125,7 @@ template <class T0, class... Ts>
 struct for_if<T0, Ts...>
 {
 	template <class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		if (f.template check<T0>(std::forward<Args>(args)...))
 		{
@@ -140,12 +133,12 @@ struct for_if<T0, Ts...>
 		}
 		else
 		{
-			return for_if<Ts...>::template exec(f, std::forward<Args>(args)...);
+			return for_if<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
 		}
 	}
 
 	template <class PREV, class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		if (f.template check<PREV, T0>(std::forward<Args>(args)...))
 		{
@@ -153,7 +146,7 @@ struct for_if<T0, Ts...>
 		}
 		else
 		{
-			return for_if<Ts...>::template exec<T0>(f, std::forward<Args>(args)...);
+			return for_if<Ts...>::template exec<T0>(std::forward<F>(f), std::forward<Args>(args)...);
 		}
 	}
 };
@@ -162,84 +155,37 @@ template <>
 struct for_if<>
 {
 	template <class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		return f.template apply(std::forward<Args>(args)...);
 	}
 
 	template <class PREV, class F, class... Args>
-	static constexpr auto exec(F f, Args&&... args)
+	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		return f.template apply<PREV>(std::forward<Args>(args)...);
 	}
 };
 
 template <template<class...> class L, class... Elems, class F, class... Args>
-constexpr auto for_if_impl(L<Elems...>&&, F f, Args&&... args)
+constexpr auto for_if_impl(L<Elems...>&&, F&& f, Args&&... args)
 {
-	return for_if<Elems...>::exec(f, std::forward<Args>(args)...);
-}
-
-template <template<class...> class L, class... Elems, class F, class... Args>
-constexpr auto for_if_impl_prev(L<Elems...>&&, F f, Args&&... args)
-{
-	return for_if<Elems...>::template exec<void>(f, std::forward<Args>(args)...);
+	return for_if<Elems...>::exec(std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 } //end: namespace detail
 
 template <class L, class F, class... Args>
-constexpr auto for_if(F f, Args&&... args)
+constexpr auto for_if(F&& f, Args&&... args)
 {
-	return detail::for_if_impl(L{}, f, std::forward<Args>(args)...);
+	return detail::for_if_impl(L{}, std::forward<F>(f), std::forward<Args>(args)...);
 }
 template <class L, class F, class... Args>
-constexpr auto for_if(bool cond, F f, Args&&... args)
+constexpr auto for_if(bool cond, F&& f, Args&&... args)
 {
 	return cond
-			? detail::for_if_impl(L{}, f, std::forward<Args>(args)...)
-			: detail::for_if_impl(typelist{}, f, std::forward<Args>(args)...);
+		? detail::for_if_impl(L{}, std::forward<F>(f), std::forward<Args>(args)...)
+		: detail::for_if_impl(typelist{}, std::forward<F>(f), std::forward<Args>(args)...);
 }
-
-template <class L, class F, class... Args>
-constexpr auto for_if_prev(F f, Args&&... args)
-{
-	return detail::for_if_impl_prev(L{}, f, std::forward<Args>(args)...);
-}
-
-namespace detail {
-
-template <class... Ts>
-struct find;
-
-template <class T0, class... Ts>
-struct find<T0, Ts...>
-{
-	template <class CMP>
-	using type = conditional_t<CMP::template type<T0>::value, T0, typename find<Ts...>::template type<CMP>>;
-};
-
-template <>
-struct find<>
-{
-	template <typename CMP>
-	using type = void; //not found
-};
-
-template <class L, class CMP>
-struct find_impl;
-
-template <template<class...> class L, class... Elems, class CMP>
-struct find_impl<L<Elems...>, CMP>
-{
-	using type = typename find<Elems...>::template type<CMP>;
-};
-
-} //end: namespace detail
-
-
-template <class L, class CMP>
-using find = typename detail::find_impl<L, CMP>::type;
 
 } //end: namespace med::meta
-

@@ -23,8 +23,8 @@ namespace med {
 namespace sl {
 
 //TODO: more flexible is to compare current size read and how many bits to rewind for RO IE.
-template <class IE, class FUNC, class TAG>
-constexpr void clear_tag(FUNC& func, TAG& vtag)
+template <class IE, class FUNC>
+constexpr void clear_tag(FUNC& func, auto& vtag)
 {
 	using type = get_meta_tag_t<meta::produce_info_t<FUNC, IE>>;
 	if constexpr (is_peek_v<type>)
@@ -34,8 +34,7 @@ constexpr void clear_tag(FUNC& func, TAG& vtag)
 	vtag.clear();
 }
 
-template <class FUNC, class TAG>
-constexpr void discard(FUNC& func, TAG& vtag)
+constexpr void discard(auto& func, auto& vtag)
 {
 	if (vtag)
 	{
@@ -67,9 +66,24 @@ constexpr void encode_multi(FUNC& func, IE const& ie)
 
 struct seq_dec
 {
-	template <class PREV_IE, class IE, class TO, class DECODER, class TAG, class... DEPS>
+#if 0
+	template <class PREV_IE = void, class EXP_LEN = void>
+	struct type_ctx
+	{
+		using previous_ie_type = PREV_IE;
+		using explicit_length_type = EXP_LEN;
+	};
+
+	template <class TYPE_CTX, class IE, class TO, class DECODER, class TAG, class... DEPS>
 	static constexpr void apply(TO& to, DECODER& decoder, TAG& vtag, DEPS&... deps)
 	{
+		using PREV_IE = typename TYPE_CTX::previous_ie_type;
+		using EXP_LEN = typename TYPE_CTX::explicit_length_type;
+#else
+	template <class PREV_IE, class IE, class TO, class DECODER>
+	static constexpr void apply(TO& to, DECODER& decoder, auto& vtag, auto&... deps)
+	{
+#endif
 		IE& ie = to;
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = get_meta_tag_t<mi>;
@@ -107,19 +121,13 @@ struct seq_dec
 					}
 				}
 
-				if (!vtag)
-				{
-					decoder(POP_STATE{}); //restore state
-				}
+				if (!vtag) { decoder(POP_STATE{}); } //restore state
 				check_arity(decoder, ie);
 			}
 			else //multi-field w/o tag
 			{
 				using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;
-				if constexpr (not std::is_void_v<prev_tag_t>)
-				{
-					discard(decoder, vtag);
-				}
+				if constexpr (not std::is_void_v<prev_tag_t>) { discard(decoder, vtag); }
 
 				//multi-field w/ count-getter or counter
 				if constexpr (AHasCountGetter<IE> || ACounter<IE>)
@@ -133,7 +141,7 @@ struct seq_dec
 						else
 						{
 							typename IE::counter_type counter_ie;
-							med::decode(decoder, counter_ie, deps...);
+							sl::ie_decode<sl::decode_type_context<>>(decoder, counter_ie);
 							return counter_ie.get_encoded();
 						}
 					}();
@@ -228,7 +236,7 @@ struct seq_dec
 						if (was_set)
 						{
 							CODEC_TRACE("C[%s]", name<IE>());
-							med::decode(decoder, ie, deps...);
+							sl::ie_decode<sl::decode_type_context<mi>>(decoder, ie, deps...);
 						}
 						else
 						{
@@ -240,7 +248,7 @@ struct seq_dec
 						CODEC_TRACE("[%s]...", name<IE>());
 						if (decoder(CHECK_STATE{}, ie))
 						{
-							med::decode(decoder, ie, deps...);
+							sl::ie_decode<sl::decode_type_context<mi>>(decoder, ie, deps...);
 						}
 						else
 						{
@@ -260,20 +268,18 @@ struct seq_dec
 				{
 					discard(decoder, vtag);
 				}
-				med::decode(decoder, ie, deps...);
+				sl::ie_decode<sl::decode_type_context<mi>>(decoder, ie, deps...);
 			}
 		}
 	}
-
-	template <class PREV_IE, class TO, class DECODER, class TAG, class... DEPS>
-	static constexpr void apply(TO&, DECODER&, TAG&, DEPS&...) {}
 };
 
 struct seq_enc
 {
-	template <class PREV_IE, class IE, class TO, class ENCODER>
-	static constexpr void apply(TO const& to, ENCODER& encoder)
+	template <class PREV_IE, class IE>
+	static constexpr void apply(auto const& to, auto& encoder)
 	{
+		IE const& ie = to;
 		if constexpr (AMultiField<IE>)
 		{
 			if constexpr (ACounter<IE>)
@@ -281,7 +287,6 @@ struct seq_enc
 				//optional multi-field w/ counter w/o tag
 				if constexpr (AOptional<IE>)
 				{
-					IE const& ie = to;
 					std::size_t const count = field_count(ie);
 					CODEC_TRACE("CV[%s]=%zu", name<IE>(), ie.count());
 					if (count > 0)
@@ -296,7 +301,6 @@ struct seq_enc
 				//mandatory multi-field w/ counter w/o tag
 				else
 				{
-					IE const& ie = to;
 					CODEC_TRACE("CV{%s}=%zu", name<IE>(), ie.count());
 					typename IE::counter_type counter_ie;
 					counter_ie.set_encoded(ie.count());
@@ -307,7 +311,6 @@ struct seq_enc
 			}
 			else //multi-field w/o counter
 			{
-				IE const& ie = to;
 				encode_multi(encoder, ie);
 				check_arity(encoder, ie);
 			}
@@ -342,7 +345,6 @@ struct seq_enc
 				}
 				else //w/o setter
 				{
-					IE const& ie = to;
 					CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
 					if (ie.is_set())
 					{
@@ -381,7 +383,6 @@ struct seq_enc
 				}
 				else //w/o setter
 				{
-					IE const& ie = to;
 					//CODEC_TRACE("%c{%s}", ie.is_set()?'+':'-', class_name<IE>());
 					if (AHasSetLength<IE> || ie.is_set())
 					{
@@ -395,9 +396,6 @@ struct seq_enc
 			}
 		}
 	}
-
-	template <class PREV_IE, class TO, class ENCODER>
-	static constexpr void apply(TO const&, ENCODER&) {}
 };
 
 }	//end: namespace sl
@@ -408,22 +406,20 @@ struct sequence : container<IES...>
 {
 	using ies_types = typename container<IES...>::ies_types;
 
-	template <class IE_LIST, class ENCODER>
-	void encode(ENCODER& encoder) const
+	template <class IE_LIST>
+	void encode(auto& encoder) const
 	{
 		meta::foreach_prev<IE_LIST>(sl::seq_enc{}, this->m_ies, encoder);
 	}
-	template <class ENCODER>
-	void encode(ENCODER& encoder) const { encode<ies_types>(encoder); }
+	void encode(auto& encoder) const { encode<ies_types>(encoder); }
 
-	template <class IE_LIST, class DECODER, class... DEPS>
-	void decode(DECODER& decoder, DEPS&... deps)
+	template <class IE_LIST>
+	void decode(auto& decoder, auto&... deps)
 	{
 		value<std::size_t> vtag;
 		meta::foreach_prev<IE_LIST>(sl::seq_dec{}, this->m_ies, decoder, vtag, deps...);
 	}
-	template <class DECODER, class... DEPS>
-	void decode(DECODER& decoder, DEPS&... deps) { decode<ies_types>(decoder, deps...); }
+	void decode(auto& decoder, auto&... deps) { decode<ies_types>(decoder, deps...); }
 };
 
 } //end: namespace med

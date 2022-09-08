@@ -14,6 +14,8 @@ on:
 
 jobs:
   linux:
+    runs-on: ubuntu-22.04
+
     strategy:
       fail-fast: false
       matrix:
@@ -21,8 +23,6 @@ jobs:
           - g++-12
           - clang++-14
         build_type: [Release]
-
-    runs-on: ubuntu-22.04
 
     env:
       CXX: ${{ matrix.compiler }}
@@ -32,8 +32,11 @@ jobs:
         sudo apt-get update
         sudo apt-get -y --no-upgrade install ${{ matrix.compiler }}
         sudo apt-get -y install libgtest-dev
+
     - uses: actions/checkout@v2
+
     - run: cmake -E make_directory build
+
     - working-directory: build/
       run: |
         cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}

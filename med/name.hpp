@@ -17,6 +17,7 @@ Distributed under the MIT License
 
 namespace med {
 
+//TODO: replace with string_view
 template <class T>
 const char* class_name()
 {
@@ -27,14 +28,7 @@ const char* class_name()
 		psz = typeid(T).name();
 		if (char* sane = abi::__cxa_demangle(psz, nullptr, nullptr, nullptr))
 		{
-#if 0
-			auto* plain = std::strrchr(sane, ':');
-			if (plain) plain++;
-			else plain = sane;
-#else
-			auto* plain = sane;
-#endif
-			std::strncpy(sz, plain, sizeof(sz)-1);
+			std::strncpy(sz, sane, sizeof(sz)-1);
 			sz[sizeof(sz) - 1] = '\0';
 			std::free(sane);
 			psz = sz;

@@ -114,29 +114,6 @@ struct octet_encoder : sl::octet_info
 	}
 
 private:
-	template <std::size_t NUM_BYTES, typename VALUE>
-	static constexpr void put_byte(uint8_t*, VALUE const) { }
-
-	template <std::size_t NUM_BYTES, typename VALUE, std::size_t OFS, std::size_t... Is>
-	static void put_byte(uint8_t* output, VALUE const value)
-	{
-		output[OFS] = static_cast<uint8_t>(value >> ((NUM_BYTES - OFS - 1) << 3));
-		put_byte<NUM_BYTES, VALUE, Is...>(output, value);
-	}
-
-	template<std::size_t NUM_BYTES, typename VALUE, std::size_t... Is>
-	static void put_bytes_impl(uint8_t* output, VALUE const value, std::index_sequence<Is...>)
-	{
-		put_byte<NUM_BYTES, VALUE, Is...>(output, value);
-	}
-
-	template <class IE>
-	static void put_bytes(IE const& ie, uint8_t* output)
-	{
-		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
-		put_bytes_impl<NUM_BYTES>(output, ie.get_encoded(), std::make_index_sequence<NUM_BYTES>{});
-	}
-
 	ENC_CTX& m_ctx;
 };
 
