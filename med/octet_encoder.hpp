@@ -117,6 +117,4 @@ private:
 	ENC_CTX& m_ctx;
 };
 
-template <class C> explicit octet_encoder(C&) -> octet_encoder<C>;
-
 }	//end: namespace med

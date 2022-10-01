@@ -19,6 +19,15 @@ Distributed under the MIT License
 
 namespace med {
 
+//inject typedefs to define that DEPENDENT depends on DEPENDENCY
+template <class...> struct dependency_relation {};
+template <class DEPENDENT, class DEPENDENCY>
+struct dependency_relation<DEPENDENT, DEPENDENCY>
+{
+	using dependent_type = DEPENDENT;
+	using dependency_type = DEPENDENCY;
+};
+
 template <class DEC_CTX, class... DEPS>
 struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
 {
@@ -103,7 +112,5 @@ struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
 private:
 	DEC_CTX& m_ctx;
 };
-
-template <class C> explicit octet_decoder(C&) -> octet_decoder<C>;
 
 }	//end: namespace med

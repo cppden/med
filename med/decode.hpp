@@ -26,12 +26,20 @@ namespace med {
 //structure layer
 namespace sl {
 
-template <class META_INFO = meta::typelist<>, class EXPOSED = void, class EXP_LEN = void>
+template <
+	class META_INFO = meta::typelist<>,
+	class EXPOSED = void,
+	class EXP_LEN = void,
+	class DEPENDENT = void,
+	class DEPENDENCY = void
+>
 struct decode_type_context
 {
 	using meta_info_type = META_INFO;
 	using exposed_type = EXPOSED;
 	using explicit_length_type = EXP_LEN;
+	using dependent_type = DEPENDENT;
+	using dependency_type = DEPENDENCY;
 };
 
 

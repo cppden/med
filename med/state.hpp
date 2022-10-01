@@ -61,13 +61,4 @@ struct SNAPSHOT
 template <class IE>
 constexpr SNAPSHOT::id_type snapshot_id = IE::name();
 
-//inject typedefs to define that DEPENDENT depends on DEPENDENCY
-template <class...> struct dependency_relation {};
-template <class DEPENDENT, class DEPENDENCY>
-struct dependency_relation<DEPENDENT, DEPENDENCY>
-{
-	using dependent_type = DEPENDENT;
-	using dependency_type = DEPENDENCY;
-};
-
 }	//end: namespace med
