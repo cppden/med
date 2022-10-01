@@ -19,25 +19,14 @@ Distributed under the MIT License
 
 namespace med {
 
-//inject typedefs to define that DEPENDENT depends on DEPENDENCY
-template <class...> struct dependency_relation {};
-template <class DEPENDENT, class DEPENDENCY>
-struct dependency_relation<DEPENDENT, DEPENDENCY>
-{
-	using dependent_type = DEPENDENT;
-	using dependency_type = DEPENDENCY;
-};
-
-template <class DEC_CTX, class... DEPS>
-struct octet_decoder : sl::octet_info, dependency_relation<DEPS...>
+template <class DEC_CTX>
+struct octet_decoder : sl::octet_info
 {
 	using state_type = typename DEC_CTX::buffer_type::state_type;
 	using size_state = typename DEC_CTX::buffer_type::size_state;
 	using allocator_type = typename DEC_CTX::allocator_type;
 	template <class... PA>
 	using padder_type = octet_padder<PA...>;
-	template <class... NEWDEPS>
-	using make_dependent = octet_decoder<DEC_CTX, NEWDEPS...>;
 
 	explicit octet_decoder(DEC_CTX& c) : m_ctx{c} { }
 	DEC_CTX& get_context() noexcept             { return m_ctx; }
