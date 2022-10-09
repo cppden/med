@@ -18,14 +18,14 @@ Distributed under the MIT License
 namespace med::asn {
 
 template <typename T, class... ASN_TRAITS> //TRAITs is asn::traits<T,C>
-struct value_t : value<T>, add_meta_info<mi<mik::TAG, ASN_TRAITS>...>{};
+struct value_t : value<T>, add_meta_info<add_tag<ASN_TRAITS>...>{};
 
 template <class... ASN_TRAITS>
 using boolean_t = value_t<bool, ASN_TRAITS...>;
 using boolean = boolean_t<traits<tg_value::BOOLEAN>>;
 
 template <class... ASN_TRAITS>
-struct null_t : empty<>, add_meta_info<mi<mik::TAG, ASN_TRAITS>...> {};
+struct null_t : empty<>, add_meta_info<add_tag<ASN_TRAITS>...> {};
 using null = null_t<traits<tg_value::NULL_TYPE>>;
 
 //NOTE! ASN assumes the integer is signed! don't use unsigned ever
@@ -40,11 +40,11 @@ using real_t = value_t<double, ASN_TRAITS...>;
 using real = real_t<traits<tg_value::REAL>>;
 
 template <class... ASN_TRAITS>
-struct bit_string_t : med::bit_string<>, add_meta_info<mi<mik::TAG, ASN_TRAITS>...> {};
+struct bit_string_t : med::bit_string<>, add_meta_info<add_tag<ASN_TRAITS>...> {};
 using bit_string = bit_string_t<traits<tg_value::BIT_STRING>>;
 
 template <class... ASN_TRAITS>
-struct octet_string_t : med::octet_string<octets_var_extern>, add_meta_info<mi<mik::TAG, ASN_TRAITS>...> {};
+struct octet_string_t : med::octet_string<octets_var_extern>, add_meta_info<add_tag<ASN_TRAITS>...> {};
 using octet_string = octet_string_t<traits<tg_value::OCTET_STRING>>;
 
 template <class META_INFO, class ...IES>
@@ -54,7 +54,7 @@ struct sequence_t : med::sequence<IES...>
 };
 template <class ...IES>
 using sequence = sequence_t<
-	meta::typelist<mi<mik::TAG, traits<tg_value::SEQUENCE>>>,
+	meta::typelist<add_tag<traits<tg_value::SEQUENCE>>>,
 	IES...
 >;
 
@@ -62,7 +62,7 @@ template <class META_INFO, class IE, class CMAX = inf>
 using sequence_of_t = multi_field<IE, 1, CMAX, META_INFO>;
 template <class IE, class CMAX = inf>
 using sequence_of = sequence_of_t<
-	meta::typelist<mi<mik::TAG, traits<tg_value::SEQUENCE>>>,
+	meta::typelist<add_tag<traits<tg_value::SEQUENCE>>>,
 	IE, CMAX
 >;
 
@@ -73,7 +73,7 @@ struct set_t : med::set<IES...>
 };
 template <class ...IES>
 using set = set_t<
-	meta::typelist<mi<mik::TAG, traits<tg_value::SET>>>,
+	meta::typelist<add_tag<traits<tg_value::SET>>>,
 	IES...
 >;
 
@@ -88,7 +88,7 @@ template <class META_INFO, class IE, class CMAX = inf>
 using set_of_t = multi_field<IE, 1, CMAX, META_INFO>;
 template <class IE, class CMAX = inf>
 using set_of = set_of_t<
-	meta::typelist<mi<mik::TAG, traits<tg_value::SET>>>,
+	meta::typelist<add_tag<traits<tg_value::SET>>>,
 	IE, CMAX
 >;
 
@@ -109,7 +109,7 @@ using subid_t = uintmax_t;
 template <class CMAX, class... ASN_TRAITS>
 using relative_oid_t = multi_field<
 	value<subid_t>, 1, CMAX,
-	meta::typelist<mi<mik::TAG, ASN_TRAITS>...>
+	meta::typelist<add_tag<ASN_TRAITS>...>
 >;
 template <class CMAX = inf>
 using relative_oid = relative_oid_t<CMAX, traits<tg_value::RELATIVE_OID>>;

@@ -270,7 +270,7 @@ struct optional<
 	void,
 	min<1>,
 	max<1>
-> : field_t<FIELD, mi<mik::TAG, TAG>>, optional_t
+> : field_t<FIELD, add_tag<TAG>>, optional_t
 {
 };
 
@@ -282,7 +282,7 @@ struct optional<
 	max<MAX>,
 	min<1>,
 	max<1>
-> : multi_field<FIELD, 1, max<MAX>, void, mi<mik::TAG, TAG>>, optional_t
+> : multi_field<FIELD, 1, max<MAX>, void, add_tag<TAG>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -294,7 +294,7 @@ struct optional<
 	pmax<MAX>,
 	min<1>,
 	max<1>
-> : multi_field<FIELD, 1, pmax<MAX>, void, mi<mik::TAG, TAG>>, optional_t
+> : multi_field<FIELD, 1, pmax<MAX>, void, add_tag<TAG>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -307,7 +307,7 @@ struct optional<
 	arity<NUM>,
 	min<1>,
 	max<1>
-> : multi_field<FIELD, NUM, max<NUM>, void, mi<mik::TAG, TAG>>, optional_t
+> : multi_field<FIELD, NUM, max<NUM>, void, add_tag<TAG>>, optional_t
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -362,7 +362,7 @@ struct optional<
 	FIELD,
 	min<1>,
 	max<1>
-> : field_t<FIELD, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : field_t<FIELD, add_tag<TAG>, add_len<typename LEN::length_type>>, optional_t
 {
 };
 
@@ -373,7 +373,7 @@ struct optional<
 	FIELD,
 	arity<NUM>,
 	max<1>
-> : multi_field<FIELD, NUM, max<NUM>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, NUM, max<NUM>, void, add_tag<TAG>, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(NUM > 1, "ARITY SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -385,7 +385,7 @@ struct optional<
 	FIELD,
 	max<MAX>,
 	max<1>
-> : multi_field<FIELD, 1, max<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, 1, max<MAX>, void, add_tag<TAG>, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -397,7 +397,7 @@ struct optional<
 	FIELD,
 	pmax<MAX>,
 	max<1>
-> : multi_field<FIELD, 1, pmax<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, 1, pmax<MAX>, void, add_tag<TAG>, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -409,7 +409,7 @@ struct optional<
 	FIELD,
 	min<MIN>,
 	max<MAX>
-> : multi_field<FIELD, MIN, max<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, MIN, max<MAX>, void, add_tag<TAG>, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
@@ -422,7 +422,7 @@ struct optional<
 	FIELD,
 	min<MIN>,
 	pmax<MAX>
-> : multi_field<FIELD, MIN, pmax<MAX>, void, mi<mik::TAG, TAG>, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, MIN, pmax<MAX>, void, add_tag<TAG>, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
@@ -438,7 +438,7 @@ struct optional<
 	void,
 	min<1>,
 	max<1>
-> : field_t<FIELD, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : field_t<FIELD, add_len<typename LEN::length_type>>, optional_t
 {
 };
 
@@ -450,7 +450,7 @@ struct optional<
 	CONDITION,
 	min<1>,
 	max<1>
-> : field_t<FIELD, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : field_t<FIELD, add_len<typename LEN::length_type>>, optional_t
 {
 	using condition = CONDITION;
 };
@@ -462,7 +462,7 @@ struct optional<
 	max<MAX>,
 	min<1>,
 	max<1>
-> : multi_field<FIELD, 1, max<MAX>, void, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, 1, max<MAX>, void, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -474,7 +474,7 @@ struct optional<
 	pmax<MAX>,
 	min<1>,
 	max<1>
-> : multi_field<FIELD, 1, pmax<MAX>, void, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, 1, pmax<MAX>, void, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MAX > 1, "MAX SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 };
@@ -486,7 +486,7 @@ struct optional<
 	min<MIN>,
 	max<MAX>,
 	max<1>
-> : multi_field<FIELD, MIN, max<MAX>, void, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, MIN, max<MAX>, void, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");
@@ -499,7 +499,7 @@ struct optional<
 	min<MIN>,
 	pmax<MAX>,
 	max<1>
-> : multi_field<FIELD, MIN, pmax<MAX>, void, mi<mik::LEN, typename LEN::length_type>>, optional_t
+> : multi_field<FIELD, MIN, pmax<MAX>, void, add_len<typename LEN::length_type>>, optional_t
 {
 	static_assert(MIN > 1, "MIN SHOULD BE MORE THAN 1 OR NOT SPECIFIED");
 	static_assert(MAX > MIN, "MAX SHOULD BE MORE THAN MIN OR NOT SPECIFIED");

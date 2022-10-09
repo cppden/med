@@ -159,11 +159,10 @@ struct avp :
 		M< avp_flags >,
 		O< vendor, vendor::has >,
 		M< BODY >
-	>
-	, med::add_meta_info<
-		med::mi<med::mik::TAG, avp_code_fixed<CODE>>,
-		med::mi<med::mik::LEN, avp_flags>
-	>
+	> , med::add_meta_info<
+			med::add_tag<avp_code_fixed<CODE>>,
+			med::add_len<avp_flags> //explicit length
+		>
 {
 	auto const& flags() const                   { return this->template get<avp_flags>(); }
 	auto& flags()                               { return this->template ref<avp_flags>(); }
@@ -231,11 +230,10 @@ struct any_avp :
 		M< avp_flags >,
 		O< vendor, vendor::has >,
 		M< med::octet_string<> >
-	>
-	, med::add_meta_info<
-		med::mi<med::mik::TAG, avp_code> ,
-		med::mi<med::mik::LEN, avp_flags>
-	>
+	> , med::add_meta_info<
+			med::add_tag<avp_code> ,
+			med::add_len<avp_flags> //explicit length
+		>
 {
 	auto& body() const                  { return get<med::octet_string<>>(); }
 	bool is_set() const                 { return body().is_set(); }
@@ -303,8 +301,8 @@ struct base : med::choice< header
 	, M<cmd_code, ANY>
 >,
 	med::add_meta_info<
-		med::mi<med::mik::TAG, version>,
-		med::mi<med::mik::LEN, med::value<med::bytes<3>>>
+		med::add_tag<version>,
+		med::add_len<med::value<med::bytes<3>>>
 	>
 {
 };

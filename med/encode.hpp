@@ -38,38 +38,6 @@ constexpr void encode_tag(ENCODER& encoder)
 	}
 }
 
-template <class EXPOSED, class T>
-struct container_encoder
-{
-	template <class ENCODER, class IE>
-	static constexpr void encode(ENCODER& encoder, IE const& ie)
-	{
-		if constexpr (std::is_void_v<EXPOSED>)
-		{
-			CODEC_TRACE(">>> %s", name<IE>());
-			ie.encode(encoder);
-			CODEC_TRACE("<<< %s", name<IE>());
-		}
-		else
-		{
-			CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXPOSED>());
-			ie.template encode<meta::list_rest_t<typename IE::ies_types>>(encoder);
-			CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXPOSED>());
-		}
-	}
-};
-
-//special case for printer
-template <class EXPOSED, class T> requires requires(T v) { typename T::container_encoder; }
-struct container_encoder<EXPOSED, T>
-{
-	template <class ENCODER, class IE>
-	static void encode(ENCODER& encoder, IE const& ie)
-	{
-		return typename T::container_encoder{}(encoder, ie);
-	}
-};
-
 template <class META_INFO, class EXPOSED, class ENCODER, class IE>
 constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 {
@@ -133,7 +101,26 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				container_encoder<EXPOSED, ENCODER>::encode(encoder, ie);
+				//special case for printer
+				if constexpr (requires { typename ENCODER::container_encoder; })
+				{
+					typename ENCODER::container_encoder{}(encoder, ie);
+				}
+				else
+				{
+					if constexpr (std::is_void_v<EXPOSED>)
+					{
+						CODEC_TRACE(">>> %s", name<IE>());
+						ie.encode(encoder);
+						CODEC_TRACE("<<< %s", name<IE>());
+					}
+					else //NOTE! EXPOSED should be the 1st IE
+					{
+						CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXPOSED>());
+						ie.template encode<meta::list_rest_t<typename IE::ies_types>>(encoder);
+						CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXPOSED>());
+					}
+				}
 			}
 			else
 			{

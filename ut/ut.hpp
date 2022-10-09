@@ -320,16 +320,17 @@ template <class MSG, class RANGE>
 void check_decode(MSG const& msg, RANGE const& binary)
 {
 	MSG decoded_msg;
-	ASSERT_FALSE(msg == decoded_msg);
 	auto const size = binary.get_offset();
 	ASSERT_GT(size, 0);
 	auto const* data = binary.get_start();
 	med::decoder_context ctx{data, size};
+	CODEC_TRACE("--->>> DECODE <<<--- : %s", med::name<MSG>());
 	decode(med::octet_decoder{ctx}, decoded_msg);
-#if 1
+#if 1 //re-encode to check binary buffer
 	uint8_t buffer[1024];
 	ASSERT_LE(size, sizeof(buffer));
 	med::encoder_context ectx{buffer, size};
+	CODEC_TRACE("--->>> ENCODE <<<--- : %s", med::name<MSG>());
 	encode(med::octet_encoder{ectx}, decoded_msg);
 	ASSERT_STREQ(as_string(binary), as_string(ectx.buffer()));
 #endif
@@ -337,5 +338,7 @@ void check_decode(MSG const& msg, RANGE const& binary)
 	ASSERT_TRUE(msg == decoded_msg)
 		<< "\nEncoded:\n" << get_printed(msg)
 		<< "\nDecoded:\n" << get_printed(decoded_msg);
+#else
+	(void)msg;
 #endif
 };

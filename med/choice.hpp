@@ -147,7 +147,7 @@ struct choice_enc : choice_if
 				using EXPOSED = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
 				if constexpr(std::is_same_v<EXPOSED, type>)
 				{
-					CODEC_TRACE("exposed[%s]", name<EXPOSED>());
+					CODEC_TRACE("exposed[%s] mi=%s", name<EXPOSED>(), class_name<mi>());
 					//encoode 1st TAG meta-info via exposed
 					sl::ie_encode<meta::typelist<>, void>(encoder, to.template as<EXPOSED>());
 					//skip 1st TAG meta-info and encode it via exposed

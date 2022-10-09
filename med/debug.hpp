@@ -11,7 +11,7 @@ Distributed under the MIT License
 #include <cstdio>
 #include <cstring>
 
-//#define CODEC_TRACE_ENABLE
+#define CODEC_TRACE_ENABLE
 
 
 #ifdef CODEC_TRACE_ENABLE
@@ -35,7 +35,7 @@ constexpr char const* filename(char const* fname)
 } //end: namespace
 } //end: namespace med
 
-#define CODEC_TRACE(FMT, ...) std::printf("%s[%u]:" FMT "\n", med::debug::filename(__FILE__), __LINE__, __VA_ARGS__)
+#define CODEC_TRACE(FMT, ...) std::printf("%s:%u\t" FMT "\n", med::debug::filename(__FILE__), __LINE__, __VA_ARGS__)
 
 #else
 #define CODEC_TRACE(...)

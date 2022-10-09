@@ -62,7 +62,7 @@ struct msg : med::sequence<
 :                                                               :
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                  Floor Participant Reference 1                |
-:                               |                               :
+:                               :                               :
 |                  Floor Participant Reference n                |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 

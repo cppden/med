@@ -18,6 +18,11 @@ struct mi
 	static constexpr mik kind = KIND;
 };
 
+template <class INFO>
+using add_tag = mi<mik::TAG, INFO>;
+template <class INFO>
+using add_len = mi<mik::LEN, INFO>;
+
 template <class... T>
 struct add_meta_info
 {
@@ -29,7 +34,7 @@ struct get_meta_info
 {
 	using type = meta::typelist<>;
 };
-template <class T> requires requires(T v) { typename T::meta_info; }
+template <class T> requires requires(T) { typename T::meta_info; }
 struct get_meta_info<T>
 {
 	using type = typename T::meta_info;
