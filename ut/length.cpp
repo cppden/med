@@ -366,18 +366,7 @@ TEST(length, vlvar)
 
 	ctx.reset();
 	encode(med::octet_encoder{ctx}, msg);
-/*
-struct VLVAR : med::sequence<
-	M<U8>,
-	M<VL>,
-	M<VAR>
->, med::add_meta_info<med::add_len<VL>>
-struct VMSG : med::sequence<
-	M< T<1>, VLVAR, med::max<2>>,
-	O< T<2>, U16, med::max<2>>,
-	O< T<4>, L, U32, med::max<2>>
->{};
-*/
+
 	uint8_t encoded[] = {
 		0,0,0,1, //T<1>
 		3,    // M<U8>

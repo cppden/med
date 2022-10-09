@@ -181,7 +181,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 				static_assert(std::is_void_v<EXPOSED>, "overlapping dependency and explicit length");
 				static_assert(sizeof...(deps) == 0);
 				auto const start = decoder(GET_STATE{});
-				CODEC_TRACE(">>> explicit LV[%s]", name<len_t>());
+				CODEC_TRACE(">>> explicit len[%s]", name<len_t>());
 				ie_decode<decode_type_context<mi_rest, EXPOSED, len_t>>(decoder, ie, start);
 			}
 			else
@@ -223,7 +223,9 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 			else if constexpr (not std::is_void_v<EXP_LEN>)
 			{
 				/* NOTE: explicit length is valid for sequence only */
-				ie.decode(decoder, deps...);
+				CODEC_TRACE("explicit=%s", name<EXP_LEN>());
+				using ctx = decode_type_context<meta::typelist<>, void, EXP_LEN>;
+				ie.template decode<typename IE::ies_types, ctx>(decoder, deps...);
 			}
 			else
 			{
@@ -233,7 +235,6 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 		}
 		else
 		{
-			CODEC_TRACE("%s[%.30s](%zu): %s", __FUNCTION__, class_name<IE>(), sizeof... (deps), class_name<ie_type>());
 			if constexpr (is_peek_v<IE>)
 			{
 				CODEC_TRACE("PEEK %s[%s]", __FUNCTION__, name<IE>());
@@ -246,7 +247,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 			else
 			{
 				using field_t = get_field_type_t<IE>;
-				CODEC_TRACE("PRIMITIVE %s[%s]", __FUNCTION__, name<IE>());
+				CODEC_TRACE("PRIMITIVE %s[%.30s](%zu): %s", __FUNCTION__, name<IE>(), sizeof... (deps), class_name<ie_type>());
 				decoder(ie, ie_type{});
 
 				if constexpr (std::is_same_v<field_t, EXP_LEN>)

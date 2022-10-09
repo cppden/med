@@ -27,11 +27,11 @@ struct foreach<T0, Ts...>
 		foreach<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
-	template <class PREV, class F, class... Args>
-	static constexpr void exec(F&& f, Args&&... args)
+	template <class CTX, class PREV, class F, class... Args>
+	static constexpr void exec_prev(F&& f, Args&&... args)
 	{
-		f.template apply<PREV, T0>(std::forward<Args>(args)...);
-		foreach<Ts...>::template exec<T0>(std::forward<F>(f), std::forward<Args>(args)...);
+		f.template apply<CTX, PREV, T0>(std::forward<Args>(args)...);
+		foreach<Ts...>::template exec_prev<CTX, T0>(std::forward<F>(f), std::forward<Args>(args)...);
 	}
 };
 
@@ -41,8 +41,8 @@ struct foreach<>
 	template <class F, class... Args>
 	static constexpr void exec(F&&, Args&&...) {}
 
-	template <class PREV, class F, class... Args>
-	static constexpr void exec(F&&, Args&&...) {}
+	template <class CTX, class PREV, class F, class... Args>
+	static constexpr void exec_prev(F&&, Args&&...) {}
 };
 
 } //end: namespace detail
@@ -59,14 +59,14 @@ constexpr auto foreach(F&& f, Ts&&... args)
 	(L{}, std::forward<F>(f), std::forward<Ts>(args)...);
 }
 
-template <class L, class F, class... Ts>
+template <class L, class CTX, class F, class... Ts>
 constexpr auto foreach_prev(F&& f, Ts&&... args)
 {
 	return []
 	<template<class...> class List, class... Elems, class Func, class... Args>
 	(List<Elems...>&&, Func&& f, Args&&... args)
 	{
-		return detail::foreach<Elems...>::template exec<void>(std::forward<Func>(f), std::forward<Args>(args)...);
+		return detail::foreach<Elems...>::template exec_prev<CTX, void>(std::forward<Func>(f), std::forward<Args>(args)...);
 	}
 	(L{}, std::forward<F>(f), std::forward<Ts>(args)...);
 }
@@ -136,19 +136,6 @@ struct for_if<T0, Ts...>
 			return for_if<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
 		}
 	}
-
-	template <class PREV, class F, class... Args>
-	static constexpr auto exec(F&& f, Args&&... args)
-	{
-		if (f.template check<PREV, T0>(std::forward<Args>(args)...))
-		{
-			return f.template apply<PREV, T0>(std::forward<Args>(args)...);
-		}
-		else
-		{
-			return for_if<Ts...>::template exec<T0>(std::forward<F>(f), std::forward<Args>(args)...);
-		}
-	}
 };
 
 template <>
@@ -158,12 +145,6 @@ struct for_if<>
 	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		return f.template apply(std::forward<Args>(args)...);
-	}
-
-	template <class PREV, class F, class... Args>
-	static constexpr auto exec(F&& f, Args&&... args)
-	{
-		return f.template apply<PREV>(std::forward<Args>(args)...);
 	}
 };
 

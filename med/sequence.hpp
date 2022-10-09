@@ -55,7 +55,7 @@ constexpr void encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			sl::ie_encode<field_mi, void>(func, field);
+			ie_encode<field_mi, void>(func, field);
 		}
 		else
 		{
@@ -66,27 +66,13 @@ constexpr void encode_multi(FUNC& func, IE const& ie)
 
 struct seq_dec
 {
-#if 0
-	template <class PREV_IE = void, class EXP_LEN = void>
-	struct type_ctx
-	{
-		using previous_ie_type = PREV_IE;
-		using explicit_length_type = EXP_LEN;
-	};
-
-	template <class TYPE_CTX, class IE, class TO, class DECODER, class TAG, class... DEPS>
-	static constexpr void apply(TO& to, DECODER& decoder, TAG& vtag, DEPS&... deps)
-	{
-		using PREV_IE = typename TYPE_CTX::previous_ie_type;
-		using EXP_LEN = typename TYPE_CTX::explicit_length_type;
-#else
-	template <class PREV_IE, class IE, class TO, class DECODER>
+	template <class CTX, class PREV_IE, class IE, class TO, class DECODER>
 	static constexpr void apply(TO& to, DECODER& decoder, auto& vtag, auto&... deps)
 	{
-#endif
 		IE& ie = to;
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = get_meta_tag_t<mi>;
+		using ctx = decode_type_context<mi, void, typename CTX::explicit_length_type>;
 
 		if constexpr (AMultiField<IE>)
 		{
@@ -106,7 +92,8 @@ struct seq_dec
 				{
 					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count()+1);
 					auto* field = ie.push_back(decoder);
-					sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, *field, deps...);
+					using ctx_next = decode_type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
+					ie_decode<ctx_next>(decoder, *field, deps...);
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
@@ -141,7 +128,7 @@ struct seq_dec
 						else
 						{
 							typename IE::counter_type counter_ie;
-							sl::ie_decode<sl::decode_type_context<>>(decoder, counter_ie);
+							ie_decode<decode_type_context<>>(decoder, counter_ie);
 							return counter_ie.get_encoded();
 						}
 					}();
@@ -181,7 +168,7 @@ struct seq_dec
 					while (decoder(CHECK_STATE{}, ie) && count < IE::max)
 					{
 						auto* field = ie.push_back(decoder);
-						sl::ie_decode<sl::decode_type_context<mi>>(decoder, *field, deps...);
+						ie_decode<ctx>(decoder, *field, deps...);
 						++count;
 					}
 
@@ -217,7 +204,8 @@ struct seq_dec
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
+						using ctx_next = decode_type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
+						ie_decode<ctx_next>(decoder, ie, deps...);
 					}
 				}
 				else //optional w/o tag
@@ -236,7 +224,7 @@ struct seq_dec
 						if (was_set)
 						{
 							CODEC_TRACE("C[%s]", name<IE>());
-							sl::ie_decode<sl::decode_type_context<mi>>(decoder, ie, deps...);
+							ie_decode<ctx>(decoder, ie, deps...);
 						}
 						else
 						{
@@ -248,7 +236,7 @@ struct seq_dec
 						CODEC_TRACE("[%s]...", name<IE>());
 						if (decoder(CHECK_STATE{}, ie))
 						{
-							sl::ie_decode<sl::decode_type_context<mi>>(decoder, ie, deps...);
+							ie_decode<ctx>(decoder, ie, deps...);
 						}
 						else
 						{
@@ -260,7 +248,7 @@ struct seq_dec
 			}
 			else //mandatory field
 			{
-				CODEC_TRACE("M<%s>...", name<IE>());
+				CODEC_TRACE("M<%s> explicit=%s...", name<IE>(), name<typename ctx::explicit_length_type>());
 
 				//if switched from optional with tag then discard it since mandatory is read as whole
 				using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;
@@ -268,7 +256,7 @@ struct seq_dec
 				{
 					discard(decoder, vtag);
 				}
-				sl::ie_decode<sl::decode_type_context<mi>>(decoder, ie, deps...);
+				ie_decode<ctx>(decoder, ie, deps...);
 			}
 		}
 	}
@@ -276,7 +264,7 @@ struct seq_dec
 
 struct seq_enc
 {
-	template <class PREV_IE, class IE>
+	template <class CTX, class PREV_IE, class IE>
 	static constexpr void apply(auto const& to, auto& encoder)
 	{
 		IE const& ie = to;
@@ -409,15 +397,15 @@ struct sequence : container<IES...>
 	template <class IE_LIST>
 	void encode(auto& encoder) const
 	{
-		meta::foreach_prev<IE_LIST>(sl::seq_enc{}, this->m_ies, encoder);
+		meta::foreach_prev<IE_LIST, void>(sl::seq_enc{}, this->m_ies, encoder);
 	}
 	void encode(auto& encoder) const { encode<ies_types>(encoder); }
 
-	template <class IE_LIST>
+	template <class IE_LIST, class TYPE_CTX = sl::decode_type_context<>>
 	void decode(auto& decoder, auto&... deps)
 	{
 		value<std::size_t> vtag;
-		meta::foreach_prev<IE_LIST>(sl::seq_dec{}, this->m_ies, decoder, vtag, deps...);
+		meta::foreach_prev<IE_LIST, TYPE_CTX>(sl::seq_dec{}, this->m_ies, decoder, vtag, deps...);
 	}
 	void decode(auto& decoder, auto&... deps) { decode<ies_types>(decoder, deps...); }
 };

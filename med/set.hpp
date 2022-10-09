@@ -48,7 +48,7 @@ struct set_name
 
 struct set_enc
 {
-	template <class PREV_IE, class IE, class TO, class ENCODER>
+	template <class CTX, class PREV_IE, class IE, class TO, class ENCODER>
 	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
@@ -202,7 +202,7 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 	template <class ENCODER>
 	void encode(ENCODER& encoder) const
 	{
-		meta::foreach_prev<ies_types>(sl::set_enc{}, this->m_ies, encoder);
+		meta::foreach_prev<ies_types, void>(sl::set_enc{}, this->m_ies, encoder);
 	}
 
 	template <class DECODER, class... DEPS>
