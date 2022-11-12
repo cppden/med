@@ -153,7 +153,7 @@ public:
 			//locate previous before last
 			for (std::size_t i = 1; i < count(); ++i)
 			{
-				CODEC_TRACE("%s: %s[%zu]=%p", __FUNCTION__, name<field_type>(), i, (void*)prev->next);
+				//CODEC_TRACE("%s: %s[%zu]=%p", __FUNCTION__, name<field_type>(), i, (void*)prev->next);
 				prev = prev->next;
 			}
 
@@ -208,7 +208,7 @@ private:
 		{
 			for (auto& f : m_fields)
 			{
-				CODEC_TRACE("%s: %s=%p[%c]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-');
+				//CODEC_TRACE("%s: %s=%p[%c]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-');
 				if (!f.value.is_set()) return &f;
 			}
 		}
@@ -219,7 +219,7 @@ private:
 	{
 		if (!pf) { MED_THROW_EXCEPTION(out_of_memory, name<field_type>(), sizeof(field_type)) }
 
-		CODEC_TRACE("%s(%s=%p) count=%zu", __FUNCTION__, name<field_type>(), (void*)pf, count());
+		//CODEC_TRACE("%s(%s=%p) count=%zu", __FUNCTION__, name<field_type>(), (void*)pf, count());
 		if (m_count++) { m_tail->next = pf; }
 		else { m_head = m_tail = pf; }
 		pf->next = nullptr;

@@ -96,7 +96,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 		else //data itself
 		{
 			using ie_type = typename IE::ie_type;
-			CODEC_TRACE("%s[%.30s] multi=%d: %s", __FUNCTION__, class_name<IE>(), AMultiField<IE>, class_name<ie_type>());
+			CODEC_TRACE("%s[%.30s] multi=%d: %s", __FUNCTION__, name<IE>(), AMultiField<IE>, class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
 				if constexpr (std::is_void_v<EXPOSED>)

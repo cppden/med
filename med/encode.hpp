@@ -26,6 +26,18 @@ namespace med {
 //structure layer
 namespace sl {
 
+template <
+	class META_INFO = meta::typelist<>,
+	class EXPOSED = void,
+	class EXP_LEN = void
+>
+struct encode_type_context
+{
+	using meta_info_type = META_INFO;
+	using exposed_type = EXPOSED;
+	using explicit_length_type = EXP_LEN;
+};
+
 //Tag
 template <class TAG_TYPE, class ENCODER>
 constexpr void encode_tag(ENCODER& encoder)
@@ -98,7 +110,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 		else
 		{
 			using ie_type = typename IE::ie_type;
-			CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, class_name<IE>(), class_name<ie_type>());
+			CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, name<IE>(), name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
 				//special case for printer
@@ -140,7 +152,7 @@ template <class ENCODER, AHasIeType IE>
 constexpr void encode(ENCODER&& encoder, IE const& ie)
 {
 	using mi = meta::produce_info_t<ENCODER, IE>;
-	CODEC_TRACE("mi=%s", class_name<mi>());
+	//CODEC_TRACE("mi=%s", class_name<mi>());
 	sl::ie_encode<mi, void>(encoder, ie);
 }
 

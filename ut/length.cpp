@@ -342,7 +342,7 @@ TEST(length, vlvar)
 {
 	uint8_t buffer[128];
 	med::encoder_context<> ctx{ buffer };
-#if 0
+#if 1
 	{
 		len::VLVAR vlvar;
 		vlvar.ref<len::U8>().set(7);
@@ -394,16 +394,19 @@ TEST(length, lvlarr)
 	for (std::size_t i = 0; i < std::size(data); ++i)
 	{
 		auto* vlvar = msg.ref<len::VLARR>().ref<len::VLVAR>().push_back();
+		vlvar->ref<len::U8>().set(i + 1);
 		vlvar->ref<len::VL>().set(i + 1);
 		vlvar->ref<len::VAR>().set(data[i]);
 	}
 
 	encode(med::octet_encoder{ctx}, msg);
 	uint8_t encoded[] = {
-		0x0D, //len=11
-		0x00,0x31, //len=3, val=1
+		15, //len
+		1, //M<U8>
+		0x00,0x16, //M<VL> val=1, len=1+2+3
 		'1','2','3',
-		0x00,0x62, //len=6, val=2
+		2, //M<U8>
+		0x00,0x29, //M<VL> val=2, len=1+2+6
 		'1','2','3','4','5','6',
 	};
 	ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));

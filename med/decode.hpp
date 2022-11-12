@@ -81,7 +81,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps);
 
 
 template <class LEN_TYPE, class TYPE_CTX, class DECODER, class IE, class... DEPS>
-void apply_len(DECODER& decoder, IE& ie, std::size_t len, DEPS&... deps)
+void apply_len(DECODER& decoder, IE& ie, DEPS&... deps)
 {
 	using META_INFO = typename TYPE_CTX::meta_info_type;
 	using EXPOSED = typename TYPE_CTX::exposed_type;
@@ -93,34 +93,62 @@ void apply_len(DECODER& decoder, IE& ie, std::size_t len, DEPS&... deps)
 	if constexpr (std::is_void_v<dependency_t>)
 	{
 		using dtx = decode_type_context<META_INFO, EXPOSED, EXP_LEN>;
-		//TODO: may have fixed length like in BER:NULL/BOOL so need to check here
-		auto end = decoder(PUSH_SIZE{len});
-		if constexpr (std::is_void_v<pad_traits>)
+
+		if constexpr (not std::is_void_v<EXP_LEN>)
 		{
-			ie_decode<dtx>(decoder, ie, deps...);
-			//TODO: ??? as warning not error
-			if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+			//!!! len is not yet available when explicit
+			auto end = decoder(PUSH_SIZE{0, false});
+			if constexpr (std::is_void_v<pad_traits>)
+			{
+				ie_decode<dtx>(decoder, ie, end, deps...);
+				//TODO: ??? as warning not error
+				if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+			}
+			else
+			{
+				CODEC_TRACE("padded %s...:", name<LEN_TYPE>());
+				using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
+				pad_t pad{decoder};
+				ie_decode<dtx>(decoder, ie, end, deps...);
+				CODEC_TRACE("before padding %s: end=%zu padding=%u", name<LEN_TYPE>(), end.size(), pad.padding_size());
+				//if (end.size() != pad.padding_size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+				end.restore_end();
+				pad.add_padding();
+			}
 		}
 		else
 		{
-			CODEC_TRACE("padded %s...:", name<LEN_TYPE>());
-			using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
-			pad_t pad{decoder};
-			ie_decode<dtx>(decoder, ie, deps...);
-			CODEC_TRACE("before padding %s: end=%zu padding=%u", name<LEN_TYPE>(), end.size(), pad.padding_size());
-			//if (end.size() != pad.padding_size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
-			end.restore_end();
-			pad.add_padding();
+			auto const len = decode_len<LEN_TYPE>(decoder);
+			auto end = decoder(PUSH_SIZE{len});
+			if constexpr (std::is_void_v<pad_traits>)
+			{
+				ie_decode<dtx>(decoder, ie, deps...);
+				//TODO: ??? as warning not error
+				if (0 != end.size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+			}
+			else
+			{
+				CODEC_TRACE("padded %s...:", name<LEN_TYPE>());
+				using pad_t = typename DECODER::template padder_type<pad_traits, DECODER>;
+				pad_t pad{decoder};
+				ie_decode<dtx>(decoder, ie, deps...);
+				CODEC_TRACE("before padding %s: end=%zu padding=%u", name<LEN_TYPE>(), end.size(), pad.padding_size());
+				//if (end.size() != pad.padding_size()) { MED_THROW_EXCEPTION(overflow, name<IE>(), end.size()); }
+				end.restore_end();
+				pad.add_padding();
+			}
 		}
 	}
 	else
 	{
+		static_assert(sizeof...(deps) == 0, "NO RECURSION OR MIX w/EXPLICIT LENGTH");
 		CODEC_TRACE("'%s' depends on '%s'", name<LEN_TYPE>(), name<dependency_t>());
 
 		using DEPENDENT = LEN_TYPE;
 		using DEPENDENCY = dependency_t;
 		using dtx = decode_type_context<META_INFO, EXPOSED, EXP_LEN, DEPENDENT, DEPENDENCY>;
 
+		auto const len = decode_len<LEN_TYPE>(decoder);
 		auto end = decoder(PUSH_SIZE{len, false});
 		if constexpr (std::is_void_v<pad_traits>)
 		{
@@ -143,11 +171,29 @@ void apply_len(DECODER& decoder, IE& ie, std::size_t len, DEPS&... deps)
 	}
 }
 
-template <class DECODER, class IE, class BUF_START>
-constexpr std::size_t explicit_len(DECODER& decoder, IE& ie, BUF_START start)
+template <class DECODER, class IE>
+constexpr void explicit_len_commit(DECODER& decoder, IE& ie, auto& end, auto start)
 {
-	auto const delta = decoder(GET_STATE{}) - start;
-	return value_to_length(ie) - delta;
+	//TODO: a way to parametrize inclusion/exclusion?
+	auto const before_len = decoder(GET_STATE{});
+	decoder(ie, typename IE::ie_type{});
+	auto const after_len = decoder(GET_STATE{});
+	if (before_len == start)
+	{
+		auto const delta = after_len - start;
+		auto len = value_to_length(ie) + delta;
+		CODEC_TRACE("%s<%s>=%#zX (delta=%ld)", __FUNCTION__, name<IE>(), len, delta);
+		end.commit(len);
+	}
+	else
+	{
+		// auto const delta = before_len - start;
+		// auto len = value_to_length(ie) - delta;
+		// CODEC_TRACE("%s<%s>=%#zX (delta=%ld)", __FUNCTION__, name<IE>(), len, delta);
+		auto len = value_to_length(ie);
+		CODEC_TRACE("%s<%s>=%#zX", __FUNCTION__, name<IE>(), len);
+		end.commit(len);
+	}
 }
 
 
@@ -170,7 +216,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 	{
 		using mi = meta::list_first_t<META_INFO>;
 		using mi_rest = meta::list_rest_t<META_INFO>;
-		CODEC_TRACE("%s[%s-%s](%zu) w/ %s", __FUNCTION__, name<IE>(), name<EXPOSED>(), sizeof... (deps), class_name<mi>());
+		CODEC_TRACE("%s[%s-%s](%zu) w/ meta=%s", __FUNCTION__, name<IE>(), name<EXPOSED>(), sizeof... (deps), class_name<mi>());
 
 		if constexpr (mi::kind == mik::LEN)
 		{
@@ -181,13 +227,12 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 				static_assert(std::is_void_v<EXPOSED>, "overlapping dependency and explicit length");
 				static_assert(sizeof...(deps) == 0);
 				auto const start = decoder(GET_STATE{});
-				CODEC_TRACE(">>> explicit len[%s]", name<len_t>());
-				ie_decode<decode_type_context<mi_rest, EXPOSED, len_t>>(decoder, ie, start);
+				CODEC_TRACE("->> explicit len in meta[%s]", name<len_t>());
+				apply_len<len_t, decode_type_context<mi_rest, EXPOSED, len_t>>(decoder, ie, start);
 			}
 			else
 			{
-				auto const len = decode_len<len_t>(decoder);
-				apply_len<len_t, decode_type_context<mi_rest, EXPOSED, EXP_LEN>>(decoder, ie, len, deps...);
+				apply_len<len_t, decode_type_context<mi_rest, EXPOSED, EXP_LEN>>(decoder, ie, deps...);
 			}
 		}
 		else
@@ -210,28 +255,31 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 		using ie_type = typename IE::ie_type;
 		if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 		{
-			CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXPOSED>());
 			if constexpr (not std::is_void_v<EXPOSED>)
 			{
+				CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXPOSED>());
 				static_assert(std::is_void_v<EXP_LEN>);
 				/* NOTE:
 				1) exposed is valid for sequence only
 				2) 1st IE is expected to be exposed so it s.b. skipped as was decoded in meta
 				*/
 				ie.template decode<meta::list_rest_t<typename IE::ies_types>>(decoder, deps...);
+				CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXPOSED>());
 			}
 			else if constexpr (not std::is_void_v<EXP_LEN>)
 			{
 				/* NOTE: explicit length is valid for sequence only */
-				CODEC_TRACE("explicit=%s", name<EXP_LEN>());
+				CODEC_TRACE(">>> %s explicit=%s", name<IE>(), name<EXP_LEN>());
 				using ctx = decode_type_context<meta::typelist<>, void, EXP_LEN>;
 				ie.template decode<typename IE::ies_types, ctx>(decoder, deps...);
+				CODEC_TRACE("<<< %s explicit=%s", name<IE>(), name<EXP_LEN>());
 			}
 			else
 			{
+				CODEC_TRACE(">>> %s", name<IE>());
 				ie.decode(decoder, deps...);
+				CODEC_TRACE("<<< %s", name<IE>());
 			}
-			CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXPOSED>());
 		}
 		else
 		{
@@ -247,17 +295,15 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 			else
 			{
 				using field_t = get_field_type_t<IE>;
-				CODEC_TRACE("PRIMITIVE %s[%.30s](%zu): %s", __FUNCTION__, name<IE>(), sizeof... (deps), class_name<ie_type>());
-				decoder(ie, ie_type{});
+				CODEC_TRACE("PRIMITIVE %s[%.30s](%zu): %s", __FUNCTION__, name<IE>(), sizeof...(deps), name<ie_type>());
 
 				if constexpr (std::is_same_v<field_t, EXP_LEN>)
 				{
-					auto const len = explicit_len(decoder, ie, deps...);
-					CODEC_TRACE("<<< explicit LV[%s]=%#zX", name<EXP_LEN>(), len);
-					apply_len<IE, decode_type_context<>>(decoder, ie, len);
+					explicit_len_commit(decoder, ie, deps...);
 				}
 				else
 				{
+					decoder(ie, ie_type{});
 					if constexpr (std::is_same_v<field_t, DEPENDENCY>)
 					{
 						CODEC_TRACE("decoded dependency '%s' of dependent '%s' deps=%zu", name<IE>(), name<DEPENDENT>(), sizeof...(DEPS));

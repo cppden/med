@@ -112,12 +112,12 @@ public:
 			{
 				ps = end();
 				m_end = pend;
-				CODEC_TRACE("%u: changed by %zu end %p->%p: %s", m_eob_index, size, (void*)ps, (void*)pend, toString());
+				CODEC_TRACE("%u: change by %zu end %p->%p: %s", m_eob_index, size, (void*)ps, (void*)pend, toString());
 			}
 			else
 			{
 				ps = pend;
-				CODEC_TRACE("%u: pending change by %zu end %p->%p: %s", m_eob_index, size, (void*)end(), (void*)pend, toString());
+				CODEC_TRACE("%u: change by %zu end PENDING %p->%p: %s", m_eob_index, size, (void*)end(), (void*)pend, toString());
 			}
 
 			return size_state{this, m_eob_index++, commit_};
@@ -262,21 +262,12 @@ public:
 	char const* toString() const
 	{
 		static char sz[64];
-		if constexpr (std::is_same_v<char, value_type>)
+		int n = std::snprintf(sz, sizeof(sz), "%p@#%zu+%zu=", (void*)begin(), size(), get_offset());
+		auto from = std::max(-int(get_offset()), -4);
+		auto p = begin() + from;
+		for (auto const to = std::min(int(size()), from+10); from < to; ++from, ++p)
 		{
-			auto p = begin();
-			auto const len = int(std::min(size(), std::size_t(16)));
-			std::snprintf(sz, sizeof(sz), "#%zu+%zu=%.*s", size(), get_offset(), len, p);
-		}
-		else
-		{
-			int n = std::snprintf(sz, sizeof(sz), "#%zu+%zu=", size(), get_offset());
-			auto from = std::max(-int(get_offset()), -4);
-			auto p = begin() + from;
-			for (auto const to = std::min(int(size()), from+10); from < to; ++from, ++p)
-			{
-				n += std::snprintf(sz+n, sizeof(sz)-n, p == begin() ? "[%02X]":"%02X", *p);
-			}
+			n += std::snprintf(sz+n, sizeof(sz)-n, p == begin() ? "[%02X]":"%02X", *p);
 		}
 		return sz;
 	}
@@ -350,7 +341,8 @@ private:
 			}
 			else
 			{
-				MED_THROW_EXCEPTION(overflow, "invalid commit", ss.m_index);
+				m_end = ps1;
+				//MED_THROW_EXCEPTION(overflow, "invalid commit", ss.m_index);
 			}
 		}
 	}
@@ -364,5 +356,3 @@ private:
 };
 
 }	//end: namespace med
-
-
