@@ -77,29 +77,33 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			//TODO: pass calculated length to length_t when sizeof(len) depends on value like in ASN.1 BER
 			len += ie_length<type_context<meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>>(ie, encoder);
 
-			if constexpr (mi::kind == mik::TAG)
+			if constexpr (!APresentIn<info_t, IE>)
 			{
-				len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
-			}
-			else if constexpr (mi::kind == mik::LEN)
-			{
-				//TODO: involve codec to get length type + may need to set its value like for BER
-				using pad_traits = typename get_padding<info_t>::type;
-				if constexpr (!std::is_void_v<pad_traits>)
+				if constexpr (mi::kind == mik::TAG)
 				{
-					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
-#ifdef CODEC_TRACE_ENABLE
-					auto const add_len = pad_t::calc_padding_size(len);
-					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<info_t>(), size_t(len), add_len, len + add_len);
-					len += add_len;
-#else
-					len += pad_t::calc_padding_size(len);
-#endif
+					len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
 				}
-
-				//if constexpr (APresentIn<info_t, IE>)
-
-				len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
+				else if constexpr (mi::kind == mik::LEN)
+				{
+					//TODO: involve codec to get length type + may need to set its value like for BER
+					using pad_traits = typename get_padding<info_t>::type;
+					if constexpr (!std::is_void_v<pad_traits>)
+					{
+						using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
+#ifdef CODEC_TRACE_ENABLE
+						auto const add_len = pad_t::calc_padding_size(len);
+						CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<info_t>(), size_t(len), add_len, len + add_len);
+						len += add_len;
+#else
+						len += pad_t::calc_padding_size(len);
+#endif
+					}
+					len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
+				}
+			}
+			else
+			{
+				CODEC_TRACE("skip re-counting explicit %s", name<info_t>());
 			}
 		}
 		else //data itself
@@ -109,17 +113,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			CODEC_TRACE("%s[%.30s] multi=%d: %s", __FUNCTION__, name<IE>(), AMultiField<IE>, class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				if constexpr (!std::is_void_v<EXP_TAG> || !std::is_void_v<EXP_LEN>)
-				{
-					using ies = meta::remove_if_t<meta::remove_if_t<typename IE::ies_types, sl::field_at<EXP_TAG>>, sl::field_at<EXP_LEN>>;
-					// using ies = meta::list_rest_t<typename IE::ies_types>;
-					CODEC_TRACE("!!! %s", class_name<ies>());
-					len += ie.template calc_length<ies, ctx>(encoder);
-				}
-				else
-				{
-					len += ie.template calc_length<ctx>(encoder);
-				}
+				len += ie.template calc_length<ctx>(encoder);
 				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 			}
 			//NOTE: can't unroll multi-field here because for ASN.1 the OID and SEQENCE-OF
