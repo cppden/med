@@ -36,7 +36,7 @@ TEST(encode, set_ok)
 {
 	PROTO proto;
 
-	MSG_SET& msg = proto.select();
+	auto& msg = proto.ref<MSG_SET>();
 
 	//mandatory fields
 	msg.ref<FLD_UC>().set(0x11);
@@ -93,7 +93,7 @@ TEST(encode, set_fail_mandatory)
 	med::encoder_context<> ctx{ buffer };
 
 	//missing mandatory fields in set
-	MSG_SET& msg = proto.select();
+	auto& msg = proto.ref<MSG_SET>();
 	msg.ref<FLD_UC>().set(0);
 	msg.ref<FLD_U24>().set(0);
 	ctx.reset();
@@ -107,7 +107,7 @@ TEST(encode, mset_ok)
 
 	PROTO proto;
 
-	MSG_MSET& msg = proto.select();
+	auto& msg = proto.ref<MSG_MSET>();
 
 	//mandatory fields
 	msg.ref<FLD_UC> ().push_back(ctx)->set(0x11);
@@ -181,7 +181,7 @@ TEST(encode, mset_fail_arity)
 	med::encoder_context<> ctx{ buffer };
 
 	//arity violation in optional
-	MSG_MSET& msg = proto.select();
+	auto& msg = proto.ref<MSG_MSET>();
 	msg.ref<FLD_UC> ().push_back(ctx)->set(0);
 	msg.ref<FLD_UC> ().push_back(ctx)->set(0);
 	msg.ref<FLD_U8> ().push_back(ctx)->set(0);
@@ -204,7 +204,7 @@ TEST(decode, set_ok)
 	med::decoder_context<> ctx{ encoded1 };
 	decode(med::octet_decoder{ctx}, proto);
 
-	MSG_SET const* msg = proto.select();
+	auto const* msg = proto.get<MSG_SET>();
 	ASSERT_NE(nullptr, msg);
 
 	ASSERT_EQ(0x11, msg->get<FLD_UC>().get());
@@ -225,7 +225,7 @@ TEST(decode, set_ok)
 	ctx.reset(encoded2, sizeof(encoded2));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	msg = proto.get<MSG_SET>();
 	ASSERT_NE(nullptr, msg);
 
 	fld3 = msg->field();
@@ -246,7 +246,7 @@ TEST(decode, set_ok)
 	ctx.reset(encoded3, sizeof(encoded3));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	msg = proto.get<MSG_SET>();
 	ASSERT_NE(nullptr, msg);
 
 	fld3 = msg->field();
@@ -298,7 +298,7 @@ TEST(decode, mset_ok)
 	med::decoder_context<> ctx{ encoded1 };
 	decode(med::octet_decoder{ctx}, proto);
 
-	MSG_MSET const* msg = proto.select();
+	auto const* msg = proto.get<MSG_MSET>();
 	ASSERT_NE(nullptr, msg);
 
 	{
@@ -335,7 +335,7 @@ TEST(decode, mset_ok)
 	ctx.reset(encoded2, sizeof(encoded2));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	msg = proto.get<MSG_MSET>();
 	ASSERT_NE(nullptr, msg);
 
 	EXPECT_TRUE(msg->get<FLD_U24>().empty());
@@ -361,7 +361,7 @@ TEST(decode, mset_ok)
 	ctx.reset(encoded3, sizeof(encoded3));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	msg = proto.get<MSG_MSET>();
 	ASSERT_NE(nullptr, msg);
 
 	{
@@ -413,4 +413,3 @@ TEST(decode, mset_fail_arity)
 	ctx.reset(mandatory_overflow, sizeof(mandatory_overflow));
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::extra_ie);
 }
-

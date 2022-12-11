@@ -47,7 +47,8 @@ constexpr void discard(auto& func, auto& vtag)
 template <class FUNC, class IE>
 constexpr void encode_multi(FUNC& func, IE const& ie)
 {
-	using field_mi = meta::produce_info_t<FUNC, typename IE::field_type>; //assuming MI of multi_field == MI of field
+	using mi = meta::produce_info_t<FUNC, typename IE::field_type>; //assuming MI of multi_field == MI of field
+	using ctx = type_context<mi>;
 
 	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
 	for (auto& field : ie)
@@ -55,7 +56,7 @@ constexpr void encode_multi(FUNC& func, IE const& ie)
 		CODEC_TRACE("[%s]%c", name<IE>(), field.is_set() ? '+':'-');
 		if (field.is_set())
 		{
-			ie_encode<field_mi, void>(func, field);
+			ie_encode<ctx>(func, field);
 		}
 		else
 		{
@@ -72,7 +73,7 @@ struct seq_dec
 		IE& ie = to;
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = get_meta_tag_t<mi>;
-		using ctx = decode_type_context<mi, void, typename CTX::explicit_length_type>;
+		using ctx = type_context<mi, void, typename CTX::explicit_length_type>;
 
 		if constexpr (AMultiField<IE>)
 		{
@@ -92,7 +93,7 @@ struct seq_dec
 				{
 					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count()+1);
 					auto* field = ie.push_back(decoder);
-					using ctx_next = decode_type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
+					using ctx_next = type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
 					ie_decode<ctx_next>(decoder, *field, deps...);
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
@@ -128,7 +129,7 @@ struct seq_dec
 						else
 						{
 							typename IE::counter_type counter_ie;
-							ie_decode<decode_type_context<>>(decoder, counter_ie);
+							ie_decode<type_context<>>(decoder, counter_ie);
 							return counter_ie.get_encoded();
 						}
 					}();
@@ -204,7 +205,7 @@ struct seq_dec
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						using ctx_next = decode_type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
+						using ctx_next = type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
 						ie_decode<ctx_next>(decoder, ie, deps...);
 					}
 				}
@@ -401,7 +402,7 @@ struct sequence : container<IES...>
 	}
 	void encode(auto& encoder) const { encode<ies_types>(encoder); }
 
-	template <class IE_LIST, class TYPE_CTX = sl::decode_type_context<>>
+	template <class IE_LIST, class TYPE_CTX = type_context<>>
 	void decode(auto& decoder, auto&... deps)
 	{
 		value<std::size_t> vtag;

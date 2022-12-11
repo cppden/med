@@ -53,21 +53,26 @@ struct cont_copy
 	}
 };
 
+template <class TYPE_CTX>
 struct cont_len
 {
+	using EXP_TAG = typename TYPE_CTX::explicit_tag_type;
+	using EXP_LEN = typename TYPE_CTX::explicit_length_type;
+
 	static constexpr std::size_t op(std::size_t r1, std::size_t r2) { return r1 + r2; }
 
 	template <class IE, class SEQ, class ENCODER>
 	static std::size_t apply(SEQ const& seq, ENCODER& encoder)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
+		using ctx = type_context<mi, EXP_TAG, EXP_LEN>;
 		if constexpr (AMultiField<IE>)
 		{
 			IE const& ie = seq;
 			std::size_t len = 0;
 			for (auto& v : ie)
 			{
-				len += sl::ie_length<void, mi>(v, encoder);
+				len += sl::ie_length<ctx>(v, encoder);
 			}
 			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
@@ -76,7 +81,7 @@ struct cont_len
 		{
 			IE const& ie = seq;
 			std::size_t const len = AHasSetterType<IE> || ie.is_set()
-					? sl::ie_length<void, mi>(ie, encoder)
+					? sl::ie_length<ctx>(ie, encoder)
 					: 0;
 			CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
@@ -156,7 +161,7 @@ public:
 	using ies_types = meta::typelist<IES...>;
 
 	template <class T>
-	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::field_at<T>>>; }
+	static constexpr bool has()             { return not std::is_void_v<meta::find_t<ies_types, sl::field_at<T>>>; }
 
 	template <class FIELD>
 	decltype(auto) ref()
@@ -189,16 +194,16 @@ public:
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }
 
 	template <class FIELD>
-	static constexpr std::size_t arity()    { return sl::field_arity<meta::find<ies_types, sl::field_at<FIELD>>>(); }
+	static constexpr std::size_t arity()    { return sl::field_arity<meta::find_t<ies_types, sl::field_at<FIELD>>>(); }
 
 	template <class FIELD>
 	void clear()                            { m_ies.template as<FIELD>().clear(); }
 	void clear()                            { meta::foreach<ies_types>(sl::cont_clear{}, this->m_ies); }
 	bool is_set() const                     { return meta::fold<ies_types>(sl::cont_is{}, this->m_ies); }
-	template <class IE_LIST, class ENC>
-	std::size_t calc_length(ENC& enc) const { return meta::fold<IE_LIST>(sl::cont_len{}, this->m_ies, enc); }
-	template <class ENC>
-	std::size_t calc_length(ENC& enc) const { return calc_length<ies_types>(enc); }
+	template <class IE_LIST, class TYPE_CTX>
+	std::size_t calc_length(auto& enc) const { return meta::fold<IE_LIST>(sl::cont_len<TYPE_CTX>{}, this->m_ies, enc); }
+	template <class TYPE_CTX = type_context<>>
+	std::size_t calc_length(auto& enc) const { return calc_length<ies_types, TYPE_CTX>(enc); }
 
 	template <class FROM, class... ARGS>
 	void copy(FROM const& from, ARGS&&... args)
@@ -218,7 +223,7 @@ protected:
 		template <class FIELD>
 		decltype(auto) as() const
 		{
-			using IE = meta::find<ies_types, sl::field_at<FIELD>>;
+			using IE = meta::find_t<ies_types, sl::field_at<FIELD>>;
 			static_assert(!std::is_void<IE>(), "NO SUCH FIELD");
 			return static_cast<IE const&>(*this);
 		}
@@ -226,7 +231,7 @@ protected:
 		template <class FIELD>
 		decltype(auto) as()
 		{
-			using IE = meta::find<ies_types, sl::field_at<FIELD>>;
+			using IE = meta::find_t<ies_types, sl::field_at<FIELD>>;
 			static_assert(!std::is_void<IE>(), "NO SUCH FIELD");
 			return static_cast<IE&>(*this);
 		}

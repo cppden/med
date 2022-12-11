@@ -337,7 +337,7 @@ uint8_t const dpr[] = {
 TEST(diameter, padding_encode)
 {
 	diameter::base base;
-	diameter::DPR& msg = base.select();
+	auto& msg = base.ref<diameter::DPR>();
 
 	base.header().ap_id(0);
 	base.header().hop_id(0x22222222);
@@ -366,7 +366,7 @@ TEST(diameter, padding_decode)
 	ASSERT_EQ(0x22222222, base.header().hop_id());
 	ASSERT_EQ(0x55555555, base.header().end_id());
 
-	diameter::DPR const* msg = base.cselect();
+	auto const* msg = base.get<diameter::DPR>();
 	ASSERT_NE(nullptr, msg);
 
 	EQ_STRING_M(diameter::origin_host, "Orig.Host");
@@ -491,7 +491,7 @@ TEST(diameter, any_avp)
 	ASSERT_EQ(0x22222222, base.header().hop_id());
 	ASSERT_EQ(0x55555555, base.header().end_id());
 
-	diameter::DPA const* msg = base.cselect();
+	auto const* msg = base.get<diameter::DPA>();
 	ASSERT_NE(nullptr, msg);
 
 	ASSERT_EQ(3004, msg->get<diameter::result_code>().body().get());
@@ -551,7 +551,7 @@ TEST(diameter, any_msg)
 	ASSERT_EQ(0x22222222, base.header().hop_id());
 	ASSERT_EQ(0x55555555, base.header().end_id());
 
-	diameter::ANY const* msg = base.cselect();
+	auto const* msg = base.get<diameter::ANY>();
 	ASSERT_NE(nullptr, msg);
 
 	auto* rc = msg->get<diameter::result_code>();

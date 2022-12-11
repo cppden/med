@@ -18,6 +18,7 @@ Distributed under the MIT License
 #include "meta/typelist.hpp"
 #include "padding.hpp"
 #include "concepts.hpp"
+#include "accessor.hpp"
 
 
 namespace med {
@@ -52,9 +53,13 @@ using get_dependency_t = typename detail::get_dependency<T>::type;
 
 namespace sl {
 
-template <class EXPOSED = void, class META_INFO = meta::typelist<>, class IE, class ENCODER>
+template <class TYPE_CTX, class IE, class ENCODER>
 constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 {
+	using META_INFO = typename TYPE_CTX::meta_info_type;
+	using EXP_TAG = typename TYPE_CTX::explicit_tag_type;
+	using EXP_LEN = typename TYPE_CTX::explicit_length_type;
+
 	std::size_t len = 0;
 
 	if constexpr (not is_peek_v<IE>)
@@ -62,50 +67,58 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
 			using mi = meta::list_first_t<META_INFO>;
-			CODEC_TRACE("%s[%s]: %s", __FUNCTION__, name<IE>(), class_name<mi>());
+			using info_t = typename mi::info_type;
+
+			CODEC_TRACE("%s[%s]: %c%s", __FUNCTION__, name<IE>(), APresentIn<info_t, IE>?'!':' ', name<info_t>());
+
+			using exp_tag_t = std::conditional_t<mi::kind == mik::TAG && APresentIn<info_t, IE>, info_t, EXP_TAG>;
+			using exp_len_t = std::conditional_t<mi::kind == mik::LEN && APresentIn<info_t, IE>, info_t, EXP_LEN>;
 
 			//TODO: pass calculated length to length_t when sizeof(len) depends on value like in ASN.1 BER
-			len += ie_length<EXPOSED, meta::list_rest_t<META_INFO>>(ie, encoder);
+			len += ie_length<type_context<meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>>(ie, encoder);
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				using tag_t = typename mi::info_type;
-				len += ie_length<EXPOSED>(tag_t{}, encoder);
+				len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				//TODO: involve codec to get length type + may need to set its value like for BER
-				using len_t = typename mi::info_type;
-
-				using pad_traits = typename get_padding<len_t>::type;
+				using pad_traits = typename get_padding<info_t>::type;
 				if constexpr (!std::is_void_v<pad_traits>)
 				{
 					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
 #ifdef CODEC_TRACE_ENABLE
 					auto const add_len = pad_t::calc_padding_size(len);
-					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<len_t>(), size_t(len), add_len, len + add_len);
+					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<info_t>(), size_t(len), add_len, len + add_len);
 					len += add_len;
 #else
 					len += pad_t::calc_padding_size(len);
 #endif
 				}
 
-				len += ie_length<EXPOSED>(len_t{}, encoder);
+				//if constexpr (APresentIn<info_t, IE>)
+
+				len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
 			}
 		}
 		else //data itself
 		{
+			using ctx = type_context<meta::typelist<>, EXP_TAG, EXP_LEN>;
 			using ie_type = typename IE::ie_type;
 			CODEC_TRACE("%s[%.30s] multi=%d: %s", __FUNCTION__, name<IE>(), AMultiField<IE>, class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				if constexpr (std::is_void_v<EXPOSED>)
+				if constexpr (!std::is_void_v<EXP_TAG> || !std::is_void_v<EXP_LEN>)
 				{
-					len += ie.calc_length(encoder);
+					using ies = meta::remove_if_t<meta::remove_if_t<typename IE::ies_types, sl::field_at<EXP_TAG>>, sl::field_at<EXP_LEN>>;
+					// using ies = meta::list_rest_t<typename IE::ies_types>;
+					CODEC_TRACE("!!! %s", class_name<ies>());
+					len += ie.template calc_length<ies, ctx>(encoder);
 				}
 				else
 				{
-					len += ie.template calc_length<meta::list_rest_t<typename IE::ies_types>>(encoder);
+					len += ie.template calc_length<ctx>(encoder);
 				}
 				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 			}
@@ -129,7 +142,7 @@ constexpr std::size_t field_length(IE const& ie, ENCODER& encoder)
 {
 	using mi = meta::produce_info_t<ENCODER, IE>;
 	//CODEC_TRACE("%s[%s]", __FUNCTION__, name<IE>());
-	return sl::ie_length<void, mi>(ie, encoder);
+	return sl::ie_length<type_context<mi>>(ie, encoder);
 }
 
 

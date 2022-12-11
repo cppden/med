@@ -80,19 +80,32 @@ struct find<>
 	using type = void; //not found
 };
 
-template <class L, class CMP>
-struct find_impl;
-
-template <template<class...> class L, class... Elems, class CMP>
-struct find_impl<L<Elems...>, CMP>
-{
-	using type = typename find<Elems...>::template type<CMP>;
-};
-
 } //end: namespace detail
 
 template <class L, class CMP>
-using find = typename detail::find_impl<L, CMP>::type;
+struct find;
+
+template <template<class...> class L, class... T, class CMP>
+struct find<L<T...>, CMP>
+{
+	using type = typename detail::find<T...>::template type<CMP>;
+};
+
+template <class L, class CMP>
+using find_t = typename find<L, CMP>::type;
+
+
+template<class L, class V> struct count;
+
+template <template<class...> class L, class... T, class V>
+struct count<L<T...>, V>
+{
+	static constexpr std::size_t value = (std::is_same_v<V, T> + ... + 0);
+};
+
+template <class L, class V>
+constexpr std::size_t count_v = count<L, V>::value;
+
 
 /* --- push front/back a type in list --- */
 template <class L, class... T> struct list_push
@@ -109,14 +122,31 @@ template <class L, class... T> using list_push_back_t = typename list_push<L, T.
 
 
 /* --- append lists of types into one --- */
-template <class... Ts> struct list_append;
-template <class T> struct list_append<T> { using type = T; };
+template <class... Ts> struct append;
+template <class T> struct append<T> { using type = T; };
 template <
 	template<class...> class L1, class... T1,
 	template<class...> class L2, class... T2,
 	class... Ts>
-struct list_append<L1<T1...>, L2<T2...>, Ts...> : list_append<L1<T1..., T2...>, Ts...> {};
-template <class... L> using list_append_t = typename list_append<L...>::type;
+struct append<L1<T1...>, L2<T2...>, Ts...> : append<L1<T1..., T2...>, Ts...> {};
+template <class... L> using append_t = typename append<L...>::type;
+
+
+/* --- remove from lists of types --- */
+template <class L, class P>
+struct remove_if {};
+
+template <template<class...> class L, class... T, class P>
+struct remove_if<L<T...>, P>
+{
+	template <class U>
+	using res = std::conditional_t<P::template value<U>, L<>, L<U>>;
+	using type = append_t<L<>, res<T>...>;
+};
+
+template <class L, class P>
+using remove_if_t = typename remove_if<L, P>::type;
+
 
 /* --- interleave two lists of types --- */
 template <class L1, class L2> struct interleave;
@@ -126,7 +156,7 @@ template <
 	template <class...> class L2, class... T2>
 struct interleave<L1<T1...>, L2<T2...>>
 {
-	using type = list_append_t<L1<T1, T2>...>;
+	using type = append_t<L1<T1, T2>...>;
 };
 //interleave list of types with a type
 template <
@@ -134,7 +164,7 @@ template <
 	class T2>
 struct interleave<L1<T1...>, T2>
 {
-	using type = list_append_t<L1<T1, T2>...>;
+	using type = append_t<L1<T1, T2>...>;
 };
 
 template <class L1, class L2>

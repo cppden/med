@@ -22,7 +22,7 @@ TEST(meta, append)
 	using list_t = med::meta::typelist<int, char>;
 	static_assert(std::is_same_v<
 			med::meta::typelist<int, char, double, float, void>,
-			med::meta::list_append_t<list_t, med::meta::typelist<double, float>, med::meta::typelist<void>>
+			med::meta::append_t<list_t, med::meta::typelist<double, float>, med::meta::typelist<void>>
 	>);
 }
 
@@ -86,4 +86,3 @@ TEST(meta, interleave)
 			med::meta::interleave_t<list1, float>
 		>);
 }
-

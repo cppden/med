@@ -43,6 +43,8 @@ struct field_at
 {
 	template <class T>
 	using type = std::is_same<FIELD, get_field_type_t<T>>;
+	template <class T>
+	static constexpr bool value = std::is_same_v<FIELD, get_field_type_t<T>>;
 };
 
 } //end: namespace sl

@@ -35,7 +35,7 @@ TEST(encode, msg_func)
 	PROTO proto;
 
 	//mandatory only
-	MSG_FUNC& msg = proto.select();
+	auto& msg = proto.ref<MSG_FUNC>();
 	msg.ref<FLD_UC>().push_back(ctx)->set(37);
 	msg.ref<FLD_UC>().push_back(ctx)->set(38);
 
@@ -108,7 +108,7 @@ TEST(decode, msg_func)
 	ctx.reset(encoded1, sizeof(encoded1));
 	decode(med::octet_decoder{ctx}, proto);
 
-	MSG_FUNC const* msg = proto.select();
+	auto const* msg = proto.get<MSG_FUNC>();
 	ASSERT_NE(nullptr, msg);
 	ASSERT_EQ(2, msg->count<FLD_UC>());
 	{
@@ -132,7 +132,7 @@ TEST(decode, msg_func)
 	ctx.reset(encoded2, sizeof(encoded2));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	msg = proto.get<MSG_FUNC>();
 	ASSERT_NE(nullptr, msg);
 	ASSERT_EQ(3, msg->count<FLD_UC>());
 	{
@@ -165,7 +165,7 @@ TEST(decode, msg_func)
 	ctx.reset(encoded3, sizeof(encoded3));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	msg = proto.get<MSG_FUNC>();
 	ASSERT_NE(nullptr, msg);
 	{
 		uint8_t const exp[] = {37,38,39,40};

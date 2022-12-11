@@ -43,13 +43,9 @@ The set container is similar to the sequence container as it represents a number
 Just like the set container the choice requires its elements to have a common header but only one element can appear in encoded stream. This type of container can always be found on the top level of any protocol.
 
 ### 1.2.4. Accessors
-The accessors of elements in containers are naturally divided in 2 categories - for encoding，read-write (ref), and for decoding, read-only (get). These can be treated as explicit accessors since require explicit specification of the accessed field:
+The accessors of elements in containers are naturally divided in 2 categories - for encoding, read-write (ref); and for decoding, read-only (get):
 ```cpp
-nas::esm_plain const& esm = msg->get<nas::esm_container>().get<nas::esm_plain>();
-```
-There are another implicit accessors (`field` in `sequence` and `set`, `select` in `choice`) for for usability purposes which deduce the accessed field type from lvalue:
-```cpp
-nas::esm_plain const& esm = msg->get<nas::esm_container>().select();
+auto const& esm = msg->get<nas::esm_container>().get<nas::esm_plain>();
 ```
 
 The important thing to remember is that read-write accessors return reference of the field while read-only accessors return const reference for mandatory but const pointer for optional fields to reflect that optional field may not present in the decoded message.

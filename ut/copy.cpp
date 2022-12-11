@@ -140,14 +140,14 @@ TEST(copy, choice)
 
 	cp::cho dst;
 	dst.ref<cp::byte>().set(1);
-	cp::byte const* pb = dst.cselect();
-	cp::word const* pw = dst.cselect();
+	auto const* pb = dst.get<cp::byte>();
+	auto const* pw = dst.get<cp::word>();
 	ASSERT_NE(nullptr, pb);
 	ASSERT_EQ(nullptr, pw);
 	dst.copy(src);
 
-	pb = dst.cselect();
-	pw = dst.cselect();
+	pb = dst.get<cp::byte>();
+	pw = dst.get<cp::word>();
 	ASSERT_EQ(nullptr, pb);
 	ASSERT_NE(nullptr, pw);
 	EXPECT_EQ(0xABBA, pw->get());
@@ -172,7 +172,7 @@ TEST(copy, choice_hdr)
 	dst.ref<cp::fix_extern>().set(data);
 	src.copy_to(dst);
 
-	cp::var_intern const* pv = dst.cselect();
+	auto const* pv = dst.get<cp::var_intern>();
 	EXPECT_EQ(0xDADA, dst.header().get<cp::word>().get());
 	ASSERT_NE(nullptr, pv);
 	//EXPECT_EQ(0xABBA, pw->get());

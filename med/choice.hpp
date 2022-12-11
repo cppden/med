@@ -35,8 +35,12 @@ struct choice_if
 	}
 };
 
+template <class TYPE_CTX>
 struct choice_len : choice_if
 {
+	using EXP_TAG = typename TYPE_CTX::explicit_tag_type;
+	using EXP_LEN = typename TYPE_CTX::explicit_length_type;
+
 	template <class IE, class TO, class ENCODER>
 	static constexpr std::size_t apply(TO const& to, ENCODER& encoder)
 	{
@@ -46,10 +50,10 @@ struct choice_len : choice_if
 		}
 		else
 		{
+			//skip TAG as 1st metainfo which is encoded in header
+			using mi = meta::list_rest_t<meta::produce_info_t<ENCODER, IE>>;
 			return field_length(to.header(), encoder)
-				//skip TAG as 1st metainfo which is encoded in header
-				+ sl::ie_length<void, meta::list_rest_t<
-					meta::produce_info_t<ENCODER, IE>>>(to.template as<IE>(), encoder);
+				+ sl::ie_length<type_context<mi, EXP_TAG, EXP_LEN>>(to.template as<IE>(), encoder);
 		}
 	}
 
@@ -143,15 +147,15 @@ struct choice_enc : choice_if
 		{
 			if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
 			{
-				using type = typename meta::list_first_t<mi>::info_type;
-				using EXPOSED = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
-				if constexpr(std::is_same_v<EXPOSED, type>)
+				using EXP_TAG = typename meta::list_first_t<mi>::info_type;
+				if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
 				{
-					CODEC_TRACE("exposed[%s] mi=%s", name<EXPOSED>(), class_name<mi>());
+					CODEC_TRACE("exposed[%s] mi=%s", name<EXP_TAG>(), class_name<mi>());
 					//encoode 1st TAG meta-info via exposed
-					sl::ie_encode<meta::typelist<>, void>(encoder, to.template as<EXPOSED>());
+					sl::ie_encode<type_context<>>(encoder, to.template as<EXP_TAG>());
 					//skip 1st TAG meta-info and encode it via exposed
-					return sl::ie_encode<meta::list_rest_t<mi>, EXPOSED>(encoder, to.template as<IE>());
+					using ctx = type_context<meta::list_rest_t<mi>, EXP_TAG>;
+					return sl::ie_encode<ctx>(encoder, to.template as<IE>());
 				}
 			}
 			med::encode(encoder, to.template as<IE>());
@@ -168,7 +172,7 @@ struct choice_enc : choice_if
 			}
 			med::encode(encoder, to.header());
 			//skip 1st TAG meta-info as it's encoded in header
-			sl::ie_encode<meta::list_rest_t<mi>, void>(encoder, to.template as<IE>());
+			sl::ie_encode<type_context<meta::list_rest_t<mi>>>(encoder, to.template as<IE>());
 		}
 	}
 
@@ -199,16 +203,15 @@ struct choice_dec
 		using mi = meta::produce_info_t<DECODER, IE>;
 		if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
 		{
-			using type = typename meta::list_first_t<mi>::info_type;
-			using EXPOSED = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
-			if constexpr(std::is_same_v<EXPOSED, type>)
+			using EXP_TAG = typename meta::list_first_t<mi>::info_type;
+			if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
 			{
-				CODEC_TRACE("exposed[%s] = %#zx", name<EXPOSED>(), size_t(header.get()));
-				ie.template ref<type>().set(header.get());
-				return sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>, EXPOSED>>(decoder, ie, deps...);
+				CODEC_TRACE("exposed[%s] = %#zx", name<EXP_TAG>(), size_t(header.get()));
+				ie.template ref<EXP_TAG>().set(header.get());
+				return sl::ie_decode<type_context<meta::list_rest_t<mi>, EXP_TAG>>(decoder, ie, deps...);
 			}
 		}
-		sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
+		sl::ie_decode<type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
 	}
 
 	template <class TO, class HEADER, class DECODER, class... DEPS>
@@ -221,27 +224,6 @@ struct choice_dec
 } //end: namespace sl
 
 namespace detail {
-
-template <class T>
-struct selector
-{
-	explicit constexpr selector(T* that) noexcept
-		: m_this(that)
-	{}
-
-	template <class U> constexpr operator U&()
-	{
-		static_assert(!std::is_const_v<T>, "CONST CHOICE RETURNS A POINTER, NOT REFERENCE!");
-		return m_this->template ref<U>();
-	}
-
-	template <class U> constexpr operator U const* ()
-	{
-		return m_this->template get<U>();
-	}
-
-	T* m_this;
-};
 
 template <class L> struct list_aligned_union;
 template <template <class...> class L, class... Ts> struct list_aligned_union<L<Ts...>> : std::aligned_union<0, Ts...> {};
@@ -289,7 +271,7 @@ public:
 	{ return meta::for_if<ies_types>(sl::choice_name<CODEC>{}, tag, codec); }
 
 	template <class T>
-	static constexpr bool has()             { return not std::is_void_v<meta::find<ies_types, sl::field_at<T>>>; }
+	static constexpr bool has()             { return not std::is_void_v<meta::find_t<ies_types, sl::field_at<T>>>; }
 
 	//current selected index (type)
 	constexpr std::size_t index() const     { return m_index; }
@@ -305,19 +287,15 @@ public:
 
 	constexpr bool is_set() const           { return this->header().is_set() && index() != num_types; }
 
-	template <class ENC>
-	constexpr std::size_t calc_length(ENC& enc) const
-		{ return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len{}, *this, enc); }
-
-	constexpr auto select()                 { return detail::selector{this}; }
-	constexpr auto select() const           { return detail::selector{this}; }
-	constexpr auto cselect() const          { return detail::selector{this}; }
+	template <class TYPE_CTX = type_context<>>
+	constexpr std::size_t calc_length(auto& enc) const
+		{ return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len<TYPE_CTX>{}, *this, enc); }
 
 	template <class T> constexpr T& ref()
 	{
 		//TODO: how to prevent a copy when callee-side re-uses reference by mistake?
 		static_assert(!std::is_const_v<T>, "REFERENCE IS NOT FOR ACCESSING AS CONST");
-		using type = meta::find<ies_types, sl::field_at<T>>;
+		using type = meta::find_t<ies_types, sl::field_at<T>>;
 		static_assert(!std::is_void<type>(), "NO SUCH TYPE IN CHOICE");
 		constexpr auto idx = choice::template index<T>();
 		auto* ie = reinterpret_cast<type*>(&m_storage);
@@ -331,7 +309,7 @@ public:
 
 	template <class T> constexpr T const* get() const
 	{
-		using type = meta::find<ies_types, sl::field_at<T>>;
+		using type = meta::find_t<ies_types, sl::field_at<T>>;
 		static_assert(!std::is_void<type>(), "NO SUCH CASE IN CHOICE");
 		type const* ie = choice::template index<T>() == index()
 			? &this->template as<type>()
@@ -378,6 +356,7 @@ public:
 	}
 
 private:
+	template <class>
 	friend struct sl::choice_len;
 	friend struct sl::choice_copy;
 	friend struct sl::choice_enc;

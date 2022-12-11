@@ -67,11 +67,13 @@ struct set_enc
 
 				if constexpr (explicit_meta)
 				{
-					sl::ie_encode<meta::list_rest_t<mi>, void>(encoder, field);
+					using ctx = type_context<meta::list_rest_t<mi>>;
+					sl::ie_encode<ctx>(encoder, field);
 				}
 				else
 				{
-					sl::ie_encode<mi, void>(encoder, field);
+					using ctx = type_context<mi>;
+					sl::ie_encode<ctx>(encoder, field);
 				}
 			}
 		}
@@ -82,11 +84,13 @@ struct set_enc
 				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<mi>());
 				if constexpr (explicit_meta)
 				{
-					sl::ie_encode<meta::list_rest_t<mi>, void>(encoder, ie);
+					using ctx = type_context<meta::list_rest_t<mi>>;
+					sl::ie_encode<ctx>(encoder, ie);
 				}
 				else
 				{
-					sl::ie_encode<mi, void>(encoder, ie);
+					using ctx = type_context<mi>;
+					sl::ie_encode<ctx>(encoder, ie);
 				}
 			}
 			else if constexpr (!AOptional<IE>)
@@ -124,14 +128,14 @@ struct set_dec
 				MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 			}
 			auto* field = ie.push_back(decoder);
-			sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, *field, deps...);
+			sl::ie_decode<type_context<meta::list_rest_t<mi>>>(decoder, *field, deps...);
 		}
 		else //single-instance field
 		{
 			CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
 			if (not ie.is_set())
 			{
-				return sl::ie_decode<sl::decode_type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
+				return sl::ie_decode<type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
 				//return med::decode(decoder, ie);
 			}
 			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)

@@ -72,4 +72,21 @@ constexpr bool explicit_meta_in()
 	return false;
 }
 
+template <
+	class META_INFO = meta::typelist<>,
+	class EXP_TAG = void,
+	class EXP_LEN = void,
+	class DEPENDENT = void,
+	class DEPENDENCY = void
+>
+struct type_context
+{
+	using meta_info_type = META_INFO;
+	using explicit_tag_type = EXP_TAG;
+	using explicit_length_type = EXP_LEN;
+	using dependent_type = DEPENDENT;
+	using dependency_type = DEPENDENCY;
+};
+
+
 }	//end: namespace med

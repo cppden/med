@@ -69,7 +69,7 @@ void BM_encode_ok(benchmark::State& state)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
-	MSG_SEQ& msg = proto.select();
+	auto& msg = proto.ref<MSG_SEQ>();
 	msg.ref<FLD_UC>().set(37);
 	msg.ref<FLD_U16>().set(0x35D9);
 	msg.ref<FLD_U24>().set(0xDABEEF);
@@ -97,7 +97,7 @@ void BM_encode_fail(benchmark::State& state)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
-	MSG_SEQ& msg = proto.select();
+	auto& msg = proto.ref<MSG_SEQ>();
 	msg.ref<FLD_UC>().set(0);
 	msg.ref<FLD_U24>().set(0);
 

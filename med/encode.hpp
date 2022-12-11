@@ -26,18 +26,6 @@ namespace med {
 //structure layer
 namespace sl {
 
-template <
-	class META_INFO = meta::typelist<>,
-	class EXPOSED = void,
-	class EXP_LEN = void
->
-struct encode_type_context
-{
-	using meta_info_type = META_INFO;
-	using exposed_type = EXPOSED;
-	using explicit_length_type = EXP_LEN;
-};
-
 //Tag
 template <class TAG_TYPE, class ENCODER>
 constexpr void encode_tag(ENCODER& encoder)
@@ -50,16 +38,21 @@ constexpr void encode_tag(ENCODER& encoder)
 	}
 }
 
-template <class META_INFO, class EXPOSED, class ENCODER, class IE>
+template <class TYPE_CTX, class ENCODER, class IE>
 constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 {
+	using META_INFO = typename TYPE_CTX::meta_info_type;
+	using EXP_TAG = typename TYPE_CTX::explicit_tag_type;
+	using EXP_LEN = typename TYPE_CTX::explicit_length_type;
+
 	if constexpr (not is_peek_v<IE>) //do nothing if it's a peek preview
 	{
 		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
 			using mi = meta::list_first_t<META_INFO>;
 			using mi_rest = meta::list_rest_t<META_INFO>;
-			CODEC_TRACE("%s[%s-%s]: %s", __FUNCTION__, name<IE>(), name<EXPOSED>(), class_name<mi>());
+			using ctx = type_context<mi_rest, EXP_TAG, EXP_LEN>;
+			CODEC_TRACE("%s[%s!%s!%s]: %s", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), class_name<mi>());
 
 			if constexpr (mi::kind == mik::TAG)
 			{
@@ -68,7 +61,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				using len_t = typename mi::info_type;
-				auto len = sl::ie_length<EXPOSED, mi_rest>(ie, encoder);
+				auto len = sl::ie_length<ctx>(ie, encoder);
 				CODEC_TRACE("LV[%s]=%zX%c rest=%s", name<len_t>(), len, AMultiField<IE>?'*':' ', class_name<mi_rest>());
 				using dependency_t = get_dependency_t<len_t>;
 				if constexpr (!std::is_void_v<dependency_t>)
@@ -99,13 +92,13 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 					CODEC_TRACE("padded len_type=%s...:", name<len_t>());
 					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
 					pad_t pad{encoder};
-					ie_encode<mi_rest, EXPOSED>(encoder, ie);
+					ie_encode<ctx>(encoder, ie);
 					pad.add_padding();
 					return;
 				}
 			}
 
-			ie_encode<mi_rest, EXPOSED>(encoder, ie);
+			ie_encode<ctx>(encoder, ie);
 		}
 		else
 		{
@@ -120,17 +113,17 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 				}
 				else
 				{
-					if constexpr (std::is_void_v<EXPOSED>)
+					if constexpr (std::is_void_v<EXP_TAG>)
 					{
 						CODEC_TRACE(">>> %s", name<IE>());
 						ie.encode(encoder);
 						CODEC_TRACE("<<< %s", name<IE>());
 					}
-					else //NOTE! EXPOSED should be the 1st IE
+					else //NOTE! EXP_TAG should be the 1st IE
 					{
-						CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXPOSED>());
+						CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXP_TAG>());
 						ie.template encode<meta::list_rest_t<typename IE::ies_types>>(encoder);
-						CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXPOSED>());
+						CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXP_TAG>());
 					}
 				}
 			}
@@ -151,9 +144,9 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 template <class ENCODER, AHasIeType IE>
 constexpr void encode(ENCODER&& encoder, IE const& ie)
 {
-	using mi = meta::produce_info_t<ENCODER, IE>;
-	//CODEC_TRACE("mi=%s", class_name<mi>());
-	sl::ie_encode<mi, void>(encoder, ie);
+	using META_INFO = meta::produce_info_t<ENCODER, IE>;
+	//CODEC_TRACE("mi=%s", class_name<META_INFO>());
+	sl::ie_encode<type_context<META_INFO>>(encoder, ie);
 }
 
 }	//end: namespace med

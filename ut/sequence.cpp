@@ -31,7 +31,7 @@ TEST(encode, seq_ok)
 	PROTO proto;
 
 	//mandatory only
-	MSG_SEQ& msg = proto.select();
+	auto& msg = proto.ref<MSG_SEQ>();
 	//MSG_SEQ& msg = proto.ref<MSG_SEQ>();
 	msg.ref<FLD_UC>().set(37);
 	msg.ref<FLD_U16>().set(0x35D9);
@@ -106,7 +106,7 @@ TEST(encode, seq_fail_mandatory)
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
 
-	MSG_SEQ& msg = proto.select();
+	auto& msg = proto.ref<MSG_SEQ>();
 	msg.ref<FLD_UC>().set(0);
 	msg.ref<FLD_U24>().set(0);
 	//ctx.reset();
@@ -122,7 +122,7 @@ TEST(encode, mseq_ok)
 	PROTO proto;
 
 	//mandatory only
-	MSG_MSEQ& msg = proto.select();
+	auto& msg = proto.ref<MSG_MSEQ>();
 	static_assert(MSG_MSEQ::arity<FLD_UC>() == 2, "");
 	msg.ref<FLD_UC> ().push_back(ctx)->set(37);
 	msg.ref<FLD_UC> ().push_back(ctx)->set(38);
@@ -237,7 +237,7 @@ TEST(encode, mseq_fail_arity)
 	//arity of <V> violation
 	{
 		PROTO proto;
-		MSG_MSEQ& msg = proto.select();
+		auto& msg = proto.ref<MSG_MSEQ>();
 		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
 		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
 		msg.ref<FLD_U16>().push_back(ctx)->set(0x35DA);
@@ -256,7 +256,7 @@ TEST(encode, mseq_fail_arity)
 	//arity of <TV> violation
 	{
 		PROTO proto;
-		MSG_MSEQ& msg = proto.select();
+		auto& msg = proto.ref<MSG_MSEQ>();
 		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
 		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
 		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
@@ -275,7 +275,7 @@ TEST(encode, mseq_fail_arity)
 	//arity of <LV> violation
 	{
 		PROTO proto;
-		MSG_MSEQ& msg = proto.select();
+		auto& msg = proto.ref<MSG_MSEQ>();
 		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
 		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
 		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
@@ -294,7 +294,7 @@ TEST(encode, mseq_fail_arity)
 	//arity of <TLV> violation
 	{
 		PROTO proto;
-		MSG_MSEQ& msg = proto.select();
+		auto& msg = proto.ref<MSG_MSEQ>();
 		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
 		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
 		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
@@ -318,7 +318,7 @@ TEST(encode, mseq_fail_overflow)
 	//output buffer overflow
 	{
 		PROTO proto;
-		MSG_MSEQ& msg = proto.select();
+		auto& msg = proto.ref<MSG_MSEQ>();
 		msg.ref<FLD_UC> ().push_back(ctx)->set(37);
 		msg.ref<FLD_UC> ().push_back(ctx)->set(38);
 		msg.ref<FLD_U16>().push_back(ctx)->set(0x35D9);
@@ -358,11 +358,11 @@ TEST(decode, seq_ok)
 		//check RO access (compile test)
 		{
 			PROTO const& cproto = proto;
-			MSG_SEQ const* cmsg = cproto.select();
+			auto const* cmsg = cproto.get<MSG_SEQ>();
 			ASSERT_NE(nullptr, cmsg);
 		}
 
-		msg = proto.select();
+		msg = proto.get<MSG_SEQ>();
 		ASSERT_NE(nullptr, msg);
 		EXPECT_EQ(37, msg->get<FLD_UC>().get());
 		EXPECT_EQ(1, msg->count<FLD_UC>());
@@ -392,7 +392,7 @@ TEST(decode, seq_ok)
 		ctx.reset(encoded2, sizeof(encoded2));
 		decode(med::octet_decoder{ctx}, proto);
 
-		msg = proto.select();
+		msg = proto.get<MSG_SEQ>();
 		ASSERT_NE(nullptr, msg);
 		EXPECT_EQ(37, msg->get<FLD_UC>().get());
 		EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
@@ -418,7 +418,7 @@ TEST(decode, seq_ok)
 		ctx.reset(encoded3, sizeof(encoded3));
 		decode(med::octet_decoder{ctx}, proto);
 
-		msg = proto.select();
+		msg = proto.get<MSG_SEQ>();
 		ASSERT_NE(nullptr, msg);
 		EXPECT_EQ(37, msg->get<FLD_UC>().get());
 		EXPECT_EQ(0x35D9, msg->get<FLD_U16>().get());
@@ -572,7 +572,7 @@ TEST(decode, mseq_ok)
 	ctx.reset(encoded1, sizeof(encoded1));
 	decode(med::octet_decoder{ctx}, proto);
 
-	MSG_MSEQ const* msg = proto.select();
+	auto const* msg = proto.get<MSG_MSEQ>();
 	ASSERT_NE(nullptr, msg);
 	check_seqof<FLD_UC>(*msg, {37, 38});
 	check_seqof<FLD_U16>(*msg, {0x35D9, 0x35DA});
@@ -621,7 +621,7 @@ TEST(decode, mseq_ok)
 	ctx.reset(encoded2, sizeof(encoded2));
 	decode(med::octet_decoder{ctx}, proto);
 
-	msg = proto.select();
+	msg = proto.get<MSG_MSEQ>();
 	ASSERT_NE(nullptr, msg);
 
 	check_seqof<FLD_UC>(*msg, {37, 38});
@@ -641,7 +641,7 @@ TEST(decode, mseq_ok)
 
 	FLD_CHO const* pcho = msg->field();
 	ASSERT_NE(nullptr, pcho);
-	FLD_U8 const* pu8 = pcho->select();
+	auto const* pu8 = pcho->get<FLD_U8>();
 	ASSERT_NE(nullptr, pu8);
 	EXPECT_EQ(33, pu8->get());
 
@@ -657,7 +657,7 @@ TEST(decode, mseq_ok)
 
 	pcho = so2_it->field();
 	ASSERT_NE(nullptr, pcho);
-	FLD_U16 const* pu16 = pcho->select();
+	auto const* pu16 = pcho->get<FLD_U16>();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x3344, pu16->get());
 
