@@ -37,9 +37,9 @@ uint8_t const plain_encoded[] = {
 } //end: namespace pb
 
 #define OPT_CHECK(MSG, FIELD, VALUE) \
-	{ FIELD const* p = MSG.field();  \
+	{ auto* p = MSG.get<FIELD>();    \
 	ASSERT_NE(nullptr, p);           \
-	EXPECT_EQ(VALUE, p->get());}    \
+	EXPECT_EQ(VALUE, p->get());}     \
 /* OPT_CHECK */
 
 TEST(protobuf, encode_plain)
@@ -73,4 +73,3 @@ TEST(protobuf, decode_plain)
 	OPT_CHECK(cmsg, uint32, 128);
 	OPT_CHECK(cmsg, uint64, 256);
 }
-

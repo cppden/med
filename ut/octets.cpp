@@ -36,7 +36,7 @@ TEST(octets, var_intern)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	var_intern const* p = msg.cfield();
+	auto* p = msg.get<var_intern>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(sizeof(in), p->size());
 	ASSERT_TRUE(Matches(in, p->data()));
@@ -72,7 +72,7 @@ TEST(octets, var_intern_zero_len)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	var_intern const* p = msg.cfield();
+	auto* p = msg.get<var_intern>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(0, p->size());
 }
@@ -96,7 +96,7 @@ TEST(octets, var_extern)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	var_extern const* p = msg.cfield();
+	auto* p = msg.get<var_extern>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(sizeof(in), p->size());
 	ASSERT_TRUE(Matches(in, p->data()));
@@ -132,7 +132,7 @@ TEST(octets, var_extern_zero_len)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	var_extern const* p = msg.cfield();
+	auto* p = msg.get<var_extern>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(0, p->size());
 }
@@ -156,7 +156,7 @@ TEST(octets, fix_intern)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	fix_intern const* p = msg.cfield();
+	auto* p = msg.get<fix_intern>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(sizeof(in), p->size());
 	ASSERT_TRUE(Matches(in, p->data()));
@@ -198,7 +198,7 @@ TEST(octets, fix_extern)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	fix_extern const* p = msg.cfield();
+	auto* p = msg.get<fix_extern>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(sizeof(in), p->size());
 	ASSERT_TRUE(Matches(in, p->data()));
@@ -239,7 +239,7 @@ TEST(octets, var_intern_min)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	var_intern_min const* p = msg.cfield();
+	auto* p = msg.get<var_intern_min>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(sizeof(in), p->size());
 	ASSERT_TRUE(Matches(in, p->data()));
@@ -283,7 +283,7 @@ TEST(octets, var_extern_min)
 	OCTS dmsg;
 	decode(med::octet_decoder{dctx}, dmsg);
 
-	var_extern_min const* p = msg.cfield();
+	auto* p = msg.get<var_extern_min>();
 	ASSERT_NE(nullptr, p);
 	ASSERT_EQ(sizeof(in), p->size());
 	ASSERT_TRUE(Matches(in, p->data()));

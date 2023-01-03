@@ -157,7 +157,7 @@ TEST(choice, any)
 	med::encoder_context<> ectx{ buffer };
 	med::octet_encoder encoder{ectx};
 	encode(encoder, msg);
-	EXPECT_STRCASEEQ("07 03 04 05 06 07 08 ", as_string(ectx.buffer()));
+	EXPECT_STRCASEEQ("06 03 04 05 06 07 08 ", as_string(ectx.buffer()));
 }
 
 TEST(choice, peek)

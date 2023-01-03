@@ -56,23 +56,19 @@ struct cont_copy
 template <class TYPE_CTX>
 struct cont_len
 {
-	using EXP_TAG = typename TYPE_CTX::explicit_tag_type;
-	using EXP_LEN = typename TYPE_CTX::explicit_length_type;
-
 	static constexpr std::size_t op(std::size_t r1, std::size_t r2) { return r1 + r2; }
 
 	template <class IE, class SEQ, class ENCODER>
 	static std::size_t apply(SEQ const& seq, ENCODER& encoder)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
-		using ctx = type_context<mi, EXP_TAG, EXP_LEN>;
 		if constexpr (AMultiField<IE>)
 		{
 			IE const& ie = seq;
 			std::size_t len = 0;
 			for (auto& v : ie)
 			{
-				len += sl::ie_length<ctx>(v, encoder);
+				len += sl::ie_length<mi>(v, encoder);
 			}
 			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
@@ -81,7 +77,7 @@ struct cont_len
 		{
 			IE const& ie = seq;
 			std::size_t const len = AHasSetterType<IE> || ie.is_set()
-					? sl::ie_length<ctx>(ie, encoder)
+					? sl::ie_length<mi>(ie, encoder)
 					: 0;
 			CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
 			return len;
@@ -185,10 +181,6 @@ public:
 		auto& ie = m_ies.template as<FIELD>();
 		return get_field<FIELD>(ie);
 	}
-
-	auto field()                            { return make_accessor(*this); }
-	auto field() const                      { return make_accessor(*this); }
-	auto cfield() const                     { return make_accessor(*this); }
 
 	template <class FIELD>
 	std::size_t count() const               { return field_count(m_ies.template as<FIELD>()); }

@@ -504,11 +504,11 @@ TEST(length, ppp)
 		decode(med::octet_decoder{ctx}, msg);
 
 		EXPECT_EQ(3, msg.header().get<len::ppp::id>().get());
-		auto const* c = msg.get<len::ppp::challenge>();
+		auto* c = msg.get<len::ppp::challenge>();
 		ASSERT_NE(nullptr, c);
 		EXPECT_EQ(1, c->get<len::ppp::cval>().size());
 		EXPECT_EQ('a', c->get<len::ppp::cval>().data()[0]);
-		len::ppp::name const* name = c->field();
+		auto* name = c->get<len::ppp::name>();
 		ASSERT_NE(nullptr, name);
 		EXPECT_EQ(10, name->size());
 	}
@@ -528,7 +528,7 @@ TEST(length, ppp)
 		EXPECT_EQ(5, msg.header().get<len::ppp::id>().get());
 		auto const* r = msg.get<len::ppp::response>();
 		ASSERT_NE(nullptr, r);
-		len::ppp::rval const* rval = r->field();
+		auto* rval = r->get<len::ppp::rval>();
 		ASSERT_NE(nullptr, rval);
 		EXPECT_EQ(1, rval->size());
 	}
@@ -547,7 +547,7 @@ TEST(length, ppp)
 		EXPECT_EQ(5, msg.header().get<len::ppp::id>().get());
 		auto const* r = msg.get<len::ppp::response>();
 		ASSERT_NE(nullptr, r);
-		len::ppp::rval const* rval = r->field();
+		auto* rval = r->get<len::ppp::rval>();
 		EXPECT_EQ(nullptr, rval);
 	}
 }

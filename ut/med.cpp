@@ -117,9 +117,9 @@ TEST(decode, msg_func)
 		EXPECT_EQ(38, std::next(it)->get());
 		ASSERT_EQ(0, msg->count<FLD_U8>());
 	}
-	FLD_U16 const* pu16 = msg->field();
+	auto* pu16 = msg->get<FLD_U16>();
 	EXPECT_EQ(nullptr, pu16);
-	FLD_U24 const* pu24 = msg->field();
+	auto* pu24 = msg->get<FLD_U24>();
 	EXPECT_EQ(nullptr, pu24);
 	EXPECT_EQ(0, msg->count<FLD_IP>());
 
@@ -143,10 +143,10 @@ TEST(decode, msg_func)
 	}
 	ASSERT_EQ(0, msg->count<FLD_U8>());
 	EXPECT_EQ(msg->get<FLD_U8>().end(), msg->get<FLD_U8>().begin());
-	pu16 = msg->field();
+	pu16 = msg->get<FLD_U16>();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x35D9, pu16->get());
-	pu24 = msg->field();
+	pu24 = msg->get<FLD_U24>();
 	EXPECT_EQ(nullptr, pu24);
 	EXPECT_EQ(0, msg->count<FLD_IP>());
 
@@ -179,13 +179,13 @@ TEST(decode, msg_func)
 		auto* p = exp;
 		for (auto& f : msg->get<FLD_U8>()) { EXPECT_EQ(*p++, f.get()); }
 	}
-	pu16 = msg->field();
+	pu16 = msg->get<FLD_U16>();
 	ASSERT_NE(nullptr, pu16);
 	EXPECT_EQ(0x35D9, pu16->get());
-	pu24 = msg->field();
+	pu24 = msg->get<FLD_U24>();
 	ASSERT_NE(nullptr, pu24);
 	EXPECT_EQ(0xDABEEF, pu24->get());
-	FLD_QTY const* pqty = msg->field();
+	auto* pqty = msg->get<FLD_QTY>();
 	ASSERT_NE(nullptr, pqty);
 	auto const u32_qty = msg->count<FLD_IP>();
 	ASSERT_EQ(pqty->get(), u32_qty);

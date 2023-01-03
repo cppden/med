@@ -24,7 +24,7 @@ constexpr void put_snapshot(FUNC& func, IE& ie)
 {
 	if constexpr (std::is_base_of_v<with_snapshot, IE>)
 	{
-		func(SNAPSHOT{snapshot_id<IE>, sl::ie_length<type_context<>>(ie, func)});
+		func(SNAPSHOT{snapshot_id<IE>, sl::ie_length<meta::typelist<>>(ie, func)});
 	}
 }
 

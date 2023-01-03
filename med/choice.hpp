@@ -53,7 +53,7 @@ struct choice_len : choice_if
 			//skip TAG as 1st metainfo which is encoded in header
 			using mi = meta::list_rest_t<meta::produce_info_t<ENCODER, IE>>;
 			return field_length(to.header(), encoder)
-				+ sl::ie_length<type_context<mi, EXP_TAG, EXP_LEN>>(to.template as<IE>(), encoder);
+				+ sl::ie_length<mi>(to.template as<IE>(), encoder);
 		}
 	}
 

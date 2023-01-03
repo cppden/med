@@ -92,11 +92,10 @@ TEST(encode, seq_ok)
 	//check RO access (compile test)
 	{
 		MSG_SEQ const& cmsg = msg;
-		FLD_DW const* cpf = cmsg.field();
+		auto* cpf = cmsg.get<FLD_DW>();
 		ASSERT_NE(nullptr, cpf);
-		FLD_DW& rf = msg.field();
+		auto& rf = msg.ref<FLD_DW>();
 		ASSERT_EQ(0x01020304, rf.get());
-		//FLD_DW* pf = msg.field(); //invalid access
 	}
 }
 
@@ -222,10 +221,6 @@ TEST(encode, mseq_ok)
 		++it;
 		ASSERT_NE(rdw.end(), it);
 		ASSERT_EQ(0x12345678, it->get());
-//		FLD_DW const* rf = msg.field(1);
-//		ASSERT_EQ(0x12345678, rf->get());
-		//FLD_DW& rpf = msg.field(); //invalid access
-		//FLD_DW* pf = msg.field(); //invalid access
 	}
 }
 
@@ -371,11 +366,11 @@ TEST(decode, seq_ok)
 		EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP>().get());
 
 		EXPECT_EQ(0, msg->count<FLD_DW>());
-		FLD_DW const* fld5 = msg->field();
+		auto* fld5 = msg->get<FLD_DW>();
 		EXPECT_EQ(nullptr, fld5);
 
 		EXPECT_EQ(0, msg->count<VFLD1>());
-		VFLD1 const* vfld1 = msg->field();
+		auto* vfld1 = msg->get<VFLD1>();
 		EXPECT_EQ(nullptr, vfld1);
 	}
 
@@ -399,7 +394,7 @@ TEST(decode, seq_ok)
 		EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
 		EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP>().get());
 
-		FLD_DW const* fld5 = msg->field();
+		auto* fld5 = msg->get<FLD_DW>();
 		EXPECT_EQ(1, msg->count<FLD_DW>());
 		ASSERT_NE(nullptr, fld5);
 		EXPECT_EQ(0x01020304, fld5->get());
@@ -425,12 +420,12 @@ TEST(decode, seq_ok)
 		EXPECT_EQ(0xDABEEF, msg->get<FLD_U24>().get());
 		EXPECT_EQ(0xfee1ABBA, msg->get<FLD_IP>().get());
 
-		FLD_DW const* fld5 = msg->field();
+		auto* fld5 = msg->get<FLD_DW>();
 		EXPECT_EQ(1, msg->count<FLD_DW>());
 		ASSERT_NE(nullptr, fld5);
 		EXPECT_EQ(0x01020304, fld5->get());
 
-		VFLD1 const* vfld1 = msg->field();
+		auto* vfld1 = msg->get<VFLD1>();
 		ASSERT_NE(nullptr, vfld1);
 		ASSERT_EQ(1, msg->count<VFLD1>());
 		EQ_STRING_O(VFLD1, "test.this!");
@@ -477,10 +472,10 @@ TEST(decode, seq_opt)
 	ctx.reset(encoded1, enc_size);
 	decode(med::octet_decoder{ctx}, msg);
 
-	FLD_DW const* p1 = msg.cfield();
+	auto* p1 = msg.get<FLD_DW>();
 	ASSERT_NE(nullptr, p1);
 	EXPECT_EQ(0x11223344, p1->get());
-	FLD_U16 const* p2 = msg.cfield();
+	auto* p2 = msg.get<FLD_U16>();
 	EXPECT_EQ(nullptr, p2);
 
 	msg.clear();
@@ -488,9 +483,9 @@ TEST(decode, seq_opt)
 	ctx.reset(encoded2, sizeof(encoded2));
 	decode(med::octet_decoder{ctx}, msg);
 
-	p1 = msg.cfield();
+	p1 = msg.get<FLD_DW>();
 	EXPECT_EQ(nullptr, p1);
-	p2 = msg.cfield();
+	p2 = msg.get<FLD_U16>();
 	ASSERT_NE(nullptr, p2);
 	EXPECT_EQ(0x1122, p2->get());
 }
@@ -639,13 +634,13 @@ TEST(decode, mseq_ok)
 		EXPECT_EQ(6, it->get<FLD_U16>().get());
 	}
 
-	FLD_CHO const* pcho = msg->field();
+	auto* pcho = msg->get<FLD_CHO>();
 	ASSERT_NE(nullptr, pcho);
 	auto const* pu8 = pcho->get<FLD_U8>();
 	ASSERT_NE(nullptr, pu8);
 	EXPECT_EQ(33, pu8->get());
 
-	SEQOF_1 const* pso1 = msg->field();
+	auto* pso1 = msg->get<SEQOF_1>();
 	ASSERT_NE(nullptr, pso1);
 	check_seqof<FLD_W>(*pso1, {0x1223, 0x3445});
 
@@ -655,7 +650,7 @@ TEST(decode, mseq_ok)
 	ASSERT_NE(rso2.end(), so2_it);
 	EXPECT_EQ(0x1122, so2_it->get<FLD_W>().get());
 
-	pcho = so2_it->field();
+	pcho = so2_it->get<FLD_CHO>();
 	ASSERT_NE(nullptr, pcho);
 	auto const* pu16 = pcho->get<FLD_U16>();
 	ASSERT_NE(nullptr, pu16);
@@ -665,7 +660,7 @@ TEST(decode, mseq_ok)
 	ASSERT_NE(rso2.end(), so2_it);
 	EXPECT_EQ(0x3344, so2_it->get<FLD_W>().get());
 
-	pcho = so2_it->field();
+	pcho = so2_it->get<FLD_CHO>();
 	EXPECT_EQ(nullptr, pcho);
 
 	so2_it++;

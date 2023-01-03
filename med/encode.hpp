@@ -61,7 +61,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				using len_t = typename mi::info_type;
-				auto len = sl::ie_length<ctx>(ie, encoder);
+				auto len = sl::ie_length<mi_rest>(ie, encoder);
 				CODEC_TRACE("LV[%s]=%zX%c rest=%s", name<len_t>(), len, AMultiField<IE>?'*':' ', class_name<mi_rest>());
 				using dependency_t = get_dependency_t<len_t>;
 				if constexpr (!std::is_void_v<dependency_t>)

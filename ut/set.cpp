@@ -209,9 +209,9 @@ TEST(decode, set_ok)
 
 	ASSERT_EQ(0x11, msg->get<FLD_UC>().get());
 	ASSERT_EQ(0x35D9, msg->get<FLD_U16>().get());
-	FLD_U24 const* fld3 = msg->field();
-	FLD_IP const* fld4 = msg->field();
-	VFLD1 const* vfld1 = msg->field();
+	auto* fld3 = msg->get<FLD_U24>();
+	auto* fld4 = msg->get<FLD_IP>();
+	auto* vfld1 = msg->get<VFLD1>();
 	ASSERT_EQ(nullptr, fld3);
 	ASSERT_EQ(nullptr, fld4);
 	ASSERT_EQ(nullptr, vfld1);
@@ -228,8 +228,8 @@ TEST(decode, set_ok)
 	msg = proto.get<MSG_SET>();
 	ASSERT_NE(nullptr, msg);
 
-	fld3 = msg->field();
-	fld4 = msg->field();
+	fld3 = msg->get<FLD_U24>();
+	fld4 = msg->get<FLD_IP>();
 	ASSERT_EQ(nullptr, fld3);
 	ASSERT_EQ(nullptr, fld4);
 
@@ -249,8 +249,8 @@ TEST(decode, set_ok)
 	msg = proto.get<MSG_SET>();
 	ASSERT_NE(nullptr, msg);
 
-	fld3 = msg->field();
-	fld4 = msg->field();
+	fld3 = msg->get<FLD_U24>();
+	fld4 = msg->get<FLD_IP>();
 	ASSERT_NE(nullptr, fld3);
 	ASSERT_NE(nullptr, fld4);
 
