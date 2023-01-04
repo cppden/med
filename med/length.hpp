@@ -53,9 +53,13 @@ using get_dependency_t = typename detail::get_dependency<T>::type;
 
 namespace sl {
 
-template <class META_INFO, class IE, class ENCODER>
+template <class TYPE_CTX, class IE, class ENCODER>
 constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 {
+	using META_INFO = typename TYPE_CTX::meta_info_type;
+	using EXP_TAG = typename TYPE_CTX::explicit_tag_type;
+	using EXP_LEN = typename TYPE_CTX::explicit_length_type;
+
 	std::size_t len = 0;
 
 	if constexpr (not is_peek_v<IE>)
@@ -64,40 +68,40 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 		{
 			using mi = meta::list_first_t<META_INFO>;
 			using info_t = typename mi::info_type;
+			using exp_tag_t = std::conditional_t<mi::kind == mik::TAG && APresentIn<info_t, IE>, info_t, EXP_TAG>;
+			using exp_len_t = std::conditional_t<mi::kind == mik::LEN && APresentIn<info_t, IE>, info_t, EXP_LEN>;
 
 			//TODO: pass calculated length to length_t when sizeof(len) depends on value like in ASN.1 BER
-			CODEC_TRACE("%s[%s]: %c%s", __FUNCTION__, name<IE>(), APresentIn<info_t, IE>?'!':' ', name<info_t>());
-			CODEC_TRACE("%s[%s]: len=%zu += %zu", __FUNCTION__, name<IE>(), len, ie_length<meta::list_rest_t<META_INFO>>(ie, encoder));
-			len += ie_length<meta::list_rest_t<META_INFO>>(ie, encoder);
-			if constexpr (!APresentIn<info_t, IE>) //don't count explicit meta since it will be counted as data
+			CODEC_TRACE("%s[%s]<%s:%s>: %s", __FUNCTION__, name<IE>(), name<exp_tag_t>(), name<exp_len_t>(), name<info_t>());
+			len += ie_length<type_context<meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>>(ie, encoder);
+			if constexpr (mi::kind == mik::LEN)
 			{
-				if constexpr (mi::kind == mik::LEN)
+				//TODO: involve codec to get length type + may need to set its value like for BER
+				using pad_traits = typename get_padding<info_t>::type;
+				if constexpr (!std::is_void_v<pad_traits>)
 				{
-					//TODO: involve codec to get length type + may need to set its value like for BER
-					using pad_traits = typename get_padding<info_t>::type;
-					if constexpr (!std::is_void_v<pad_traits>)
-					{
-						using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
+					using pad_t = typename ENCODER::template padder_type<pad_traits, ENCODER>;
 #ifdef CODEC_TRACE_ENABLE
-						auto const add_len = pad_t::calc_padding_size(len);
-						CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<info_t>(), size_t(len), add_len, len + add_len);
-						len += add_len;
+					auto const add_len = pad_t::calc_padding_size(len);
+					CODEC_TRACE("padded len_type=%s: %zu + %zu = %zu", name<info_t>(), size_t(len), add_len, len + add_len);
+					len += add_len;
 #else
-						len += pad_t::calc_padding_size(len);
+					len += pad_t::calc_padding_size(len);
 #endif
-					}
 				}
-				//calc length of LEN or TAG itself
-				len += ie_length<meta::typelist<>>(info_t{}, encoder);
 			}
+			//calc length of LEN or TAG itself
+			len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
 		}
 		else //data itself
 		{
+			CODEC_TRACE("%s[%s]<%s:%s> - DATA", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 			using ie_type = typename IE::ie_type;
-			CODEC_TRACE("%s[%.30s] multi=%d: %s", __FUNCTION__, name<IE>(), AMultiField<IE>, class_name<ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				len += ie.calc_length(encoder);
+				using ctx = type_context<meta::typelist<>, EXP_TAG, EXP_LEN>;
+				CODEC_TRACE("%s[%.30s]%c<%s:%s>: %s", __FUNCTION__, name<IE>(), AMultiField<IE>?'*':' ', name<EXP_TAG>(), name<EXP_LEN>(), name<ie_type>());
+				len += ie.template calc_length<ctx>(encoder);
 				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 			}
 			//NOTE: can't unroll multi-field here because for ASN.1 the OID and SEQENCE-OF
@@ -105,11 +109,21 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder)
 			//directly to encoder
 			else
 			{
-				len += encoder(GET_LENGTH{}, ie);
-				CODEC_TRACE("%s[%s] : len(VAL) = %zu", __FUNCTION__, name<IE>(), len);
+				using ie_t = get_field_type_t<IE>;
+				if constexpr (std::is_same_v<ie_t, EXP_TAG> || std::is_same_v<ie_t, EXP_LEN>)
+				{
+					CODEC_TRACE("%s[%s] : skip explicit", __FUNCTION__, name<IE>());
+				}
+				else
+				{
+					//CODEC_TRACE("<%s:%s> : %s", class_name<EXP_TAG>(), class_name<EXP_LEN>(), class_name<IE>());
+					len += encoder(GET_LENGTH{}, ie);
+					CODEC_TRACE("%s[%s] : len(VAL) = %zu", __FUNCTION__, name<IE>(), len);
+				}
 			}
 		}
 	}
+	CODEC_TRACE("%s[%s]<%s:%s> -> %zu", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), len);
 	return len;
 }
 
@@ -120,7 +134,7 @@ constexpr std::size_t field_length(IE const& ie, ENCODER& encoder)
 {
 	using mi = meta::produce_info_t<ENCODER, IE>;
 	//CODEC_TRACE("%s[%s]", __FUNCTION__, name<IE>());
-	return sl::ie_length<mi>(ie, encoder);
+	return sl::ie_length<type_context<mi>>(ie, encoder);
 }
 
 
@@ -169,7 +183,7 @@ constexpr std::size_t value_to_length(FIELD& field)
 	else
 	{
 		std::size_t len = field.get_encoded();
-		CODEC_TRACE("LV[%s]=%zX", name<FIELD>(), len);
+		CODEC_TRACE("LV[%s]=%zu", name<FIELD>(), len);
 		return len;
 	}
 }

@@ -52,7 +52,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			using mi = meta::list_first_t<META_INFO>;
 			using mi_rest = meta::list_rest_t<META_INFO>;
 			using ctx = type_context<mi_rest, EXP_TAG, EXP_LEN>;
-			CODEC_TRACE("%s[%s!%s!%s]: %s", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), class_name<mi>());
+			CODEC_TRACE("%s[%s]<%s:%s>: %s", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), class_name<mi>());
 
 			if constexpr (mi::kind == mik::TAG)
 			{
@@ -61,7 +61,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			else if constexpr (mi::kind == mik::LEN)
 			{
 				using len_t = typename mi::info_type;
-				auto len = sl::ie_length<mi_rest>(ie, encoder);
+				auto len = sl::ie_length<ctx>(ie, encoder);
 				CODEC_TRACE("LV[%s]=%zX%c rest=%s", name<len_t>(), len, AMultiField<IE>?'*':' ', class_name<mi_rest>());
 				using dependency_t = get_dependency_t<len_t>;
 				if constexpr (!std::is_void_v<dependency_t>)

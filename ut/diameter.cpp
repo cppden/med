@@ -68,11 +68,11 @@ struct end_to_end_id : med::value<uint32_t>
  |  AVPs ...
  +-+-+-+-+-+-+-+-+-+-+-+-+- */
 struct header : med::sequence<
-	med::mandatory<cmd_flags>,
-	med::mandatory<cmd_code>,
-	med::mandatory<app_id>,
-	med::mandatory<hop_by_hop_id>,
-	med::mandatory<end_to_end_id>
+	M<cmd_flags>,
+	M<cmd_code>,
+	M<app_id>,
+	M<hop_by_hop_id>,
+	M<end_to_end_id>
 >
 {
 	std::size_t get_tag() const                 { return get<cmd_code>().get() + (flags().request() ? REQUEST : 0); }
@@ -295,6 +295,17 @@ using answer = M<med::value<med::fixed<MSG::code, uint32_t>>, MSG>;
 
 //couple of messages from base protocol for testing
 using version = med::value<med::fixed<1, uint8_t>>;
+struct msg_len : med::value<med::bytes<3>>
+{
+	uint32_t get_length() const noexcept
+	{
+		return get_encoded() - 4; //exclude version (1) and length (3) itself
+	}
+	void set_length(std::size_t v)
+	{
+		set_encoded(v + 4); //include version (1) and length (3) itself
+	}
+};
 struct base : med::choice< header
 	, request<DPR>
 	, answer<DPA>
@@ -302,13 +313,13 @@ struct base : med::choice< header
 >,
 	med::add_meta_info<
 		med::add_tag<version>,
-		med::add_len<med::value<med::bytes<3>>>
+		med::add_len<msg_len>
 	>
 {
 };
 
 uint8_t const dpr[] = {
-	0x01, 0x00, 0x00, 0x4C, //VER(1), LEN(3)
+	0x01, 0x00, 0x00, 19*4, //VER(1), LEN(3)
 	0x80, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
 	0x00, 0x00, 0x00, 0x00, //APP-ID
 	0x22, 0x22, 0x22, 0x22, //H2H-ID
@@ -377,7 +388,7 @@ TEST(diameter, padding_decode)
 TEST(diameter, padding_bad)
 {
 	uint8_t const dpr[] = {
-			0x01, 0x00, 0x00, 76-3, //VER(1), LEN(3)
+			0x01, 0x00, 0x00, 19*4-3, //VER(1), LEN(3)
 			0x80, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
 			0x00, 0x00, 0x00, 0x00, //APP-ID
 			0x22, 0x22, 0x22, 0x22, //H2H-ID
@@ -409,14 +420,14 @@ TEST(diameter, padding_bad)
 TEST(diameter, any_avp)
 {
 	uint8_t const dpa[] = {
-		0x01, 0x00, 0x00, 76+12+20, //VER(1), LEN(3)
+		0x01, 0x00, 0x00, 27*4, //VER(1), LEN(3)
 		0x00, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
 		0x00, 0x00, 0x00, 0x00, //APP-ID
 		0x22, 0x22, 0x22, 0x22, //H2H-ID
 		0x55, 0x55, 0x55, 0x55, //E2E-ID
 
 		0x00, 0x00, 0x01, 0x0C, //AVP = 268 Result Code
-		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x40, 0x00, 0x00, 12,   //V.M.P(1), LEN(3) = 12
 		0x00, 0x00, 0x0B, 0xBC, //result = 3004
 
 		0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
@@ -427,26 +438,26 @@ TEST(diameter, any_avp)
 
 		//NOTE: this AVP is not expected in DPA
 		0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
-		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x40, 0x00, 0x00, 12,   //V.M.P(1), LEN(3) = 12
 		0xA5, 0x5A, 0xBC, 0xCB, //id
 
 		0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
-		0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
+		0x40, 0x00, 0x00, 22,   //V.M.P(1), LEN(3) = 22
 		'o', 'r', 'i', 'g',
 		'.', 'r', 'e', 'a',
 		'l', 'm', '.', 'n',
 		'e', 't',   0,   0,
 
 		0x00, 0x00, 0x01, 0x17, //AVP-CODE = 279 Failed-AVP (grouped)
-		0x40, 0x00, 0x00, 20, //V.M.P(1), LEN(3)
+		0x40, 0x00, 0x00, 20,   //V.M.P(1), LEN(3)
 		0x00, 0x00, 0x01, 0x02, //AVP-CODE = 258 Auth-App-Id AVP
-		0x40, 0x00, 0x00, 0x0C, //V.M.P(1), LEN(3) = 12
+		0x40, 0x00, 0x00, 12,   //V.M.P(1), LEN(3) = 12
 		0x01, 0x00, 0x00, 0x23, //id = S6a
 	};
 
 	//encoding is done according message description thus need to reorder
 	uint8_t const dpa_enc[] = {
-		0x01, 0x00, 0x00, 76+12+20, //VER(1), LEN(3)
+		0x01, 0x00, 0x00, 27*4, //VER(1), LEN(3)
 		0x00, 0x00, 0x01, 0x1A, //R.P.E.T(1), CMD(3) = 282
 		0x00, 0x00, 0x00, 0x00, //APP-ID
 		0x22, 0x22, 0x22, 0x22, //H2H-ID

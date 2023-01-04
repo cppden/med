@@ -46,14 +46,22 @@ struct choice_len : choice_if
 	{
 		if constexpr (TO::plain_header)
 		{
-			return field_length(to.template as<IE>(), encoder);
+			if constexpr (std::is_same_v<EXP_TAG, IE> || std::is_same_v<EXP_LEN, IE>)
+			{
+				CODEC_TRACE("choice_len: skip explicit %s", name<IE>());
+				return 0;
+			}
+			else
+			{
+				return field_length(to.template as<IE>(), encoder);
+			}
 		}
 		else
 		{
 			//skip TAG as 1st metainfo which is encoded in header
 			using mi = meta::list_rest_t<meta::produce_info_t<ENCODER, IE>>;
 			return field_length(to.header(), encoder)
-				+ sl::ie_length<mi>(to.template as<IE>(), encoder);
+				+ sl::ie_length<type_context<mi, EXP_TAG, EXP_LEN>>(to.template as<IE>(), encoder);
 		}
 	}
 
