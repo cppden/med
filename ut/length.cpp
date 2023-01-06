@@ -113,8 +113,8 @@ struct sd : med::value<med::bits<24>> {};
 
 struct s_nssai_length : med::value<uint8_t>
 {
-	value_type get_length() const   { return get_encoded(); }
-	bool set_length(value_type v)   { set_encoded(v); return true; }
+	// value_type get_length() const   { return get_encoded(); }
+	// bool set_length(value_type v)   { set_encoded(v); return true; }
 
 	/*
 	sst[1], sd[3], 1st sst is M

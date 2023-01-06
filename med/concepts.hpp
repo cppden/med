@@ -66,9 +66,7 @@ template <class T>
 concept AMultiField = requires(T v)
 {
 	typename T::field_value;
-	// typename T::field_type;
-
-	// { v.count() } -> std::same_as<std::size_t>;
+	{ v.count() } -> std::unsigned_integral;
 	// { v.is_set() } -> std::same_as<bool>;
 	// { v.empty() } -> std::same_as<bool>;
 	// { v.clear() };
@@ -81,6 +79,8 @@ struct optional_t {};
 
 template <class T>
 concept AOptional = std::is_base_of_v<optional_t, T>;
+template <class T>
+concept AMandatory = !std::is_base_of_v<optional_t, T>;
 
 //checks if T looks like a functor to test condition of a field presense
 template <typename T>
@@ -170,5 +170,8 @@ concept AAllocator = requires (T v)
 
 template <class NEEDLE, class HAY>
 concept APresentIn = HAY::template has<NEEDLE>();
+
+template <class T, class... Ts>
+concept ASameAs = (std::is_same_v<T, Ts> || ...);
 
 }	//end: namespace med

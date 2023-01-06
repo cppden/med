@@ -46,22 +46,26 @@ struct choice_len : choice_if
 	{
 		if constexpr (TO::plain_header)
 		{
-			if constexpr (std::is_same_v<EXP_TAG, IE> || std::is_same_v<EXP_LEN, IE>)
+			if constexpr (ASameAs<get_field_type_t<IE>, EXP_TAG, EXP_LEN>)
 			{
-				CODEC_TRACE("choice_len: skip explicit %s", name<IE>());
+				CODEC_TRACE("choice_len[%s]=0 skip explicit", name<IE>());
 				return 0;
 			}
 			else
 			{
-				return field_length(to.template as<IE>(), encoder);
+				auto const len = field_length(to.template as<IE>(), encoder);
+				CODEC_TRACE("choice_len[%s] = %zu", name<IE>(), len);
+				return len;
 			}
 		}
 		else
 		{
 			//skip TAG as 1st metainfo which is encoded in header
 			using mi = meta::list_rest_t<meta::produce_info_t<ENCODER, IE>>;
-			return field_length(to.header(), encoder)
+			auto const len = field_length(to.header(), encoder)
 				+ sl::ie_length<type_context<mi, EXP_TAG, EXP_LEN>>(to.template as<IE>(), encoder);
+			CODEC_TRACE("choice_len[%s] = %zu", name<IE>(), len);
+			return len;
 		}
 	}
 
@@ -158,7 +162,7 @@ struct choice_enc : choice_if
 				using EXP_TAG = typename meta::list_first_t<mi>::info_type;
 				if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
 				{
-					CODEC_TRACE("exposed[%s] mi=%s", name<EXP_TAG>(), class_name<mi>());
+					CODEC_TRACE("explicit[%s] mi=%s", name<EXP_TAG>(), class_name<mi>());
 					//encoode 1st TAG meta-info via exposed
 					sl::ie_encode<type_context<>>(encoder, to.template as<EXP_TAG>());
 					//skip 1st TAG meta-info and encode it via exposed
@@ -214,7 +218,7 @@ struct choice_dec
 			using EXP_TAG = typename meta::list_first_t<mi>::info_type;
 			if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
 			{
-				CODEC_TRACE("exposed[%s] = %#zx", name<EXP_TAG>(), size_t(header.get()));
+				CODEC_TRACE("explicit[%s] = %#zx", name<EXP_TAG>(), size_t(header.get()));
 				ie.template ref<EXP_TAG>().set(header.get());
 				return sl::ie_decode<type_context<meta::list_rest_t<mi>, EXP_TAG>>(decoder, ie, deps...);
 			}

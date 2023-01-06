@@ -50,9 +50,11 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
 			using mi = meta::list_first_t<META_INFO>;
-			using mi_rest = meta::list_rest_t<META_INFO>;
-			using ctx = type_context<mi_rest, EXP_TAG, EXP_LEN>;
-			CODEC_TRACE("%s[%s]<%s:%s>: %s", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), class_name<mi>());
+			using info_t = typename mi::info_type;
+			using exp_tag_t = std::conditional_t<mi::kind == mik::TAG && APresentIn<info_t, IE>, info_t, EXP_TAG>;
+			using exp_len_t = std::conditional_t<mi::kind == mik::LEN && APresentIn<info_t, IE>, info_t, EXP_LEN>;
+			using ctx = type_context<meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>;
+			CODEC_TRACE("%s[%s]<%s:%s>: %s", __FUNCTION__, name<IE>(), name<exp_tag_t>(), name<exp_len_t>(), class_name<mi>());
 
 			if constexpr (mi::kind == mik::TAG)
 			{
@@ -62,13 +64,13 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 			{
 				using len_t = typename mi::info_type;
 				auto len = sl::ie_length<ctx>(ie, encoder);
-				CODEC_TRACE("LV[%s]=%zX%c rest=%s", name<len_t>(), len, AMultiField<IE>?'*':' ', class_name<mi_rest>());
+				CODEC_TRACE("LV[%s]=%zX%c", name<len_t>(), len, AMultiField<IE>?'*':' ');
 				using dependency_t = get_dependency_t<len_t>;
 				if constexpr (!std::is_void_v<dependency_t>)
 				{
 					auto const delta = len_t::dependency(ie.template get<dependency_t>());
 					len -= delta;
-					CODEC_TRACE("adjusted by %d L=%zxh [%s] dependent on %s", -delta, len, name<IE>(), name<dependency_t>());
+					CODEC_TRACE("adjusted by %d L=%zXh [%s] dependent on %s", -delta, len, name<IE>(), name<dependency_t>());
 				}
 
 				if constexpr (APresentIn<len_t, IE>)
@@ -121,9 +123,9 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 					}
 					else //NOTE! EXP_TAG should be the 1st IE
 					{
-						CODEC_TRACE(">>> %s exposed=%s", name<IE>(), name<EXP_TAG>());
+						CODEC_TRACE(">>> %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 						ie.template encode<meta::list_rest_t<typename IE::ies_types>>(encoder);
-						CODEC_TRACE("<<< %s exposed=%s", name<IE>(), name<EXP_TAG>());
+						CODEC_TRACE("<<< %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 					}
 				}
 			}

@@ -203,7 +203,7 @@ struct encoder : info
 			{
 				//X.690 8.2 Encoding of a boolean value
 				get_context().buffer().template push<IE>(ie.get_encoded() ? 0xFF : 0x00);
-				CODEC_TRACE("BOOL[%s]=%zxh: %s", name<IE>(), std::size_t(ie.get_encoded()), get_context().buffer().toString());
+				CODEC_TRACE("BOOL[%s]=%zXh: %s", name<IE>(), std::size_t(ie.get_encoded()), get_context().buffer().toString());
 			}
 			else if constexpr (std::is_integral_v<value_type>)
 			{

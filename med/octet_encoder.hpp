@@ -62,15 +62,13 @@ struct octet_encoder : sl::octet_info
 	void operator() (ADD_PADDING pad)                 { get_context().buffer().template fill<ADD_PADDING>(pad.pad_size, pad.filler); }
 	void operator() (SNAPSHOT ss)                     { get_context().put_snapshot(ss); }
 
-	template <class IE> constexpr std::size_t operator() (GET_LENGTH, IE const& ie) const
+	template <class IE> constexpr std::size_t operator() (GET_LENGTH, IE const& ie) const noexcept
 	{
 		if constexpr (AMultiField<IE>)
 		{
 			std::size_t len = 0;
-			for (auto& field : ie)
-			{
-				if (field.is_set()) { len += field_length(field, *this); }
-			}
+			for (auto& v : ie) { len += field_length(v, *this); }
+			CODEC_TRACE("length(%s)*%zu = %zu", name<IE>(), ie.count(), len);
 			return len;
 		}
 		else if constexpr (AHasSize<IE>)
@@ -102,7 +100,7 @@ struct octet_encoder : sl::octet_info
 		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
 		uint8_t* out = get_context().buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
 		put_bytes(ie, out);
-		CODEC_TRACE("V=%#zxh %zu bits[%s]: %s", std::size_t(ie.get_encoded()), IE::traits::bits, name<IE>(), get_context().buffer().toString());
+		CODEC_TRACE("V=%zXh %zu bits[%s]: %s", std::size_t(ie.get_encoded()), IE::traits::bits, name<IE>(), get_context().buffer().toString());
 	}
 
 	//IE_OCTET_STRING

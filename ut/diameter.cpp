@@ -106,6 +106,7 @@ struct avp_code_fixed : med::value<med::fixed<CODE, typename avp_code::value_typ
 //includes length
 struct avp_flags : med::value<uint32_t, med::padding<uint32_t>>
 {
+	static constexpr auto LEN_EXTRA = 8; //include AVP Code and length itself
 	enum : value_type
 	{
 		V = 0x8000'0000, //vendor specific/vendor-id is present
@@ -122,8 +123,8 @@ struct avp_flags : med::value<uint32_t, med::padding<uint32_t>>
 	void protect(bool v)                { set_encoded(v ? (get_encoded() | P) : (get_encoded() & ~P)); }
 
 	// length part
-	value_type get_length() const noexcept   { return get_encoded() & LEN_MASK; }
-	void set_length(value_type v) noexcept   { set_encoded(v | (get_encoded() & ~LEN_MASK)); }
+	value_type get_length() const noexcept   { return (get_encoded() & LEN_MASK) - LEN_EXTRA; }
+	void set_length(value_type v) noexcept   { set_encoded((v + LEN_EXTRA) | (get_encoded() & ~LEN_MASK)); }
 
 	static constexpr char const* name() { return "AVP-Flags"; }
 };
@@ -326,13 +327,13 @@ uint8_t const dpr[] = {
 	0x55, 0x55, 0x55, 0x55, //E2E-ID
 
 	0x00, 0x00, 0x01, 0x08, //AVP-CODE = 264 OrigHost
-	0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17 + padding
+	0x40, 0x00, 0x00, 0x11, //V.M.P(1), LEN(3) = 17
 	'O', 'r', 'i', 'g',
 	'.', 'H', 'o', 's',
 	't',   0,   0,   0,
 
 	0x00, 0x00, 0x01, 0x28, //AVP-CODE = 296 OrigRealm
-	0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22 + padding
+	0x40, 0x00, 0x00, 0x16, //V.M.P(1), LEN(3) = 22
 	'o', 'r', 'i', 'g',
 	'.', 'r', 'e', 'a',
 	'l', 'm', '.', 'n',
@@ -345,7 +346,7 @@ uint8_t const dpr[] = {
 
 } //end: namespace diameter
 
-TEST(diameter, padding_encode)
+TEST(diameter, encode)
 {
 	diameter::base base;
 	auto& msg = base.ref<diameter::DPR>();
@@ -362,12 +363,11 @@ TEST(diameter, padding_encode)
 	med::encoder_context<> ctx{ buffer };
 	encode(med::octet_encoder{ctx}, base);
 
+	EXPECT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
 	EXPECT_STREQ(as_string(diameter::dpr), as_string(ctx.buffer()));
-	// EXPECT_EQ(sizeof(diameter::dpr), ctx.buffer().get_offset());
-	// ASSERT_TRUE(Matches(diameter::dpr, buffer));
 }
 
-TEST(diameter, padding_decode)
+TEST(diameter, decode)
 {
 	med::decoder_context<> ctx{ diameter::dpr };
 	diameter::base base;
@@ -385,7 +385,7 @@ TEST(diameter, padding_decode)
 	ASSERT_EQ(2, msg->get<diameter::disconnect_cause>().body().get());
 }
 
-TEST(diameter, padding_bad)
+TEST(diameter, bad_padding)
 {
 	uint8_t const dpr[] = {
 			0x01, 0x00, 0x00, 19*4-3, //VER(1), LEN(3)

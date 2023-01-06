@@ -73,7 +73,9 @@ struct seq_dec
 		IE& ie = to;
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using type = get_meta_tag_t<mi>;
-		using ctx = type_context<mi, void, typename CTX::explicit_length_type>;
+		using EXP_TAG = typename CTX::explicit_tag_type;
+		using EXP_LEN = typename CTX::explicit_length_type;
+		using ctx = type_context<mi, EXP_TAG, EXP_LEN>;
 
 		if constexpr (AMultiField<IE>)
 		{
@@ -93,7 +95,7 @@ struct seq_dec
 				{
 					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count()+1);
 					auto* field = ie.push_back(decoder);
-					using ctx_next = type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
+					using ctx_next = type_context<meta::list_rest_t<mi>, EXP_TAG, EXP_LEN>;
 					ie_decode<ctx_next>(decoder, *field, deps...);
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
@@ -205,7 +207,7 @@ struct seq_dec
 					{
 						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						using ctx_next = type_context<meta::list_rest_t<mi>, void, typename ctx::explicit_length_type>;
+						using ctx_next = type_context<meta::list_rest_t<mi>, EXP_TAG, EXP_LEN>;
 						ie_decode<ctx_next>(decoder, ie, deps...);
 					}
 				}
@@ -249,7 +251,7 @@ struct seq_dec
 			}
 			else //mandatory field
 			{
-				CODEC_TRACE("M<%s> explicit=%s...", name<IE>(), name<typename ctx::explicit_length_type>());
+				CODEC_TRACE("M<%s> explicit=<%s:%s>...", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 
 				//if switched from optional with tag then discard it since mandatory is read as whole
 				using prev_tag_t = get_meta_tag_t<meta::produce_info_t<DECODER, PREV_IE>>;

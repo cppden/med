@@ -24,7 +24,7 @@ template <typename PTR, std::size_t LEN_DEPTH = 16>
 class buffer
 {
 	using eob_index_t = uint8_t;
-	static constexpr eob_index_t max_eob_index = std::numeric_limits<eob_index_t>::max();
+	static constexpr eob_index_t MAX_EOB_INDEX = std::numeric_limits<eob_index_t>::max();
 
 public:
 	using pointer = PTR;
@@ -93,11 +93,11 @@ public:
 			, m_commited{ commit_ }
 		{}
 
-		constexpr bool empty() const noexcept             { return m_index == max_eob_index; }
-		constexpr void clear() noexcept                   { m_index = max_eob_index; }
+		constexpr bool empty() const noexcept             { return m_index == MAX_EOB_INDEX; }
+		constexpr void clear() noexcept                   { m_index = MAX_EOB_INDEX; }
 
 		buffer*     m_buffer{ nullptr };
-		eob_index_t m_index{ max_eob_index };
+		eob_index_t m_index{ MAX_EOB_INDEX };
 		bool        m_commited{ false };
 	};
 
@@ -258,7 +258,6 @@ public:
 	 */
 	constexpr void end(pointer p)                    { m_end = p > begin() ? p : begin(); }
 
-#if 1
 	char const* toString() const
 	{
 		static char sz[64];
@@ -276,39 +275,6 @@ public:
 	{
 		return out << buf.toString();
 	}
-#else
-	//seems everyone likes C++ streams but for some reason I find them way too ugly...
-	//NOTE: left here only for comparison with handy printf
-	friend std::ostream& operator << (std::ostream& out, buffer const& buf)
-	{
-		auto const save_flags = out.flags();
-
-		out
-			<< '[' << buf.size() << ']'
-			<< '+' << buf.get_offset() << '=';
-		if constexpr (std::is_same_v<char, value_type>)
-		{
-			auto const size = std::min(buf.size(), std::size_t(32));
-			out << '=' << std::string_view{buf.begin(), size};
-		}
-		else
-		{
-			auto* p = buf.begin() - 4;
-			for (int i = -4; i < 0; ++i)
-			{
-				out << std::hex << std::setfill('0') << std::setw(2) << +p[i];
-			}
-			out << '[' << std::hex << std::setfill('0') << std::setw(2) << +p[0] << ']';
-			for (int i = 1; i < 5; ++i)
-			{
-				std::cout << std::hex << std::setfill('0') << std::setw(2) << +p[i];
-			}
-		}
-
-		out.flags(save_flags);
-		return out;
-	}
-#endif
 
 private:
 	friend class size_state;
@@ -318,9 +284,9 @@ private:
 		if (ss.m_commited && !ss.empty())
 		{
 			pointer& ps = m_eob[ss.m_index];
-			CODEC_TRACE("%u/%u: restored end %p->%p: %s", ss.m_index, m_eob_index, (void*)end(), (void*)ps, toString());
 			m_end = ps;
 			--m_eob_index; //TODO: may assert index is the last one: m_eob_index - 1 == ss.m_index?
+			CODEC_TRACE("%u/%u: restored end %p->%p: %s", ss.m_index, m_eob_index, (void*)end(), (void*)ps, toString());
 			ss.clear();
 		}
 	}
@@ -332,8 +298,7 @@ private:
 			ss.m_commited = true;
 			pointer& ps1 = m_eob[ss.m_index];
 			ps1 += delta; //end to be set by dependent
-			CODEC_TRACE("%u/%u: commit adjusted by %d end %p: %s", ss.m_index, m_eob_index, delta, (void*)ps1, toString());
-			if (m_eob_index > ss.m_index + 1) //adjust the deeper level's ends
+			if (ss.m_index + 1 < m_eob_index) //adjust the deeper level's ends
 			{
 				//TODO: can we have multiple pending commits?
 				pointer& ps2 = m_eob[ss.m_index+1];
@@ -342,8 +307,11 @@ private:
 			else
 			{
 				m_end = ps1;
+				//replace EoB from previous level to restore properly
+				if (ss.m_index > 0) { ps1 = m_eob[ss.m_index - 1]; }
 				//MED_THROW_EXCEPTION(overflow, "invalid commit", ss.m_index);
 			}
+			CODEC_TRACE("%u/%u: commit adjusted by %d end %p: %s", ss.m_index, m_eob_index, delta, (void*)ps1, toString());
 		}
 	}
 

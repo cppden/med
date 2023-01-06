@@ -8,27 +8,11 @@ struct u16 : med::value<uint16_t> {};
 struct u24 : med::value<med::bytes<3>> {};
 struct u32 : med::value<uint32_t> {};
 
-struct len32 : med::value<uint8_t, med::padding<uint32_t>>
-{
-	std::size_t get_length() const noexcept
-	{
-		return get_encoded() - 1;
-	}
-
-	void set_length(std::size_t v)
-	{
-		set_encoded(v + 1);
-	}
-};
-
-using L32 = med::length_t<len32>;
+using L32 = med::length_t<med::value<uint8_t, med::padding<uint32_t, med::delta<2>>>>;
 
 struct flag : u8 {};
-
 struct port : u16 {};
-
 struct pdu : u24 {};
-
 struct ip : u32 {};
 
 struct exclusive : med::choice<
@@ -222,7 +206,7 @@ TEST(padding, container)
 	msg.ref<pad::flag>().set(0x12);
 	encode(med::octet_encoder{ctx}, msg);
 
-	EXPECT_STREQ("01 03 12 00 ", as_string(ctx.buffer()));
+	EXPECT_STREQ("01 01 12 00 ", as_string(ctx.buffer()));
 	check_decode(ctx.buffer());
 
 	//-- 2 bytes
@@ -230,7 +214,7 @@ TEST(padding, container)
 	msg.ref<pad::port>().set(0x1234);
 	encode(med::octet_encoder{ctx}, msg);
 
-	EXPECT_STREQ("02 04 12 34 ", as_string(ctx.buffer()));
+	EXPECT_STREQ("02 02 12 34 ", as_string(ctx.buffer()));
 	check_decode(ctx.buffer());
 
 	//-- 3 bytes
@@ -238,14 +222,14 @@ TEST(padding, container)
 	msg.ref<pad::pdu>().set(0x123456);
 	encode(med::octet_encoder{ctx}, msg);
 
-	EXPECT_STREQ("03 05 12 34 56 00 00 00 ", as_string(ctx.buffer()));
+	EXPECT_STREQ("03 03 12 34 56 00 00 00 ", as_string(ctx.buffer()));
 
 	//-- 4 bytes
 	ctx.reset();
 	msg.ref<pad::ip>().set(0x12345678);
 	encode(med::octet_encoder{ctx}, msg);
 
-	EXPECT_STREQ("04 06 12 34 56 78 00 00 ", as_string(ctx.buffer()));
+	EXPECT_STREQ("04 04 12 34 56 78 00 00 ", as_string(ctx.buffer()));
 	check_decode(ctx.buffer());
 }
 

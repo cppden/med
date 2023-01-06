@@ -12,6 +12,7 @@ Distributed under the MIT License
 #include "debug.hpp"
 #include "accessor.hpp"
 #include "length.hpp"
+#include "concepts.hpp"
 #include "sl/field_copy.hpp"
 #include "meta/typelist.hpp"
 #include "meta/foreach.hpp"
@@ -66,30 +67,33 @@ struct cont_len
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
 		using ctx = type_context<mi, EXP_TAG, EXP_LEN>;
-		if constexpr (AMultiField<IE>)
+		if constexpr (AMultiField<IE>) //TODO: duplicated in encoder
 		{
 			IE const& ie = seq;
 			std::size_t len = 0;
-			for (auto& v : ie)
-			{
-				len += sl::ie_length<ctx>(v, encoder);
-			}
-			CODEC_TRACE("%s[%s]* len=%zu", __FUNCTION__, name<IE>(), len);
+			for (auto& v : ie) { len += sl::ie_length<ctx>(v, encoder); }
+			CODEC_TRACE("cont_len[%s]*%zu len=%zu", name<IE>(), ie.count(), len);
 			return len;
 		}
 		else
 		{
-			if constexpr (std::is_same_v<IE, EXP_TAG> || std::is_same_v<IE, EXP_LEN>)
+			if constexpr (ASameAs<get_field_type_t<IE>, EXP_TAG, EXP_LEN>)
 			{
-				CODEC_TRACE("cont_len: skip explicit %s", name<IE>());
+				CODEC_TRACE("cont_len[%s] skip explicit", name<IE>());
+				return 0;
+			}
+			else if constexpr (AMandatory<IE> || AHasSetterType<IE>)
+			{
+				IE const& ie = seq;
+				auto const len = sl::ie_length<ctx>(ie, encoder);
+				CODEC_TRACE("cont_len[%s] len=%zu", name<IE>(), len);
+				return len;
 			}
 			else
 			{
 				IE const& ie = seq;
-				std::size_t const len = AHasSetterType<IE> || ie.is_set()
-						? sl::ie_length<ctx>(ie, encoder)
-						: 0;
-				CODEC_TRACE("%s[%s] len=%zu", __FUNCTION__, name<IE>(), len);
+				auto const len = ie.is_set() ? sl::ie_length<ctx>(ie, encoder) : 0;
+				CODEC_TRACE("cont_len[%s] len=%zu", name<IE>(), len);
 				return len;
 			}
 		}
