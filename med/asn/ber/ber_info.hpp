@@ -16,7 +16,7 @@ private:
 	{
 		template <class V>
 		using tag_of = value< fixed< V::value, bytes<V::num_bytes> > >;
-		using type = add_tag< tag_of<tag_value<typename T::info_type, CONSTRUCTED::value>> >;
+		using type = add_tag< tag_of<tag_value<get_info_t<T>, CONSTRUCTED::value>> >;
 	};
 
 	template <std::size_t I, std::size_t N>

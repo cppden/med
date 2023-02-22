@@ -66,7 +66,7 @@ struct cont_len
 	static std::size_t apply(SEQ const& seq, ENCODER& encoder)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
-		using ctx = type_context<mi, EXP_TAG, EXP_LEN>;
+		using ctx = type_context<typename TYPE_CTX::ie_type, mi, EXP_TAG, EXP_LEN>;
 		if constexpr (AMultiField<IE>) //TODO: duplicated in encoder
 		{
 			IE const& ie = seq;
@@ -164,11 +164,11 @@ constexpr std::size_t field_arity()
 
 }	//end: namespace sl
 
-template <class... IES>
-class container : public IE<CONTAINER>
+template <class IE_TYPE, class... IES>
+class container : public IE<IE_TYPE>
 {
 public:
-	using container_t = container<IES...>;
+	using container_t = container<IE_TYPE, IES...>;
 	using ies_types = meta::typelist<IES...>;
 
 	template <class T>
@@ -209,7 +209,7 @@ public:
 	bool is_set() const                     { return meta::fold<ies_types>(sl::cont_is{}, this->m_ies); }
 	template <class IE_LIST, class TYPE_CTX>
 	std::size_t calc_length(auto& enc) const { return meta::fold<IE_LIST>(sl::cont_len<TYPE_CTX>{}, this->m_ies, enc); }
-	template <class TYPE_CTX = type_context<>>
+	template <class TYPE_CTX = type_context<IE_TYPE>>
 	std::size_t calc_length(auto& enc) const { return calc_length<ies_types, TYPE_CTX>(enc); }
 
 	template <class FROM, class... ARGS>

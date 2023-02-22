@@ -140,7 +140,7 @@ template <template<class...> class L, class... T, class P>
 struct remove_if<L<T...>, P>
 {
 	template <class U>
-	using res = std::conditional_t<P::template value<U>, L<>, L<U>>;
+	using res = conditional_t<P::template value<U>, L<>, L<U>>;
 	using type = append_t<L<>, res<T>...>;
 };
 

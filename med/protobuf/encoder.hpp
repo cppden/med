@@ -69,12 +69,12 @@ struct encoder : sl::octet_info
 	{
 		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
 		auto value = ie.get_encoded();
-		CODEC_TRACE("VAL[%s]=%#zx(%zu) %zu bits: %s", name<IE>(), std::size_t(value), std::size_t(value), IE::traits::bits, get_context().buffer().toString());
+		CODEC_TRACE("VAL[%s]=%#zX(%zu) %zu bits: %s", name<IE>(), std::size_t(value), std::size_t(value), IE::traits::bits, get_context().buffer().toString());
 		//TODO: estimate exact size needed? will it be faster?
 		while (value >= 0x80)
 		{
 			get_context().buffer().template push<IE>(value | 0x80);
-			CODEC_TRACE("\twrote %#02x, value=%#zx", uint8_t(value|0x80), std::size_t(value >> 7));
+			CODEC_TRACE("\twrote %#02X, value=%#zX", uint8_t(value|0x80), std::size_t(value >> 7));
 			value >>= 7;
 		}
 		get_context().buffer().template push<IE>(value);

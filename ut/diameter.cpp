@@ -232,8 +232,8 @@ struct any_avp :
 		O< vendor, vendor::has >,
 		M< med::octet_string<> >
 	> , med::add_meta_info<
-			med::add_tag<avp_code> ,
-			med::add_len<avp_flags> //explicit length
+			med::add_tag<avp_code>,
+			med::add_len<avp_flags, 8> //explicit length
 		>
 {
 	auto& body() const                  { return get<med::octet_string<>>(); }
@@ -307,6 +307,7 @@ struct msg_len : med::value<med::bytes<3>>
 		set_encoded(v + 4); //include version (1) and length (3) itself
 	}
 };
+
 struct base : med::choice< header
 	, request<DPR>
 	, answer<DPA>

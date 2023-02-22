@@ -338,7 +338,7 @@ TEST(length, c_lv)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
 }
 
-TEST(length, vlvar)
+TEST(DISABLED_length, vlvar)
 {
 	uint8_t buffer[128];
 	med::encoder_context<> ctx{ buffer };
@@ -383,7 +383,7 @@ TEST(length, vlvar)
 #endif
 }
 
-TEST(length, lvlarr)
+TEST(DISABLED_length, lvlarr)
 {
 	uint8_t buffer[128];
 

@@ -67,13 +67,13 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder) noexcept
 		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
 			using mi = meta::list_first_t<META_INFO>;
-			using info_t = typename mi::info_type;
-			using exp_tag_t = std::conditional_t<mi::kind == mik::TAG && APresentIn<info_t, IE>, info_t, EXP_TAG>;
-			using exp_len_t = std::conditional_t<mi::kind == mik::LEN && APresentIn<info_t, IE>, info_t, EXP_LEN>;
+			using info_t = get_info_t<mi>;
+			using exp_tag_t = conditional_t<mi::kind == mik::TAG && APresentIn<info_t, IE>, info_t, EXP_TAG>;
+			using exp_len_t = conditional_t<mi::kind == mik::LEN && APresentIn<info_t, IE>, info_t, EXP_LEN>;
 
 			//TODO: pass calculated length to length_t when sizeof(len) depends on value like in ASN.1 BER
 			CODEC_TRACE("%s[%s]<%s:%s>: %s", __FUNCTION__, name<IE>(), name<exp_tag_t>(), name<exp_len_t>(), name<info_t>());
-			len += ie_length<type_context<meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>>(ie, encoder);
+			len += ie_length<type_context<typename TYPE_CTX::ie_type, meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>>(ie, encoder);
 			if constexpr (mi::kind == mik::LEN)
 			{
 				//TODO: involve codec to get length type + may need to set its value like for BER
@@ -91,7 +91,7 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder) noexcept
 				}
 			}
 			//calc length of LEN or TAG itself
-			len += ie_length<type_context<meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
+			len += ie_length<type_context<typename TYPE_CTX::ie_type, meta::typelist<>, EXP_TAG, EXP_LEN>>(info_t{}, encoder);
 		}
 		else //data itself
 		{
@@ -99,8 +99,8 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder) noexcept
 			using ie_type = typename IE::ie_type;
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
-				using ctx = type_context<meta::typelist<>, EXP_TAG, EXP_LEN>;
-				CODEC_TRACE("%s[%.30s]%c<%s:%s>: %s", __FUNCTION__, name<IE>(), AMultiField<IE>?'*':' ', name<EXP_TAG>(), name<EXP_LEN>(), name<ie_type>());
+				using ctx = type_context<typename TYPE_CTX::ie_type, meta::typelist<>, EXP_TAG, EXP_LEN>;
+				CODEC_TRACE("%s[%.30s]%s<%s:%s>: %s", __FUNCTION__, name<IE>(), AMultiField<IE>?"*":"", name<EXP_TAG>(), name<EXP_LEN>(), name<ie_type>());
 				len += ie.template calc_length<ctx>(encoder);
 				CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 			}
@@ -134,7 +134,7 @@ constexpr std::size_t field_length(IE const& ie, ENCODER& encoder) noexcept
 {
 	using mi = meta::produce_info_t<ENCODER, IE>;
 	//CODEC_TRACE("%s[%s]", __FUNCTION__, name<IE>());
-	return sl::ie_length<type_context<mi>>(ie, encoder);
+	return sl::ie_length<type_context<typename IE::ie_type, mi>>(ie, encoder);
 }
 
 

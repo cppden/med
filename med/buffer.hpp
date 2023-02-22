@@ -261,7 +261,7 @@ public:
 	char const* toString() const
 	{
 		static char sz[64];
-		int n = std::snprintf(sz, sizeof(sz), "%p@#%zu+%zu=", (void*)begin(), size(), get_offset());
+		int n = std::snprintf(sz, sizeof(sz), "%p@#%d+%zu=", (void*)begin(), int(size()), get_offset());
 		auto from = std::max(-int(get_offset()), -4);
 		auto p = begin() + from;
 		for (auto const to = std::min(int(size()), from+10); from < to; ++from, ++p)

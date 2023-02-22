@@ -63,7 +63,7 @@ struct choice_len : choice_if
 			//skip TAG as 1st metainfo which is encoded in header
 			using mi = meta::list_rest_t<meta::produce_info_t<ENCODER, IE>>;
 			auto const len = field_length(to.header(), encoder)
-				+ sl::ie_length<type_context<mi, EXP_TAG, EXP_LEN>>(to.template as<IE>(), encoder);
+				+ sl::ie_length<type_context<IE_CHOICE, mi, EXP_TAG, EXP_LEN>>(to.template as<IE>(), encoder);
 			CODEC_TRACE("choice_len[%s] = %zu", name<IE>(), len);
 			return len;
 		}
@@ -130,7 +130,7 @@ struct choice_name
 	template <class IE, typename TAG, class... Ts>
 	static constexpr bool check(TAG const& tag, Ts&&...)
 	{
-		using tag_t = typename meta::list_first<meta::produce_info_t<CODEC, IE>>::type::info_type;
+		using tag_t = get_info_t<meta::list_first_t<meta::produce_info_t<CODEC, IE>>>;
 		//static_assert (type::mik == mik::TAG, "NOT A TAG");
 		return tag_t::match( tag );
 	}
@@ -159,14 +159,14 @@ struct choice_enc : choice_if
 		{
 			if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
 			{
-				using EXP_TAG = typename meta::list_first_t<mi>::info_type;
+				using EXP_TAG = get_info_t<meta::list_first_t<mi>>;
 				if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
 				{
 					CODEC_TRACE("explicit[%s] mi=%s", name<EXP_TAG>(), class_name<mi>());
 					//encoode 1st TAG meta-info via exposed
-					sl::ie_encode<type_context<>>(encoder, to.template as<EXP_TAG>());
+					sl::ie_encode<type_context<IE_CHOICE>>(encoder, to.template as<EXP_TAG>());
 					//skip 1st TAG meta-info and encode it via exposed
-					using ctx = type_context<meta::list_rest_t<mi>, EXP_TAG>;
+					using ctx = type_context<IE_CHOICE, meta::list_rest_t<mi>, EXP_TAG>;
 					return sl::ie_encode<ctx>(encoder, to.template as<IE>());
 				}
 			}
@@ -177,14 +177,14 @@ struct choice_enc : choice_if
 			//tag of this IE isn't in header
 			if constexpr (!explicit_meta_in<mi, typename TO::header_type>())
 			{
-				using tag_t = typename meta::list_first_t<mi>::info_type;
+				using tag_t = get_info_t<meta::list_first_t<mi>>;
 				tag_t const tag{};
 				//TODO: how to not modify?
 				const_cast<TO&>(to).header().set_tag(tag.get());
 			}
 			med::encode(encoder, to.header());
 			//skip 1st TAG meta-info as it's encoded in header
-			sl::ie_encode<type_context<meta::list_rest_t<mi>>>(encoder, to.template as<IE>());
+			sl::ie_encode<type_context<IE_CHOICE, meta::list_rest_t<mi>>>(encoder, to.template as<IE>());
 		}
 	}
 
@@ -201,7 +201,7 @@ struct choice_dec
 	constexpr bool check(TO&, HEADER const& header, DECODER&, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
-		using tag_t = typename meta::list_first_t<mi>::info_type;
+		using tag_t = get_info_t<meta::list_first_t<mi>>;
 		//static_assert (type::mik = kind::TAG, "NOT A TAG");
 		return tag_t::match( get_tag(header) );
 	}
@@ -215,15 +215,15 @@ struct choice_dec
 		using mi = meta::produce_info_t<DECODER, IE>;
 		if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
 		{
-			using EXP_TAG = typename meta::list_first_t<mi>::info_type;
+			using EXP_TAG = get_info_t<meta::list_first_t<mi>>;
 			if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
 			{
-				CODEC_TRACE("explicit[%s] = %#zx", name<EXP_TAG>(), size_t(header.get()));
+				CODEC_TRACE("explicit[%s] = %#zX", name<EXP_TAG>(), size_t(header.get()));
 				ie.template ref<EXP_TAG>().set(header.get());
-				return sl::ie_decode<type_context<meta::list_rest_t<mi>, EXP_TAG>>(decoder, ie, deps...);
+				return sl::ie_decode<type_context<IE_CHOICE, meta::list_rest_t<mi>, EXP_TAG>>(decoder, ie, deps...);
 			}
 		}
-		sl::ie_decode<type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
+		sl::ie_decode<type_context<IE_CHOICE, meta::list_rest_t<mi>>>(decoder, ie, deps...);
 	}
 
 	template <class TO, class HEADER, class DECODER, class... DEPS>
@@ -267,7 +267,7 @@ private:
 
 
 template <class... IEs>
-class choice : public IE<CONTAINER>
+class choice : public IE<IE_CHOICE>
 		, public detail::choice_header< meta::list_first_t<meta::typelist<IEs...>> >
 {
 public:
@@ -299,7 +299,7 @@ public:
 
 	constexpr bool is_set() const           { return this->header().is_set() && index() != num_types; }
 
-	template <class TYPE_CTX = type_context<>>
+	template <class TYPE_CTX = type_context<IE_CHOICE>>
 	constexpr std::size_t calc_length(auto& enc) const
 		{ return meta::for_if<ies_types>(this->header().is_set(), sl::choice_len<TYPE_CTX>{}, *this, enc); }
 
@@ -355,7 +355,7 @@ public:
 		{
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
-			using tag_t = typename meta::list_first_t<mi>::info_type;
+			using tag_t = get_info_t<meta::list_first_t<mi>>;
 			as_writable_t<tag_t> tag;
 			tag.set_encoded(sl::decode_tag<tag_t, true>(decoder));
 			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, deps...);

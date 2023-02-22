@@ -93,13 +93,13 @@ struct encoder : info
 			using ie_type = typename IE::ie_type;
 			//CODEC_TRACE("GET-LEN [%s] ie-type=%s", name<IE>(), class_name<ie_type>());
 
-			if constexpr (std::is_base_of_v<IE_NULL, ie_type>)
+			if constexpr (std::is_same_v<IE_NULL, ie_type>)
 			{
 				constexpr std::size_t val_size = 0;
 				CODEC_TRACE("NULL[%s] len=%zu", name<IE>(), val_size);
 				return val_size;
 			}
-			else if constexpr (std::is_base_of_v<IE_VALUE, ie_type>)
+			else if constexpr (std::is_same_v<IE_VALUE, ie_type>)
 			{
 				using value_type = typename IE::value_type;
 				if constexpr (std::is_same_v<bool, value_type>)
@@ -123,14 +123,14 @@ struct encoder : info
 					static_assert(std::is_void_v<value_type>, "NOT IMPLEMENTED?");
 				}
 			}
-			else if constexpr (std::is_base_of_v<IE_OCTET_STRING, ie_type>)
+			else if constexpr (std::is_same_v<IE_OCTET_STRING, ie_type>)
 			{
 				std::size_t const val_size = ie.size();
 				//std::size_t const len_size = length::bytes(val_size);
 				CODEC_TRACE("OSTR[%s] len=%zu", name<IE>(), val_size);
 				return val_size;
 			}
-			else if constexpr (std::is_base_of_v<IE_BIT_STRING, ie_type>)
+			else if constexpr (std::is_same_v<IE_BIT_STRING, ie_type>)
 			{
 				std::size_t const val_size = ie.size() + 1;
 				CODEC_TRACE("BSTR[%s] len=%zu", name<IE>(), val_size);

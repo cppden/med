@@ -50,19 +50,19 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 		if constexpr (not meta::list_is_empty_v<META_INFO>)
 		{
 			using mi = meta::list_first_t<META_INFO>;
-			using info_t = typename mi::info_type;
-			using exp_tag_t = std::conditional_t<mi::kind == mik::TAG && APresentIn<info_t, IE>, info_t, EXP_TAG>;
-			using exp_len_t = std::conditional_t<mi::kind == mik::LEN && APresentIn<info_t, IE>, info_t, EXP_LEN>;
-			using ctx = type_context<meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>;
+			using info_t = get_info_t<mi>;
+			using exp_tag_t = conditional_t<mi::kind == mik::TAG && APresentIn<info_t, IE>, info_t, EXP_TAG>;
+			using exp_len_t = conditional_t<mi::kind == mik::LEN && APresentIn<info_t, IE>, info_t, EXP_LEN>;
+			using ctx = type_context<typename TYPE_CTX::ie_type, meta::list_rest_t<META_INFO>, exp_tag_t, exp_len_t>;
 			CODEC_TRACE("%s[%s]<%s:%s>: %s", __FUNCTION__, name<IE>(), name<exp_tag_t>(), name<exp_len_t>(), class_name<mi>());
 
 			if constexpr (mi::kind == mik::TAG)
 			{
-				encode_tag<typename mi::info_type>(encoder);
+				encode_tag<info_t>(encoder);
 			}
 			else if constexpr (mi::kind == mik::LEN)
 			{
-				using len_t = typename mi::info_type;
+				using len_t = info_t;
 				auto len = sl::ie_length<ctx>(ie, encoder);
 				CODEC_TRACE("LV[%s]=%zX%c", name<len_t>(), len, AMultiField<IE>?'*':' ');
 				using dependency_t = get_dependency_t<len_t>;
@@ -105,7 +105,7 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 		else
 		{
 			using ie_type = typename IE::ie_type;
-			CODEC_TRACE("%s[%.30s]: %s", __FUNCTION__, name<IE>(), name<ie_type>());
+			CODEC_TRACE("%s[%.30s]<%s:%s>: %s in %s", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), name<ie_type>(), name<typename TYPE_CTX::ie_type>());
 			if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 			{
 				//special case for printer
@@ -115,17 +115,19 @@ constexpr void ie_encode(ENCODER& encoder, IE const& ie)
 				}
 				else
 				{
-					if constexpr (std::is_void_v<EXP_TAG>)
-					{
-						CODEC_TRACE(">>> %s", name<IE>());
-						ie.encode(encoder);
-						CODEC_TRACE("<<< %s", name<IE>());
-					}
-					else //NOTE! EXP_TAG should be the 1st IE
+					//TODO: inconsistent between choice and others
+					//NOTE! EXP_TAG should be the 1st IE
+					if constexpr (std::is_same_v<IE_CHOICE, typename TYPE_CTX::ie_type> && !std::is_void_v<EXP_TAG>)
 					{
 						CODEC_TRACE(">>> %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 						ie.template encode<meta::list_rest_t<typename IE::ies_types>>(encoder);
 						CODEC_TRACE("<<< %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
+					}
+					else
+					{
+						CODEC_TRACE(">>> %s", name<IE>());
+						ie.encode(encoder);
+						CODEC_TRACE("<<< %s", name<IE>());
 					}
 				}
 			}
@@ -148,7 +150,7 @@ constexpr void encode(ENCODER&& encoder, IE const& ie)
 {
 	using META_INFO = meta::produce_info_t<ENCODER, IE>;
 	//CODEC_TRACE("mi=%s", class_name<META_INFO>());
-	sl::ie_encode<type_context<META_INFO>>(encoder, ie);
+	sl::ie_encode<type_context<typename IE::ie_type, META_INFO>>(encoder, ie);
 }
 
 }	//end: namespace med

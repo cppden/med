@@ -38,7 +38,7 @@ constexpr void discard(auto& func, auto& vtag)
 {
 	if (vtag)
 	{
-		CODEC_TRACE("discard tag=%zx", vtag.get_encoded());
+		CODEC_TRACE("discard tag=%zX", vtag.get_encoded());
 		func(POP_STATE{}); //restore state
 		vtag.clear();
 	}
@@ -48,7 +48,7 @@ template <class FUNC, class IE>
 constexpr void encode_multi(FUNC& func, IE const& ie)
 {
 	using mi = meta::produce_info_t<FUNC, typename IE::field_type>; //assuming MI of multi_field == MI of field
-	using ctx = type_context<mi>;
+	using ctx = type_context<typename IE::ie_type, mi>;
 
 	CODEC_TRACE("%s *%zu", name<IE>(), ie.count());
 	for (auto& field : ie)
@@ -75,7 +75,7 @@ struct seq_dec
 		using type = get_meta_tag_t<mi>;
 		using EXP_TAG = typename CTX::explicit_tag_type;
 		using EXP_LEN = typename CTX::explicit_length_type;
-		using ctx = type_context<mi, EXP_TAG, EXP_LEN>;
+		using ctx = type_context<typename CTX::ie_type, mi, EXP_TAG, EXP_LEN>;
 
 		if constexpr (AMultiField<IE>)
 		{
@@ -88,24 +88,24 @@ struct seq_dec
 				if (!vtag && decoder(PUSH_STATE{}, ie))
 				{
 					vtag.set_encoded(decode_tag<type, false>(decoder));
-					CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+					CODEC_TRACE("pop tag=%zX", vtag.get_encoded());
 				}
 
 				while (type::match(vtag.get_encoded()))
 				{
-					CODEC_TRACE("->T=%zx[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count()+1);
+					CODEC_TRACE("->T=%zX[%s]*%zu", vtag.get_encoded(), name<IE>(), ie.count()+1);
 					auto* field = ie.push_back(decoder);
-					using ctx_next = type_context<meta::list_rest_t<mi>, EXP_TAG, EXP_LEN>;
+					using ctx_next = type_context<typename CTX::ie_type, meta::list_rest_t<mi>, EXP_TAG, EXP_LEN>;
 					ie_decode<ctx_next>(decoder, *field, deps...);
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
 						vtag.set_encoded(decode_tag<type, false>(decoder));
-						CODEC_TRACE("pop tag=%zx", vtag.get_encoded());
+						CODEC_TRACE("pop tag=%zX", vtag.get_encoded());
 					}
 					else //end is reached
 					{
-						CODEC_TRACE("<-T=%zx[%s]*", vtag.get_encoded(), name<IE>());
+						CODEC_TRACE("<-T=%zX[%s]*", vtag.get_encoded(), name<IE>());
 						vtag.clear();
 						break;
 					}
@@ -131,7 +131,7 @@ struct seq_dec
 						else
 						{
 							typename IE::counter_type counter_ie;
-							ie_decode<type_context<>>(decoder, counter_ie);
+							ie_decode<type_context<typename CTX::ie_type>>(decoder, counter_ie);
 							return counter_ie.get_encoded();
 						}
 					}();
@@ -194,7 +194,7 @@ struct seq_dec
 						{
 							//don't save state as we just did it already
 							vtag.set_encoded(decode_tag<type, false>(decoder));
-							CODEC_TRACE("read tag=%zx", std::size_t(vtag.get_encoded()));
+							CODEC_TRACE("read tag=%zX", std::size_t(vtag.get_encoded()));
 						}
 						else
 						{
@@ -205,9 +205,9 @@ struct seq_dec
 
 					if (type::match(vtag.get_encoded())) //check tag decoded
 					{
-						CODEC_TRACE("T=%zx[%s]", std::size_t(vtag.get_encoded()), name<IE>());
+						CODEC_TRACE("T=%zX[%s]", std::size_t(vtag.get_encoded()), name<IE>());
 						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
-						using ctx_next = type_context<meta::list_rest_t<mi>, EXP_TAG, EXP_LEN>;
+						using ctx_next = type_context<typename CTX::ie_type, meta::list_rest_t<mi>, EXP_TAG, EXP_LEN>;
 						ie_decode<ctx_next>(decoder, ie, deps...);
 					}
 				}
@@ -393,9 +393,9 @@ struct seq_enc
 
 
 template <class ...IES>
-struct sequence : container<IES...>
+struct sequence : container<IE_SEQUENCE, IES...>
 {
-	using ies_types = typename container<IES...>::ies_types;
+	using ies_types = typename container<IE_SEQUENCE, IES...>::ies_types;
 
 	template <class IE_LIST>
 	void encode(auto& encoder) const
@@ -404,7 +404,7 @@ struct sequence : container<IES...>
 	}
 	void encode(auto& encoder) const { encode<ies_types>(encoder); }
 
-	template <class IE_LIST, class TYPE_CTX = type_context<>>
+	template <class IE_LIST, class TYPE_CTX = type_context<IE_SEQUENCE>>
 	void decode(auto& decoder, auto&... deps)
 	{
 		value<std::size_t> vtag;

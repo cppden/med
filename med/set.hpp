@@ -29,7 +29,7 @@ struct set_name
 	static constexpr bool check(TAG const& tag, CODEC&)
 	{
 		using mi = meta::produce_info_t<CODEC, IE>;
-		using tag_t = typename meta::list_first_t<mi>::info_type;
+		using tag_t = get_info_t<meta::list_first_t<mi>>;
 		return tag_t::match(tag);
 	}
 
@@ -67,12 +67,12 @@ struct set_enc
 
 				if constexpr (explicit_meta)
 				{
-					using ctx = type_context<meta::list_rest_t<mi>>;
+					using ctx = type_context<IE_SET, meta::list_rest_t<mi>, get_info_t<meta::list_first_t<mi>>>;
 					sl::ie_encode<ctx>(encoder, field);
 				}
 				else
 				{
-					using ctx = type_context<mi>;
+					using ctx = type_context<IE_SET, mi>;
 					sl::ie_encode<ctx>(encoder, field);
 				}
 			}
@@ -84,12 +84,12 @@ struct set_enc
 				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<mi>());
 				if constexpr (explicit_meta)
 				{
-					using ctx = type_context<meta::list_rest_t<mi>>;
+					using ctx = type_context<IE_SET, meta::list_rest_t<mi>>;
 					sl::ie_encode<ctx>(encoder, ie);
 				}
 				else
 				{
-					using ctx = type_context<mi>;
+					using ctx = type_context<IE_SET, mi>;
 					sl::ie_encode<ctx>(encoder, ie);
 				}
 			}
@@ -107,7 +107,7 @@ struct set_dec
 	static bool check(TO&, DECODER&, HEADER const& header, DEPS&...)
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
-		using tag_t = typename meta::list_first_t<mi>::info_type;
+		using tag_t = get_info_t<meta::list_first_t<mi>>;
 		return tag_t::match( get_tag(header) );
 	}
 
@@ -116,7 +116,7 @@ struct set_dec
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		//pop back the tag we've read as we have non-fixed tag inside
-		using tag_t = typename meta::list_first_t<mi>::info_type;
+		using tag_t = get_info_t<meta::list_first_t<mi>>;
 		if constexpr (!APredefinedValue<tag_t>) { decoder(POP_STATE{}); }
 
 		IE& ie = to;
@@ -128,14 +128,14 @@ struct set_dec
 				MED_THROW_EXCEPTION(extra_ie, name<IE>(), IE::max, ie.count())
 			}
 			auto* field = ie.push_back(decoder);
-			sl::ie_decode<type_context<meta::list_rest_t<mi>>>(decoder, *field, deps...);
+			sl::ie_decode<type_context<IE_SET, meta::list_rest_t<mi>>>(decoder, *field, deps...);
 		}
 		else //single-instance field
 		{
 			CODEC_TRACE("%c[%s]", ie.is_set()?'+':'-', name<IE>());
 			if (not ie.is_set())
 			{
-				return sl::ie_decode<type_context<meta::list_rest_t<mi>>>(decoder, ie, deps...);
+				return sl::ie_decode<type_context<IE_SET, meta::list_rest_t<mi>>>(decoder, ie, deps...);
 				//return med::decode(decoder, ie);
 			}
 			MED_THROW_EXCEPTION(extra_ie, name<IE>(), 2, 1)
@@ -179,13 +179,13 @@ namespace detail {
 
 template <class L> struct set_container;
 template <template <class...> class L, AHasGetTag HEADER, class... IEs>
-struct set_container<L<HEADER, IEs...>> : container<IEs...>
+struct set_container<L<HEADER, IEs...>> : container<IE_SET, IEs...>
 {
 	using header_type = HEADER;
 	static constexpr bool plain_header = false; //compound header e.g. a sequence
 };
 template <template <class...> class L, class IE1, class... IEs>
-struct set_container<L<IE1, IEs...>> : container<IE1, IEs...>
+struct set_container<L<IE1, IEs...>> : container<IE_SET, IE1, IEs...>
 {
 	static constexpr bool plain_header = true; //plain header e.g. a tag
 };
@@ -220,13 +220,13 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 		{
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
-			using tag_t = typename meta::list_first_t<mi>::info_type;
+			using tag_t = get_info_t<meta::list_first_t<mi>>;
 
 			while (decoder(PUSH_STATE{}, *this))
 			{
 				value<std::size_t> header;
 				header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
-				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+				CODEC_TRACE("tag=%#zX", std::size_t(get_tag(header)));
 				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 			}
 		}
@@ -238,7 +238,7 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 				header_type header;
 				med::decode(decoder, header, deps...);
 				decoder(POP_STATE{}); //restore back for IE to decode itself (?TODO: better to copy instead)
-				CODEC_TRACE("tag=%#zx", std::size_t(get_tag(header)));
+				CODEC_TRACE("tag=%#zX", std::size_t(get_tag(header)));
 				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 			}
 		}

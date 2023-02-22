@@ -18,13 +18,18 @@ namespace med {
 
 //meta-selectors for IEs
 struct PRIMITIVE {}; //represents value/data which is handled by physical layer of codec
-struct CONTAINER {}; //represents a container of IEs (holds internally)
 
 //selectors for IEs
 struct IE_NULL         : PRIMITIVE {};
 struct IE_VALUE        : PRIMITIVE {};
 struct IE_OCTET_STRING : PRIMITIVE {};
 struct IE_BIT_STRING   : PRIMITIVE {};
+
+struct CONTAINER {}; //represents a container of IEs (holds internally)
+//selectors for IEs
+struct IE_CHOICE : CONTAINER {};
+struct IE_SEQUENCE : CONTAINER {};
+struct IE_SET : CONTAINER {};
 
 //structure layer selectors
 struct IE_TAG {}; //tag
@@ -66,13 +71,14 @@ constexpr bool explicit_meta_in()
 {
 	if constexpr (!meta::list_is_empty_v<META_INFO> && std::is_base_of_v<CONTAINER, typename CONT::ie_type>)
 	{
-		using ft = typename meta::list_first_t<META_INFO>::info_type;
+		using ft = get_info_t<meta::list_first_t<META_INFO>>;
 		return CONT::template has<ft>();
 	}
 	return false;
 }
 
 template <
+	class IE_TYPE,
 	class META_INFO = meta::typelist<>,
 	class EXP_TAG = void,
 	class EXP_LEN = void,
@@ -81,6 +87,7 @@ template <
 >
 struct type_context
 {
+	using ie_type = IE_TYPE;
 	using meta_info_type = META_INFO;
 	using explicit_tag_type = EXP_TAG;
 	using explicit_length_type = EXP_LEN;

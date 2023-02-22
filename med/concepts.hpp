@@ -9,10 +9,10 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "meta/typelist.hpp"
+
 #include <type_traits>
 #include <concepts>
-
-#include "meta/typelist.hpp"
 
 namespace med {
 

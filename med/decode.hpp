@@ -63,7 +63,7 @@ template <class TYPE_CTX, class DECODER, class IE, class... DEPS>
 constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps);
 
 
-template <class LEN_TYPE, class TYPE_CTX, class DECODER, class IE, class... DEPS>
+template <class LEN_TYPE, int OFS, class TYPE_CTX, class DECODER, class IE, class... DEPS>
 void apply_len(DECODER& decoder, IE& ie, DEPS&... deps)
 {
 	using META_INFO = typename TYPE_CTX::meta_info_type;
@@ -72,16 +72,17 @@ void apply_len(DECODER& decoder, IE& ie, DEPS&... deps)
 
 	using pad_traits = typename get_padding<LEN_TYPE>::type;
 	using dependency_t = get_dependency_t<LEN_TYPE>;
-	CODEC_TRACE("%s[%s]<%s:%s>(%zu) - %s", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), sizeof...(deps), name<dependency_t>());
+	CODEC_TRACE("%s[%s]<%s:%s+%d>(%zu) - %s", __FUNCTION__, name<IE>(), name<EXP_TAG>()
+		, name<EXP_LEN>(), OFS, sizeof...(deps), name<dependency_t>());
 
 	if constexpr (std::is_void_v<dependency_t>)
 	{
-		using ctx = type_context<META_INFO, EXP_TAG, EXP_LEN>;
+		using ctx = type_context<typename TYPE_CTX::ie_type, META_INFO, EXP_TAG, EXP_LEN>;
 
 		if constexpr (not std::is_void_v<EXP_LEN>)
 		{
 			//!!! len is not yet available when explicit
-			auto end = decoder(PUSH_SIZE{0, false});
+			auto end = decoder(PUSH_SIZE{OFS, false});
 			if constexpr (std::is_void_v<pad_traits>)
 			{
 				ie_decode<ctx>(decoder, ie, end, deps...);
@@ -130,7 +131,7 @@ void apply_len(DECODER& decoder, IE& ie, DEPS&... deps)
 
 		using DEPENDENT = LEN_TYPE;
 		using DEPENDENCY = dependency_t;
-		using ctx = type_context<META_INFO, EXP_TAG, EXP_LEN, DEPENDENT, DEPENDENCY>;
+		using ctx = type_context<typename TYPE_CTX::ie_type, META_INFO, EXP_TAG, EXP_LEN, DEPENDENT, DEPENDENCY>;
 
 		auto const len = decode_len<LEN_TYPE>(decoder);
 		auto end = decoder(PUSH_SIZE{len, false});
@@ -209,24 +210,24 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 
 		if constexpr (mi::kind == mik::LEN)
 		{
-			using len_t = typename mi::info_type;
+			using len_t = get_info_t<mi>;
 			if constexpr (APresentIn<len_t, IE>)
 			{
 				static_assert(sizeof...(deps) == 0);
 				auto const start = decoder(GET_STATE{});
 				CODEC_TRACE("->> explicit len [%s]", name<len_t>());
-				apply_len<len_t, type_context<mi_rest, EXP_TAG, len_t>>(decoder, ie, start);
+				apply_len<len_t, mi::delta, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, len_t>>(decoder, ie, start);
 			}
 			else
 			{
-				apply_len<len_t, type_context<mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
+				apply_len<len_t, mi::delta, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
 			}
 		}
 		else
 		{
 			if constexpr (mi::kind == mik::TAG)
 			{
-				using tag_type = typename mi::info_type;
+				using tag_type = get_info_t<mi>;
 				auto const tag = decode_tag<tag_type, true>(decoder);
 				if (not tag_type::match(tag))
 				{
@@ -234,7 +235,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 					MED_THROW_EXCEPTION(unknown_tag, name<IE>(), tag)
 				}
 			}
-			ie_decode<type_context<mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
+			ie_decode<type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
 		}
 	}
 	else
@@ -257,7 +258,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 			{
 				/* NOTE: explicit length is valid for sequence only */
 				CODEC_TRACE(">>> %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
-				using ctx = type_context<meta::typelist<>, void, EXP_LEN>;
+				using ctx = type_context<typename TYPE_CTX::ie_type, meta::typelist<>, void, EXP_LEN>;
 				ie.template decode<typename IE::ies_types, ctx>(decoder, deps...);
 				CODEC_TRACE("<<< %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 			}
@@ -303,7 +304,7 @@ template <class DECODER, AHasIeType IE, class... DEPS>
 constexpr void decode(DECODER&& decoder, IE& ie, DEPS&... deps)
 {
 	using META_INFO = meta::produce_info_t<DECODER, IE>;
-	sl::ie_decode<type_context<META_INFO>>(decoder, ie, deps...);
+	sl::ie_decode<type_context<typename IE::ie_type, META_INFO>>(decoder, ie, deps...);
 }
 
 }	//end: namespace med
