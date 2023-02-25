@@ -1,4 +1,7 @@
 # Most important
+## Remove peek
+with explicit length and tag it now should be possible to get rid of less intuitive peek
+attribute for some IEs.
 ## All IEs as value types
 use offsets instead of pointers to reduce memory footprint and allow simple copy
 ## Review code to reduce code-bloat
