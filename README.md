@@ -10,13 +10,13 @@ MED is extensible library which can be adopted to support many type of encoding 
 * extensible implementation of non-ASN.1 octet encoding rules;
 * incomplete implementation of ASN.1 BER;
 * initial implementation of Google ProtoBuf encoding rules;
-* initial implementation of JSON encoding rules.
 
 See [overview](doc/Overview.md) for details and samples.
 
 See [repos](https://github.com/cppden/gtpu) for examples of med usage.
 
-## Code sample
+# Usage
+## Define your protocol with MED
 ```cpp
 #include "med/med.hpp"
 
@@ -34,13 +34,6 @@ struct TRIBYTE : med::value<med::bytes<3>> {};
 struct IP4 : med::value<uint32_t>
 {
 	static constexpr char const* name() { return "ip-addr"; }
-	std::string print() const
-	{
-		char sz[16];
-		uint32_t ip = get();
-		std::snprintf(sz, sizeof(sz), "%u.%u.%u.%u", uint8_t(ip >> 24), uint8_t(ip >> 16), uint8_t(ip >> 8), uint8_t(ip));
-		return sz;
-	}
 };
 
 struct DWORD : med::value<uint32_t> {};
@@ -69,5 +62,51 @@ struct PROTO : med::choice<
 >{};
 ```
 
+## Encode
+```cpp
+//a buffer to be written with binary data of encoded message
+uint8_t buffer[100];
+//create encoding context to define input/output/auxiliar
+med::encoder_context<> ctx{ buffer };
+//the protocol to encode
+PROTO proto;
+//set particular message in the protocol
+auto& msg = proto.ref<MSG2>();
+//set particular fields in the message
+msg.ref<BYTE>().set(0x12);
+msg.ref<WORD>().set(0x3456);
+//encode the protocol with octet-encoder into given context
+encode(med::octet_encoder{ctx}, proto);
+//now the buffer holds encoded message of size ctx.buffer().get_offset()
+```
+
+## Decode
+```cpp
+//a binary message received in a buffer of size num_bytes
+PROTO proto;
+med::decoder_context<> ctx;
+ctx.reset(buffer, num_bytes);
+decode(med::octet_decoder{ctx}, proto);
+
+if (auto const* msg = proto.get<MSG1>())
+{
+	//read any message field needed
+}
+else if (auto const* msg = proto.get<MSG2>())
+{
+	//read any message field needed
+}
+```
+
+## Print
+```cpp
+//decode first (see above)
+decode(med::octet_decoder{ctx}, proto);
+//use your sink to consume traces, e.g. to print them to console
+your_sink sink{};
+//trace protocol via your sink
+med::print(sink, proto);
+```
+
 ## Dependencies
-Any modern C++ compiler with C++17 support (see CI for the selected ones).
+Any modern C++ compiler with C++20 support (see CI for the selected ones).

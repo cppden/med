@@ -11,12 +11,11 @@ enum class mik //kind of meta-information
 };
 
 //meta-information holder
-template <mik KIND, class T, int N = 0>
+template <mik KIND, class T>
 struct mi
 {
 	using info_type = T;
 	static constexpr mik kind = KIND;
-	static constexpr auto delta = N;
 };
 
 template <class T>
@@ -25,8 +24,8 @@ using get_info_t = typename T::info_type;
 template <class T>
 using add_tag = mi<mik::TAG, T>;
 
-template <class T, int OFFSET = 0>
-using add_len = mi<mik::LEN, T, OFFSET>;
+template <class T>
+using add_len = mi<mik::LEN, T>;
 
 template <class... T>
 struct add_meta_info

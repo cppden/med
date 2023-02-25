@@ -63,7 +63,7 @@ template <class TYPE_CTX, class DECODER, class IE, class... DEPS>
 constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps);
 
 
-template <class LEN_TYPE, int OFS, class TYPE_CTX, class DECODER, class IE, class... DEPS>
+template <class LEN_TYPE, class TYPE_CTX, class DECODER, class IE, class... DEPS>
 void apply_len(DECODER& decoder, IE& ie, DEPS&... deps)
 {
 	using META_INFO = typename TYPE_CTX::meta_info_type;
@@ -72,8 +72,8 @@ void apply_len(DECODER& decoder, IE& ie, DEPS&... deps)
 
 	using pad_traits = typename get_padding<LEN_TYPE>::type;
 	using dependency_t = get_dependency_t<LEN_TYPE>;
-	CODEC_TRACE("%s[%s]<%s:%s+%d>(%zu) - %s", __FUNCTION__, name<IE>(), name<EXP_TAG>()
-		, name<EXP_LEN>(), OFS, sizeof...(deps), name<dependency_t>());
+	CODEC_TRACE("%s[%s]<%s:%s>(%zu) - %s", __FUNCTION__, name<IE>(), name<EXP_TAG>()
+		, name<EXP_LEN>(), sizeof...(deps), name<dependency_t>());
 
 	if constexpr (std::is_void_v<dependency_t>)
 	{
@@ -82,7 +82,7 @@ void apply_len(DECODER& decoder, IE& ie, DEPS&... deps)
 		if constexpr (not std::is_void_v<EXP_LEN>)
 		{
 			//!!! len is not yet available when explicit
-			auto end = decoder(PUSH_SIZE{OFS, false});
+			auto end = decoder(PUSH_SIZE{0, false});
 			if constexpr (std::is_void_v<pad_traits>)
 			{
 				ie_decode<ctx>(decoder, ie, end, deps...);
@@ -161,6 +161,7 @@ constexpr void explicit_len_commit(auto&, auto&, auto&) {}
 template <class IE>
 constexpr void explicit_len_commit(auto& decoder, IE& ie, auto& end, auto start)
 {
+#if 0
 	//TODO: a way to parametrize inclusion/exclusion?
 	auto const before_len = decoder(GET_STATE{});
 	decoder(ie, typename IE::ie_type{});
@@ -181,6 +182,14 @@ constexpr void explicit_len_commit(auto& decoder, IE& ie, auto& end, auto start)
 		CODEC_TRACE("%s<%s>=%#zX", __FUNCTION__, name<IE>(), len);
 		end.commit(len);
 	}
+#else
+	decoder(ie, typename IE::ie_type{});
+	auto const after_len = decoder(GET_STATE{});
+	auto const delta = after_len - start;
+	auto len = value_to_length(ie) + delta;
+	CODEC_TRACE("%s<%s>=%zu (delta=%ld)", __FUNCTION__, name<IE>(), len, delta);
+	end.commit(len);
+#endif
 }
 
 
@@ -196,8 +205,6 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 	using META_INFO = typename TYPE_CTX::meta_info_type;
 	using EXP_TAG = typename TYPE_CTX::explicit_tag_type;
 	using EXP_LEN = typename TYPE_CTX::explicit_length_type;
-	// using DEPENDENT = typename TYPE_CTX::dependent_type;
-	// using DEPENDENCY = typename TYPE_CTX::dependency_type;
 
 	if constexpr (not meta::list_is_empty_v<META_INFO>)
 	{
@@ -216,11 +223,11 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 				static_assert(sizeof...(deps) == 0);
 				auto const start = decoder(GET_STATE{});
 				CODEC_TRACE("->> explicit len [%s]", name<len_t>());
-				apply_len<len_t, mi::delta, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, len_t>>(decoder, ie, start);
+				apply_len<len_t, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, len_t>>(decoder, ie, start);
 			}
 			else
 			{
-				apply_len<len_t, mi::delta, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
+				apply_len<len_t, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
 			}
 		}
 		else
@@ -243,31 +250,25 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 		using ie_type = typename IE::ie_type;
 		if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
 		{
+			CODEC_TRACE(">>> %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 			if constexpr (not std::is_void_v<EXP_TAG>)
 			{
-				CODEC_TRACE(">>> %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 				static_assert(std::is_void_v<EXP_LEN>);
-				/* NOTE:
-				1) exposed is valid for sequence only
-				2) 1st IE is expected to be exposed so it s.b. skipped as was decoded in meta
-				*/
+				static_assert(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>);
+				/* NOTE: 1st IE is expected to be explicit so it s.b. skipped as was decoded in meta */
 				ie.template decode<meta::list_rest_t<typename IE::ies_types>>(decoder, deps...);
-				CODEC_TRACE("<<< %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 			}
 			else if constexpr (not std::is_void_v<EXP_LEN>)
 			{
 				/* NOTE: explicit length is valid for sequence only */
-				CODEC_TRACE(">>> %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 				using ctx = type_context<typename TYPE_CTX::ie_type, meta::typelist<>, void, EXP_LEN>;
 				ie.template decode<typename IE::ies_types, ctx>(decoder, deps...);
-				CODEC_TRACE("<<< %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 			}
 			else
 			{
-				CODEC_TRACE(">>> %s", name<IE>());
 				ie.decode(decoder, deps...);
-				CODEC_TRACE("<<< %s", name<IE>());
 			}
+			CODEC_TRACE("<<< %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 		}
 		else
 		{

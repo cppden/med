@@ -132,6 +132,8 @@ concept AHasSetterType = requires(T v)
 	typename T::setter_type;
 };
 
+//TODO: more concepts for setters/conditions/counters/etc.
+
 template <class T>
 concept ATag = requires(T v)
 {

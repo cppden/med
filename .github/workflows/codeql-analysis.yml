@@ -43,12 +43,15 @@ jobs:
 
     # build UTs for MED library
     - run: |
-       sudo apt-get install -y libgtest-dev
-       (mkdir -p /tmp/gtest && cd /tmp/gtest && cmake -DCMAKE_BUILD_TYPE=RELEASE /usr/src/gtest && make && sudo mv libg* /usr/lib/)
-       mkdir build && cd build
-       cmake ..
-       make -j check
+        sudo apt-get update
+        sudo apt-get install -y libgtest-dev
 
+    - run: cmake -E make_directory build
+    - working-directory: build/
+      run: |
+        cmake $GITHUB_WORKSPACE
+        cmake --build .
+        ctest --output-on-failure
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1

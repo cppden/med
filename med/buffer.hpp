@@ -182,6 +182,7 @@ public:
 		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this) }
 	}
 
+	//TODO: remove excessive dependencies (IE) to reduce code-bloat
 	template <class IE, int DELTA> constexpr pointer advance()
 	{
 		pointer p = nullptr;

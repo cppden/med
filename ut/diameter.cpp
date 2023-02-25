@@ -233,7 +233,7 @@ struct any_avp :
 		M< med::octet_string<> >
 	> , med::add_meta_info<
 			med::add_tag<avp_code>,
-			med::add_len<avp_flags, 8> //explicit length
+			med::add_len<avp_flags> //explicit length
 		>
 {
 	auto& body() const                  { return get<med::octet_string<>>(); }

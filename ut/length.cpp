@@ -58,7 +58,7 @@ struct M_LMV : med::sequence<
 	M<L, MV>
 >{};
 
-using VAR = med::ascii_string<med::min<3>, med::max<15>>;
+using VAR = med::ascii_string<med::min<3>, med::max<15+3>>;
 
 //conditional LV
 struct true_cond
@@ -71,15 +71,27 @@ struct C_LV : med::sequence<
 	O<L, VAR, true_cond>
 >{};
 
-//value with length (size > 1 byte)
+//value with length (size >= 3 bytes), don't count U8
 struct VL : med::value<uint16_t>
 {
 	//value part
 	value_type get() const          { return (get_encoded() & 0xFFF0) >> 4; }
 	void set(value_type v)          { set_encoded((v & 0xFFF) << 4); }
 	//length part
-	value_type get_length() const   { return get_encoded() & 0xF; }
-	bool set_length(value_type v)   { return (v < 0x10) ? set_encoded(v|(get_encoded() & 0xFFF0)), true : false; }
+	value_type get_length() const   { return (get_encoded() & 0xF) + VAR::traits::min_octets; }
+	bool set_length(value_type v)
+	{
+		if (v <= VAR::traits::max_octets)
+		{
+			v -= VAR::traits::min_octets + 1;
+			set_encoded(v | (get_encoded() & 0xFFF0));
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
 };
 
 struct VLVAR : med::sequence<
@@ -338,7 +350,7 @@ TEST(length, c_lv)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, msg), med::invalid_value);
 }
 
-TEST(DISABLED_length, vlvar)
+TEST(length, vlvar)
 {
 	uint8_t buffer[128];
 	med::encoder_context<> ctx{ buffer };
@@ -349,7 +361,7 @@ TEST(DISABLED_length, vlvar)
 		vlvar.ref<len::VL>().set(0x123);
 		vlvar.ref<len::VAR>().set("ABCDEF");
 		encode(med::octet_encoder{ctx}, vlvar);
-		ASSERT_STREQ("07 12 39 41 42 43 44 45 46 ", as_string(ctx.buffer()));
+		ASSERT_STREQ("07 12 33 41 42 43 44 45 46 ", as_string(ctx.buffer()));
 		check_decode(vlvar, ctx.buffer());
 	}
 #endif
@@ -370,12 +382,12 @@ TEST(DISABLED_length, vlvar)
 	uint8_t encoded[] = {
 		0,0,0,1, //T<1>
 		3,    // M<U8>
-		0, 0x36, // M<VL> val=3, len=1+2+3
+		0, 0x30, // M<VL> val=3, len=3
 		'1','2','3', // M<VAR>
 
 		0,0,0,1, //T<1>
 		6,    // M<U8>
-		0, 0x69, // M<VL> val=6, len=1+2+6
+		0, 0x63, // M<VL> val=6, len=6
 		'1','2','3','4','5','6',
 	};
 	ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
@@ -383,7 +395,7 @@ TEST(DISABLED_length, vlvar)
 #endif
 }
 
-TEST(DISABLED_length, lvlarr)
+TEST(length, lvlarr)
 {
 	uint8_t buffer[128];
 
@@ -403,10 +415,10 @@ TEST(DISABLED_length, lvlarr)
 	uint8_t encoded[] = {
 		15, //len
 		1, //M<U8>
-		0x00,0x16, //M<VL> val=1, len=1+2+3
+		0x00,0x10, //M<VL> val=1, len=3
 		'1','2','3',
 		2, //M<U8>
-		0x00,0x29, //M<VL> val=2, len=1+2+6
+		0x00,0x23, //M<VL> val=2, len=6
 		'1','2','3','4','5','6',
 	};
 	ASSERT_STREQ(as_string(encoded), as_string(ctx.buffer()));
