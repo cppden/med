@@ -82,6 +82,8 @@ struct find<>
 
 } //end: namespace detail
 
+//TODO: optimize CT as in boost::mp11::mp_find
+
 template <class L, class CMP>
 struct find;
 

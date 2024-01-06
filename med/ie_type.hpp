@@ -10,7 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include "value_traits.hpp"
-#include "functional.hpp"
+#include "concepts.hpp"
 #include "exception.hpp"
 
 namespace med {
@@ -30,6 +30,9 @@ struct CONTAINER {}; //represents a container of IEs (holds internally)
 struct IE_CHOICE : CONTAINER {};
 struct IE_SEQUENCE : CONTAINER {};
 struct IE_SET : CONTAINER {};
+
+template <class IE>
+concept AContainer = std::is_base_of_v<CONTAINER, typename IE::ie_type>;
 
 //structure layer selectors
 struct IE_TAG {}; //tag
@@ -59,17 +62,12 @@ struct empty : IE<IE_NULL>
 template <class T>
 constexpr bool is_empty_v = std::is_same_v<IE_NULL, typename T::ie_type>;
 
-//read during decode w/o changing buffer state
-//skipped during encode and length calculation
-struct peek_t {};
-template <class T> constexpr bool is_peek_v = std::is_base_of_v<peek_t, T>;
-
 //check if type used in meta-information is also used inside container
 //this means we shouldn't encode this meta-data implicitly
 template <class META_INFO, class CONT>
 constexpr bool explicit_meta_in()
 {
-	if constexpr (!meta::list_is_empty_v<META_INFO> && std::is_base_of_v<CONTAINER, typename CONT::ie_type>)
+	if constexpr (!meta::list_is_empty_v<META_INFO> && AContainer<CONT>)
 	{
 		using ft = get_info_t<meta::list_first_t<META_INFO>>;
 		return CONT::template has<ft>();

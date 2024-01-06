@@ -58,7 +58,7 @@ public:
 
 	constexpr void reset(void* data, std::size_t size) noexcept
 	{
-		m_buffer.reset(static_cast<typename buffer_type::pointer>(data), size);
+		m_buffer.reset({static_cast<typename buffer_type::pointer>(data), size});
 		m_snapshot = nullptr;
 	}
 

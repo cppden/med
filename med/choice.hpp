@@ -154,10 +154,10 @@ struct choice_enc : choice_if
 	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
 		using mi = meta::produce_info_t<ENCODER, IE>;
-		CODEC_TRACE("CASE[%s] mi=%s %s", name<IE>(), class_name<mi>(), TO::plain_header?"plain":"compaund");
+		CODEC_TRACE("%s CASE[%s] mi=%s", TO::plain_header?"plain":"compound", name<IE>(), class_name<mi>());
 		if constexpr (TO::plain_header)
 		{
-			if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+			if constexpr (AContainer<IE>)
 			{
 				using EXP_TAG = get_info_t<meta::list_first_t<mi>>;
 				if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
@@ -213,7 +213,7 @@ struct choice_dec
 		auto& ie = static_cast<IE&>(to.template ref<get_field_type_t<IE>>());
 		//skip 1st TAG meta-info as it's decoded in header
 		using mi = meta::produce_info_t<DECODER, IE>;
-		if constexpr (std::is_base_of_v<CONTAINER, typename IE::ie_type>)
+		if constexpr (AContainer<IE>)
 		{
 			using EXP_TAG = get_info_t<meta::list_first_t<mi>>;
 			if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
@@ -357,7 +357,7 @@ public:
 			using mi = meta::produce_info_t<DECODER, IE>;
 			using tag_t = get_info_t<meta::list_first_t<mi>>;
 			as_writable_t<tag_t> tag;
-			tag.set_encoded(sl::decode_tag<tag_t, true>(decoder));
+			tag.set_encoded(sl::decode_tag<tag_t>(decoder));
 			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, deps...);
 		}
 		else

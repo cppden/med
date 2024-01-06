@@ -58,8 +58,9 @@ struct decoder : info
 	//IE_TAG
 	template <class IE> [[nodiscard]] std::size_t operator() (IE&, IE_TAG)
 	{
-		uint8_t const* input = get_context().buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
-		std::size_t const vtag = get_bytes<IE>(input);
+		constexpr std::size_t NUM_BYTES = bits_to_bytes(IE::traits::bits);
+		uint8_t const* input = get_context().buffer().template advance<IE, NUM_BYTES>();
+		std::size_t const vtag = get_bytes<NUM_BYTES>(input);
 		CODEC_TRACE("T=%zX [%s] %zu bits: %s", vtag, name<IE>(), IE::traits::bits, get_context().buffer().toString());
 		return vtag;
 	}

@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 
+#include <initializer_list>
+#include <source_location>
 #include <string_view>
 using namespace std::string_view_literals;
 
@@ -72,7 +74,7 @@ inline testing::AssertionResult Matches(T const(&expected)[size], T const* actua
 }
 
 template <std::integral U, std::size_t SIZE>
-char const *as_string(U (&buffer)[SIZE])
+char const* as_string(U (&buffer)[SIZE])
 {
 	static char sz[64 * 1024];
 
@@ -86,6 +88,14 @@ char const *as_string(U (&buffer)[SIZE])
 }
 
 template <class T>
+concept ABuffer = requires(T const& v)
+{
+	typename T::pointer;
+	{ v.get_start() } -> std::same_as<typename T::pointer>;
+	{ v.get_offset() } -> std::same_as<std::size_t>;
+};
+
+template <ABuffer T>
 char const* as_string(T const& buffer)
 {
 	static char sz[64*1024];
@@ -94,6 +104,19 @@ char const* as_string(T const& buffer)
 	for (auto it = buffer.get_start(), ite = it + buffer.get_offset(); it != ite; ++it)
 	{
 		psz += std::snprintf(psz, end - psz, "%02X ", *it);
+	}
+
+	return sz;
+}
+
+inline char const* as_string(std::initializer_list<uint8_t> in)
+{
+	static char sz[64*1024];
+
+	auto psz = sz, end = psz + sizeof(sz);
+	for (auto oct : in)
+	{
+		psz += std::snprintf(psz, end - psz, "%02X ", oct);
 	}
 
 	return sz;
@@ -341,4 +364,32 @@ void check_decode(MSG const& msg, RANGE const& binary)
 #else
 	(void)msg;
 #endif
-};
+}
+
+template <class MSG>
+void check_octet_encode(MSG const& msg, std::initializer_list<uint8_t> binary
+	, bool incomplete = false
+	, std::source_location const& loc = std::source_location::current())
+{
+	uint8_t buffer[1024] = {};
+	ASSERT_LE(binary.size(), sizeof(buffer));
+	med::encoder_context ctx{ buffer };
+	med::octet_encoder encoder{ctx};
+	CODEC_TRACE_FL(loc.file_name(), loc.line(), "--->>> ENCODE <<<--- : %s", med::name<MSG>());
+	encode(encoder, msg);
+	if (incomplete) { ctx.buffer().advance(1); } //for tests to include incomplete buffer
+	EXPECT_STRCASEEQ(as_string(binary), as_string(ctx.buffer()));
+}
+
+template <class MSG>
+void check_octet_decode(MSG const& msg, std::initializer_list<uint8_t> binary
+	, std::source_location const& loc = std::source_location::current())
+{
+	MSG decoded_msg;
+	med::decoder_context ctx{(void const*)std::data(binary), binary.size()};
+	CODEC_TRACE_FL(loc.file_name(), loc.line(), "--->>> DECODE <<<--- : %s", med::name<MSG>());
+	decode(med::octet_decoder{ctx}, decoded_msg);
+	ASSERT_TRUE(msg == decoded_msg)
+		<< "\nEncoded:\n" << get_printed(msg)
+		<< "\nDecoded:\n" << get_printed(decoded_msg);
+}

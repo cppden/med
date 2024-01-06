@@ -144,25 +144,12 @@ struct SEQOF_3 : med::sequence<
 	}
 };
 
-template <std::size_t TAG>
-struct HT : med::value<med::fixed<TAG, uint8_t>>, med::peek_t
-{
-	static_assert(0 == (TAG & 0xF), "HIGH NIBBLE TAG EXPECTED");
-	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF0); }
-};
-
-//low nibble selector
-template <std::size_t TAG>
-struct LT : med::value<med::fixed<TAG, uint8_t>>, med::peek_t
-{
-	static_assert(0 == (TAG & 0xF0), "LOW NIBBLE TAG EXPECTED");
-	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF); }
-};
-
 //tagged nibble
 struct FLD_TN : med::value<uint8_t>
-		, med::add_meta_info< med::add_tag<HT<0xE0>> >
 {
+	static constexpr value_type TAG = 0xE0;
+	static constexpr bool match(value_type v)   { return TAG == (v & 0xF0); }
+
 	enum : value_type
 	{
 		tag_mask = 0xF0,
@@ -170,85 +157,13 @@ struct FLD_TN : med::value<uint8_t>
 	};
 
 	value_type get() const                { return base_t::get() & mask; }
-	void set(value_type v)                { set_encoded( med::meta::list_first_t<meta_info>::info_type::get() | (v & mask) ); }
+	void set(value_type v)                { set_encoded( TAG | (v & mask) ); }
 
 	static constexpr char const* name()   { return "Tagged-Bits"; }
 	template <std::size_t N>
 	void print(char (&sz)[N]) const       { std::snprintf(sz, N, "%02X", get()); }
 };
 
-
-//binary coded decimal: 0x21,0x43 is 1,2,3,4
-template <uint8_t TAG>
-struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
-		, med::add_meta_info< med::add_tag<LT<TAG>> >
-{
-	//NOTE: low nibble of 1st octet is a tag
-
-	template <std::size_t N>
-	void print(char (&sz)[N]) const
-	{
-		char* psz = sz;
-
-		auto to_char = [&psz](uint8_t nibble)
-		{
-			if (nibble != 0xF)
-			{
-				*psz++ = static_cast<char>(nibble > 9 ? (nibble+0x57) : (nibble+0x30));
-			}
-		};
-
-		bool b1st = true;
-		for (uint8_t digit : *this)
-		{
-			to_char(uint8_t(digit >> 4));
-			//not 1st octet - print both nibbles
-			if (not b1st) to_char(digit & 0xF);
-			b1st = false;
-		}
-		*psz = 0;
-	}
-
-	bool set(std::size_t len, void const* data)
-	{
-		//need additional nibble for the tag
-		std::size_t const num_octets = (len + 1);// / 2;
-		if (num_octets >= traits::min_octets && num_octets <= traits::max_octets)
-		{
-			m_value.resize(num_octets);
-			uint8_t* p = m_value.data();
-			uint8_t const* in = static_cast<uint8_t const*>(data);
-
-			*p++ = (*in & 0xF0) | TAG;
-			uint8_t o = (*in++ << 4);
-			for (; len > 1; --len)
-			{
-				*p++ = o | (*in >> 4);
-				o = *in++ << 4;
-			}
-			*p++ = o | 0xF;
-			return true;
-		}
-		return false;
-	}
-};
-
-struct BCD_1 : BCD<1>
-{
-	static constexpr char const* name() { return "BCD-1"; }
-};
-struct BCD_2 : BCD<2>
-{
-	static constexpr char const* name() { return "BCD-2"; }
-};
-
-//nibble selected choice field
-struct FLD_NSCHO : med::choice<
-	M< BCD_1 >,
-	M< BCD_2 >
->
-{
-};
 
 struct MSG_MSEQ : med::sequence<
 	M< FLD_UC, med::arity<2>>,            //<V>*2
@@ -257,11 +172,10 @@ struct MSG_MSEQ : med::sequence<
 	M< T<0x42>, L, FLD_IP, med::max<2>>, //<TLV>(fixed)*[1,2]
 	M< T<0x51>, FLD_DW, med::max<2>>,     //<TV>*[1,2]
 	M< CNT, SEQOF_3<0>, med::max<2>>,
-	O< FLD_TN >,
+	O< FLD_TN, FLD_TN >,
 	O< T<0x60>, L, FLD_CHO>,
 	O< T<0x61>, L, SEQOF_1>,
 	O< T<0x62>, L, SEQOF_2, med::max<2>>,
-	O< T<0x70>, L, FLD_NSCHO >,
 	O< L, VFLD1, med::max<3> >           //[LV(var)]*[0,3] till EoF
 >
 {
@@ -272,7 +186,6 @@ struct MSG_MSEQ : med::sequence<
 struct MSG_SET : med::set<
 	M< T16<0x0b>,    FLD_UC >, //<TV>
 	M< T16<0x21>, L, FLD_U16 >, //<TLV>
-	//M< FLD_TN >,
 	O< T16<0x49>, L, FLD_U24 >, //[TLV]
 	O< T16<0x89>,    FLD_IP >, //[TV]
 	O< T16<0x22>, L, VFLD1 >   //[TLV(var)]

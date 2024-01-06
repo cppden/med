@@ -73,7 +73,7 @@ struct numeric_value : IE<IE_VALUE>
 		if (!res)
 		{
 			if (is_set() != rhs.is_set()) CODEC_TRACE("??? is_set differs: %d != %d", is_set(), rhs.is_set());
-			else CODEC_TRACE("??? value differs: %#zX != %#zX", size_t(get_encoded()), size_t(rhs.get_encoded()));
+			else CODEC_TRACE("??? value differs: %zXh != %#zXh", size_t(get_encoded()), size_t(rhs.get_encoded()));
 		}
 #endif //CODEC_TRACE_ENABLE
 		return res;
@@ -202,8 +202,8 @@ template<std::size_t N, class... EXT_TRAITS>
 struct value<bytes<N>, EXT_TRAITS...>
 		: detail::numeric_value<value_traits<bytes<N>, EXT_TRAITS...>> {};
 
-template<std::size_t N, class... EXT_TRAITS>
-struct value<bits<N>, EXT_TRAITS...>
-		: detail::numeric_value<value_traits<bits<N>, EXT_TRAITS...>> {};
+template<std::size_t N, std::size_t OFS, class... EXT_TRAITS>
+struct value<bits<N, OFS>, EXT_TRAITS...>
+		: detail::numeric_value<value_traits<bits<N, OFS>, EXT_TRAITS...>> {};
 
 } //namespace med

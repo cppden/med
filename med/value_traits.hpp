@@ -33,10 +33,11 @@ constexpr uint8_t calc_least_bits(std::size_t num_bits)
 
 namespace detail {
 
-template <typename T, std::size_t NUM_BITS, class... EXT_TRAITS>
+template <typename T, std::size_t BITS, std::size_t OFS, class... EXT_TRAITS>
 struct bit_traits : EXT_TRAITS...
 {
-	static constexpr std::size_t bits = NUM_BITS;
+	static constexpr std::size_t bits = BITS;
+	static constexpr std::size_t offset = OFS;
 	using value_type = T;
 };
 
@@ -100,12 +101,14 @@ struct bits_infer<BITS>
 * Notes:		BITS is number of bits
 ******************************************************************************/
 template <class T, class... EXT_TRAITS>
-struct value_traits : detail::bit_traits<T, sizeof(T)*8, EXT_TRAITS...> {};
+struct value_traits : detail::bit_traits<T, sizeof(T)*8, 0, EXT_TRAITS...> {};
 
-template <std::size_t BITS, class... EXT_TRAITS>
-struct value_traits<bits<BITS>, EXT_TRAITS...> : detail::bit_traits<typename detail::bits_infer<BITS>::type, BITS, EXT_TRAITS...> {};
+template <std::size_t BITS, std::size_t OFS, class... EXT_TRAITS>
+struct value_traits<bits<BITS, OFS>, EXT_TRAITS...>
+	: detail::bit_traits<typename detail::bits_infer<BITS>::type, BITS, OFS, EXT_TRAITS...> {};
 
 template <std::size_t BYTES, class... EXT_TRAITS>
-struct value_traits<bytes<BYTES>, EXT_TRAITS...> : detail::bit_traits<typename detail::bits_infer<BYTES*8>::type, BYTES*8, EXT_TRAITS...> {};
+struct value_traits<bytes<BYTES>, EXT_TRAITS...>
+	: detail::bit_traits<typename detail::bits_infer<BYTES*8>::type, BYTES*8, 0, EXT_TRAITS...> {};
 
 }	//end:	namespace med

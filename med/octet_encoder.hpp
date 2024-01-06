@@ -9,6 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
+#include "bytes.hpp"
 #include "name.hpp"
 #include "state.hpp"
 #include "length.hpp"
@@ -97,10 +98,24 @@ struct octet_encoder : sl::octet_info
 	//IE_VALUE
 	template <class IE> void operator() (IE const& ie, IE_VALUE)
 	{
-		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
-		uint8_t* out = get_context().buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
-		put_bytes(ie, out);
-		CODEC_TRACE("V=%zXh %zu bits[%s]: %s", std::size_t(ie.get_encoded()), IE::traits::bits, name<IE>(), get_context().buffer().toString());
+		constexpr auto NUM_BITS = IE::traits::bits + IE::traits::offset;
+		constexpr auto NUM_BYTES = bits_to_bytes(NUM_BITS);
+		uint8_t* out = get_context().buffer().template advance_bits<IE, NUM_BITS>();
+		if constexpr (IE::traits::offset == 0 && (IE::traits::bits % 8) == 0)
+		{
+			put_bytes<NUM_BYTES>(ie.get_encoded(), out);
+		}
+		else
+		{
+			auto val = size_t(ie.get_encoded()) << (NUM_BYTES * 8 - NUM_BITS);
+			if constexpr (IE::traits::offset)
+			{
+				constexpr uint8_t MASK = ~((1 << (8 - IE::traits::offset)) - 1);
+				val |= ((*out & MASK) << ((NUM_BYTES - 1) * 8));
+			}
+			put_bytes<NUM_BYTES>(val, out);
+		}
+		CODEC_TRACE("V=%zXh %zu@%zu bits[%s]: %s", std::size_t(ie.get_encoded()), IE::traits::bits, IE::traits::offset, name<IE>(), get_context().buffer().toString());
 	}
 
 	//IE_OCTET_STRING

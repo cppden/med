@@ -49,12 +49,27 @@ concept AHasIeType = requires(T v)
 	typename T::ie_type;
 };
 
+template <class T>
+concept AHasFieldType = requires(T v)
+{
+	typename T::field_type;
+};
+
+template <class T>
+struct get_field_type
+{
+	using type = T;
+};
+template <AHasFieldType T>
+struct get_field_type<T>
+{
+	using type = typename get_field_type<typename T::field_type>::type;
+};
+template <class T> using get_field_type_t = typename get_field_type<T>::type;
 
 template <class T>
 concept AField = requires(T v)
 {
-	//TODO: why???
-	//typename T::value_type;
 	{ v.is_set() } -> std::same_as<bool>;
 	{ v.clear() };
 	//TODO: support strings or numeric-values
@@ -171,7 +186,7 @@ concept AAllocator = requires (T v)
 };
 
 template <class NEEDLE, class HAY>
-concept APresentIn = HAY::template has<NEEDLE>();
+concept APresentIn = std::same_as<NEEDLE, get_field_type_t<HAY>> or HAY::template has<NEEDLE>();
 
 template <class T, class... Ts>
 concept ASameAs = (std::is_same_v<T, Ts> || ...);

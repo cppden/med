@@ -18,7 +18,12 @@ namespace med {
 enum class nbits : std::size_t {};
 enum class nbytes : std::size_t {};
 
-template <std::size_t N> struct bits {};
+template <std::size_t NUM_BITS, std::size_t BIT_OFFSET = 0>
+struct bits
+{
+	static_assert(NUM_BITS > 0);
+	static_assert(BIT_OFFSET < 8);
+};
 
 template <std::size_t N> struct bytes {};
 

@@ -9,7 +9,7 @@ Distributed under the MIT License
 
 #pragma once
 
-#include "functional.hpp"
+#include "concepts.hpp"
 #include "state.hpp"
 #include "encode.hpp"
 #include "debug.hpp"

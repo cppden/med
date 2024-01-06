@@ -33,7 +33,7 @@ jobs:
         sudo apt-get -y --no-upgrade install ${{ matrix.compiler }}
         sudo apt-get -y install libgtest-dev
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - run: cmake -E make_directory build
 

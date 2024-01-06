@@ -65,10 +65,32 @@ struct octet_decoder : sl::octet_info
 	//IE_VALUE
 	template <class IE> void operator() (IE& ie, IE_VALUE)
 	{
-		static_assert(0 == (IE::traits::bits % 8), "OCTET VALUE EXPECTED");
-		//CODEC_TRACE("->VAL[%s] %zu bits: %s", name<IE>(), IE::traits::bits, get_context().buffer().toString());
-		uint8_t const* pval = get_context().buffer().template advance<IE, bits_to_bytes(IE::traits::bits)>();
-		auto const val = get_bytes<IE>(pval);
+		using value_t = typename IE::value_type;
+		constexpr auto NUM_BITS = IE::traits::bits + IE::traits::offset;
+		constexpr auto NUM_BYTES = bits_to_bytes(NUM_BITS);
+		uint8_t const* pval = get_context().buffer().template advance_bits<IE, NUM_BITS>();
+
+		auto const val = [](uint8_t const* in)
+		{
+			if constexpr (IE::traits::offset == 0 && (IE::traits::bits % 8) == 0)
+			{
+				return get_bytes<NUM_BYTES, value_t>(in);
+			}
+			else
+			{
+				size_t res = get_bytes<NUM_BYTES>(in);
+				if constexpr (IE::traits::offset)
+				{
+					constexpr size_t MASK = (size_t(1) << (NUM_BYTES * 8 - IE::traits::offset)) - 1;
+					//CODEC_TRACE("V=%zXh(%zu) M=%zXh", res, NUM_BYTES, MASK);
+					res &= MASK;
+				}
+				constexpr uint8_t RS = NUM_BYTES * 8 - NUM_BITS;
+				if constexpr (RS) { res >>= RS; }
+				return value_t(res);
+			}
+		}(pval);
+
 		if constexpr (std::is_same_v<bool, decltype(ie.set_encoded(val))>)
 		{
 			if (not ie.set_encoded(val))

@@ -125,17 +125,253 @@ TEST(value, bytes)
 	v.set(3);
 	EXPECT_TRUE(v.is_set());
 	EXPECT_EQ(3, v.get());
+
+	check_octet_encode(v, {0,0,3});
+	check_octet_decode(v, {0,0,3});
 }
 
-TEST(value, bits)
+TEST(value, one_byte)
 {
-	med::value<med::bits<15>> v;
-	EXPECT_FALSE(v.is_set());
-	v.set(3);
-	EXPECT_TRUE(v.is_set());
-	EXPECT_EQ(3, v.get());
+	{
+		constexpr uint8_t VAL = 1;
+		med::value<med::bits<1>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1000'0000}, true);
+		check_octet_decode(v, {0b1000'0000});
+	}
+	{
+		constexpr uint8_t VAL = 0b11;
+		med::value<med::bits<2>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1100'0000}, true);
+		check_octet_decode(v, {0b1100'0000});
+	}
+	{
+		constexpr uint8_t VAL = 0b10101;
+		med::value<med::bits<5>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1010'1000}, true);
+		check_octet_decode(v, {0b1010'1000});
+	}
+	{
+		constexpr uint8_t VAL = 0b1010101;
+		med::value<med::bits<7>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1010'1010}, true);
+		check_octet_decode(v, {0b1010'1010});
+	}
+}
+TEST(value, one_byte_offset)
+{
+	//-- 1 bit
+	{
+		constexpr uint8_t VAL = 1;
+		med::value<med::bits<1, 1>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0100'0000}, true);
+		check_octet_decode(v, {0b0100'0000});
+	}
+	{
+		constexpr uint8_t VAL = 1;
+		med::value<med::bits<1, 4>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0000'1000}, true);
+		check_octet_decode(v, {0b0000'1000});
+	}
+	{
+		constexpr uint8_t VAL = 1;
+		med::value<med::bits<1, 7>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0000'0001});
+		check_octet_decode(v, {0b0000'0001});
+	}
+	//-- 2 bits
+	{
+		constexpr uint8_t VAL = 0b11;
+		using v_t = med::value<med::bits<2, 3>>;
+		v_t v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0001'1000}, true);
+		check_octet_decode(v, {0b0001'1000});
+	}
+	{
+		constexpr uint8_t VAL = 0b11;
+		using v_t = med::value<med::bits<2, 6>>;
+		v_t v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0000'0011});
+		check_octet_decode(v, {0b0000'0011});
+	}
+	//-- 5 bits
+	{
+		constexpr uint8_t VAL = 0b10101;
+		using v_t = med::value<med::bits<5, 2>>;
+		v_t v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0010'1010}, true);
+		check_octet_decode(v, {0b0010'1010});
+	}
+	{
+		constexpr uint8_t VAL = 0b10101;
+		using v_t = med::value<med::bits<5, 3>>;
+		v_t v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0001'0101});
+		check_octet_decode(v, {0b0001'0101});
+	}
+	//-- 7 bits
+	{
+		constexpr uint8_t VAL = 0b1010101;
+		using v_t = med::value<med::bits<7, 1>>;
+		v_t v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0101'0101});
+		check_octet_decode(v, {0b0101'0101});
+	}
 }
 
+TEST(value, two_bytes_cross)
+{
+	{
+		constexpr uint16_t VAL = 0b1'0101'0101;
+		med::value<med::bits<9>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1010'1010, 0b1000'0000}, true);
+		check_octet_decode(v, {0b1010'1010, 0b1000'0000});
+	}
+	{
+		constexpr uint16_t VAL = 0b11'0101'0101;
+		med::value<med::bits<10>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1101'0101, 0b0100'0000}, true);
+		check_octet_decode(v, {0b1101'0101, 0b0100'0000});
+	}
+	{
+		constexpr uint16_t VAL = 0b101'0101'0101'0101;
+		med::value<med::bits<15>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1010'1010, 0b1010'1010}, true);
+		check_octet_decode(v, {0b1010'1010, 0b1010'1010});
+	}
+}
+
+TEST(value, two_bytes_cross_offset)
+{
+	{
+		constexpr uint8_t VAL = 0b11;
+		med::value<med::bits<2, 7>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0000'0001, 0b1000'0000}, true);
+		check_octet_decode(v, {0b0000'0001, 0b1000'0000});
+	}
+	{
+		constexpr uint8_t VAL = 0b101;
+		med::value<med::bits<3, 6>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0000'0010, 0b1000'0000}, true);
+		check_octet_decode(v, {0b0000'0010, 0b1000'0000});
+	}
+	{
+		constexpr uint8_t VAL = 0b1101;
+		med::value<med::bits<4, 5>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0000'0110, 0b1000'0000}, true);
+		check_octet_decode(v, {0b0000'0110, 0b1000'0000});
+	}
+	{
+		constexpr uint8_t VAL = 0b1'0101;
+		med::value<med::bits<5, 4>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0000'1010, 0b1000'0000}, true);
+		check_octet_decode(v, {0b0000'1010, 0b1000'0000});
+	}
+	{
+		constexpr uint8_t VAL = 0b11'0101;
+		med::value<med::bits<6, 3>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0001'1010, 0b1000'0000}, true);
+		check_octet_decode(v, {0b0001'1010, 0b1000'0000});
+	}
+	{
+		constexpr uint8_t VAL = 0b101'0101;
+		med::value<med::bits<7, 2>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0010'1010, 0b1000'0000}, true);
+		check_octet_decode(v, {0b0010'1010, 0b1000'0000});
+	}
+	{
+		constexpr uint16_t VAL = 0b101'0101'0101'0101;
+		med::value<med::bits<15, 1>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0101'0101, 0b0101'0101});
+		check_octet_decode(v, {0b0101'0101, 0b0101'0101});
+	}
+}
+
+TEST(value, three_bytes_cross)
+{
+	{
+		constexpr uint32_t VAL = 0b1'0111'0101'1101'0111;
+		med::value<med::bits<17>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1011'1010, 0b1110'1011, 0b1000'0000}, true);
+		check_octet_decode(v, {0b1011'1010, 0b1110'1011, 0b1000'0000});
+	}
+	{
+		constexpr uint32_t VAL = 0b111'0101'0111'0101'0101'0111;
+		med::value<med::bits<23>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1110'1010, 0b1110'1010, 0b1010'1110}, true);
+		check_octet_decode(v, {0b1110'1010, 0b1110'1010, 0b1010'1110});
+	}
+}
+TEST(value, three_bytes_cross_offset)
+{
+	{
+		constexpr uint32_t VAL = 0b1'0111'0111'0101'0111;
+		med::value<med::bits<17, 1>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0101'1101, 0b1101'0101, 0b1100'0000}, true);
+		check_octet_decode(v, {0b0101'1101, 0b1101'0101, 0b1100'0000});
+	}
+	{
+		constexpr uint32_t VAL = 0b111'0101'0111'0101'0101'0111;
+		med::value<med::bits<23, 1>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0111'0101, 0b0111'0101, 0b0101'0111});
+		check_octet_decode(v, {0b0111'0101, 0b0111'0101, 0b0101'0111});
+	}
+}
+
+TEST(value, four_bytes_cross)
+{
+	{
+		constexpr uint32_t VAL = 0b1'1010'1010'0111'0101'1101'0111;
+		med::value<med::bits<25>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1101'0101, 0b0011'1010, 0b1110'1011, 0b1000'0000}, true);
+		check_octet_decode(v, {0b1101'0101, 0b0011'1010, 0b1110'1011, 0b1000'0000});
+	}
+	{
+		constexpr uint32_t VAL = 0b101'1011'1010'1110'0111'0101'1101'0111;
+		med::value<med::bits<31>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b1011'0111, 0b0101'1100, 0b1110'1011, 0b1010'1110}, true);
+		check_octet_decode(v, {0b1011'0111, 0b0101'1100, 0b1110'1011, 0b1010'1110});
+	}
+}
+TEST(value, four_bytes_cross_offset)
+{
+	{
+		constexpr uint32_t VAL = 0b111'0101'1101'0101'1101'0101'0111'0011;
+		med::value<med::bits<31, 1>> v;
+		v.set(VAL);
+		check_octet_encode(v, {0b0111'0101, 0b1101'0101, 0b1101'0101, 0b0111'0011});
+		check_octet_decode(v, {0b0111'0101, 0b1101'0101, 0b1101'0101, 0b0111'0011});
+	}
+}
+
+#if 1
 TEST(value, float)
 {
 	{
@@ -154,3 +390,4 @@ TEST(value, float)
 		EXPECT_DOUBLE_EQ(5., v.get());
 	}
 }
+#endif

@@ -11,6 +11,7 @@ Distributed under the MIT License
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <exception>
 #include <type_traits>
 

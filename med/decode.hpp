@@ -27,27 +27,13 @@ namespace med {
 namespace sl {
 
 //Tag
-//PEEK_SAVE - to preserve state in case of peek tag or not
-template <class TAG_TYPE, bool PEEK_SAVE>
+template <class TAG_TYPE>
 constexpr auto decode_tag(auto& decoder)
 {
 	TAG_TYPE ie;
 	typename as_writable_t<TAG_TYPE>::value_type value{};
-	if constexpr (PEEK_SAVE && is_peek_v<TAG_TYPE>)
-	{
-		CODEC_TRACE("PEEK TAG %s", class_name<TAG_TYPE>());
-		if (decoder(PUSH_STATE{}, ie))
-		{
-			value = decoder(ie, IE_TAG{});
-			CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
-			decoder(POP_STATE{});
-		}
-	}
-	else
-	{
-		value = decoder(ie, IE_TAG{});
-		CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
-	}
+	value = decoder(ie, IE_TAG{});
+	CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
 	return value;
 }
 //Length
@@ -161,35 +147,12 @@ constexpr void explicit_len_commit(auto&, auto&, auto&) {}
 template <class IE>
 constexpr void explicit_len_commit(auto& decoder, IE& ie, auto& end, auto start)
 {
-#if 0
-	//TODO: a way to parametrize inclusion/exclusion?
-	auto const before_len = decoder(GET_STATE{});
-	decoder(ie, typename IE::ie_type{});
-	auto const after_len = decoder(GET_STATE{});
-	if (before_len == start)
-	{
-		auto const delta = after_len - start;
-		auto len = value_to_length(ie) + delta;
-		CODEC_TRACE("%s<%s>=%zu (delta=%ld)", __FUNCTION__, name<IE>(), len, delta);
-		end.commit(len);
-	}
-	else
-	{
-		// auto const delta = before_len - start;
-		// auto len = value_to_length(ie) - delta;
-		// CODEC_TRACE("%s<%s>=%#zX (delta=%ld)", __FUNCTION__, name<IE>(), len, delta);
-		auto len = value_to_length(ie);
-		CODEC_TRACE("%s<%s>=%#zX", __FUNCTION__, name<IE>(), len);
-		end.commit(len);
-	}
-#else
 	decoder(ie, typename IE::ie_type{});
 	auto const after_len = decoder(GET_STATE{});
 	auto const delta = after_len - start;
 	auto len = value_to_length(ie) + delta;
 	CODEC_TRACE("%s<%s>=%zu (delta=%ld)", __FUNCTION__, name<IE>(), len, delta);
 	end.commit(len);
-#endif
 }
 
 
@@ -214,33 +177,30 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 		using mi = meta::list_first_t<META_INFO>;
 		using mi_rest = meta::list_rest_t<META_INFO>;
 		CODEC_TRACE("%s[%s]<%s:%s>(%zu) w/ meta=%s", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>(), sizeof... (deps), class_name<mi>());
+		using info_t = get_info_t<mi>;
 
 		if constexpr (mi::kind == mik::LEN)
 		{
-			using len_t = get_info_t<mi>;
-			if constexpr (APresentIn<len_t, IE>)
+			if constexpr (APresentIn<info_t, IE>)
 			{
 				static_assert(sizeof...(deps) == 0);
 				auto const start = decoder(GET_STATE{});
-				CODEC_TRACE("->> explicit len [%s]", name<len_t>());
-				apply_len<len_t, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, len_t>>(decoder, ie, start);
+				CODEC_TRACE("->> explicit len [%s]", name<info_t>());
+				apply_len<info_t, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, info_t>>(decoder, ie, start);
 			}
 			else
 			{
-				apply_len<len_t, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
+				apply_len<info_t, type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
 			}
 		}
 		else
 		{
-			if constexpr (mi::kind == mik::TAG)
+			static_assert(mi::kind == mik::TAG);
+			auto const tag = decode_tag<info_t>(decoder);
+			if (not info_t::match(tag))
 			{
-				using tag_type = get_info_t<mi>;
-				auto const tag = decode_tag<tag_type, true>(decoder);
-				if (not tag_type::match(tag))
-				{
-					//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
-					MED_THROW_EXCEPTION(unknown_tag, name<IE>(), tag)
-				}
+				//NOTE: this can only be called for mandatory field thus it's fail case (not unexpected)
+				MED_THROW_EXCEPTION(unknown_tag, name<IE>(), tag)
 			}
 			ie_decode<type_context<typename TYPE_CTX::ie_type, mi_rest, EXP_TAG, EXP_LEN>>(decoder, ie, deps...);
 		}
@@ -248,7 +208,7 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 	else
 	{
 		using ie_type = typename IE::ie_type;
-		if constexpr (std::is_base_of_v<CONTAINER, ie_type>)
+		if constexpr (AContainer<IE>)
 		{
 			CODEC_TRACE(">>> %s<%s:%s>", name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
 			if constexpr (not std::is_void_v<EXP_TAG>)
@@ -272,28 +232,16 @@ constexpr void ie_decode(DECODER& decoder, IE& ie, DEPS&... deps)
 		}
 		else
 		{
-			if constexpr (is_peek_v<IE>)
+			using field_t = get_field_type_t<IE>;
+			CODEC_TRACE("PRIMITIVE %s[%.30s](%zu): %s <%s:%s>", __FUNCTION__, name<IE>(), sizeof...(deps), name<ie_type>(), name<EXP_TAG>(), name<EXP_LEN>());
+
+			if constexpr (std::is_same_v<field_t, EXP_LEN>)
 			{
-				CODEC_TRACE("PEEK %s[%s]", __FUNCTION__, name<IE>());
-				if (decoder(PUSH_STATE{}, ie))
-				{
-					decoder(ie, ie_type{});
-					decoder(POP_STATE{});
-				}
+				explicit_len_commit(decoder, ie, deps...);
 			}
 			else
 			{
-				using field_t = get_field_type_t<IE>;
-				CODEC_TRACE("PRIMITIVE %s[%.30s](%zu): %s <%s:%s>", __FUNCTION__, name<IE>(), sizeof...(deps), name<ie_type>(), name<EXP_TAG>(), name<EXP_LEN>());
-
-				if constexpr (std::is_same_v<field_t, EXP_LEN>)
-				{
-					explicit_len_commit(decoder, ie, deps...);
-				}
-				else
-				{
-					decoder(ie, ie_type{});
-				}
+				decoder(ie, ie_type{});
 			}
 		}
 	}

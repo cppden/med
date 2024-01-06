@@ -3,7 +3,29 @@
 #include "ut.hpp"
 #include "ut_proto.hpp"
 
-TEST(ooo, seq) //out-of-order
+
+TEST(seq, bits)
+{
+	struct B3 : med::value<med::bits<3, 0>> {};
+	struct B6 : med::value<med::bits<6, 3>> {};
+	struct B7 : med::value<med::bits<7, 1>> {};
+	struct BITS : med::sequence<
+		M< B3 >,
+		M< B6 >,
+		M< B7 >
+	>
+	{};
+
+	BITS v;
+	v.ref<B3>().set(0b101);
+	v.ref<B6>().set(0b101101);
+	v.ref<B7>().set(0b1101101);
+
+	check_octet_encode(v, {0b1011'0110, 0b1110'1101});
+	check_octet_decode(v, {0b1011'0110, 0b1110'1101});
+}
+
+TEST(seq, ooo) //out-of-order
 {
 	OOO_SEQ msg;
 	msg.ref<FLD_U8>().set(1);
@@ -26,7 +48,7 @@ TEST(ooo, seq) //out-of-order
 	EXPECT_EQ(3, msg.get<FLD_U24>().get());
 }
 
-TEST(encode, seq_ok)
+TEST(seq, enc_seq_ok)
 {
 	PROTO proto;
 
@@ -99,7 +121,7 @@ TEST(encode, seq_ok)
 	}
 }
 
-TEST(encode, seq_fail_mandatory)
+TEST(seq, enc_seq_fail_mandatory)
 {
 	PROTO proto;
 	uint8_t buffer[1024];
@@ -113,7 +135,7 @@ TEST(encode, seq_fail_mandatory)
 	EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
 }
 
-TEST(encode, mseq_ok)
+TEST(seq, enc_mseq_ok)
 {
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
@@ -173,9 +195,6 @@ TEST(encode, mseq_ok)
 
 	msg.ref<SEQOF_2>().push_back(ctx)->ref<FLD_W>().set(0x3344);
 
-	uint8_t const bcd[] = {0x34, 0x56};
-	msg.ref<FLD_NSCHO>().ref<BCD_1>().set(2, bcd);
-
 	msg.ref<VFLD1>().push_back(ctx)->set("test.this");
 	msg.ref<VFLD1>().push_back(ctx)->set("test.it");
 
@@ -202,7 +221,6 @@ TEST(encode, mseq_ok)
 		, 0x62, 2 //[T=0x62, L, SEQOF_2]
 			, 0x33,0x44 //<FLD_W>
 			//O< T<0x06>, L, FLD_CHO >
-		, 0x70, 3, 0x31, 0x45, 0x6F //[T=0x70, L, FLD_NSCHO]
 //		, 0x80, 0,2,  7, 0x76,0x54,  9, 0x98, 0x76 //[T=0x80, C16, SEQOF_3<u8, 21h=u16>]
 		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's' //2*[L, VFLD1]
 		, 7, 't', 'e', 's', 't', '.', 'i', 't'
@@ -224,7 +242,7 @@ TEST(encode, mseq_ok)
 	}
 }
 
-TEST(encode, mseq_fail_arity)
+TEST(seq, enc_mseq_fail_arity)
 {
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
@@ -305,7 +323,7 @@ TEST(encode, mseq_fail_arity)
 	}
 }
 
-TEST(encode, mseq_fail_overflow)
+TEST(seq, enc_mseq_fail_overflow)
 {
 	uint8_t buffer[1024];
 	med::encoder_context<> ctx{ buffer };
@@ -332,7 +350,7 @@ TEST(encode, mseq_fail_overflow)
 
 }
 
-TEST(decode, seq_ok)
+TEST(seq, dec_seq_ok)
 {
 	PROTO proto;
 	med::decoder_context<> ctx;
@@ -460,7 +478,7 @@ struct SEQ_OPT : med::sequence<
 >
 {};
 
-TEST(decode, seq_opt)
+TEST(seq, dec_seq_opt)
 {
 	SEQ_OPT msg;
 
@@ -490,7 +508,7 @@ TEST(decode, seq_opt)
 	EXPECT_EQ(0x1122, p2->get());
 }
 
-TEST(decode, seq_fail)
+TEST(seq, dec_seq_fail)
 {
 	PROTO proto;
 
@@ -547,7 +565,7 @@ TEST(decode, seq_fail)
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::overflow);
 }
 
-TEST(decode, mseq_ok)
+TEST(seq, dec_mseq_ok)
 {
 	PROTO proto;
 	med::decoder_context<> ctx;
@@ -609,8 +627,7 @@ TEST(decode, mseq_ok)
 		, 0x62, 2 //O< T<0x62>, L, SEQOF_2, med::max<2> >
 			, 0x33,0x44 //M< FLD_W >,
 			//-none- //O< T<0x06>, L, FLD_CHO >
-		//-none- // O< T<0x70>, L, FLD_NSCHO >
-		, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's' // O< L, VFLD1, med::max<3> >
+			, 9, 't', 'e', 's', 't', '.', 't', 'h', 'i', 's' // O< L, VFLD1, med::max<3> >
 		, 7, 't', 'e', 's', 't', '.', 'i', 't'
 	};
 	ctx.reset(encoded2, sizeof(encoded2));
@@ -669,7 +686,7 @@ TEST(decode, mseq_ok)
 	check_seqof<VFLD1>(*msg, {"test.this", "test.it"});
 }
 
-TEST(decode, mseq_fail)
+TEST(seq, dec_mseq_fail)
 {
 	PROTO proto;
 	med::decoder_context<> ctx;
@@ -709,7 +726,7 @@ TEST(decode, mseq_fail)
 	}
 }
 
-TEST(decode, mseq_fail_length)
+TEST(seq, dec_mseq_fail_length)
 {
 	PROTO proto;
 	med::decoder_context<> ctx;
@@ -791,7 +808,7 @@ struct MSEQ_OPEN : med::sequence<
 };
 
 //encoding-only and only some fields since different IEs are checked above
-TEST(encode, mseq_open)
+TEST(seq, enc_mseq_open)
 {
 	uint8_t buffer[1024];
 	size_t albuf[128];
@@ -837,7 +854,7 @@ TEST(encode, mseq_open)
 	EXPECT_TRUE(Matches(encoded, buffer));
 }
 
-TEST(decode, alloc_fail)
+TEST(seq, dec_alloc_fail)
 {
 	uint8_t const encoded[] = {
 		  0x21, 0x35, 0xD9                //<T=0x21, FLD_U16>

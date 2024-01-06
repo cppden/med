@@ -55,9 +55,7 @@ b) the contents octets shall be the same as the contents octets of the base enco
 				8.11.1 The encoding of a set value shall be constructed.
 				8.12.1 The encoding of a set-of value shall be constructed.
 				*/
-				constexpr bool is_constructed =
-						std::is_base_of_v<CONTAINER, typename IE::ie_type> //sequence, set
-						|| is_seqof_v<IE>; //sequence-of, set-of
+				constexpr bool is_constructed = AContainer<IE> || is_seqof_v<IE>;
 				if constexpr (is_constructed)
 				{
 					return meta::wrap<meta::transform_t<asn_traits, make_tag>>{};

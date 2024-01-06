@@ -225,7 +225,7 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 			while (decoder(PUSH_STATE{}, *this))
 			{
 				value<std::size_t> header;
-				header.set_encoded(sl::decode_tag<tag_t, false>(decoder));
+				header.set_encoded(sl::decode_tag<tag_t>(decoder));
 				CODEC_TRACE("tag=%#zX", std::size_t(get_tag(header)));
 				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 			}

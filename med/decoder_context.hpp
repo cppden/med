@@ -44,14 +44,14 @@ public:
 	}
 
 
-	buffer_type& buffer()                   { return m_buffer; }
+	buffer_type& buffer() noexcept          { return m_buffer; }
 
 	void reset(void const* data, std::size_t size)
 	{
 		buffer().reset(static_cast<typename buffer_type::pointer>(data), size);
 	}
 	template <typename T, std::size_t SIZE>
-	void reset(T const (&data)[SIZE])       { reset(data, sizeof(data)); }
+	void reset(T const (&data)[SIZE])       { reset(data, sizeof(data)/sizeof(T)); }
 
 	void reset()                            { buffer().reset(); }
 

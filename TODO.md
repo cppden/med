@@ -1,7 +1,4 @@
 # Most important
-## Remove peek
-with explicit length and tag it now should be possible to get rid of less intuitive peek
-attribute for some IEs.
 ## All IEs as value types
 use offsets instead of pointers to reduce memory footprint and allow simple copy
 ## Review code to reduce code-bloat
@@ -16,3 +13,4 @@ use offsets instead of pointers to reduce memory footprint and allow simple copy
 # Minor importance
 ## Independent decode/encode in UTs
 it's much simpler to debug encode independent of decode
+## accumulating print into span

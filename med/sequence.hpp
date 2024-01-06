@@ -22,18 +22,6 @@ namespace med {
 
 namespace sl {
 
-//TODO: more flexible is to compare current size read and how many bits to rewind for RO IE.
-template <class IE, class FUNC>
-constexpr void clear_tag(FUNC& func, auto& vtag)
-{
-	using type = get_meta_tag_t<meta::produce_info_t<FUNC, IE>>;
-	if constexpr (is_peek_v<type>)
-	{
-		func(POP_STATE{});
-	}
-	vtag.clear();
-}
-
 constexpr void discard(auto& func, auto& vtag)
 {
 	if (vtag)
@@ -87,7 +75,7 @@ struct seq_dec
 
 				if (!vtag && decoder(PUSH_STATE{}, ie))
 				{
-					vtag.set_encoded(decode_tag<type, false>(decoder));
+					vtag.set_encoded(decode_tag<type>(decoder));
 					CODEC_TRACE("pop tag=%zX", vtag.get_encoded());
 				}
 
@@ -100,7 +88,7 @@ struct seq_dec
 
 					if (decoder(PUSH_STATE{}, ie)) //not at the end
 					{
-						vtag.set_encoded(decode_tag<type, false>(decoder));
+						vtag.set_encoded(decode_tag<type>(decoder));
 						CODEC_TRACE("pop tag=%zX", vtag.get_encoded());
 					}
 					else //end is reached
@@ -193,7 +181,7 @@ struct seq_dec
 						if (decoder(PUSH_STATE{}, ie))
 						{
 							//don't save state as we just did it already
-							vtag.set_encoded(decode_tag<type, false>(decoder));
+							vtag.set_encoded(decode_tag<type>(decoder));
 							CODEC_TRACE("read tag=%zX", std::size_t(vtag.get_encoded()));
 						}
 						else
@@ -206,7 +194,7 @@ struct seq_dec
 					if (type::match(vtag.get_encoded())) //check tag decoded
 					{
 						CODEC_TRACE("T=%zX[%s]", std::size_t(vtag.get_encoded()), name<IE>());
-						clear_tag<IE>(decoder, vtag); //clear current tag as decoded
+						vtag.clear(); //clear current tag as decoded
 						using ctx_next = type_context<typename CTX::ie_type, meta::list_rest_t<mi>, EXP_TAG, EXP_LEN>;
 						ie_decode<ctx_next>(decoder, ie, deps...);
 					}

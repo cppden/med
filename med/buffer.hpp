@@ -14,6 +14,7 @@ Distributed under the MIT License
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <span>
 
 #include "exception.hpp"
 #include "name.hpp"
@@ -130,11 +131,18 @@ public:
 
 	constexpr void reset()                           { m_state.reset(get_start()); }
 
-	constexpr void reset(pointer data, std::size_t size)
+	constexpr void reset(std::span<value_type> chunk)
 	{
-		m_start = data;
-		m_state.reset(data);
-		end(data + size);
+		m_start = chunk.data();
+		m_state.reset(m_start);
+		end(m_start + chunk.size());
+	}
+
+	constexpr void reset(pointer p, std::size_t s)
+	{
+		m_start = p;
+		m_state.reset(m_start);
+		end(m_start + s);
 	}
 
 	constexpr state_type get_state() const           { return m_state; }
@@ -166,6 +174,7 @@ public:
 
 	constexpr pointer get_start() const              { return m_start; }
 	constexpr std::size_t get_offset() const         { return begin() - get_start(); }
+	constexpr std::span<value_type> used() const     { return {get_start(), get_offset()}; }
 	constexpr std::size_t size() const               { return end() - begin(); }
 	constexpr bool empty() const                     { return begin() >= end(); }
 	explicit constexpr operator bool() const         { return !empty(); }
@@ -183,33 +192,19 @@ public:
 	}
 
 	//TODO: remove excessive dependencies (IE) to reduce code-bloat
-	template <class IE, int DELTA> constexpr pointer advance()
+	template <class IE, size_t DELTA> constexpr pointer advance()
 	{
-		pointer p = nullptr;
-		if constexpr (DELTA > 0)
-		{
-			if (size() >= std::size_t(DELTA))
-			{
-				p = begin();
-				m_state.cursor += DELTA;
-			}
-			else
-			{
-				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this)
-			}
-		}
-		else if constexpr (DELTA < 0)
-		{
-			if (begin() + DELTA >= get_start())
-			{
-				m_state.cursor += DELTA;
-				p = begin();
-			}
-			else
-			{
-				MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this)
-			}
-		}
+		if (size() < DELTA) { MED_THROW_EXCEPTION(overflow, name<IE>(), DELTA, *this) }
+		auto p = begin();
+		m_state.cursor += DELTA;
+		return p;
+	}
+	template <class IE, size_t BITS> constexpr pointer advance_bits()
+	{
+		constexpr auto NUM_BYTES = bits_to_bytes(BITS); //ceil to include traling byte if any
+		if (size() < NUM_BYTES) { MED_THROW_EXCEPTION(overflow, name<IE>(), NUM_BYTES, *this) }
+		auto p = begin();
+		m_state.cursor += BITS / 8; //floor to not include trailing byte
 		return p;
 	}
 

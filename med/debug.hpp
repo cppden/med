@@ -9,10 +9,11 @@ Distributed under the MIT License
 
 #pragma once
 #include <cstdio>
-#include <cstring>
+#include <string_view>
 
 #define CODEC_TRACE_ENABLE
 
+#define CODEC_TRACE(FMT, ...) CODEC_TRACE_FL(__FILE__, __LINE__, FMT, __VA_ARGS__)
 
 #ifdef CODEC_TRACE_ENABLE
 
@@ -20,23 +21,25 @@ namespace med{
 
 namespace debug {
 
-constexpr char const* filename(char const* fname)
+// NOTE! fname is expected to be NULL-terminated thus allowing to return C-string
+// this trick is only needed for constexpr since strrchr is not such.
+constexpr char const* filename(std::string_view fname)
 {
-	if (char const* p = std::strrchr(fname, '/'))
+	if (auto pos = fname.rfind('/'); pos != std::string_view::npos)
 	{
-		return p + 1;
+		return fname.substr(pos + 1).data();
 	}
 	else
 	{
-		return fname;
+		return fname.data();
 	}
 }
 
 } //end: namespace
 } //end: namespace med
 
-#define CODEC_TRACE(FMT, ...) std::printf("%s:%u\t" FMT "\n", med::debug::filename(__FILE__), __LINE__, __VA_ARGS__)
+#define CODEC_TRACE_FL(F, L, FMT, ...) std::printf("%s:%u\t" FMT "\n", med::debug::filename(F), L, __VA_ARGS__)
 
 #else
-#define CODEC_TRACE(...)
+#define CODEC_TRACE_FL(...)
 #endif
