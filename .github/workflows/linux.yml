@@ -14,26 +14,25 @@ on:
 
 jobs:
   linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
         compiler:
           - g++-12
-          - clang++-14
+          - clang++-15
         build_type: [Release]
 
     env:
       CXX: ${{ matrix.compiler }}
 
     steps:
+    - uses: actions/checkout@v3
     - run: |
         sudo apt-get update
         sudo apt-get -y --no-upgrade install ${{ matrix.compiler }}
         sudo apt-get -y install libgtest-dev
-
-    - uses: actions/checkout@v3
 
     - run: cmake -E make_directory build
 

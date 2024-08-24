@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   code-coverage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -17,12 +17,11 @@ jobs:
       CXX: ${{ matrix.compiler }}
 
     steps:
+    - uses: actions/checkout@v3
     - run: |
         sudo apt-get update
         sudo apt-get -y --no-upgrade install ${{ matrix.compiler }}
         sudo apt-get install -y libgtest-dev
-
-    - uses: actions/checkout@v2
 
     - run: cmake -E make_directory build
 
