@@ -5,26 +5,38 @@ namespace cho {
 
 //low nibble selector
 template <std::size_t TAG>
-struct LT : med::value<med::fixed<TAG, med::bits<4>>> {};
+struct LT : med::value<med::fixed<TAG, med::bits<4, 0>>> {};
 
 struct HI : med::value<med::bits<4, 0>> {};
 struct LO : med::value<med::bits<4, 4>> {};
-struct HiLo : med::sequence<
+struct HL : med::sequence<
 	M< HI >,
 	M< LO >
 >
 {};
 
+/* Binary Coded Decimal, i.e. each nibble is 0..9
+xxxx.xxxx
+TAG  1
+xxxx.xxxx|xxxx.xxxx
+TAG  1    2    F
+xxxx.xxxx|xxxx.xxxx
+TAG  1    2    3
+xxxx.xxxx|xxxx.xxxx|xxxx.xxxx
+TAG  1    2    3    4    F
+xxxx.xxxx|xxxx.xxxx|xxxx.xxxx
+TAG  1    2    3    4    5
+*/
 template <uint8_t TAG>
 struct BCD : med::sequence<
-	M< LT<TAG> >, // explicit TAG
 	M< LO >,
-	O< HiLo, med::max<2> >
+	O< HL, med::max<2> >
 >, med::add_meta_info< med::add_tag<LT<TAG>> >
 {
 	static_assert(0 == (TAG & 0xF0), "LOW NIBBLE TAG EXPECTED");
+	static constexpr uint8_t END = 0xF;
 
-	bool set(std::span<uint8_t const> data) // nibble per byte
+	bool set(std::span<uint8_t const> data)
 	{
 		if (1 <= data.size() && data.size() <= 5)
 		{
@@ -32,81 +44,26 @@ struct BCD : med::sequence<
 			this->template ref<LO>().set(*it++);
 			while (it != ite)
 			{
-				auto* p = this->template ref<HiLo>().push_back();
+				auto* p = this->template ref<HL>().push_back();
 				p->template ref<HI>().set(*it++);
-				if (it != ite)
-				{
-					p->template ref<LO>().set(*it++);
-				}
-				else
-				{
-					p->template ref<LO>().set(0xF);
-				}
+				p->template ref<LO>().set(it != ite ? *it++ : END);
 			}
 			return true;
 		}
 		return false;
 	}
-};
 
-#if 0
-//NOTE: low nibble of 1st octet is a tag
-//binary coded decimal: 0x21,0x43 is 1,2,3,4
-template <uint8_t TAG>
-struct BCD : med::octet_string<med::octets_var_intern<3>, med::min<1>>
-	, med::add_meta_info< med::add_tag< LT<TAG> > >
-{
-	static_assert(0 == (TAG & 0xF0), "LOW NIBBLE TAG EXPECTED");
-	static constexpr bool match(uint8_t v)    { return TAG == (v & 0xF); }
-
-	bool set(std::size_t len, void const* data)
+	size_t size() const noexcept
 	{
-		//need additional nibble for the tag
-		std::size_t const num_octets = (len + 1);
-		if (num_octets >= traits::min_octets && num_octets <= traits::max_octets)
+		size_t res = this->template get<LO>().is_set() ? 1 : 0;
+		if (auto* p = this->template get<HL>())
 		{
-			m_value.resize(num_octets);
-			uint8_t* p = m_value.data();
-			uint8_t const* in = static_cast<uint8_t const*>(data);
-
-			*p++ = (*in & 0xF0) | TAG;
-			uint8_t o = (*in++ << 4);
-			for (; len > 1; --len)
-			{
-				*p++ = o | (*in >> 4);
-				o = *in++ << 4;
-			}
-			*p++ = o | 0xF;
-			return true;
+			res += 2 * p->count();
+			res -= ((*p->last() & END) == END);
 		}
-		return false;
-	}
-
-	template <std::size_t N>
-	void print(char (&sz)[N]) const
-	{
-		char* psz = sz;
-
-		auto to_char = [&psz](uint8_t nibble)
-		{
-			if (nibble != 0xF)
-			{
-				*psz++ = static_cast<char>(nibble > 9 ? (nibble+0x57) : (nibble+0x30));
-			}
-		};
-
-		bool b1st = true;
-		for (uint8_t digit : *this)
-		{
-			to_char(uint8_t(digit >> 4));
-			//not 1st octet - print both nibbles
-			if (not b1st) to_char(digit & 0xF);
-			b1st = false;
-		}
-		*psz = 0;
+		return res;
 	}
 };
-#endif
 
 struct BCD_1 : BCD<1>
 {
@@ -172,7 +129,7 @@ using PLAIN = M<L, plain>;
 using namespace std::string_view_literals;
 using namespace cho;
 
-#if 0
+#if 1
 TEST(choice, plain)
 {
 	uint8_t buffer[32];
@@ -230,31 +187,31 @@ TEST(choice, any)
 }
 #endif
 #if 1
-TEST(choice, explicit_tag)
+TEST(choice, nibble_tag)
 {
 	uint8_t buffer[32];
 	med::encoder_context<> ctx{ buffer };
 	med::octet_encoder encoder{ctx};
 
 	FLD_NSCHO msg;
-	uint8_t const bcd[] = {0x34, 0x56};
-	msg.ref<BCD_1>().set(bcd);
+	uint8_t const bcd[] = {3, 4, 5, 6};
+	auto& c = msg.ref<BCD_1>();
+	//c.ref<LT<1>>().set(3);
+	//EXPECT_EQ(1, c.ref<LT<1>>().get());
+	c.set(bcd);
 	encode(encoder, msg);
-	EXPECT_STRCASEEQ("31 45 6F ", as_string(ctx.buffer()));
-
-#if 0
+	EXPECT_STRCASEEQ("13 45 6F ", as_string(ctx.buffer()));
 	decltype(msg) dmsg;
-	med::decoder_context<> dctx;
-	dctx.reset(ctx.buffer().used());
+	med::decoder_context<> dctx{ctx.buffer().used()};
 	decode(med::octet_decoder{dctx}, dmsg);
 	auto* pf = dmsg.get<BCD_1>();
 	ASSERT_NE(nullptr, pf);
-	EXPECT_EQ(msg.get<BCD_1>()->size(), dmsg.get<BCD_1>()->size());
+	//EXPECT_EQ(msg.get<BCD_1>()->size(), pf->size());
+	EXPECT_TRUE(msg == dmsg);
 
 	EXPECT_TRUE(pf->is_set());
 	dmsg.clear();
 	EXPECT_FALSE(pf->is_set());
-#endif
 }
 #endif
 //NOTE: choice compound is tested in length.cpp ppp::proto

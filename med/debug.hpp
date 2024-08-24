@@ -11,7 +11,7 @@ Distributed under the MIT License
 #include <cstdio>
 #include <string_view>
 
-#define CODEC_TRACE_ENABLE
+//#define CODEC_TRACE_ENABLE
 
 #define CODEC_TRACE(FMT, ...) CODEC_TRACE_FL(__FILE__, __LINE__, FMT, __VA_ARGS__)
 

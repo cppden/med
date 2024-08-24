@@ -21,15 +21,16 @@ Distributed under the MIT License
 
 namespace med {
 
-template <typename PTR, std::size_t LEN_DEPTH = 16>
+template <typename T, std::size_t LEN_DEPTH = 16> requires (sizeof(T) == 1 && std::is_integral_v<T>)
 class buffer
 {
 	using eob_index_t = uint8_t;
 	static constexpr eob_index_t MAX_EOB_INDEX = std::numeric_limits<eob_index_t>::max();
 
 public:
-	using pointer = PTR;
-	using value_type = std::remove_const_t<std::remove_pointer_t<pointer>>;
+	using pointer = T*;
+	using value_type = std::remove_const_t<T>;
+	static constexpr auto is_const_v = std::is_const_v<T>;
 
 	constexpr buffer() noexcept = default;
 
@@ -129,24 +130,20 @@ public:
 		}
 	}
 
-	constexpr void reset()                           { m_state.reset(get_start()); }
-
-	constexpr void reset(std::span<value_type> chunk)
+	constexpr void reset() noexcept                  { m_state.reset(get_start()); }
+	constexpr void reset(void const* p, std::size_t s) noexcept
 	{
-		m_start = chunk.data();
-		m_state.reset(m_start);
-		end(m_start + chunk.size());
-	}
-
-	constexpr void reset(pointer p, std::size_t s)
-	{
-		m_start = p;
+		m_start = static_cast<pointer>(const_cast<void*>(p));
 		m_state.reset(m_start);
 		end(m_start + s);
 	}
+	template <typename U> requires (std::is_integral_v<U>)
+	constexpr void reset(std::span<U> p) noexcept           { reset(p.data(), p.size_bytes()); }
+	template <typename U, size_t SZ>
+	constexpr void reset(U (&p)[SZ]) noexcept               { reset(p, sizeof(p)); }
 
-	constexpr state_type get_state() const           { return m_state; }
-	constexpr void set_state(state_type const& st)   { m_state = st; }
+	constexpr state_type get_state() const noexcept         { return m_state; }
+	constexpr void set_state(state_type const& st) noexcept { m_state = st; }
 
 	constexpr bool push_state()
 	{
@@ -172,20 +169,20 @@ public:
 		}
 	}
 
-	constexpr pointer get_start() const              { return m_start; }
-	constexpr std::size_t get_offset() const         { return begin() - get_start(); }
-	constexpr std::span<value_type> used() const     { return {get_start(), get_offset()}; }
-	constexpr std::size_t size() const               { return end() - begin(); }
-	constexpr bool empty() const                     { return begin() >= end(); }
-	explicit constexpr operator bool() const         { return !empty(); }
+	constexpr pointer get_start() const noexcept            { return m_start; }
+	constexpr size_t get_offset() const noexcept            { return begin() - get_start(); }
+	constexpr std::span<value_type> used() const noexcept   { return {get_start(), get_offset()}; }
+	constexpr size_t size() const noexcept                  { return end() - begin(); }
+	constexpr bool empty() const noexcept                   { return begin() >= end(); }
+	explicit constexpr operator bool() const noexcept       { return !empty(); }
 
-	template <class IE> constexpr void push(value_type v)
+	template <class IE> constexpr void push(value_type v) requires (!is_const_v)
 	{
 		if (not empty()) { *m_state.cursor++ = v; }
 		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this) }
 	}
 
-	template <class IE> constexpr value_type pop()
+	template <class IE> constexpr value_type pop() requires (is_const_v)
 	{
 		if (not empty()) { return *m_state.cursor++; }
 		else { MED_THROW_EXCEPTION(overflow, name<IE>(), sizeof(value_type), *this) }
@@ -229,9 +226,9 @@ public:
 	}
 
 	/// similar to advance but no bounds check
-	constexpr void offset(int delta)                 { m_state.cursor += delta; }
+	constexpr void offset(int delta) noexcept               { m_state.cursor += delta; }
 
-	template <class IE> constexpr void fill(std::size_t count, uint8_t value)
+	template <class IE> constexpr void fill(std::size_t count, uint8_t value) requires (!is_const_v)
 	{
 		//CODEC_TRACE("padding %zu bytes=%u", count, value);
 		if (size() >= count)
@@ -244,8 +241,8 @@ public:
 		}
 	}
 
-	constexpr pointer begin() const                  { return m_state.cursor; }
-	constexpr pointer end() const                    { return m_end; }
+	constexpr pointer begin() const noexcept                { return m_state.cursor; }
+	constexpr pointer end() const noexcept                  { return m_end; }
 
 	/**
 	 * Adjusts the end of buffer pointer

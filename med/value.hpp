@@ -48,18 +48,18 @@ struct numeric_value : IE<IE_VALUE>
 	using value_type = typename traits::value_type;
 	using base_t     = numeric_value;
 
-	value_type get() const                          { return get_encoded(); }
-	auto set(value_type v)                          { return set_encoded(v); }
+	value_type get() const noexcept                 { return get_encoded(); }
+	auto set(value_type v) noexcept                 { return set_encoded(v); }
 
 	//NOTE: do not override!
 	static constexpr bool is_defined = false;
-	value_type get_encoded() const                  { return m_value; }
-	void set_encoded(value_type v)                  { m_value = v; m_set = true; }
-	void clear()                                    { m_set = false; }
-	bool is_set() const                             { return m_set; }
-	explicit operator bool() const                  { return is_set(); }
+	value_type get_encoded() const noexcept         { return m_value; }
+	void set_encoded(value_type v) noexcept         { m_value = v; m_set = true; }
+	void clear() noexcept                           { m_set = false; }
+	bool is_set() const noexcept                    { return m_set; }
+	explicit operator bool() const noexcept         { return is_set(); }
 	template <class... ARGS>
-	void copy(base_t const& from, ARGS&&...)        { m_value = from.m_value; m_set = from.m_set; }
+	void copy(base_t const& from, ARGS&&...)noexcept{ m_value = from.m_value; m_set = from.m_set; }
 
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 9)
 #pragma GCC diagnostic push

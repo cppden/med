@@ -369,7 +369,7 @@ void check_decode(MSG const& msg, RANGE const& binary)
 template <class MSG>
 void check_octet_encode(MSG const& msg, std::initializer_list<uint8_t> binary
 	, bool incomplete = false
-	, std::source_location const& loc = std::source_location::current())
+	, [[maybe_unused]] std::source_location const& loc = std::source_location::current())
 {
 	uint8_t buffer[1024] = {};
 	ASSERT_LE(binary.size(), sizeof(buffer));
@@ -383,7 +383,7 @@ void check_octet_encode(MSG const& msg, std::initializer_list<uint8_t> binary
 
 template <class MSG>
 void check_octet_decode(MSG const& msg, std::initializer_list<uint8_t> binary
-	, std::source_location const& loc = std::source_location::current())
+	, [[maybe_unused]] std::source_location const& loc = std::source_location::current())
 {
 	MSG decoded_msg;
 	med::decoder_context ctx{(void const*)std::data(binary), binary.size()};

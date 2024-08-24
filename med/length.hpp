@@ -94,11 +94,10 @@ constexpr std::size_t ie_length(IE const& ie, ENCODER& encoder) noexcept
 	else //data itself
 	{
 		CODEC_TRACE("%s[%s]<%s:%s> - DATA", __FUNCTION__, name<IE>(), name<EXP_TAG>(), name<EXP_LEN>());
-		using ie_type = typename IE::ie_type;
 		if constexpr (AContainer<IE>)
 		{
 			using ctx = type_context<typename TYPE_CTX::ie_type, meta::typelist<>, EXP_TAG, EXP_LEN>;
-			CODEC_TRACE("%s[%.30s]%s<%s:%s>: %s", __FUNCTION__, name<IE>(), AMultiField<IE>?"*":"", name<EXP_TAG>(), name<EXP_LEN>(), name<ie_type>());
+			CODEC_TRACE("%s[%.30s]%s<%s:%s>: %s", __FUNCTION__, name<IE>(), AMultiField<IE>?"*":"", name<EXP_TAG>(), name<EXP_LEN>(), name<typename IE::ie_type>());
 			len += ie.template calc_length<ctx>(encoder);
 			CODEC_TRACE("%s[%s] : len(SEQ) = %zu", __FUNCTION__, name<IE>(), len);
 		}

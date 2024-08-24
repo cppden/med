@@ -19,7 +19,7 @@ namespace med {
 
 template <
 		class ALLOCATOR = const null_allocator,
-		class BUFFER = buffer<uint8_t*>
+		class BUFFER = buffer<uint8_t>
 		>
 class encoder_context : public detail::allocator_holder<ALLOCATOR>
 {
@@ -40,31 +40,20 @@ public:
 	encoder_context(encoder_context const&) = delete;
 	encoder_context& operator=(encoder_context const&) = delete;
 
-	constexpr encoder_context(void* data, std::size_t size, allocator_type* alloc = nullptr)
-		: detail::allocator_holder<allocator_type>{alloc}
-	{
-		reset(data, size);
-	}
+	constexpr encoder_context(void* p, size_t s, allocator_type* a = nullptr) noexcept
+		: detail::allocator_holder<allocator_type>{a} { reset(p, s); }
 
-	template <typename T, std::size_t SIZE>
-	explicit constexpr encoder_context(T (&buf)[SIZE], allocator_type* alloc = nullptr)
-		: encoder_context(buf, sizeof(buf), alloc) {}
+	template <typename T, size_t SIZE>
+	explicit constexpr encoder_context(T (&p)[SIZE], allocator_type* a = nullptr) noexcept
+		: encoder_context(p, sizeof(p), a) {}
 
 	constexpr buffer_type& buffer() noexcept            { return m_buffer; }
 	constexpr buffer_type const& buffer()const noexcept { return m_buffer; }
 
-	template <typename T, std::size_t SIZE>
-	constexpr void reset(T (&data)[SIZE]) noexcept      { reset(data, SIZE * sizeof(T)); }
-
-	constexpr void reset(void* data, std::size_t size) noexcept
+	template <typename... Ts>
+	constexpr void reset(Ts... args) noexcept
 	{
-		m_buffer.reset({static_cast<typename buffer_type::pointer>(data), size});
-		m_snapshot = nullptr;
-	}
-
-	constexpr void reset()
-	{
-		m_buffer.reset();
+		buffer().reset(args...);
 		m_snapshot = nullptr;
 	}
 
@@ -86,7 +75,7 @@ public:
 	class snap_s : public state_t
 	{
 	public:
-		constexpr bool validate_length(std::size_t s) const
+		constexpr bool validate_length(size_t s) const
 		{
 			CODEC_TRACE("%s(%zu ? %zu)=%d", __FUNCTION__, m_length, s, m_length == s);
 			return m_length == s;
@@ -94,10 +83,10 @@ public:
 
 	private:
 		friend class encoder_context;
-		constexpr snap_s(state_t const& st, std::size_t len) : state_t{st}, m_length{len} {}
+		constexpr snap_s(state_t const& st, size_t len) : state_t{st}, m_length{len} {}
 		constexpr snap_s() = default;
 
-		std::size_t m_length{};
+		size_t m_length{};
 	};
 
 	/**

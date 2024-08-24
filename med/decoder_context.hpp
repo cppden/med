@@ -17,7 +17,7 @@ namespace med {
 
 template <
 		class ALLOCATOR = const null_allocator,
-		class BUFFER = buffer<uint8_t const*>
+		class BUFFER = buffer<uint8_t const>
 		>
 class decoder_context : public detail::allocator_holder<ALLOCATOR>
 {
@@ -26,34 +26,20 @@ public:
 	using buffer_type = BUFFER;
 	using state_t = typename buffer_type::state_type;
 
-	decoder_context(void const* data, std::size_t size, allocator_type* alloc = nullptr)
-		: detail::allocator_holder<allocator_type>{alloc}
-	{
-		reset(data, size);
-	}
-
-	decoder_context()
-		: decoder_context(nullptr, 0)
-	{
-	}
-
-	template <typename T, std::size_t SIZE>
-	decoder_context(T const (&data)[SIZE], allocator_type* alloc = nullptr)
-		: decoder_context(data, sizeof(data), alloc)
-	{
-	}
-
+	decoder_context() noexcept : decoder_context(nullptr, 0){}
+	decoder_context(void const* p, size_t s, allocator_type* a = nullptr) noexcept
+		: detail::allocator_holder<allocator_type>{a} { reset(p, s); }
+	template <typename T, size_t SIZE>
+	decoder_context(T const (&p)[SIZE], allocator_type* a = nullptr) noexcept
+		: decoder_context(p, sizeof(p), a) {}
+	template <typename T>
+	decoder_context(std::span<T> p, allocator_type* a = nullptr) noexcept
+		: decoder_context(p.data(), p.size_bytes(), a) {}
 
 	buffer_type& buffer() noexcept          { return m_buffer; }
 
-	void reset(void const* data, std::size_t size)
-	{
-		buffer().reset(static_cast<typename buffer_type::pointer>(data), size);
-	}
-	template <typename T, std::size_t SIZE>
-	void reset(T const (&data)[SIZE])       { reset(data, sizeof(data)/sizeof(T)); }
-
-	void reset()                            { buffer().reset(); }
+	template <typename... Ts>
+	constexpr void reset(Ts&&... args)noexcept{ buffer().reset(std::forward<Ts>(args)...); }
 
 private:
 	decoder_context(decoder_context const&) = delete;
