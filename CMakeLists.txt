@@ -1,4 +1,9 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
+
+# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+	cmake_policy(SET CMP0135 NEW)
+endif()
 
 set(THIS_NAME med)
 
@@ -13,14 +18,21 @@ option (WITH_BM "With Google benchmark." OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
-find_package(GTest REQUIRED)
+include(FetchContent)
+
+FetchContent_Declare(
+	googletest
+	URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+
+FetchContent_MakeAvailable(googletest)
+
 find_package(Threads REQUIRED)
 
 include_directories(
-	${GTEST_INCLUDE_DIRS}
 	${PROJECT_SOURCE_DIR}/med
 )
-
+include(GoogleTest)
 # -----------------------------------------------------------------------------
 # Benchmarks
 # -----------------------------------------------------------------------------
@@ -127,7 +139,7 @@ endif()
 #)
 
 target_link_libraries(gtest_med
-	${GTEST_BOTH_LIBRARIES}
+	GTest::gtest
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
