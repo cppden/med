@@ -179,19 +179,31 @@ public:
 			{
 				--m_count;
 				it.m_curr->value.clear();
-				if (it == prev) //1st
-				{
-					m_head = m_head->next;
-					return begin();
-				}
+				iterator ret;
+				if (!m_count) { ret = iterator(m_head = m_tail = nullptr); }
 				else
 				{
-					prev.m_curr->next = it.m_curr->next;
-					return ++prev;
+					if (it == prev) //1st
+					{
+						m_head = m_head->next;
+						ret = begin();
+					}
+					else
+					{
+						prev.m_curr->next = it.m_curr->next;
+						ret = std::next(prev);
+					}
+					if (m_tail == it.m_curr) //last
+					{
+						m_tail = prev.m_curr;
+					}
 				}
+				CODEC_TRACE("%s(%s=%p) count=%zu head=%p tail=%p", __FUNCTION__, name<field_type>(), it.get(), count(), m_head, m_tail);
+				return ret;
 			}
 			prev = it;
 		}
+		CODEC_TRACE("%s: %s[%c]", __FUNCTION__, name<field_type>(), '-');
 		return end();
 	}
 
@@ -208,7 +220,7 @@ private:
 		{
 			for (auto& f : m_fields)
 			{
-				//CODEC_TRACE("%s: %s=%p[%c]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-');
+				CODEC_TRACE("%s: %s=%p[%c]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-');
 				if (!f.value.is_set()) return &f;
 			}
 		}
@@ -219,11 +231,11 @@ private:
 	{
 		if (!pf) { MED_THROW_EXCEPTION(out_of_memory, name<field_type>(), sizeof(field_type)) }
 
-		//CODEC_TRACE("%s(%s=%p) count=%zu", __FUNCTION__, name<field_type>(), (void*)pf, count());
 		if (m_count++) { m_tail->next = pf; }
 		else { m_head = m_tail = pf; }
 		pf->next = nullptr;
 		m_tail = pf;
+		CODEC_TRACE("%s(%s=%p) count=%zu head=%p tail=%p", __FUNCTION__, name<field_type>(), (void*)pf, count(), m_head, m_tail);
 		return &m_tail->value;
 	}
 

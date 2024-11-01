@@ -113,6 +113,11 @@ TEST(multi, erase)
 	EXPECT_EQ(3, mie.count()); //(1,2,3)
 	EXPECT_EQ(3, std::distance(mie.begin(), mie.end()));
 
+	mie.erase(std::next(std::next(mie.begin()))); //erase last (1,2)
+	EXPECT_EQ(2, mie.count());
+	EXPECT_EQ(2, std::distance(mie.begin(), mie.end()));
+	mie.push_back()->set(3); // get back (1,2,3)
+
 	mie.erase(mie.begin()); //erase 1st (2,3)
 	EXPECT_EQ(2, mie.count());
 	EXPECT_EQ(2, std::distance(mie.begin(), mie.end()));
