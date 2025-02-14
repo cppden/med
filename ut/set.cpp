@@ -192,6 +192,102 @@ TEST(encode, mset_fail_arity)
 	EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
 }
 
+TEST(encode, set_func_ok)
+{
+	PROTO proto;
+
+	MSG_SET_FUNC& msg = proto.ref<MSG_SET_FUNC>();
+
+	//one mandatory, one conditional + setter, one optional
+	msg.ref<FLD_UC>().set(0x11);
+	msg.ref<FLD_U16>().set(3);
+	msg.ref<FLD_IP>().set(1);
+
+	uint8_t buffer[1024];
+	med::encoder_context ctx{buffer};
+
+	EXPECT_NO_THROW(encode(med::octet_encoder{ctx}, proto));
+
+	// M< T16<0x0b>, FLD_UC >, //<TV>
+	// M< T16<0x0d>, FLD_FLAGS, FLD_FLAGS::setter >,
+	// O< T16<0x21>, FLD_U16, FLD_FLAGS::has_bits<FLD_FLAGS::U16> >,
+	// O< T16<0x89>, FLD_IP >
+	uint8_t const encoded1[] = { 0x24
+		, 0, 0x0b, 0x11
+		, 0, 0x0d, 0b0000'0101
+		, 0, 0x21, 0x00, 0x03
+		, 0, 0x89, 0x00, 0x00, 0x00, 0x01
+	};
+	EXPECT_EQ(sizeof(encoded1), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded1, buffer));
+
+	//one mandatory + setter
+	ctx.reset();
+	msg.clear();
+	msg.ref<FLD_UC>().set(0x11);
+	EXPECT_NO_THROW(encode(med::octet_encoder{ctx}, proto));
+
+	// M< T16<0x0b>, FLD_UC >, //<TV>
+	// M< T16<0x0d>, FLD_FLAGS, FLD_FLAGS::setter >,
+	uint8_t const encoded2[] = { 0x24
+		, 0, 0x0b, 0x11
+		, 0, 0x0d, 0b0000'0000
+	};
+	EXPECT_EQ(sizeof(encoded2), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded2, buffer));
+
+	//full msg
+	ctx.reset();
+	msg.clear();
+	msg.ref<FLD_UC>().set(0x11);
+	msg.ref<FLD_U16>().set(3);
+	msg.ref<FLD_IP>().set(1);
+	msg.ref<FLD_U24>().set(2);
+	msg.ref<FLD_U8>().set(4);
+	msg.ref<FLD_QTY>().set(5);
+
+	// try to set wrong flags
+	msg.ref<FLD_FLAGS>().set(255);
+
+	EXPECT_NO_THROW(encode(med::octet_encoder{ctx}, proto));
+
+	// M< T16<0x0b>, FLD_UC >, //<TV>
+	// M< T16<0x0d>, FLD_FLAGS, FLD_FLAGS::setter >,
+	// O< T16<0x0e>, FLD_QTY, FLD_FLAGS::has_bits<FLD_FLAGS::QTY> >,
+	// O< T16<0x0c>, FLD_U8 >, //<TV>
+	// O< T16<0x21>, FLD_U16, FLD_FLAGS::has_bits<FLD_FLAGS::U16> >,
+	// O< T16<0x49>, FLD_U24, FLD_FLAGS::has_bits<FLD_FLAGS::U24> >,
+	// O< T16<0x89>, FLD_IP >
+	uint8_t const encoded3[] = { 0x24
+		, 0, 0x0b, 0x11
+		, 0, 0x0d, 0b0100'0111
+		, 0, 0x0e, 0x05
+		, 0, 0x0c, 0x04
+		, 0, 0x21, 0x00, 0x03
+		, 0, 0x49, 0x00, 0x00, 0x02
+		, 0, 0x89, 0x00, 0x00, 0x00, 0x01
+	};
+
+	EXPECT_EQ(sizeof(encoded3), ctx.buffer().get_offset());
+	EXPECT_TRUE(Matches(encoded3, buffer));
+}
+
+TEST(encode, set_func_fail)
+{
+	PROTO proto;
+
+	MSG_SET_FUNC& msg = proto.ref<MSG_SET_FUNC>();
+
+	//NO mandatory, one conditional + setter, one optional
+	msg.ref<FLD_U16>().set(3);
+	msg.ref<FLD_IP>().set(1);
+
+	uint8_t buffer[1024];
+	med::encoder_context ctx{buffer};
+
+	EXPECT_THROW(encode(med::octet_encoder{ctx}, proto), med::missing_ie);
+}
+
 TEST(decode, set_ok)
 {
 	PROTO proto;
@@ -411,5 +507,100 @@ TEST(decode, mset_fail_arity)
 		, 0, 0x21, 2, 0x35, 0xD9
 	};
 	ctx.reset(mandatory_overflow, sizeof(mandatory_overflow));
+	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::extra_ie);
+}
+
+TEST(decode, set_func_ok)
+{
+	PROTO proto;
+
+	//mandatory fields only
+	uint8_t const encoded1[] = { 0x24
+		, 0, 0x0b, 0x11
+		, 0, 0x0d, 0x00,
+	};
+	med::decoder_context ctx{encoded1};
+	EXPECT_NO_THROW(decode(med::octet_decoder{ctx}, proto));
+	{
+		MSG_SET_FUNC const* msg = proto.get<MSG_SET_FUNC>();
+		ASSERT_NE(nullptr, msg);
+
+		ASSERT_EQ(0x11, msg->get<FLD_UC>().get());
+		ASSERT_EQ(0x00, msg->get<FLD_FLAGS>().get());
+		FLD_U24 const* fld1 = msg->get<FLD_U24>();
+		FLD_U16 const* fld2 = msg->get<FLD_U16>();
+		FLD_U8 const* fld3 = msg->get<FLD_U8>();
+		FLD_IP const* fld4 = msg->get<FLD_IP>();
+		FLD_QTY const* fld5 = msg->get<FLD_QTY>();
+		ASSERT_EQ(nullptr, fld1);
+		ASSERT_EQ(nullptr, fld2);
+		ASSERT_EQ(nullptr, fld3);
+		ASSERT_EQ(nullptr, fld4);
+		ASSERT_EQ(nullptr, fld5);
+	}
+	//all fields but in reverse order
+	uint8_t const encoded2[] = { 0x24
+		, 0, 0x89, 0x00, 0x00, 0x00, 0x01
+		, 0, 0x49, 0x00, 0x00, 0x02
+		, 0, 0x21, 0x00, 0x03
+		, 0, 0x0c, 0x04
+		, 0, 0x0e, 0x05
+		, 0, 0x0b, 0x11
+		, 0, 0x0d, 0b0100'0111,
+	};
+	ctx.reset(encoded2);
+	EXPECT_NO_THROW(decode(med::octet_decoder{ctx}, proto));
+	{
+		MSG_SET_FUNC const* msg = proto.get<MSG_SET_FUNC>();
+		ASSERT_NE(nullptr, msg);
+
+		ASSERT_EQ(0x11, msg->get<FLD_UC>().get());
+		FLD_U24 const* fld1 = msg->get<FLD_U24>();
+		FLD_U16 const* fld2 = msg->get<FLD_U16>();
+		FLD_U8 const* fld3 = msg->get<FLD_U8>();
+		FLD_IP const* fld4 = msg->get<FLD_IP>();
+		FLD_QTY const* fld5 = msg->get<FLD_QTY>();
+		ASSERT_NE(nullptr, fld1);
+		ASSERT_NE(nullptr, fld2);
+		ASSERT_NE(nullptr, fld3);
+		ASSERT_NE(nullptr, fld4);
+		ASSERT_NE(nullptr, fld5);
+		ASSERT_EQ(2, fld1->get());
+		ASSERT_EQ(3, fld2->get());
+		ASSERT_EQ(4, fld3->get());
+		ASSERT_EQ(1, fld4->get());
+		ASSERT_EQ(5, fld5->get());
+		// ASSERT_EQ(0b0010'1111, msg->get<FLD_FLAGS>().get());
+		ASSERT_TRUE(FLD_FLAGS::has_bits<FLD_FLAGS::U16>{}(msg->body()));
+		ASSERT_TRUE(FLD_FLAGS::has_bits<FLD_FLAGS::U24>{}(msg->body()));
+		ASSERT_TRUE(FLD_FLAGS::has_bits<FLD_FLAGS::QTY>{}(msg->body()));
+		constexpr size_t u8_qty = 1;
+		ASSERT_TRUE(FLD_FLAGS::has_bits<u8_qty << FLD_FLAGS::U8_QTY>{}(msg->body()));
+		auto const uc_qty_minus_one = 1 - 1;
+		ASSERT_FALSE(FLD_FLAGS::has_bits<uc_qty_minus_one << FLD_FLAGS::UC_QTY>{}(msg->body()));
+	}
+}
+
+TEST(decode, set_func_fail)
+{
+	PROTO proto;
+
+	//mandatory fields only, but some flags are set
+	uint8_t const encoded1[] = { 0x24
+		, 0, 0x0b, 0x11
+		, 0, 0x0d,  0b0100'0111
+	};
+	med::decoder_context ctx{encoded1};
+	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::missing_ie);
+
+	//some conditional fields, but flags are NOT set
+	uint8_t const encoded2[] = { 0x24
+		, 0, 0x49, 0x00, 0x00, 0x02
+		, 0, 0x21, 0x00, 0x03
+		, 0, 0x0c, 0x04
+		, 0, 0x0b, 0x11
+		, 0, 0x0d,  0b0100'0000
+	};
+	ctx.reset(encoded2);
 	EXPECT_THROW(decode(med::octet_decoder{ctx}, proto), med::extra_ie);
 }

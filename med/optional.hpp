@@ -274,6 +274,19 @@ struct optional<
 {
 };
 
+//single-instance field as a part of compound
+template <ATag TAG, AField FIELD, ACondition CONDITION>
+struct optional<
+	TAG,
+	FIELD,
+	CONDITION,
+	min<1>,
+	max<1>
+> : field_t<FIELD, add_tag<TAG>>, optional_t
+{
+	using condition = CONDITION;
+};
+
 //multi-instance field w/ tag
 template <ATag TAG, AField FIELD, std::size_t MAX>
 struct optional<
