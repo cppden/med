@@ -22,6 +22,7 @@ struct null_allocator
 	[[nodiscard]]
 	void* allocate(std::size_t bytes, std::size_t /*alignment*/) const
 	{
+		CODEC_TRACE("%s", __FUNCTION__);
 		MED_THROW_EXCEPTION(out_of_memory, __FUNCTION__, bytes);
 	}
 };
@@ -29,6 +30,7 @@ struct null_allocator
 template <typename T, class ALLOCATOR, class... ARGs>
 T* create(ALLOCATOR& alloc, ARGs&&... args)
 {
+	CODEC_TRACE("%s", __FUNCTION__);
 	void* p = alloc.allocate(sizeof(T), alignof(T));
 	if (!p) { MED_THROW_EXCEPTION(out_of_memory, name<T>(), sizeof(T)); }
 	return new (p) T{std::forward<ARGs>(args)...};

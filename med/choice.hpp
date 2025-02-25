@@ -203,20 +203,23 @@ struct choice_dec
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using tag_t = get_info_t<meta::list_first_t<mi>>;
 		//static_assert (type::mik = kind::TAG, "NOT A TAG");
+		CODEC_TRACE("TAG[%s] matching with %s", class_name<tag_t>(), class_name<decltype(get_tag(header))>());
 		return tag_t::match( get_tag(header) );
 	}
 
 	template <class IE, class TO, class HEADER, class DECODER, class... DEPS>
 	static constexpr void apply(TO& to, HEADER const& header, DECODER& decoder, DEPS&... deps)
 	{
-		CODEC_TRACE("CASE[%s]", name<IE>());
+		CODEC_TRACE("CASE[%s] %s", name<IE>(), class_name<IE>());
 		auto& ie = static_cast<IE&>(to.template ref<get_field_type_t<IE>>());
 		//skip 1st TAG meta-info as it's decoded in header
 		using mi = meta::produce_info_t<DECODER, IE>;
 		if constexpr (AContainer<IE>)
 		{
+			using FLD_TYPE = get_field_type_t<meta::list_first_t<typename IE::ies_types>>;
 			using EXP_TAG = get_info_t<meta::list_first_t<mi>>;
-			if constexpr(std::is_same_v<EXP_TAG, get_field_type_t<meta::list_first_t<typename IE::ies_types>>>)
+			CODEC_TRACE("CASE[%s] TYPE[%s] EXPOSED[%s]", name<typename IE::ies_types>(), name<FLD_TYPE>(), name<EXP_TAG>());
+			if constexpr(std::is_same_v<EXP_TAG, FLD_TYPE>)
 			{
 				CODEC_TRACE("explicit[%s] = %#zX", name<EXP_TAG>(), size_t(header.get()));
 				ie.template ref<EXP_TAG>().set(header.get());
@@ -356,12 +359,14 @@ public:
 			using IE = meta::list_first_t<ies_types>; //use 1st IE since all have similar tag
 			using mi = meta::produce_info_t<DECODER, IE>;
 			using tag_t = get_info_t<meta::list_first_t<mi>>;
+			CODEC_TRACE("%s CHOICE WITH PLAIN HEADER, mi=%s tag=%s", name<ies_types>(), name<mi>(), name<tag_t>());
 			as_writable_t<tag_t> tag;
 			tag.set_encoded(sl::decode_tag<tag_t>(decoder));
 			meta::for_if<ies_types>(sl::choice_dec{}, *this, tag, decoder, deps...);
 		}
 		else
 		{
+			CODEC_TRACE("%s CHOICE W/O PLAIN HEADER", name<ies_types>());
 			med::decode(decoder, this->header(), deps...);
 			meta::for_if<ies_types>(sl::choice_dec{}, *this, this->header(), decoder, deps...);
 		}

@@ -147,7 +147,6 @@ constexpr void length_to_value(FIELD& field, std::size_t len)
 		{
 			field.set_length(len);
 		}
-		CODEC_TRACE("L=%zXh(%zX) [%s]:", len, std::size_t(field.get_encoded()), name<FIELD>());
 	}
 	else if constexpr (std::is_same_v<bool, decltype(field.set_encoded(0))>)
 	{
@@ -160,6 +159,7 @@ constexpr void length_to_value(FIELD& field, std::size_t len)
 	{
 		field.set_encoded(len);
 	}
+	CODEC_TRACE("L=%zXh(%zX) [%s]:", len, std::size_t(field.get_encoded()), name<FIELD>());
 }
 
 template <class FIELD>

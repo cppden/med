@@ -108,6 +108,7 @@ struct set_dec
 	{
 		using mi = meta::produce_info_t<DECODER, IE>;
 		using tag_t = get_info_t<meta::list_first_t<mi>>;
+		CODEC_TRACE("%zu tag match%c for %s(%s)", size_t(get_tag(header)), (tag_t::match(get_tag(header))? '+':'-'), name<tag_t>(), name<IE>());
 		return tag_t::match( get_tag(header) );
 	}
 
@@ -226,7 +227,7 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 			{
 				value<std::size_t> header;
 				header.set_encoded(sl::decode_tag<tag_t>(decoder));
-				CODEC_TRACE("tag=%#zX", std::size_t(get_tag(header)));
+				CODEC_TRACE("tag=%#zX mi=%s firstIE=%s tag_t=%s", std::size_t(get_tag(header)), class_name<mi>(), name<IE>(), name<tag_t>());
 				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 			}
 		}
@@ -238,7 +239,7 @@ struct set : detail::set_container<meta::typelist<IEs...>>
 				header_type header;
 				med::decode(decoder, header, deps...);
 				decoder(POP_STATE{}); //restore back for IE to decode itself (?TODO: better to copy instead)
-				CODEC_TRACE("tag=%#zX", std::size_t(get_tag(header)));
+				CODEC_TRACE("tag=%#zX hdr=%s", std::size_t(get_tag(header)), class_name<header_type>());
 				meta::for_if<ies_types>(sl::set_dec{}, this->m_ies, decoder, header, deps...);
 			}
 		}

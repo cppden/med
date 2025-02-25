@@ -82,7 +82,7 @@ struct octet_decoder : sl::octet_info
 				if constexpr (IE::traits::offset)
 				{
 					constexpr size_t MASK = (size_t(1) << (NUM_BYTES * 8 - IE::traits::offset)) - 1;
-					//CODEC_TRACE("V=%zXh(%zu) M=%zXh", res, NUM_BYTES, MASK);
+					CODEC_TRACE("V=%zXh(%zu) M=%zXh", res, NUM_BYTES, MASK);
 					res &= MASK;
 				}
 				constexpr uint8_t RS = NUM_BYTES * 8 - NUM_BITS;
