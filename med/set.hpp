@@ -23,6 +23,32 @@ namespace med {
 
 namespace sl {
 
+template <class FUNC, class IE>
+inline constexpr void encode_single(FUNC& func, IE const& ie)
+{
+	if (ie.is_set())
+	{
+		using mi = meta::produce_info_t<FUNC, IE>;
+		constexpr bool explicit_meta = explicit_meta_in<mi, get_field_type_t<IE>>();
+
+		CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<mi>());
+		if constexpr (explicit_meta)
+		{
+			using ctx = type_context<IE_SET, meta::list_rest_t<mi>>;
+			sl::ie_encode<ctx>(func, ie);
+		}
+		else
+		{
+			using ctx = type_context<IE_SET, mi>;
+			sl::ie_encode<ctx>(func, ie);
+		}
+	}
+	else if constexpr (!AOptional<IE>)
+	{
+		MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
+	}
+}
+
 struct set_name
 {
 	template <class IE, typename TAG, class CODEC>
@@ -51,12 +77,13 @@ struct set_enc
 	template <class CTX, class PREV_IE, class IE, class TO, class ENCODER>
 	static constexpr void apply(TO const& to, ENCODER& encoder)
 	{
-		using mi = meta::produce_info_t<ENCODER, IE>;
 		IE const& ie = to;
-		constexpr bool explicit_meta = explicit_meta_in<mi, get_field_type_t<IE>>();
 
 		if constexpr (AMultiField<IE>)
 		{
+			using mi = meta::produce_info_t<ENCODER, IE>;
+			constexpr bool explicit_meta = explicit_meta_in<mi, get_field_type_t<IE>>();
+
 			CODEC_TRACE("[%s]*%zu: %s", name<IE>(), ie.count(), class_name<mi>());
 			check_arity(encoder, ie);
 
@@ -79,23 +106,29 @@ struct set_enc
 		}
 		else //single-instance field
 		{
-			if (ie.is_set())
+			if constexpr (AHasSetterType<IE>) //with setter
 			{
-				CODEC_TRACE("[%s]%s: %s", name<IE>(), class_name<IE>(), class_name<mi>());
-				if constexpr (explicit_meta)
+				CODEC_TRACE("[%s] with setter from %s", name<IE>(), name<TO>());
+				IE ie;
+				ie.copy(static_cast<IE const&>(to), encoder);
+
+				typename IE::setter_type setter;
+				if constexpr (std::is_same_v<bool, decltype(setter(ie, to))>)
 				{
-					using ctx = type_context<IE_SET, meta::list_rest_t<mi>>;
-					sl::ie_encode<ctx>(encoder, ie);
+					if (not setter(ie, to))
+					{
+						MED_THROW_EXCEPTION(invalid_value, name<IE>(), ie.get())
+					}
 				}
 				else
 				{
-					using ctx = type_context<IE_SET, mi>;
-					sl::ie_encode<ctx>(encoder, ie);
+					setter(ie, to);
 				}
+				encode_single(encoder, ie);
 			}
-			else if constexpr (!AOptional<IE>)
+			else
 			{
-				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
+				encode_single(encoder, ie);
 			}
 		}
 	}
@@ -164,6 +197,17 @@ struct set_check
 			if (not (AOptional<IE> || ie.is_set()))
 			{
 				MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0)
+			}
+		}
+
+		if constexpr (AHasCondition<IE>) // conditional - quite an exotic case, since a med::set usually does not require conditional fields
+		{
+			bool const should_be_set = typename IE::condition{}(to);
+			if (ie.is_set() != should_be_set)
+			{
+				CODEC_TRACE("%cC[%s] %s be set in %s", ie.is_set() ? '+' : '-', name<IE>(), should_be_set ? "MUST" : "must NOT", name<TO>());
+				if (should_be_set) { MED_THROW_EXCEPTION(missing_ie, name<IE>(), 1, 0); }
+				else               { MED_THROW_EXCEPTION(extra_ie,   name<IE>(), 0, 1); }
 			}
 		}
 	}

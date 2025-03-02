@@ -246,6 +246,19 @@ struct mandatory<
 {
 };
 
+//M<TAG, FIELD, SETTER>
+template <ATag TAG, AField FIELD, class SETTER> requires ASetter<FIELD, SETTER>
+struct mandatory<
+	TAG,
+	FIELD,
+	SETTER,
+	min<1>,
+	max<1>
+> : field_t<FIELD, add_tag<TAG>>
+{
+	using setter_type = SETTER;
+};
+
 //M<TAG, FIELD, arity<NUM>
 template <ATag TAG, AField FIELD, std::size_t NUM>
 struct mandatory<

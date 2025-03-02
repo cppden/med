@@ -229,6 +229,7 @@ struct FLD_QTY : med::value<uint8_t>
 			}
 		}
 	};
+	static constexpr char const* name() { return "Fld-Qty"; }
 };
 
 struct FLD_FLAGS : med::value<uint8_t>
@@ -293,6 +294,7 @@ struct FLD_FLAGS : med::value<uint8_t>
 			//ies.template as<FLD_FLAGS>().set(bits);
 		}
 	};
+	static constexpr char const* name() { return "Fld-Flags"; }
 };
 
 //optional fields with functors
@@ -309,13 +311,28 @@ struct MSG_FUNC : med::sequence<
 	static constexpr char const* name() { return "Msg-With-Functors"; }
 };
 
+//optional fields with functors
+struct MSG_SET_FUNC : med::set<
+	M< T16<0x0b>, FLD_UC >, //<TV>
+	M< T16<0x0d>, FLD_FLAGS, FLD_FLAGS::setter >,
+	O< T16<0x0e>, FLD_QTY, FLD_FLAGS::has_bits<FLD_FLAGS::QTY> >,
+	O< T16<0x0c>, FLD_U8 >, //<TV>
+	O< T16<0x21>, FLD_U16, FLD_FLAGS::has_bits<FLD_FLAGS::U16> >,
+	O< T16<0x49>, FLD_U24, FLD_FLAGS::has_bits<FLD_FLAGS::U24> >,
+	O< T16<0x89>, FLD_IP >
+>
+{
+	static constexpr char const* name() { return "Msg-Set-With-Functors"; }
+	decltype(auto) body() const         { return this->m_ies; }
+};
 
 struct PROTO : med::choice<
 	M<C<0x01>, MSG_SEQ>,
 	M<C<0x11>, MSG_MSEQ>,
 	M<C<0x04>, MSG_SET>,
 	M<C<0x14>, MSG_MSET>,
-	M<C<0xFF>, MSG_FUNC>
+	M<C<0xFF>, MSG_FUNC>,
+	M<C<0x24>, MSG_SET_FUNC>
 >
 {
 };
