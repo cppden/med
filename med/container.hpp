@@ -113,18 +113,18 @@ struct cont_is
 		//optional or mandatory field w/ setter => can be set implicitly
 		if constexpr (AOptional<IE> || AHasSetterType<IE>)
 		{
-			//CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
+			CODEC_TRACE("O/S[%s] is_set=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
 			return static_cast<IE const&>(seq).is_set();
 		}
 		else //mandatory field w/o setter => s.b. set explicitly
 		{
+			CODEC_TRACE("M[%s]%s is_set=%d", name<IE>(), (APredefinedValue<IE> ? "[init/const]":""), static_cast<IE const&>(seq).is_set());
 			if constexpr (APredefinedValue<IE>) //don't account predefined IEs like init/const
 			{
 				return false;
 			}
 			else
 			{
-				//CODEC_TRACE("is_set[%s]=%d", name<IE>(), static_cast<IE const&>(seq).is_set());
 				return static_cast<IE const&>(seq).is_set();
 			}
 		}

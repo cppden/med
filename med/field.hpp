@@ -198,7 +198,7 @@ public:
 						m_tail = prev.m_curr;
 					}
 				}
-				CODEC_TRACE("%s(%s=%p) count=%zu head=%p tail=%p", __FUNCTION__, name<field_type>(), it.get(), count(), m_head, m_tail);
+				CODEC_TRACE("%s(%s=%p) count=%zu head=%p tail=%p", __FUNCTION__, name<field_type>(), (void*)it.get(), count(), (void*)m_head, (void*)m_tail);
 				return ret;
 			}
 			prev = it;
@@ -220,7 +220,7 @@ private:
 		{
 			for (auto& f : m_fields)
 			{
-				CODEC_TRACE("%s: %s=%p[%c]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-');
+				CODEC_TRACE("%s: %s=%p[%c][%zu]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-', inplace);
 				if (!f.value.is_set()) return &f;
 			}
 		}
@@ -235,7 +235,7 @@ private:
 		else { m_head = m_tail = pf; }
 		pf->next = nullptr;
 		m_tail = pf;
-		CODEC_TRACE("%s(%s=%p) count=%zu head=%p tail=%p", __FUNCTION__, name<field_type>(), (void*)pf, count(), m_head, m_tail);
+		CODEC_TRACE("%s(%s=%p) count=%zu head=%p tail=%p", __FUNCTION__, name<field_type>(), (void*)pf, count(), (void*)m_head, (void*)m_tail);
 		return &m_tail->value;
 	}
 

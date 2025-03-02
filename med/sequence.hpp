@@ -362,7 +362,7 @@ struct seq_enc
 				}
 				else //w/o setter
 				{
-					//CODEC_TRACE("%c{%s}", ie.is_set()?'+':'-', class_name<IE>());
+					CODEC_TRACE("%c{%s}", ie.is_set()?'+':'-', class_name<IE>());
 					if (AHasSetLength<IE> || ie.is_set())
 					{
 						med::encode(encoder, ie);

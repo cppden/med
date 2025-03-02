@@ -149,7 +149,7 @@ template <class ENCODER, AHasIeType IE>
 constexpr void encode(ENCODER&& encoder, IE const& ie)
 {
 	using META_INFO = meta::produce_info_t<ENCODER, IE>;
-	//CODEC_TRACE("mi=%s", class_name<META_INFO>());
+	CODEC_TRACE("mi=%s by %s for %s", class_name<META_INFO>(), class_name<ENCODER>(), class_name<IE>());
 	sl::ie_encode<type_context<typename IE::ie_type, META_INFO>>(encoder, ie);
 }
 

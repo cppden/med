@@ -33,7 +33,7 @@ constexpr auto decode_tag(auto& decoder)
 	TAG_TYPE ie;
 	typename as_writable_t<TAG_TYPE>::value_type value{};
 	value = decoder(ie, IE_TAG{});
-	CODEC_TRACE("%s=%zX [%s]", __FUNCTION__, std::size_t(value), class_name<TAG_TYPE>());
+	CODEC_TRACE("%s=0x%zX(%zu) [%s]", __FUNCTION__, std::size_t(value), std::size_t(value), class_name<TAG_TYPE>());
 	return value;
 }
 //Length
