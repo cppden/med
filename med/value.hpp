@@ -83,8 +83,8 @@ struct numeric_value : IE<IE_VALUE>
 #endif
 
 private:
-	bool       m_set{false};
 	value_type m_value{};
+	bool       m_set{false};
 };
 
 /**

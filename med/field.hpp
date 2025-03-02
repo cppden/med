@@ -68,8 +68,8 @@ public:
 
 	struct field_value
 	{
-		field_type   value;
 		field_value* next;
+		field_type   value;
 	};
 
 	static constexpr std::size_t min = MIN;
@@ -239,10 +239,10 @@ private:
 		return &m_tail->value;
 	}
 
-	field_value  m_fields[inplace];
-	std::size_t  m_count {0};
 	field_value* m_head {nullptr};
 	field_value* m_tail {nullptr};
+	std::size_t  m_count {0};
+	field_value  m_fields[inplace];
 };
 
 }	//end: namespace med

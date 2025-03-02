@@ -75,14 +75,14 @@ private:
 		m_least_bits = calc_least_bits(std::size_t(num_bits));
 	}
 
-	uint16_t    m_num_bytes {0};
-	uint8_t     m_least_bits {0}; //0 - not set, or 1..8
-
 	union
 	{
 		uint8_t const*  external {nullptr};
 		uint8_t         internal[sizeof(uint64_t)];
 	}           m_data;
+
+	uint16_t    m_num_bytes {0};
+	uint8_t     m_least_bits {0}; //0 - not set, or 1..8
 };
 
 //fixed length bits
@@ -141,8 +141,8 @@ public:
 	}
 
 private:
-	bool    m_set {false};
 	uint8_t m_data[size()];
+	bool    m_set {false};
 };
 
 template <class TRAITS>
