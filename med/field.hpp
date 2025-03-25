@@ -239,10 +239,10 @@ private:
 		return &m_tail->value;
 	}
 
-	field_value  m_fields[inplace];
-	std::size_t  m_count {0};
 	field_value* m_head {nullptr};
 	field_value* m_tail {nullptr};
+	std::size_t  m_count {0};
+	field_value  m_fields[inplace];
 };
 
 }	//end: namespace med
