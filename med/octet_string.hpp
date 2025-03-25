@@ -99,9 +99,9 @@ public:
 	}
 
 private:
-	uint8_t     m_data[MAX_LEN];
 	num_octs_t  m_size {0};
 	bool        m_is_set {false};
+	uint8_t     m_data[MAX_LEN];
 };
 
 //fixed length octets with external storage
