@@ -203,6 +203,7 @@ struct hdr : med::sequence<
 	M<id>
 >
 {
+	bool is_tag_set() const { return get<code>().is_set(); }
 	auto get_tag() const    { return get<code>().get(); }
 	void set_tag(uint8_t v) { return ref<code>().set(v); }
 

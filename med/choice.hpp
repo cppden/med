@@ -174,14 +174,7 @@ struct choice_enc : choice_if
 		}
 		else
 		{
-			//tag of this IE isn't in header
-			if constexpr (!explicit_meta_in<mi, typename TO::header_type>())
-			{
-				using tag_t = get_info_t<meta::list_first_t<mi>>;
-				tag_t const tag{};
-				//TODO: how to not modify?
-				const_cast<TO&>(to).header().set_tag(tag.get());
-			}
+			if(!to.header().is_tag_set()) { MED_THROW_EXCEPTION(unknown_tag, name<TO>(), to.index()); }
 			med::encode(encoder, to.header());
 			//skip 1st TAG meta-info as it's encoded in header
 			sl::ie_encode<type_context<IE_CHOICE, meta::list_rest_t<mi>>>(encoder, to.template as<IE>());
@@ -256,6 +249,9 @@ struct choice_header
 template <AHasGetTag HEADER>
 struct choice_header<HEADER>
 {
+	// each compound header for a choice must have bool is_tag_set() method together with get_tag()
+	static_assert(std::is_same<bool, decltype(std::declval<HEADER>().is_tag_set())>());
+
 	static constexpr bool plain_header = false; //compound header e.g. a sequence
 
 	using header_type = HEADER;
@@ -318,6 +314,17 @@ public:
 		{
 			m_index = idx;
 			new (&m_storage) type{};
+		}
+		if constexpr (!choice::plain_header)
+		{
+			// we must not do it on a decode stage when the header tag has been already set
+			if(!this->header().is_tag_set())
+			{
+				using TAG_TYPE = get_meta_tag_t<get_meta_info_t<type>>;
+				static_assert(!std::is_void<TAG_TYPE>());
+				TAG_TYPE tag;
+				this->header().set_tag(tag.get());
+			}
 		}
 		return *ie;
 	}

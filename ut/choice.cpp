@@ -112,6 +112,7 @@ struct UNKNOWN : med::sequence<
 struct U8  : med::value<uint8_t>{};
 struct U16 : med::value<uint16_t>{};
 struct U32 : med::value<uint32_t>{};
+struct string : med::ascii_string<> {};
 
 //choice based on plain value selector
 struct plain : med::choice<
@@ -123,6 +124,31 @@ struct plain : med::choice<
 {};
 
 using PLAIN = M<L, plain>;
+
+struct hdr : med::sequence<
+	M<U8>,
+	O<U16>
+>
+{
+	bool is_tag_set() const { return get<U8>().is_set(); }
+	auto get_tag() const    { return get<U8>().get(); }
+	void set_tag(uint8_t v) { return ref<U8>().set(v); }
+};
+
+//choice based on a compound header selector
+struct compound : med::choice< hdr,
+	M< C<0x00>, U8  >,
+	M< C<0x02>, U16 >,
+	M< C<0x04>, string >
+>
+{};
+
+struct SEQ : med::sequence<
+	  O< U32 >
+	, M< U16 >
+	, M< compound >
+>
+{};
 
 } //end: namespace cho
 
@@ -214,4 +240,59 @@ TEST(choice, nibble_tag)
 	EXPECT_FALSE(pf->is_set());
 }
 #endif
+TEST(choice, tag_in_compound)
+{
+	uint8_t buffer[128];
+	med::encoder_context ctx{ buffer };
+
+	cho::compound msg;
+	msg.ref<string>().set("12345678"sv);
+	ASSERT_TRUE(msg.header().is_tag_set());
+
+	msg.header().clear();
+	ASSERT_FALSE(msg.header().is_tag_set());
+
+	msg.ref<string>();
+	ASSERT_TRUE(msg.header().is_tag_set());
+
+	msg.header().clear();
+	msg.ref<string>().set("12345678"sv);
+	ASSERT_TRUE(msg.header().is_tag_set());
+
+	msg.header().ref<U16>().set(0xff);
+
+	encode(med::octet_encoder{ctx}, msg);
+	EXPECT_STREQ(
+		"04 00 FF 31 32 33 34 35 36 37 38 ",
+		as_string(ctx.buffer())
+	);
+
+	msg.clear();
+	ASSERT_FALSE(msg.header().is_tag_set());
+
+	med::decoder_context dctx;
+	dctx.reset(ctx.buffer().get_start(), ctx.buffer().get_offset());
+	decode(med::octet_decoder{dctx}, msg);
+
+	auto* pf = msg.get<string>();
+	ASSERT_NE(nullptr, pf);
+	ASSERT_TRUE(msg.header().is_tag_set());
+}
+
+TEST(choice, m_choice_in_seq)
+{
+	uint8_t buffer[128];
+	med::encoder_context ctx{ buffer };
+
+	SEQ msg;
+
+	msg.ref<U16>().set(1);
+	msg.ref<compound>().ref<string>().set("12345678"sv);
+
+	encode(med::octet_encoder{ctx}, msg);
+	EXPECT_STREQ(
+		"00 01 04 31 32 33 34 35 36 37 38 ",
+		as_string(ctx.buffer())
+	);
+}
 //NOTE: choice compound is tested in length.cpp ppp::proto

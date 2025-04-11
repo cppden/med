@@ -75,6 +75,7 @@ struct header : med::sequence<
 	M<end_to_end_id>
 >
 {
+	bool is_tag_set() const                     { return get<cmd_code>().is_set(); }
 	std::size_t get_tag() const                 { return get<cmd_code>().get() + (flags().request() ? REQUEST : 0); }
 	void set_tag(std::size_t tag)               { ref<cmd_code>().set(tag & 0xFFFFFF); flags().request(tag & REQUEST); }
 

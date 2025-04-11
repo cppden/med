@@ -23,6 +23,7 @@ struct hdr : med::sequence<
 	M<word>
 >
 {
+	bool is_tag_set() const { return get<byte>().is_set(); }
 	auto get_tag() const    { return get<byte>().get(); }
 	void set_tag(uint8_t v) { return ref<byte>().set(v); }
 };
