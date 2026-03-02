@@ -220,7 +220,7 @@ private:
 		{
 			for (auto& f : m_fields)
 			{
-				CODEC_TRACE("%s: %s=%p[%c][%zu]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-', inplace);
+				// CODEC_TRACE("%s: %s=%p[%c][%zu]", __FUNCTION__, name<field_type>(), (void*)&f, f.value.is_set()?'+':'-', inplace);
 				if (!f.value.is_set()) return &f;
 			}
 		}

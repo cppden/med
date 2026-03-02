@@ -18,6 +18,8 @@ Distributed under the MIT License
 
 namespace med {
 
+constexpr std::size_t MAX_OCTS = std::numeric_limits<num_octs_t>::max();
+
 template <std::size_t MIN, std::size_t MAX>
 struct octets
 {
@@ -202,7 +204,7 @@ struct octet_string_impl : IE<IE_OCTET_STRING>
 				return false;
 			}
 		}
-		if constexpr (traits::max_octets != inf())
+		if constexpr (traits::max_octets != MAX_OCTS)
 		{
 			if (len > traits::max_octets)
 			{
@@ -252,8 +254,6 @@ struct ascii_string : octet_string<T...>
 		std::snprintf(sz, sizeof(sz), "%.*s", int(s.size()), s.data());
 	}
 };
-
-constexpr std::size_t MAX_OCTS = std::numeric_limits<num_octs_t>::max();
 
 template <class VALUE>
 struct octet_string<VALUE, void, void>
@@ -311,8 +311,13 @@ struct octet_string<octets_fix_intern<FIXED>, void, void>
 
 	void set(uint8_t const(&data)[FIXED])   { this->set_encoded(FIXED, &data[0]); }
 };
+
 template <std::size_t MAX, std::size_t MIN>
 struct octet_string<octets_var_intern<MAX>, min<MIN>, void>
 		: octet_string_impl<detail::octet_traits<uint8_t, MIN, MAX>, octets_var_intern<MAX>> {};
-
+template <std::size_t MAX>
+struct octet_string<octets_var_intern<MAX>, void, void>
+		: octet_string_impl<detail::octet_traits<uint8_t, 0, MAX>, octets_var_intern<MAX>>
+{
+};
 }	//end: namespace med
