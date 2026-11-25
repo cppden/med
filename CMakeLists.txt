@@ -66,6 +66,7 @@ file(GLOB_RECURSE MED_SRCS med/*.hpp)
 # file(GLOB_RECURSE UT_SRCS ut/*.cpp)
 set(UT_SRCS
 	ut/bits.cpp
+	ut/buffer.cpp
 	ut/choice.cpp
 	ut/copy.cpp
 	ut/diameter.cpp
