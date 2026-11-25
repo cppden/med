@@ -19,10 +19,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler:
-          - g++-12
-          - clang++-15
-        build_type: [Release]
+        include:
+          - compiler: g++-12
+            package: g++-12
+            build_type: Release
+          - compiler: clang++
+            package: clang
+            build_type: Release
 
     env:
       CXX: ${{ matrix.compiler }}
@@ -31,7 +34,7 @@ jobs:
     - uses: actions/checkout@v3
     - run: |
         sudo apt-get update
-        sudo apt-get -y --no-upgrade install ${{ matrix.compiler }}
+        sudo apt-get -y --no-upgrade install ${{ matrix.package }}
         sudo apt-get -y install libgtest-dev
 
     - run: cmake -E make_directory build
