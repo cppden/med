@@ -10,6 +10,7 @@ Distributed under the MIT License
 #pragma once
 
 #include <new>
+#include <algorithm>
 
 #include "exception.hpp"
 #include "accessor.hpp"
@@ -240,8 +241,20 @@ struct choice_dec
 
 namespace detail {
 
+// identical to deprecated since C++23 std::aligned_union
+template<std::size_t Len, class... Types>
+struct my_aligned_union
+{
+	static constexpr std::size_t alignment_value = std::max({alignof(Types)...});
+
+	struct type
+	{
+		alignas(alignment_value) char _s[std::max({Len, sizeof(Types)...})];
+	};
+};
+
 template <class L> struct list_aligned_union;
-template <template <class...> class L, class... Ts> struct list_aligned_union<L<Ts...>> : std::aligned_union<0, Ts...> {};
+template <template <class...> class L, class... Ts> struct list_aligned_union<L<Ts...>> : my_aligned_union<0, Ts...> {};
 
 template <class HEADER>
 struct choice_header

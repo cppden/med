@@ -24,7 +24,7 @@ struct foreach<T0, Ts...>
 	static constexpr void exec(F&& f, Args&&... args)
 	{
 		f.template apply<T0>(std::forward<Args>(args)...);
-		foreach<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
+		foreach<Ts...>::exec(std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	template <class CTX, class PREV, class F, class... Args>
@@ -85,7 +85,7 @@ struct fold<T0, Ts...>
 	static constexpr auto exec(F&& f, Args&&... args)
 	{
 		auto const r1 = f.template apply<T0>(std::forward<Args>(args)...);
-		auto const r2 = fold<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
+		auto const r2 = fold<Ts...>::exec(std::forward<F>(f), std::forward<Args>(args)...);
 		return f.op(r1, r2);
 	}
 };
@@ -96,7 +96,7 @@ struct fold<>
 	template <class F, class... Args>
 	static constexpr auto exec(F&& f, Args&&... args)
 	{
-		return f.template apply(std::forward<Args>(args)...);
+		return f.apply(std::forward<Args>(args)...);
 	}
 };
 
@@ -133,7 +133,7 @@ struct for_if<T0, Ts...>
 		}
 		else
 		{
-			return for_if<Ts...>::template exec(std::forward<F>(f), std::forward<Args>(args)...);
+			return for_if<Ts...>::exec(std::forward<F>(f), std::forward<Args>(args)...);
 		}
 	}
 };
@@ -144,7 +144,7 @@ struct for_if<>
 	template <class F, class... Args>
 	static constexpr auto exec(F&& f, Args&&... args)
 	{
-		return f.template apply(std::forward<Args>(args)...);
+		return f.apply(std::forward<Args>(args)...);
 	}
 };
 

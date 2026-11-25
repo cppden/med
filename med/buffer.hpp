@@ -105,8 +105,9 @@ public:
 
 	constexpr auto push_size(std::size_t size, bool commit_)
 	{
-		if (auto* pend = begin() + size; pend <= end()) //within the current end of buffer
+		if (size <= static_cast<std::size_t>(end() - begin())) //within the current end of buffer
 		{
+			auto* const pend = begin() + size;
 			pointer& ps = m_eob[m_eob_index];
 			//TODO: check and throw out of range
 
@@ -126,7 +127,7 @@ public:
 		}
 		else
 		{
-			MED_THROW_EXCEPTION(overflow, "end of buffer", pend - end());
+			MED_THROW_EXCEPTION(overflow, "end of buffer", size - (end() - begin()));
 		}
 	}
 
